@@ -23,7 +23,7 @@ Ideas that are not in scope for the current phase. Nothing here gets built witho
 - Multiple inbound mailboxes mapped to queues
 - Time entry start/stop timers
 - Delta-query mail sync (current design: poll unread in Inbox)
-- Notifications (email/Teams) for new, unassigned or SLA-breached tickets
+- Notifications: Teams webhook, alert for new/unassigned tickets, escalation to a manager on breach, daily digest
 - Send reminders/statements from a separate billing mailbox (they currently use the support mailbox)
 - Auto-send after a set delay with a per-client opt-in (currently every notice needs approval)
 - Statement and reminder history per client on the client page

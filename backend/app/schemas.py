@@ -143,6 +143,15 @@ class UserOut(ORM):
 
 class MeOut(UserOut):
     permissions: list[str]
+    notify_assigned: bool
+    notify_sla: bool
+    notify_reply: bool
+
+
+class NotificationPrefsPatch(BaseModel):
+    notify_assigned: bool | None = None
+    notify_sla: bool | None = None
+    notify_reply: bool | None = None
 
 
 class DevLoginIn(BaseModel):
@@ -340,6 +349,7 @@ class PriorityOut(LookupOut):
 
 
 class SettingsOut(ORM):
+    notify_staff: bool
     statement_subject: str
     statement_body: str
     invoice_email_subject: str
@@ -360,6 +370,7 @@ class SettingsOut(ORM):
 
 
 class SettingsPatch(BaseModel):
+    notify_staff: bool | None = None
     statement_subject: str | None = Field(default=None, min_length=1, max_length=500)
     statement_body: str | None = Field(default=None, min_length=1, max_length=10_000)
     invoice_email_subject: str | None = Field(default=None, min_length=1, max_length=500)

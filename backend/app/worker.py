@@ -40,6 +40,24 @@ def billing_jobs() -> None:
         log.exception("billing jobs failed")
 
 
+def notify_jobs() -> None:
+    """Email assignees whose tickets reached SLA at-risk or breached (once per state)."""
+    from app import db as dbmod
+    from app.deps import Ctx
+    from app.notifications import scan_sla
+    from app.scope import Scope
+
+    try:
+        with dbmod.new_session() as db:
+            dbmod.set_org_scope(db, "all")
+            queued = scan_sla(Ctx(db=db, user=None, scope=Scope.all()))
+            db.commit()
+        if queued:
+            log.info("queued %d SLA notification(s)", queued)
+    except Exception:
+        log.exception("notification jobs failed")
+
+
 def build_client() -> GraphClient:
     s = get_settings()
     return GraphClient(
@@ -66,6 +84,7 @@ def main(argv: list[str]) -> int:
         while not _stop:
             heartbeat(None)
             billing_jobs()
+            notify_jobs()
             if "--once" in argv:
                 break
             for _ in range(60):
@@ -78,6 +97,7 @@ def main(argv: list[str]) -> int:
     while not _stop:
         run_cycle(client, s.mail_mailbox)
         billing_jobs()
+        notify_jobs()
         if "--once" in argv:
             break
         for _ in range(s.mail_poll_seconds):

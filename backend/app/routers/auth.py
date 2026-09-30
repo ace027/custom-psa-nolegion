@@ -8,7 +8,7 @@ from app import repositories as repo
 from app.auth import oidc, sessions
 from app.config import get_settings
 from app.deps import Ctx, authenticated
-from app.schemas import DevLoginIn, ErrorOut, MeOut
+from app.schemas import DevLoginIn, ErrorOut, MeOut, NotificationPrefsPatch
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -109,7 +109,17 @@ def dev_login(body: DevLoginIn, request: Request, response: Response):
             **{
                 **{
                     c: getattr(user, c)
-                    for c in ("id", "email", "display_name", "role", "is_active", "last_login_at")
+                    for c in (
+                        "id",
+                        "email",
+                        "display_name",
+                        "role",
+                        "is_active",
+                        "last_login_at",
+                        "notify_assigned",
+                        "notify_sla",
+                        "notify_reply",
+                    )
                 },
                 "permissions": sorted(P.MATRIX[user.role]),
             }
@@ -141,4 +151,23 @@ def me(ctx: Ctx = authenticated()):
         is_active=u.is_active,
         last_login_at=u.last_login_at,
         permissions=sorted(P.MATRIX[u.role]),
+        notify_assigned=u.notify_assigned,
+        notify_sla=u.notify_sla,
+        notify_reply=u.notify_reply,
     )
+
+
+@router.patch(
+    "/me/notifications",
+    response_model=MeOut,
+    summary="Choose which ticket emails you receive (your own preferences only)",
+)
+def update_my_notifications(body: NotificationPrefsPatch, ctx: Ctx = authenticated()):
+    u = ctx.user
+    before = audit.snapshot(u)
+    for key, value in body.model_dump(exclude_unset=True).items():
+        if value is not None:
+            setattr(u, key, value)
+    ctx.db.flush()
+    audit.record(ctx.db, u, "user.notification_prefs", u, before=before, after=audit.snapshot(u))
+    return me(ctx)

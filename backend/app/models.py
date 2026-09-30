@@ -15,6 +15,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -100,6 +101,11 @@ class User(TimestampMixin, Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notify_assigned: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    notify_sla: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    notify_reply: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
 
 class Session(Base):
@@ -194,6 +200,7 @@ class Settings(Base):
     invoice_footer: Mapped[str | None] = mapped_column(Text)
     statement_subject: Mapped[str] = mapped_column(Text, nullable=False)
     statement_body: Mapped[str] = mapped_column(Text, nullable=False)
+    notify_staff: Mapped[bool] = mapped_column(Boolean, nullable=False)
     invoice_email_subject: Mapped[str] = mapped_column(Text, nullable=False)
     invoice_email_body: Mapped[str] = mapped_column(Text, nullable=False)
     auto_prepare_invoice_emails: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -628,6 +635,22 @@ class OutboundAttachment(Base):
     filename: Mapped[str] = mapped_column(String(300), nullable=False)
     content_type: Mapped[str] = mapped_column(String(100), nullable=False)
     data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class StaffNotification(Base):
+    """Record that a staff member was emailed about a ticket event (also the once-only guard)."""
+
+    __tablename__ = "staff_notifications"
+    __table_args__ = (UniqueConstraint("user_id", "ticket_id", "event", "dedupe_key"),)
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), nullable=False)
+    event: Mapped[str] = mapped_column(String(20), nullable=False)
+    dedupe_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    email_message_id: Mapped[int] = mapped_column(ForeignKey("email_messages.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

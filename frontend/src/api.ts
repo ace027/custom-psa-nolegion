@@ -42,8 +42,11 @@ export interface Me {
   display_name: string;
   role: Role;
   permissions: string[];
+  notify_assigned: boolean;
+  notify_sla: boolean;
+  notify_reply: boolean;
 }
-export interface User extends Omit<Me, "permissions"> {
+export interface User extends Omit<Me, "permissions" | "notify_assigned" | "notify_sla" | "notify_reply"> {
   is_active: boolean;
   last_login_at: string | null;
 }
@@ -191,6 +194,7 @@ export interface AppSettings {
   sla_at_risk_percent: number;
   statement_subject: string;
   statement_body: string;
+  notify_staff: boolean;
   invoice_email_subject: string;
   invoice_email_body: string;
   auto_prepare_invoice_emails: boolean;

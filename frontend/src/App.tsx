@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { NavLink, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { api } from "./api";
 import { can, useMe } from "./auth";
 import Audit from "./pages/Audit";
@@ -10,6 +10,7 @@ import Payments from "./pages/billing/Payments";
 import Products from "./pages/billing/Products";
 import Rates from "./pages/billing/Rates";
 import Receivables from "./pages/billing/Receivables";
+import Profile from "./pages/Profile";
 import Reminders from "./pages/billing/Reminders";
 import Reports from "./pages/billing/Reports";
 import { RunList, RunPage } from "./pages/billing/Runs";
@@ -48,7 +49,7 @@ function Layout() {
           {can(me, "audit:read") && <NavLink to="/audit" className={link}>Audit log</NavLink>}
         </nav>
         <div className="flex items-center gap-3 text-sm">
-          <span>{me?.display_name} <span className="text-slate-500">({me?.role})</span></span>
+          <Link className="hover:underline" to="/profile" title="Your notification settings">{me?.display_name} <span className="text-slate-500">({me?.role})</span></Link>
           <button className="text-blue-700 hover:underline" onClick={() => logout.mutate()}>Sign out</button>
         </div>
       </header>
@@ -88,6 +89,7 @@ export default function App() {
             <Route path="reports" element={can(me, "report:read") ? <Reports /> : <Navigate to="/billing" replace />} />
           </Route>
         )}
+        <Route path="/profile" element={<Profile />} />
         <Route path="/users" element={<Users />} />
         <Route path="/audit" element={can(me, "audit:read") ? <Audit /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />

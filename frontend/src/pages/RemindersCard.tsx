@@ -29,6 +29,7 @@ export default function RemindersCard() {
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={val("auto_prepare_invoice_emails")} onChange={(e) => set({ auto_prepare_invoice_emails: e.target.checked })} />Prepare an invoice email when an invoice is finalized</label>
         <Field label="Invoice email subject"><input className={inputCls} value={val("invoice_email_subject")} onChange={(e) => set({ invoice_email_subject: e.target.value })} /></Field>
         <div className="sm:col-span-2"><Field label="Invoice email body (also {invoice_number} {invoice_total} {due_date})"><textarea className={inputCls + " font-mono"} rows={5} value={val("invoice_email_body")} onChange={(e) => set({ invoice_email_body: e.target.value })} /></Field></div>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={val("notify_staff")} onChange={(e) => set({ notify_staff: e.target.checked })} />Email staff about their tickets (assigned, SLA, customer reply)</label>
         <Field label="Statement email subject"><input className={inputCls} value={val("statement_subject")} onChange={(e) => set({ statement_subject: e.target.value })} /></Field>
         <div className="sm:col-span-2"><Field label="Statement email body"><textarea className={inputCls + " font-mono"} rows={6} value={val("statement_body")} onChange={(e) => set({ statement_body: e.target.value })} /></Field></div>
       </div>

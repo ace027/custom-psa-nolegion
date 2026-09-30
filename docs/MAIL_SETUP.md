@@ -109,3 +109,14 @@ Payment reminders and statements are sent through the same outbox and mailbox, w
 (Graph `sendMail` file attachments). They are only sent after a person approves them in Billing > Reminders.
 A client who replies creates or updates a ticket like any other email. Sending needs the *Application
 Mail.Send* RBAC role above; the review screen refuses to send while the worker reports the mailbox as not configured.
+
+## Staff notifications
+The worker also emails the person a ticket is assigned to, using the same mailbox and outbox:
+when a ticket is assigned to them (not when they assign it to themselves), when it reaches SLA
+**at risk** and again if it **breaches** (once each), and when a customer replies. Emails have the
+ticket number, client, priority, status and a link, never the customer's words. Subjects use
+`PSA: ticket #10001 ...` (no `[#10001]` token) so replying to one is not mistaken for a customer reply.
+Each person can turn any of these off on their profile (click your name); admins can switch the
+whole feature off under Settings. Nothing is queued while the mailbox is not configured, so there is
+no backlog to flush when you enable it. Unassigned tickets notify nobody (see BACKLOG for a
+queue-wide alert).

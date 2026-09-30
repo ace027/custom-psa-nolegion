@@ -29,7 +29,7 @@ from alembic import command  # noqa: E402
 from app.main import app  # noqa: E402
 
 TABLES = (
-    "outbound_attachments, billing_notice_invoices, billing_notices, statements, "
+    "staff_notifications, outbound_attachments, billing_notice_invoices, billing_notices, statements, "
     "write_offs, payment_applications, payments, invoice_counters, product_charges, invoice_lines, invoices, billing_runs, "
     "agreement_quantity_log, agreements, products, org_work_type_rates, "
     "attachments, time_entries, ticket_notes, email_messages, tickets, audit_log, sessions, "

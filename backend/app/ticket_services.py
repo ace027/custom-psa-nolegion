@@ -158,6 +158,12 @@ def create_ticket(
         organization_id=ticket.organization_id,
         detail={"source": source},
     )
+    if ticket.assignee_id:
+        from app import notifications
+
+        notifications.notify(
+            ctx, ticket.assignee_id, ticket, "assigned", now().isoformat(), actor=ctx.user
+        )
     return ticket
 
 
@@ -234,6 +240,12 @@ def update_ticket(ctx: Ctx, ticket_id: int, data: dict) -> Ticket:
         organization_id=ticket.organization_id,
         detail=detail or None,
     )
+    if ticket.assignee_id and ticket.assignee_id != before["assignee_id"]:
+        from app import notifications
+
+        notifications.notify(
+            ctx, ticket.assignee_id, ticket, "assigned", now().isoformat(), actor=ctx.user
+        )
     return ticket
 
 
@@ -439,4 +451,10 @@ def customer_reply(
         organization_id=ticket.organization_id,
         detail={"status_before": before_status, "status_after": ticket.status},
     )
+    if ticket.assignee_id:
+        from app import notifications
+
+        notifications.notify(
+            ctx, ticket.assignee_id, ticket, "customer_reply", str(email.id), actor=None
+        )
     return note
