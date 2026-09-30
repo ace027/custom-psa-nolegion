@@ -86,10 +86,38 @@ Pick the client, enter the amount, then *Auto-apply, oldest first* or type amoun
 form tells you how much will be kept as credit. To use credit later: Payments > details > *Apply credit*.
 
 The invoice PDF is the document you issued and does not change when payments arrive (no PAID stamp or
-running balance); see the backlog for statements.
+running balance); a *statement* (below) shows the current position.
+
+## Statements and payment reminders
+**Nothing is ever emailed without a person approving it.** The worker only *prepares* notices; you read,
+edit if you like, and approve them on Billing > Reminders. Approved notices go through the normal outbox
+(sent by the worker from the support mailbox, so a client's reply arrives as a ticket).
+
+- **Reminders.** Default schedule: 1, 15, 30 and 60 days past due (Friendly reminder, Follow-up, Second
+  notice, Final notice). Edit days, wording or switch a stage off under Settings. Each stage is issued **at
+  most once per invoice**; a client gets **one** notice listing all their overdue invoices, using the
+  highest stage newly reached (never a lower stage after a higher one), and is not re-reminded within
+  the *minimum gap* (default 7 days). Clients marked **Do not send payment reminders**, archived clients
+  and fully paid invoices are skipped. Editing days does not re-issue stages already sent.
+- **Recipients.** The client's billing contacts; if none, the primary contact. If nobody has an email the
+  notice is **blocked** and cannot be sent (the app never guesses an address).
+- **Stale notices.** If a payment or void changes the numbers after a notice was prepared, it is marked
+  stale and must be *Refreshed* (text is regenerated from the template) before it can be sent. If
+  everything was paid it expires instead.
+- **Attachments.** The invoice PDFs (up to 10); over that, a statement PDF.
+- **Statements.** A statement is a frozen snapshot: open invoices with days late, payments since the last
+  statement (first one looks back 90 days), unapplied credit, and an aging summary, with a PDF. Generate
+  one from Receivables or the client page (*Statement PDF*), or *Prepare statement email* to review and send it.
+  The monthly batch (Prepare monthly statements, or automatic on the 1st when enabled) prepares one per client
+  with a balance or credit, once per month.
+- **Templates.** Placeholders in `{braces}` are checked when saved (unknown ones are refused).
+- **Permissions.** billing:write prepares/edits/refreshes; billing:finalize approves (sends) or dismisses
+  (with a reason). Everything is audited (`notice.*`, `statement.create`, `reminder_stage.update`).
+- **Records.** Statements, sent/dismissed notices and the exact PDF bytes that were emailed cannot be changed
+  or deleted (database triggers), so you can show what a client was told.
 
 ## Not built (by design or deferred)
-No emailing of invoices or payment reminders, no accounting/payment-processor integrations (payments
+No automatic sending (every reminder/statement is approved by a person), no late fees, no accounting/payment-processor integrations (payments
 are *recorded by hand*, nothing is charged or reconciled with a bank), no proration, one tax rate per
 client (no per-state/jurisdiction tax), no late fees, no refunds as a separate record (void the
 payment), fixed invoice number format. See `docs/BACKLOG.md`.

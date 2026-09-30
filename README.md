@@ -5,6 +5,10 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 **Status:** Phases 1-3 (Foundation, Ticketing, Contracts & invoicing) complete: the MVP. See [docs/PLAN.md](docs/PLAN.md) for the roadmap and design decisions, and [docs/BACKLOG.md](docs/BACKLOG.md) for ideas that are deliberately not built yet.
 
 ## What works today
+**Statements and payment reminders**
+- Reminders (default 1/15/30/60 days past due) and monthly client statements are *prepared* automatically and *approved by a person* before anything is emailed; invoice or statement PDFs attach; replies become tickets
+- Per-client "do not remind", blocked when no billing/primary contact email, stale notices must be refreshed, sent records are immutable
+
 **Payment tracking**
 - Record payments (partial, split across invoices, unapplied credit), write-offs with a reason, paid/partial/overdue status, and a receivables aging report by client
 - Balances are derived; payments, applications and write-offs are never edited (void with a reason), enforced by the database

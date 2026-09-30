@@ -24,16 +24,18 @@ Ideas that are not in scope for the current phase. Nothing here gets built witho
 - Time entry start/stop timers
 - Delta-query mail sync (current design: poll unread in Inbox)
 - Notifications (email/Teams) for new, unassigned or SLA-breached tickets
-- Client statements (PDF of open invoices, payments and credit) and payment reminder emails
+- Send reminders/statements from a separate billing mailbox (they currently use the support mailbox)
+- Auto-send after a set delay with a per-client opt-in (currently every notice needs approval)
+- Statement and reminder history per client on the client page
 - Bank/CSV import to speed up recording payments; batch deposits
 - Refunds as a first-class record (currently: void the payment)
 - "Paid" stamp / running balance on a re-issued copy of the invoice PDF
 - Payment terms exceptions (per-invoice due date override)
-- Emailing invoices/statements from the PSA (with the PDF attached)
+- Emailing a newly finalized invoice to the client (reminders and statements are done)
 - Credit memos as a first-class document (currently: negative manual lines)
 - Proration of mid-month agreement start/end and quantity changes
 - Sales tax by jurisdiction / multiple tax rates per client
-- Late fees and payment-reminder schedule
+- Late fees
 - Configurable invoice number format; invoice PDF branding/logo
 - Per-user / per-device quantities populated from Microsoft 365 / NinjaOne (the Phase 3 quantity field is the hook)
 - Billing reports: revenue by client, margin on products, unbilled time, agreement MRR trend

@@ -103,3 +103,9 @@ Then `docker compose up -d worker`. Open **Settings → Mailbox connector** in t
 | `403 ErrorAccessDenied` / `Access to OData is disabled` | Scope not applied yet (wait up to 2 h), wrong Object ID used in `New-ServicePrincipal`, or the mailbox address in `.env` doesn't match the scope filter |
 | Mail arrives but nothing is ingested | Message already read (only *unread* mail is polled), or it is in a sub-folder (only the Inbox is polled) |
 | Sends fail with 403 | `Application Mail.Send` role assignment missing |
+
+## Reminders and statements
+Payment reminders and statements are sent through the same outbox and mailbox, with PDFs attached
+(Graph `sendMail` file attachments). They are only sent after a person approves them in Billing > Reminders.
+A client who replies creates or updates a ticket like any other email. Sending needs the *Application
+Mail.Send* RBAC role above; the review screen refuses to send while the worker reports the mailbox as not configured.
