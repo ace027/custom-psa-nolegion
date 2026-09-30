@@ -2,6 +2,7 @@
 
 Ideas that are not in scope for the current phase. Nothing here gets built without approval.
 
+- Microsoft Entra SSO sign-in for client portal users (staff already use Entra; portal currently uses emailed one-time links)
 - Portal follow-ups: file attachments, online card/ACH payment, contact self-service, SSO for portal users, alert staff on new portal tickets
 - Asset inventory
 - Project/task boards
