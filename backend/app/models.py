@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
@@ -9,6 +10,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    Numeric,
     SmallInteger,
     String,
     Text,
@@ -42,6 +44,8 @@ class Organization(TimestampMixin, Base):
     billing_address: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    payment_terms_days: Mapped[int] = mapped_column(Integer, nullable=False, server_default="30")
+    tax_rate_bp: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
 
 class Site(TimestampMixin, Base):
@@ -166,6 +170,8 @@ class Priority(_Lookup, Base):
 
 class WorkType(_Lookup, Base):
     __tablename__ = "work_types"
+    rate_cents: Mapped[int | None] = mapped_column(BigInteger)  # hourly; NULL = cannot be billed
+    taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
 
 
 class Settings(Base):
@@ -179,6 +185,9 @@ class Settings(Base):
     business_end_minute: Mapped[int] = mapped_column(Integer, nullable=False)
     billing_increment_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     sla_at_risk_percent: Mapped[int] = mapped_column(Integer, nullable=False)
+    company_name: Mapped[str | None] = mapped_column(Text)
+    company_address: Mapped[str | None] = mapped_column(Text)
+    invoice_footer: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
@@ -293,6 +302,7 @@ class TimeEntry(TimestampMixin, Base):
     billable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     note: Mapped[str | None] = mapped_column(Text)
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    invoice_line_id: Mapped[int | None] = mapped_column(ForeignKey("invoice_lines.id"))
 
 
 class Attachment(Base):
@@ -310,3 +320,153 @@ class Attachment(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+# ---------------------------------------------------------------------------------------
+# Phase 3: contracts and invoicing. Money is ALWAYS integer cents.
+# ---------------------------------------------------------------------------------------
+
+
+class OrgWorkTypeRate(TimestampMixin, Base):
+    __tablename__ = "org_work_type_rates"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    work_type_id: Mapped[int] = mapped_column(ForeignKey("work_types.id"), nullable=False)
+    rate_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+
+
+class Product(TimestampMixin, Base):
+    __tablename__ = "products"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    sku: Mapped[str | None] = mapped_column(String(64))
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    unit_price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    cost_cents: Mapped[int | None] = mapped_column(BigInteger)
+    taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Agreement(TimestampMixin, Base):
+    __tablename__ = "agreements"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    type: Mapped[str] = mapped_column(String(10), nullable=False)  # per_user|per_device|flat
+    unit_price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date | None] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(Text)
+    organization: Mapped[Organization] = relationship(lazy="joined")
+
+
+class AgreementQuantityLog(Base):
+    __tablename__ = "agreement_quantity_log"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    agreement_id: Mapped[int] = mapped_column(ForeignKey("agreements.id"), nullable=False)
+    organization_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    old_quantity: Mapped[int | None] = mapped_column(Integer)
+    new_quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    changed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class BillingRun(Base):
+    __tablename__ = "billing_runs"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    period_start: Mapped[date] = mapped_column(Date, nullable=False)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, server_default="draft")
+    warnings: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finalized_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Invoice(TimestampMixin, Base):
+    __tablename__ = "invoices"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    number: Mapped[str | None] = mapped_column(String(20), unique=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="draft")
+    billing_run_id: Mapped[int | None] = mapped_column(ForeignKey("billing_runs.id"))
+    period_start: Mapped[date | None] = mapped_column(Date)
+    period_end: Mapped[date | None] = mapped_column(Date)
+    invoice_date: Mapped[date | None] = mapped_column(Date)
+    due_date: Mapped[date | None] = mapped_column(Date)
+    terms_days: Mapped[int | None] = mapped_column(Integer)
+    subtotal_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+    tax_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+    total_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+    memo: Mapped[str | None] = mapped_column(Text)
+    warnings: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'"))
+    bill_to_name: Mapped[str | None] = mapped_column(String(200))
+    bill_to_address: Mapped[str | None] = mapped_column(Text)
+    seller_name: Mapped[str | None] = mapped_column(Text)
+    seller_address: Mapped[str | None] = mapped_column(Text)
+    footer: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    finalized_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    voided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    void_reason: Mapped[str | None] = mapped_column(Text)
+    organization: Mapped[Organization] = relationship(lazy="joined")
+
+
+class InvoiceLine(Base):
+    __tablename__ = "invoice_lines"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), nullable=False)
+    organization_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    unit_price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    tax_rate_bp: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    tax_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+    agreement_id: Mapped[int | None] = mapped_column(ForeignKey("agreements.id"))
+    period_start: Mapped[date | None] = mapped_column(Date)
+    voided: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ProductCharge(Base):
+    """A one-off product/hardware/license sale waiting to be invoiced."""
+
+    __tablename__ = "product_charges"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"))
+    ticket_id: Mapped[int | None] = mapped_column(ForeignKey("tickets.id"))
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    unit_price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    taxable: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    charged_on: Mapped[date] = mapped_column(Date, nullable=False)
+    invoice_line_id: Mapped[int | None] = mapped_column(ForeignKey("invoice_lines.id"))
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class InvoiceCounter(Base):
+    __tablename__ = "invoice_counters"
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_number: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")

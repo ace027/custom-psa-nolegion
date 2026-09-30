@@ -353,6 +353,8 @@ def update_time(ctx: Ctx, entry_id: int, data: dict) -> TimeEntry:
     _own_or_admin(ctx, entry)
     if entry.voided_at:
         raise Conflict("Voided time entries cannot be edited")
+    if entry.invoice_line_id is not None:
+        raise Conflict("This time is on an invoice and is locked")
     before = audit.snapshot(entry)
     if data.get("work_type_id"):
         _active(ctx, WorkType, data["work_type_id"], "work type")
@@ -390,6 +392,8 @@ def void_time(ctx: Ctx, entry_id: int) -> TimeEntry:
     _own_or_admin(ctx, entry)
     if entry.voided_at:
         raise Conflict("Already voided")
+    if entry.invoice_line_id is not None:
+        raise Conflict("This time is on an invoice and is locked")
     before = audit.snapshot(entry)
     entry.voided_at = now()
     ctx.db.flush()

@@ -3,6 +3,7 @@ without its audit row (and vice versa)."""
 
 import logging
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import inspect
@@ -26,6 +27,8 @@ def snapshot(obj: Any) -> dict[str, Any]:
             value = "[redacted]"
         elif isinstance(value, datetime | date):
             value = value.isoformat()
+        elif isinstance(value, Decimal):
+            value = str(value)
         out[col.key] = value
     return out
 

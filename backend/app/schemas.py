@@ -269,6 +269,7 @@ class TimePatch(BaseModel):
 
 
 class TimeOut(ORM):
+    invoice_line_id: int | None = None
     id: int
     ticket_id: int
     organization_id: int
@@ -339,6 +340,9 @@ class PriorityOut(LookupOut):
 
 
 class SettingsOut(ORM):
+    company_name: str | None
+    company_address: str | None
+    invoice_footer: str | None
     timezone: str
     business_days: list[int]
     business_start_minute: int
@@ -348,6 +352,9 @@ class SettingsOut(ORM):
 
 
 class SettingsPatch(BaseModel):
+    company_name: str | None = Field(default=None, max_length=200)
+    company_address: str | None = Field(default=None, max_length=1000)
+    invoice_footer: str | None = Field(default=None, max_length=2000)
     timezone: str | None = None
     business_days: list[int] | None = None
     business_start_minute: int | None = None
@@ -379,3 +386,251 @@ class MailStatusOut(BaseModel):
 
 class NamePatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
+
+
+# ---------------------------------------------------------------------------------------
+# Phase 3: contracts and invoicing (money is integer cents; quantities are Decimal strings)
+# ---------------------------------------------------------------------------------------
+from decimal import Decimal  # noqa: E402
+
+AgreementType = Literal["per_user", "per_device", "flat"]
+InvoiceStatus = Literal["draft", "final", "void"]
+RunStatus = Literal["draft", "reviewed", "finalized", "cancelled"]
+LineKind = Literal["time", "product", "agreement", "manual"]
+Cents = int
+
+
+class WorkTypeBillingOut(ORM):
+    id: int
+    name: str
+    rate_cents: int | None
+    taxable: bool
+    archived_at: datetime | None
+
+
+class WorkTypeBillingPatch(BaseModel):
+    rate_cents: int | None = Field(default=None, ge=0, le=100_000_00)
+    taxable: bool | None = None
+
+
+class OrgRateIn(BaseModel):
+    rate_cents: int = Field(ge=0, le=100_000_00)
+
+
+class OrgRateOut(ORM):
+    work_type_id: int
+    rate_cents: int
+
+
+class OrgBillingOut(BaseModel):
+    payment_terms_days: int
+    tax_rate_bp: int
+    rates: list[OrgRateOut]
+
+
+class OrgBillingPatch(BaseModel):
+    payment_terms_days: int | None = Field(default=None, ge=0, le=365)
+    tax_rate_bp: int | None = Field(default=None, ge=0, le=10000, description="825 = 8.25%")
+
+
+class ProductIn(BaseModel):
+    sku: str | None = Field(default=None, max_length=64)
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = None
+    unit_price_cents: int = Field(ge=0, le=1_000_000_00)
+    cost_cents: int | None = Field(default=None, ge=0, le=1_000_000_00)
+    taxable: bool = True
+
+
+class ProductPatch(BaseModel):
+    sku: str | None = Field(default=None, max_length=64)
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = None
+    unit_price_cents: int | None = Field(default=None, ge=0, le=1_000_000_00)
+    cost_cents: int | None = Field(default=None, ge=0, le=1_000_000_00)
+    taxable: bool | None = None
+
+
+class ProductOut(ORM):
+    id: int
+    sku: str | None
+    name: str
+    description: str | None
+    unit_price_cents: int
+    cost_cents: int | None
+    taxable: bool
+    archived_at: datetime | None
+
+
+class AgreementIn(BaseModel):
+    organization_id: int
+    name: str = Field(min_length=1, max_length=200)
+    type: AgreementType
+    unit_price_cents: int = Field(ge=0, le=1_000_000_00)
+    quantity: int = Field(default=1, ge=0, le=100_000)
+    taxable: bool = False
+    start_date: date
+    end_date: date | None = None
+    notes: str | None = None
+
+
+class AgreementPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    type: AgreementType | None = None
+    unit_price_cents: int | None = Field(default=None, ge=0, le=1_000_000_00)
+    quantity: int | None = Field(default=None, ge=0, le=100_000)
+    taxable: bool | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    notes: str | None = None
+    reason: str | None = Field(default=None, max_length=500, description="Why the quantity changed")
+
+
+class AgreementOut(ORM):
+    id: int
+    organization_id: int
+    organization_name: str
+    name: str
+    type: AgreementType
+    unit_price_cents: int
+    quantity: int
+    taxable: bool
+    start_date: date
+    end_date: date | None
+    notes: str | None
+    monthly_amount_cents: int  # unit price x quantity, before tax
+
+
+class QuantityLogOut(ORM):
+    id: int
+    old_quantity: int | None
+    new_quantity: int
+    reason: str | None
+    changed_by: int | None
+    changed_at: datetime
+
+
+class ChargeIn(BaseModel):
+    organization_id: int
+    product_id: int | None = None
+    ticket_id: int | None = None
+    description: str | None = Field(default=None, max_length=500)
+    quantity: Decimal = Field(default=Decimal(1), gt=0, le=Decimal(100000), decimal_places=4)
+    unit_price_cents: int | None = Field(default=None, ge=0, le=1_000_000_00)
+    taxable: bool | None = None
+    charged_on: date | None = None
+
+
+class ChargeOut(ORM):
+    id: int
+    organization_id: int
+    product_id: int | None
+    ticket_id: int | None
+    description: str
+    quantity: Decimal
+    unit_price_cents: int
+    taxable: bool
+    charged_on: date
+    invoice_line_id: int | None
+    voided_at: datetime | None
+
+
+class LineOut(ORM):
+    id: int
+    invoice_id: int
+    position: int
+    kind: LineKind
+    description: str
+    quantity: Decimal
+    unit_price_cents: int
+    amount_cents: int
+    tax_rate_bp: int
+    tax_cents: int
+    agreement_id: int | None
+    period_start: date | None
+
+
+class LineIn(BaseModel):
+    description: str = Field(min_length=1, max_length=1000)
+    quantity: Decimal = Field(
+        default=Decimal(1), decimal_places=4, ge=Decimal(-100000), le=Decimal(100000)
+    )
+    unit_price_cents: int = Field(
+        ge=-1_000_000_00, le=1_000_000_00, description="Negative = credit"
+    )
+    taxable: bool = False
+
+
+class LinePatch(BaseModel):
+    description: str | None = Field(default=None, min_length=1, max_length=1000)
+    quantity: Decimal | None = Field(
+        default=None, decimal_places=4, ge=Decimal(-100000), le=Decimal(100000)
+    )
+    unit_price_cents: int | None = Field(default=None, ge=-1_000_000_00, le=1_000_000_00)
+    tax_rate_bp: int | None = Field(default=None, ge=0, le=10000)
+
+
+class InvoiceOut(BaseModel):
+    id: int
+    number: str | None
+    organization_id: int
+    organization_name: str
+    status: InvoiceStatus
+    billing_run_id: int | None
+    period_start: date | None
+    period_end: date | None
+    invoice_date: date | None
+    due_date: date | None
+    terms_days: int | None
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+    memo: str | None
+    warnings: list[str]
+    void_reason: str | None
+    created_at: datetime
+    finalized_at: datetime | None
+    voided_at: datetime | None
+
+
+class InvoiceDetailOut(InvoiceOut):
+    lines: list[LineOut]
+
+
+class InvoiceIn(BaseModel):
+    organization_id: int
+    memo: str | None = None
+    include_unbilled: bool = True  # pull in uninvoiced billable time and product charges
+
+
+class InvoicePatch(BaseModel):
+    memo: str | None = None
+
+
+class FinalizeIn(BaseModel):
+    invoice_date: date | None = Field(default=None, description="Defaults to today")
+
+
+class VoidIn(BaseModel):
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+class RunIn(BaseModel):
+    period: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="YYYY-MM")
+
+
+class RunOut(BaseModel):
+    id: int
+    period_start: date
+    period_end: date
+    status: RunStatus
+    created_at: datetime
+    reviewed_at: datetime | None
+    finalized_at: datetime | None
+    invoice_count: int
+    total_cents: int
+    warnings: list[str]
+
+
+class RunDetailOut(RunOut):
+    invoices: list[InvoiceOut]

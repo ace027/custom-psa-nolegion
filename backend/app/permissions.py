@@ -8,18 +8,24 @@ AUDIT_READ = "audit:read"
 TICKET_READ = "ticket:read"  # tickets, notes, time entries, queues/categories/priorities/settings
 TICKET_WRITE = "ticket:write"  # tickets and notes
 TIME_WRITE = "time:write"
+BILLING_READ = "billing:read"  # agreements, products, rates, charges, invoices, runs
+BILLING_WRITE = "billing:write"  # edit those, and DRAFT invoices
+BILLING_FINALIZE = "billing:finalize"  # finalize / void invoices, review and finalize runs
+CHARGE_WRITE = "charge:write"  # add/void one-off product charges (techs may sell parts)
 CONFIG_MANAGE = "config:manage"  # queues, categories, priorities, work types, settings, mail status
 
 ROLES = ("admin", "tech", "billing", "read_only")
 
-_READ = {ORG_READ, USER_READ, TICKET_READ}
+_READ = {ORG_READ, USER_READ, TICKET_READ, BILLING_READ}
 
 MATRIX: dict[str, frozenset[str]] = {
     "admin": frozenset(
-        _READ | {ORG_WRITE, USER_MANAGE, AUDIT_READ, TICKET_WRITE, TIME_WRITE, CONFIG_MANAGE}
+        _READ
+        | {ORG_WRITE, USER_MANAGE, AUDIT_READ, TICKET_WRITE, TIME_WRITE, CONFIG_MANAGE}
+        | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE}
     ),
-    "tech": frozenset(_READ | {ORG_WRITE, TICKET_WRITE, TIME_WRITE}),
-    "billing": frozenset(_READ),  # gains contract/invoice permissions in Phase 3
+    "tech": frozenset(_READ | {ORG_WRITE, TICKET_WRITE, TIME_WRITE, CHARGE_WRITE}),
+    "billing": frozenset(_READ | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE}),
     "read_only": frozenset(_READ),
 }
 

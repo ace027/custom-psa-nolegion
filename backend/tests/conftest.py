@@ -29,6 +29,8 @@ from alembic import command  # noqa: E402
 from app.main import app  # noqa: E402
 
 TABLES = (
+    "invoice_counters, product_charges, invoice_lines, invoices, billing_runs, "
+    "agreement_quantity_log, agreements, products, org_work_type_rates, "
     "attachments, time_entries, ticket_notes, email_messages, tickets, audit_log, sessions, "
     "contacts, sites, organizations, users, queues, categories, priorities, work_types"
 )
@@ -43,6 +45,7 @@ INSERT INTO work_types (name) VALUES ('Remote'), ('Onsite'), ('After hours');
 DELETE FROM settings; INSERT INTO settings (id) VALUES (1);
 DELETE FROM mailbox_status; INSERT INTO mailbox_status (id) VALUES (1);
 ALTER SEQUENCE ticket_number_seq RESTART WITH 10001;
+UPDATE work_types SET rate_cents = NULL, taxable = false;
 """
 HIT_ROUTES: set[tuple[str, str]] = set()
 
@@ -158,5 +161,77 @@ def make_ticket(admin, org_ctx):
         r = admin.post("/api/tickets", json=body)
         assert r.status_code == 201, r.text
         return r.json()
+
+    return _make
+
+
+# ---- Phase 3 helpers ----
+from datetime import datetime as _dt  # noqa: E402
+from zoneinfo import ZoneInfo as _ZI  # noqa: E402
+
+
+def biz_today():
+    """'Today' in the default business timezone, matching the service layer."""
+    return _dt.now(_ZI("America/Chicago")).date()
+
+
+@pytest.fixture
+def company(admin):
+    r = admin.patch(
+        "/api/settings",
+        json={
+            "company_name": "Acme MSP LLC",
+            "company_address": "1 Main St\nSpringfield, IL",
+            "invoice_footer": "Pay by ACH within terms.",
+        },
+    )
+    assert r.status_code == 200, r.text
+
+
+@pytest.fixture
+def biller(login):
+    return login("billing")
+
+
+@pytest.fixture
+def wt(admin):
+    """Work type ids by name, with Remote=$150/h (not taxable), Onsite=$200/h (taxable)."""
+    ids = {w["name"]: w["id"] for w in admin.get("/api/work-types").json()}
+    assert (
+        admin.patch(
+            f"/api/billing/work-types/{ids['Remote']}", json={"rate_cents": 15000}
+        ).status_code
+        == 200
+    )
+    assert (
+        admin.patch(
+            f"/api/billing/work-types/{ids['Onsite']}", json={"rate_cents": 20000, "taxable": True}
+        ).status_code
+        == 200
+    )
+    return ids
+
+
+@pytest.fixture
+def log(admin):
+    def _log(ticket_id, work_type_id, minutes, **kw):
+        r = admin.post(
+            f"/api/tickets/{ticket_id}/time",
+            json={"work_type_id": work_type_id, "minutes": minutes, **kw},
+        )
+        assert r.status_code == 201, r.text
+        return r.json()
+
+    return _log
+
+
+@pytest.fixture
+def make_org_with_ticket(admin, make_org):
+    def _make(name):
+        org = make_org(name)
+        t = admin.post(
+            "/api/tickets", json={"organization_id": org["id"], "subject": f"{name} issue"}
+        ).json()
+        return org, t
 
     return _make
