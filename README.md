@@ -5,6 +5,9 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 **Status:** Phases 1-3 (Foundation, Ticketing, Contracts & invoicing) complete: the MVP. See [docs/PLAN.md](docs/PLAN.md) for the roadmap and design decisions, and [docs/BACKLOG.md](docs/BACKLOG.md) for ideas that are deliberately not built yet.
 
 ## What works today
+**Client portal** (off until enabled)
+- Clients sign in with an emailed one-time link (no passwords), open and follow tickets, and billing contacts see invoices, PDFs and an account statement; strictly one client's data per session. See [docs/PORTAL.md](docs/PORTAL.md)
+
 **Staff notifications**
 - Assignee is emailed when a ticket is assigned to them, reaches SLA at-risk/breached, or the customer replies; per-person opt-out, global switch, no ticket content in the email
 

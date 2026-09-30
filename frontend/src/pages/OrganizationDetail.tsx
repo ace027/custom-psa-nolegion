@@ -180,6 +180,12 @@ function ContactsCard({ orgId, contacts, sites, canWrite, onDone }: { orgId: num
     mutationFn: (c: Contact) => api(`/contacts/${c.id}/${c.archived_at ? "unarchive" : "archive"}`, { method: "POST" }),
     onSuccess: onDone,
   });
+  const portal = useMutation({
+    mutationFn: ({ c, patch }: { c: Contact; patch: Partial<Pick<Contact, "portal_access" | "portal_org_tickets">> }) => api(`/contacts/${c.id}`, { method: "PATCH", json: patch }),
+    onSuccess: onDone,
+  });
+  const { data: me } = useMe();
+  const isAdmin = can(me, "portal:manage");
   const makePrimary = useMutation({
     mutationFn: (c: Contact) => api(`/contacts/${c.id}`, { method: "PATCH", json: { is_primary: true } }),
     onSuccess: onDone,
@@ -195,11 +201,21 @@ function ContactsCard({ orgId, contacts, sites, canWrite, onDone }: { orgId: num
               {c.email ? ` <${c.email}>` : ""}
               {c.is_primary && <b className="ml-2 text-xs text-blue-700">primary</b>}
               {c.is_billing_contact && <b className="ml-2 text-xs text-green-700">billing</b>}
+              {c.portal_access && <b className="ml-2 text-xs text-purple-700">portal{c.portal_org_tickets ? " (all company tickets)" : ""}</b>}
             </span>
             {canWrite && (
               <span className="flex gap-2">
                 {!c.is_primary && !c.archived_at && (
                   <Button variant="secondary" onClick={() => makePrimary.mutate(c)}>Make primary</Button>
+                )}
+                {!c.archived_at && c.email && !c.portal_access && isAdmin && (
+                  <Button variant="secondary" onClick={() => portal.mutate({ c, patch: { portal_access: true } })}>Give portal access</Button>
+                )}
+                {c.portal_access && (
+                  <Button variant="secondary" onClick={() => portal.mutate({ c, patch: { portal_access: false, portal_org_tickets: false } })}>Remove portal access</Button>
+                )}
+                {c.portal_access && isAdmin && (
+                  <Button variant="secondary" onClick={() => portal.mutate({ c, patch: { portal_org_tickets: !c.portal_org_tickets } })}>{c.portal_org_tickets ? "Own tickets only" : "See all company tickets"}</Button>
                 )}
                 <Button variant="secondary" onClick={() => toggle.mutate(c)}>
                   {c.archived_at ? "Restore" : "Archive"}
@@ -209,7 +225,7 @@ function ContactsCard({ orgId, contacts, sites, canWrite, onDone }: { orgId: num
           </li>
         ))}
       </ul>
-      <ErrorMsg error={add.error ?? toggle.error ?? makePrimary.error} />
+      <ErrorMsg error={add.error ?? toggle.error ?? makePrimary.error ?? portal.error} />
       {canWrite && (
         <form
           className="mt-3 grid gap-2 sm:grid-cols-3"

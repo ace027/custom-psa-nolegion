@@ -423,6 +423,13 @@ def void_time(ctx: Ctx, entry_id: int) -> TimeEntry:
 
 
 # ---- inbound-email helpers (used by the mail worker) ---------------------------------------
+def reopen_on_customer_activity(ctx: Ctx, ticket: Ticket) -> None:
+    """A customer wrote on the ticket: resume the SLA clock / reopen, and mark it touched."""
+    if ticket.status in ("waiting_on_customer", "resolved", "closed"):
+        _apply_status(ctx, ticket, "open")
+    ticket.updated_at = now()
+
+
 def customer_reply(
     ctx: Ctx, ticket: Ticket, body: str, author_email: str, email: EmailMessage
 ) -> TicketNote:
@@ -438,9 +445,7 @@ def customer_reply(
     )
     ctx.db.add(note)
     before_status = ticket.status
-    if ticket.status in ("waiting_on_customer", "resolved", "closed"):
-        _apply_status(ctx, ticket, "open")
-    ticket.updated_at = now()
+    reopen_on_customer_activity(ctx, ticket)
     ctx.db.flush()
     audit.record(
         ctx.db,

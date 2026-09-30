@@ -94,6 +94,8 @@ class ContactIn(BaseModel):
     site_id: int | None = None
     is_primary: bool = False
     is_billing_contact: bool = False
+    portal_access: bool = False
+    portal_org_tickets: bool = False
 
 
 class ContactPatch(BaseModel):
@@ -104,6 +106,8 @@ class ContactPatch(BaseModel):
     site_id: int | None = None
     is_primary: bool | None = None
     is_billing_contact: bool | None = None
+    portal_access: bool | None = None
+    portal_org_tickets: bool | None = None
 
 
 class ContactOut(ORM):
@@ -116,6 +120,8 @@ class ContactOut(ORM):
     title: str | None
     is_primary: bool
     is_billing_contact: bool
+    portal_access: bool
+    portal_org_tickets: bool
     archived_at: datetime | None
 
 
@@ -349,6 +355,7 @@ class PriorityOut(LookupOut):
 
 
 class SettingsOut(ORM):
+    portal_enabled: bool
     notify_staff: bool
     statement_subject: str
     statement_body: str
@@ -370,6 +377,7 @@ class SettingsOut(ORM):
 
 
 class SettingsPatch(BaseModel):
+    portal_enabled: bool | None = None
     notify_staff: bool | None = None
     statement_subject: str | None = Field(default=None, min_length=1, max_length=500)
     statement_body: str | None = Field(default=None, min_length=1, max_length=10_000)
@@ -955,3 +963,85 @@ class RecurringMonth(BaseModel):
 
 class RecurringOut(BaseModel):
     months: list[RecurringMonth]
+
+
+# ---- client portal ----
+class PortalLinkIn(BaseModel):
+    email: EmailStr
+
+
+class PortalVerifyIn(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+
+
+class PortalMeOut(BaseModel):
+    contact_name: str
+    email: str | None
+    organization_name: str
+    company_name: str | None
+    can_see_billing: bool
+    can_see_all_tickets: bool
+
+
+class PortalNoticeOut(BaseModel):
+    detail: str
+
+
+class PortalInvoiceOut(BaseModel):
+    id: int
+    number: str
+    invoice_date: date
+    due_date: date
+    total_cents: int
+    paid_cents: int
+    balance_cents: int
+    status: Literal["paid", "partial", "unpaid", "written_off"]
+    is_overdue: bool
+    days_past_due: int
+
+
+class PortalLineOut(BaseModel):
+    description: str
+    quantity: str
+    unit_price_cents: int
+    amount_cents: int
+    tax_cents: int
+
+
+class PortalInvoiceDetail(PortalInvoiceOut):
+    subtotal_cents: int
+    tax_cents: int
+    lines: list[PortalLineOut]
+
+
+class PortalTicketOut(BaseModel):
+    id: int
+    number: int
+    subject: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    mine: bool
+
+
+class PortalNoteOut(BaseModel):
+    id: int
+    author: str
+    from_you: bool
+    from_support: bool
+    body: str
+    created_at: datetime
+
+
+class PortalTicketDetail(PortalTicketOut):
+    description: str | None
+    notes: list[PortalNoteOut]
+
+
+class PortalTicketIn(BaseModel):
+    subject: str = Field(min_length=3, max_length=200)
+    description: str = Field(min_length=1, max_length=10_000)
+
+
+class PortalReplyIn(BaseModel):
+    body: str = Field(min_length=1, max_length=10_000)

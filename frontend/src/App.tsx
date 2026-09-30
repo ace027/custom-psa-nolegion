@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, NavLink, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { api } from "./api";
 import { can, useMe } from "./auth";
 import Audit from "./pages/Audit";
@@ -10,6 +10,7 @@ import Payments from "./pages/billing/Payments";
 import Products from "./pages/billing/Products";
 import Rates from "./pages/billing/Rates";
 import Receivables from "./pages/billing/Receivables";
+import PortalApp from "./portal/PortalApp";
 import Profile from "./pages/Profile";
 import Reminders from "./pages/billing/Reminders";
 import Reports from "./pages/billing/Reports";
@@ -59,6 +60,12 @@ function Layout() {
 }
 
 export default function App() {
+  // The client portal has its own sign-in and shell; it never touches the staff session.
+  if (useLocation().pathname.startsWith("/portal")) return <PortalApp />;
+  return <StaffApp />;
+}
+
+function StaffApp() {
   const { data: me, isLoading, error } = useMe();
   if (isLoading) return <p className="p-6">Loading…</p>;
   if (error) return <p className="p-6 text-red-700">Cannot reach the API.</p>;

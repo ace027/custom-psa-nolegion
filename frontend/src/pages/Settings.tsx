@@ -13,6 +13,7 @@ export default function Settings() {
       <MailCard />
       <InvoicingCard />
       <RemindersCard />
+      <PortalCard />
       <HoursCard />
       <SimpleList title="Queues" path="queues" defaults />
       <SimpleList title="Categories" path="categories" />
@@ -189,6 +190,26 @@ function InvoicingCard() {
       </div>
       <ErrorMsg error={save.error} />
       {Object.keys(edit).length > 0 && <div className="mt-2"><Button onClick={() => save.mutate()}>Save</Button></div>}
+    </Card>
+  );
+}
+
+function PortalCard() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["lookup", "settings"], queryFn: () => api<AppSettings>("/settings") });
+  const save = useMutation({
+    mutationFn: (portal_enabled: boolean) => api("/settings", { method: "PATCH", json: { portal_enabled } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lookup"] }),
+  });
+  if (!q.data) return null;
+  return (
+    <Card title="Client portal">
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={q.data.portal_enabled} onChange={(e) => save.mutate(e.target.checked)} />
+        Turn the client portal on
+      </label>
+      <p className="mt-2 text-xs text-slate-500">Clients sign in at /portal with a one-time link emailed to a contact you have given portal access (Organizations &gt; contact). Needs the mailbox configured. Turning this off signs everyone out at once.</p>
+      <ErrorMsg error={save.error} />
     </Card>
   );
 }

@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     session_secret: str = "dev-only-change-me"  # signs the short-lived OIDC state cookie
     session_cookie_name: str = "psa_session"
     session_max_age_hours: int = 12
+    portal_cookie_name: str = "psa_portal"
+    portal_session_hours: int = 8
+    portal_link_minutes: int = 15
 
     entra_tenant_id: str = ""
     entra_client_id: str = ""

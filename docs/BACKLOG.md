@@ -2,7 +2,7 @@
 
 Ideas that are not in scope for the current phase. Nothing here gets built without approval.
 
-- Client portal (separate auth, org-scoped principal)
+- Portal follow-ups: file attachments, online card/ACH payment, contact self-service, SSO for portal users, alert staff on new portal tickets
 - Asset inventory
 - Project/task boards
 - Reporting

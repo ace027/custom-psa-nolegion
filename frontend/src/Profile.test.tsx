@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, expect, it, vi } from "vitest";
+import { expect, it, vi } from "vitest";
 import App from "./App";
 
 const me = { id: 1, email: "tech@example.com", display_name: "Tess Tech", role: "tech", permissions: ["org:read", "ticket:read"], notify_assigned: true, notify_sla: true, notify_reply: false };

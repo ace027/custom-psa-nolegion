@@ -225,6 +225,7 @@ Conventions: UUIDv7 or bigint identity PKs (*I recommend bigint identity for rea
 | **2. Ticketing** | Tickets, queues/categories/priorities, notes (internal/customer), time entries, SLA engine, Graph email ingest + reply, dashboard | Email round-trip works against a test mailbox; SLA pause/resume tested |
 | **3. Contracts & invoicing** | Agreements, products, billable rollup, invoice draft/finalize/void, monthly run + review, PDF/print view of invoice | Billing math tests; run is idempotent; finalized invoices immutable |
 | **Statements & reminders** (post-MVP) | Reminder stages (1/15/30/60), monthly statements, review-then-send queue, PDF attachments, immutable sent records | Nothing sends without approval; stage issued once per invoice; stale notices refreshed; DB triggers freeze sent records |
+| **Notifications, reports, invoice email, portal** (post-MVP) | Staff email alerts; revenue/unbilled/recurring reports + CSV; emailed invoices via the review queue; client portal with one-time-link sign-in | Portal principal scoped to one org in app + RLS; nothing client-facing sends without approval; every new route documented, permissioned, tested |
 | Later | Portal, assets, projects, reporting, quotes, integrations, compliance evidence | Listed in BACKLOG.md; data model already leaves room |
 
 Each phase ends with: tests passing, README/PLAN updated, seed data, manual verification checklist (`docs/verify/phase-N.md`), and a short change summary.

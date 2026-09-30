@@ -14,6 +14,9 @@ BILLING_FINALIZE = "billing:finalize"  # finalize / void invoices, review and fi
 PAYMENT_WRITE = "payment:write"  # record payments, apply them to invoices, unapply
 CHARGE_WRITE = "charge:write"  # add/void one-off product charges (techs may sell parts)
 REPORT_READ = "report:read"  # billing reports and CSV exports (revenue is sensitive: not for techs)
+PORTAL_MANAGE = (
+    "portal:manage"  # grant a contact client-portal access (turning it off needs only org:write)
+)
 CONFIG_MANAGE = "config:manage"  # queues, categories, priorities, work types, settings, mail status
 
 ROLES = ("admin", "tech", "billing", "read_only")
@@ -23,7 +26,15 @@ _READ = {ORG_READ, USER_READ, TICKET_READ, BILLING_READ}
 MATRIX: dict[str, frozenset[str]] = {
     "admin": frozenset(
         _READ
-        | {ORG_WRITE, USER_MANAGE, AUDIT_READ, TICKET_WRITE, TIME_WRITE, CONFIG_MANAGE}
+        | {
+            ORG_WRITE,
+            USER_MANAGE,
+            AUDIT_READ,
+            TICKET_WRITE,
+            TIME_WRITE,
+            CONFIG_MANAGE,
+            PORTAL_MANAGE,
+        }
         | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE, PAYMENT_WRITE, REPORT_READ}
     ),
     "tech": frozenset(_READ | {ORG_WRITE, TICKET_WRITE, TIME_WRITE, CHARGE_WRITE}),

@@ -70,6 +70,7 @@ def notify(
         with ctx.db.begin_nested():  # a duplicate must not poison the caller's transaction
             email = EmailMessage(
                 direction="out",
+                organization_id=ticket.organization_id,  # row-level security applies to it
                 to_emails=[user.email],
                 subject=subject,
                 body_text=body,

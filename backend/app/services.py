@@ -12,6 +12,10 @@ from app.deps import Ctx
 from app.errors import Conflict, Forbidden, NotFound
 from app.models import Contact, Organization, Site, User
 
+CONTACT_CONFLICT = (
+    "That email is already used by a contact here, or already has portal access for another client"
+)
+
 
 def _flush(ctx: Ctx, message: str) -> None:
     try:
@@ -167,9 +171,11 @@ def create_contact(ctx: Ctx, org_id: int, data: dict) -> Contact:
     _check_site(ctx, org_id, data.get("site_id"))
     if data.get("is_primary"):
         _clear_other_primary(ctx, org_id, None)
+    if data.get("portal_access") and not data.get("email"):
+        raise Conflict("Portal access needs an email address on the contact")
     contact = Contact(organization_id=org_id, **data)
     ctx.db.add(contact)
-    _flush(ctx, "A contact with that email already exists in this organization")
+    _flush(ctx, CONTACT_CONFLICT)
     audit.record(
         ctx.db,
         ctx.user,
@@ -181,6 +187,12 @@ def create_contact(ctx: Ctx, org_id: int, data: dict) -> Contact:
     return contact
 
 
+def _revoke_portal(ctx: Ctx, contact: Contact) -> None:
+    from app.auth import portal_sessions
+
+    portal_sessions.revoke_contact_sessions(ctx.db, contact.id)
+
+
 def update_contact(ctx: Ctx, contact_id: int, data: dict) -> Contact:
     contact = repo.get_contact(ctx.db, ctx.scope, contact_id)
     if contact is None:
@@ -190,7 +202,11 @@ def update_contact(ctx: Ctx, contact_id: int, data: dict) -> Contact:
     if data.get("is_primary"):
         _clear_other_primary(ctx, contact.organization_id, contact.id)
     _apply(contact, data)
-    _flush(ctx, "A contact with that email already exists in this organization")
+    if contact.portal_access and not contact.email:
+        raise Conflict("Portal access needs an email address on the contact")
+    _flush(ctx, CONTACT_CONFLICT)
+    if not contact.portal_access and before["portal_access"]:
+        _revoke_portal(ctx, contact)
     ctx.db.refresh(contact)
     audit.record(
         ctx.db,
@@ -211,8 +227,10 @@ def set_contact_archived(ctx: Ctx, contact_id: int, archived: bool) -> Contact:
     before = audit.snapshot(contact)
     contact.archived_at = datetime.now(UTC) if archived else None
     if archived:
+        _revoke_portal(ctx, contact)
+    if archived:
         contact.is_primary = False
-    _flush(ctx, "A contact with that email already exists in this organization")
+    _flush(ctx, CONTACT_CONFLICT)
     ctx.db.refresh(contact)
     audit.record(
         ctx.db,

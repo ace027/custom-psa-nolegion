@@ -141,6 +141,15 @@ def unarchive_site(site_id: int, ctx: Ctx = require(P.ORG_WRITE)):
 
 
 # ---- contacts ----
+def _portal_grant_needs_permission(ctx: Ctx, data: dict) -> None:
+    """Giving someone client-portal access exposes a client's data, so it is an admin decision.
+    Turning access off (or leaving it alone) needs only the normal contact permission."""
+    if (data.get("portal_access") or data.get("portal_org_tickets")) and not P.has_permission(
+        ctx.user.role, P.PORTAL_MANAGE
+    ):
+        raise HTTPException(status_code=403, detail="Only an admin can grant client portal access")
+
+
 @router.get(
     "/organizations/{org_id}/contacts",
     response_model=list[ContactOut],
@@ -160,6 +169,7 @@ def list_contacts(org_id: int, include_archived: bool = False, ctx: Ctx = requir
     summary="Create a contact",
 )
 def create_contact(org_id: int, body: ContactIn, ctx: Ctx = require(P.ORG_WRITE)):
+    _portal_grant_needs_permission(ctx, body.model_dump())
     return services.create_contact(ctx, org_id, body.model_dump())
 
 
@@ -167,7 +177,9 @@ def create_contact(org_id: int, body: ContactIn, ctx: Ctx = require(P.ORG_WRITE)
     "/contacts/{contact_id}", response_model=ContactOut, responses=ERR, summary="Update a contact"
 )
 def update_contact(contact_id: int, body: ContactPatch, ctx: Ctx = require(P.ORG_WRITE)):
-    return services.update_contact(ctx, contact_id, body.model_dump(exclude_unset=True))
+    data = body.model_dump(exclude_unset=True)
+    _portal_grant_needs_permission(ctx, data)
+    return services.update_contact(ctx, contact_id, data)
 
 
 @router.post(

@@ -86,6 +86,12 @@ class Contact(TimestampMixin, Base):
     is_billing_contact: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    portal_access: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    portal_org_tickets: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -201,6 +207,7 @@ class Settings(Base):
     statement_subject: Mapped[str] = mapped_column(Text, nullable=False)
     statement_body: Mapped[str] = mapped_column(Text, nullable=False)
     notify_staff: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    portal_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
     invoice_email_subject: Mapped[str] = mapped_column(Text, nullable=False)
     invoice_email_body: Mapped[str] = mapped_column(Text, nullable=False)
     auto_prepare_invoice_emails: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -654,3 +661,30 @@ class StaffNotification(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class PortalLoginToken(Base):
+    """A one-time sign-in link. Only the hash is stored; it works once and expires quickly."""
+
+    __tablename__ = "portal_login_tokens"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    contact_id: Mapped[int] = mapped_column(ForeignKey("contacts.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    requested_ip: Mapped[str | None] = mapped_column(String(64))
+
+
+class PortalSession(Base):
+    __tablename__ = "portal_sessions"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    contact_id: Mapped[int] = mapped_column(ForeignKey("contacts.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ip: Mapped[str | None] = mapped_column(String(64))
+    user_agent: Mapped[str | None] = mapped_column(String(300))

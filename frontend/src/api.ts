@@ -69,6 +69,8 @@ export interface Site {
   archived_at: string | null;
 }
 export interface Contact {
+  portal_access: boolean;
+  portal_org_tickets: boolean;
   id: number;
   organization_id: number;
   site_id: number | null;
@@ -195,6 +197,7 @@ export interface AppSettings {
   statement_subject: string;
   statement_body: string;
   notify_staff: boolean;
+  portal_enabled: boolean;
   invoice_email_subject: string;
   invoice_email_body: string;
   auto_prepare_invoice_emails: boolean;
@@ -473,4 +476,44 @@ export interface UnbilledReport {
 }
 export interface RecurringReport {
   months: { month: string; contracted_cents: number; agreements: number; clients: number; invoiced_cents: number }[];
+}
+
+// ---- client portal ----
+export interface PortalMe {
+  contact_name: string;
+  email: string | null;
+  organization_name: string;
+  company_name: string | null;
+  can_see_billing: boolean;
+  can_see_all_tickets: boolean;
+}
+export interface PortalInvoice {
+  id: number;
+  number: string;
+  invoice_date: string;
+  due_date: string;
+  total_cents: number;
+  paid_cents: number;
+  balance_cents: number;
+  status: "paid" | "partial" | "unpaid" | "written_off";
+  is_overdue: boolean;
+  days_past_due: number;
+}
+export interface PortalInvoiceDetail extends PortalInvoice {
+  subtotal_cents: number;
+  tax_cents: number;
+  lines: { description: string; quantity: string; unit_price_cents: number; amount_cents: number; tax_cents: number }[];
+}
+export interface PortalTicket {
+  id: number;
+  number: number;
+  subject: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  mine: boolean;
+}
+export interface PortalTicketDetail extends PortalTicket {
+  description: string | null;
+  notes: { id: number; author: string; from_you: boolean; from_support: boolean; body: string; created_at: string }[];
 }
