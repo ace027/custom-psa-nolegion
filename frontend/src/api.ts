@@ -180,6 +180,9 @@ export interface Priority extends Lookup {
   is_default: boolean;
 }
 export interface AppSettings {
+  company_name: string | null;
+  company_address: string | null;
+  invoice_footer: string | null;
   timezone: string;
   business_days: number[];
   business_start_minute: number;
@@ -205,4 +208,104 @@ export interface MailStatus {
   outbound_pending: number;
   outbound_failed: number;
   tickets_needing_triage: number;
+}
+
+// ---- Phase 3: contracts and invoicing (money = integer cents) ----
+export type InvoiceStatus = "draft" | "final" | "void";
+export type RunStatus = "draft" | "reviewed" | "finalized" | "cancelled";
+export interface Invoice {
+  id: number;
+  number: string | null;
+  organization_id: number;
+  organization_name: string;
+  status: InvoiceStatus;
+  billing_run_id: number | null;
+  period_start: string | null;
+  period_end: string | null;
+  invoice_date: string | null;
+  due_date: string | null;
+  terms_days: number | null;
+  subtotal_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  memo: string | null;
+  warnings: string[];
+  void_reason: string | null;
+  created_at: string;
+}
+export interface InvoiceLine {
+  id: number;
+  kind: "time" | "product" | "agreement" | "manual";
+  description: string;
+  quantity: string;
+  unit_price_cents: number;
+  amount_cents: number;
+  tax_rate_bp: number;
+  tax_cents: number;
+}
+export interface InvoiceDetail extends Invoice {
+  lines: InvoiceLine[];
+}
+export interface Run {
+  id: number;
+  period_start: string;
+  period_end: string;
+  status: RunStatus;
+  created_at: string;
+  reviewed_at: string | null;
+  finalized_at: string | null;
+  invoice_count: number;
+  total_cents: number;
+  warnings: string[];
+}
+export interface RunDetail extends Run {
+  invoices: Invoice[];
+}
+export interface Agreement {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  name: string;
+  type: "per_user" | "per_device" | "flat";
+  unit_price_cents: number;
+  quantity: number;
+  taxable: boolean;
+  start_date: string;
+  end_date: string | null;
+  notes: string | null;
+  monthly_amount_cents: number;
+}
+export interface Product {
+  id: number;
+  sku: string | null;
+  name: string;
+  description: string | null;
+  unit_price_cents: number;
+  cost_cents: number | null;
+  taxable: boolean;
+  archived_at: string | null;
+}
+export interface Charge {
+  id: number;
+  organization_id: number;
+  ticket_id: number | null;
+  description: string;
+  quantity: string;
+  unit_price_cents: number;
+  taxable: boolean;
+  charged_on: string;
+  invoice_line_id: number | null;
+  voided_at: string | null;
+}
+export interface WorkTypeBilling {
+  id: number;
+  name: string;
+  rate_cents: number | null;
+  taxable: boolean;
+  archived_at: string | null;
+}
+export interface OrgBilling {
+  payment_terms_days: number;
+  tax_rate_bp: number;
+  rates: { work_type_id: number; rate_cents: number }[];
 }

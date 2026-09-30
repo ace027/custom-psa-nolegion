@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from alembic import command
 from app import seed
+from tests.conftest import biz_today
 
 
 def test_seed_is_idempotent_and_usable(login, owner):
@@ -17,6 +18,11 @@ def test_seed_is_idempotent_and_usable(login, owner):
     d = tech.get("/api/dashboard").json()
     assert d["counts"]["open"] == 5 and d["counts"]["needs_triage"] == 1
     assert len(d["my_open"]) == 2
+    assert owner.execute(text("SELECT count(*) FROM agreements")).scalar_one() == 3
+    assert owner.execute(text("SELECT count(*) FROM product_charges")).scalar_one() == 1
+    biller = login("billing", "billing@example.com")
+    r = biller.post("/api/billing-runs", json={"period": biz_today().strftime("%Y-%m")})
+    assert r.status_code == 201 and r.json()["invoice_count"] >= 3
 
 
 def test_seed_refuses_production(monkeypatch):

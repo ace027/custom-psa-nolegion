@@ -9,6 +9,7 @@ from app import billing_repo as brepo
 from app import permissions as P
 from app import repositories as repo
 from app.deps import Ctx, require
+from app.permissions import has_permission
 from app.schemas import (
     AgreementIn,
     AgreementOut,
@@ -114,16 +115,24 @@ def delete_org_rate(org_id: int, work_type_id: int, ctx: Ctx = require(P.BILLING
 
 
 # ---- products ----
+def _product_out(ctx: Ctx, product) -> ProductOut:
+    """Cost (your margin) is only shown to people who manage billing."""
+    out = ProductOut.model_validate(product)
+    if not has_permission(ctx.user.role, P.BILLING_WRITE):
+        out.cost_cents = None
+    return out
+
+
 @router.get("/products", response_model=list[ProductOut], summary="List the product catalog")
 def list_products(include_archived: bool = False, ctx: Ctx = require(P.BILLING_READ)):
-    return brepo.list_products(ctx.db, include_archived)
+    return [_product_out(ctx, p) for p in brepo.list_products(ctx.db, include_archived)]
 
 
 @router.post(
     "/products", response_model=ProductOut, status_code=201, responses=ERR, summary="Add a product"
 )
 def create_product(body: ProductIn, ctx: Ctx = require(P.BILLING_WRITE)):
-    return svc.create_product(ctx, body.model_dump())
+    return _product_out(ctx, svc.create_product(ctx, body.model_dump()))
 
 
 @router.patch(
@@ -133,7 +142,9 @@ def create_product(body: ProductIn, ctx: Ctx = require(P.BILLING_WRITE)):
     summary="Edit a product (existing charges and invoices keep their price)",
 )
 def update_product(product_id: int, body: ProductPatch, ctx: Ctx = require(P.BILLING_WRITE)):
-    return svc.update_product(ctx, product_id, body.model_dump(exclude_unset=True))
+    return _product_out(
+        ctx, svc.update_product(ctx, product_id, body.model_dump(exclude_unset=True))
+    )
 
 
 @router.post(
@@ -143,7 +154,7 @@ def update_product(product_id: int, body: ProductPatch, ctx: Ctx = require(P.BIL
     summary="Archive a product",
 )
 def archive_product(product_id: int, ctx: Ctx = require(P.BILLING_WRITE)):
-    return svc.set_product_archived(ctx, product_id, True)
+    return _product_out(ctx, svc.set_product_archived(ctx, product_id, True))
 
 
 @router.post(
@@ -153,7 +164,7 @@ def archive_product(product_id: int, ctx: Ctx = require(P.BILLING_WRITE)):
     summary="Restore an archived product",
 )
 def unarchive_product(product_id: int, ctx: Ctx = require(P.BILLING_WRITE)):
-    return svc.set_product_archived(ctx, product_id, False)
+    return _product_out(ctx, svc.set_product_archived(ctx, product_id, False))
 
 
 # ---- agreements ----

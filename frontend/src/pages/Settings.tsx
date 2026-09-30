@@ -10,6 +10,7 @@ export default function Settings() {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Settings</h1>
       <MailCard />
+      <InvoicingCard />
       <HoursCard />
       <SimpleList title="Queues" path="queues" defaults />
       <SimpleList title="Categories" path="categories" />
@@ -161,6 +162,31 @@ function PrioritiesCard() {
         <div className="w-32"><Field label="Resolution"><input className={inputCls} type="number" min={1} value={n.res} onChange={(e) => setN({ ...n, res: e.target.value })} /></Field></div>
         <Button type="submit">Add priority</Button>
       </form>
+    </Card>
+  );
+}
+
+
+function InvoicingCard() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["lookup", "settings"], queryFn: () => api<AppSettings>("/settings") });
+  const [edit, setEdit] = useState<Partial<AppSettings>>({});
+  const save = useMutation({
+    mutationFn: () => api("/settings", { method: "PATCH", json: edit }),
+    onSuccess: () => { setEdit({}); qc.invalidateQueries(); },
+  });
+  if (!q.data) return null;
+  const v = { ...q.data, ...edit };
+  return (
+    <Card title="Invoicing: your company details">
+      <p className="mb-2 text-sm text-slate-600">Printed on every invoice PDF. They are copied onto each invoice when it is finalized, so later changes never alter old invoices. Finalizing is blocked until a company name is set.</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Company name"><input className={inputCls} value={v.company_name ?? ""} onChange={(e) => setEdit({ ...edit, company_name: e.target.value })} /></Field>
+        <Field label="Company address"><textarea className={inputCls} rows={2} value={v.company_address ?? ""} onChange={(e) => setEdit({ ...edit, company_address: e.target.value })} /></Field>
+        <div className="sm:col-span-2"><Field label="Invoice footer (payment instructions, thank-you...)"><textarea className={inputCls} rows={2} value={v.invoice_footer ?? ""} onChange={(e) => setEdit({ ...edit, invoice_footer: e.target.value })} /></Field></div>
+      </div>
+      <ErrorMsg error={save.error} />
+      {Object.keys(edit).length > 0 && <div className="mt-2"><Button onClick={() => save.mutate()}>Save</Button></div>}
     </Card>
   );
 }

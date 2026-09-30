@@ -2,9 +2,15 @@
 
 A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQL + React, run with Docker Compose.
 
-**Status:** Phases 1 (Foundation) and 2 (Ticketing) complete. See [docs/PLAN.md](docs/PLAN.md) for the roadmap and design decisions, and [docs/BACKLOG.md](docs/BACKLOG.md) for ideas that are deliberately not built yet.
+**Status:** Phases 1-3 (Foundation, Ticketing, Contracts & invoicing) complete: the MVP. See [docs/PLAN.md](docs/PLAN.md) for the roadmap and design decisions, and [docs/BACKLOG.md](docs/BACKLOG.md) for ideas that are deliberately not built yet.
 
 ## What works today
+**Phase 3: contracts and invoicing**
+- Recurring agreements (per user, per device, flat fee), product catalog, hourly rates (per work type, with per-client overrides), one-off product charges
+- Draft invoices from billable time, products and agreements; a **monthly billing run with a review step**, then all-or-nothing finalize with gap-free numbering
+- Finalized invoices are immutable (enforced by the database); void and reissue for corrections; invoice PDFs
+- Money is integer cents with documented per-line rounding: read [docs/BILLING.md](docs/BILLING.md)
+
 **Phase 2: ticketing**
 - Tickets with status, priority, queue, category, assignee and business-hours SLA clocks (pause while waiting on customer)
 - Internal vs customer-visible notes; time entries that round billable time up to your increment
@@ -24,7 +30,7 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 backend/    FastAPI app, Alembic migrations, tests
 frontend/   React + Vite + Tailwind
 deploy/     Caddyfile, DB init, backup/restore scripts
-docs/       PLAN, BACKLOG, DEVELOPMENT, ENTRA_SETUP, MAIL_SETUP, BACKUP_RESTORE, verify/
+docs/       PLAN, BACKLOG, BILLING, DEVELOPMENT, ENTRA_SETUP, MAIL_SETUP, BACKUP_RESTORE, verify/
 docker-compose.yml, .env.example
 ```
 

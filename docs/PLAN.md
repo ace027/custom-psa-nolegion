@@ -1,6 +1,6 @@
 # Custom PSA — Plan
 
-**Status (updated after Phase 2):** plan approved with all §13 defaults accepted. Phases 0-2 are built and tested. Phase 3 (Contracts & invoicing) has not started; waiting for review of Phase 2.
+**Status (updated after Phase 3):** plan approved with all §13 defaults accepted. Phases 0-3 (the MVP) are built and tested. Waiting for your review of Phase 3 and your decision on what comes next (see `docs/BACKLOG.md`).
 
 ## Progress
 
@@ -9,7 +9,25 @@
 | 0. Scaffold | Done. Repo layout, Compose stack, CI workflow, Alembic, roles/RLS scaffolding, health checks |
 | 1. Foundation | Done. Orgs/sites/contacts, staff users + roles, Entra OIDC, audit log, seed, UI, 68 backend tests, 6 frontend tests, 1 browser smoke test |
 | 2. Ticketing | Done. Tickets, queues/categories/priorities, SLA clocks, notes, time, triage, Graph email in/out via a worker, dashboard, settings UI. 191 backend tests, 10 frontend tests, 2 browser smoke tests |
-| 3. Contracts & invoicing | Not started |
+| 3. Contracts & invoicing | Done. Agreements, products, rates, one-off charges, invoices, monthly run with review, PDF. 312 backend tests, 49 frontend tests, 3 browser tests |
+
+### Phase 3 decisions and things to check (read these)
+- **Your "go" is treated as approval of the §6 billing rules** as written (integer cents, per-line half-up rounding, per-line tax on the rounded amount, tax-rate snapshot, immutable finalized invoices, void + reissue). They are implemented exactly and covered by tests, including an independent exact-arithmetic reference check. Full explanation and a worked example: `docs/BILLING.md`.
+- **No payment tracking.** There is no "paid" status, payment recording or A/R aging: you asked for no payment/accounting integrations and I didn't invent manual payment tracking. Invoices are issued and frozen; who has paid is tracked outside the PSA for now. **This is the biggest gap to decide on** (backlog).
+- **One tax rate per client**, plus a "taxable" flag on each agreement, product and work type. No per-jurisdiction tax. Labor taxability varies by state and defaults to **not taxable**: confirm for your state.
+- **No proration** (as decided): an agreement active at any time in the month bills the full month at the quantity on the day the run starts. Manual adjustment happens in the review step.
+- **Time is grouped** into one invoice line per ticket and work type (billed hours = sum of the entries' rounded minutes). Quantity is stored to 4 decimal places, which is exact for 15/30/60-minute increments.
+- **A work type with no rate is never billed at $0**: the time stays unbilled and the run warns.
+- **Rates**: default hourly rate per work type plus an optional per-client override (the §13.7 default).
+- **Corrections**: void + reissue, or a negative manual "credit" line. A negative-total invoice can't be finalized (no credit-memo document yet).
+- **Invoice number format is fixed** `INV-YYYY-NNNN` (year of the invoice date, in your business time zone). Payment terms are per client (default Net 30); no automatic late fees.
+- **One run per month, enforced in the database.** Cancelling an unfinalized run frees the month. After finalizing, fixes go on a one-off invoice, never a second run.
+- **Immutability is enforced by PostgreSQL triggers**, not just app code: a finalized invoice and its lines cannot be changed (only voided), invoices can't be deleted, and the runtime role has no DELETE on the billing ledger. The restore drill confirms this survives a backup/restore.
+- **Product cost (your margin) is hidden** from everyone except admin/billing (found in review: the catalog endpoint would otherwise have shown it to techs).
+- **Company details (name, address, footer) are admin-only** (Settings); finalizing is blocked until a company name is set.
+- **PDF invoices** are generated server-side (reportlab, pure Python; new dependency). Emailing invoices is manual.
+- **Caught by tests while building (fixed before commit):** the "archived client skipped" warning was not being saved on the run.
+- **Not verified**: nothing here depends on Microsoft 365. Everything was run for real: in the browser, and in Docker Compose (run, review, finalize, PDF, DB tamper attempts, backup/restore).
 
 ### Phase 2 deviations and decisions (read these)
 - **Not verified against real Microsoft 365.** The Graph client is tested with `httpx.MockTransport`, and the whole mail loop (ingest, triage, reply threading, outbound send) was run end to end against a local fake Graph, both as processes and in Docker Compose. Real tenant behavior (Exchange RBAC scoping, throttling, message quirks) is on the manual checklist. **Please do the `docs/MAIL_SETUP.md` steps against a test mailbox before pointing real mail at it.**

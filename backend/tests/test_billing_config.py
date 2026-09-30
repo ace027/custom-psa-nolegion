@@ -337,3 +337,15 @@ def test_who_may_create_charges(login, org_ctx, role, expected):
         json={"organization_id": org_ctx["org"], "description": "x", "unit_price_cents": 1},
     )
     assert r.status_code == expected
+
+
+def test_product_cost_is_hidden_from_people_who_do_not_manage_billing(biller, login):
+    biller.post(
+        "/api/products",
+        json={"sku": "X", "name": "Switch", "unit_price_cents": 10000, "cost_cents": 7000},
+    )
+    assert biller.get("/api/products").json()[0]["cost_cents"] == 7000
+    assert login("admin").get("/api/products").json()[0]["cost_cents"] == 7000
+    for role in ("tech", "read_only"):
+        item = login(role).get("/api/products").json()[0]
+        assert item["cost_cents"] is None and item["unit_price_cents"] == 10000, role

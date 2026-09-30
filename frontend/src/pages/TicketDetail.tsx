@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-  Attachment, Contact, Note, Organization, Page, STATUSES, STATUS_LABEL, Ticket, TimeEntry, api,
+  Attachment, Charge, Contact, Note, Organization, Page, Product, STATUSES, STATUS_LABEL, Ticket, TimeEntry, api,
 } from "../api";
 import { can, useMe } from "../auth";
 import { useLookups } from "../lookups";
+import { money } from "../money";
 import { Button, Card, ErrorMsg, Field, SlaBadge, fmt, inputCls } from "../ui";
 
 export default function TicketDetail() {
@@ -45,6 +46,7 @@ export default function TicketDetail() {
       )}
       <NotesCard ticket={t} notes={notes.data ?? []} canWrite={canWrite} onDone={refresh} />
       <TimeCard ticket={t} entries={time.data ?? []} canWrite={can(me, "time:write")} meId={me?.id ?? 0} isAdmin={me?.role === "admin"} onDone={refresh} />
+      {can(me, "billing:read") && !t.needs_triage && <ChargesCard ticket={t} canWrite={can(me, "charge:write")} onDone={refresh} />}
       {(files.data?.length ?? 0) > 0 && (
         <Card title="Attachments">
           <ul className="text-sm">
@@ -234,6 +236,40 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
         </form>
       )}
       {t.needs_triage && <p className="mt-2 text-sm text-amber-700">Assign an organization before logging time.</p>}
+    </Card>
+  );
+}
+
+
+function ChargesCard({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boolean; onDone: () => void }) {
+  const charges = useQuery({ queryKey: ["charges", t.id], queryFn: () => api<Charge[]>(`/product-charges?ticket_id=${t.id}`) });
+  const products = useQuery({ queryKey: ["products", "active"], queryFn: () => api<Product[]>("/products") });
+  const [f, setF] = useState({ product_id: "", quantity: "1" });
+  const add = useMutation({
+    mutationFn: () => api("/product-charges", { method: "POST", json: { organization_id: t.organization_id, ticket_id: t.id, product_id: Number(f.product_id), quantity: f.quantity } }),
+    onSuccess: () => { setF({ product_id: "", quantity: "1" }); onDone(); },
+  });
+  const voidIt = useMutation({ mutationFn: (id: number) => api(`/product-charges/${id}/void`, { method: "POST" }), onSuccess: onDone });
+  const live = (charges.data ?? []).filter((c) => !c.voided_at);
+  return (
+    <Card title="Parts and products">
+      <ul className="text-sm">
+        {live.map((c) => (
+          <li key={c.id} className="flex justify-between border-t border-slate-100 py-1">
+            <span>{Number(c.quantity)} × {c.description} @ {money(c.unit_price_cents)}{c.invoice_line_id ? " · invoiced" : ""}</span>
+            {!c.invoice_line_id && canWrite && <button className="text-red-700 hover:underline" onClick={() => voidIt.mutate(c.id)}>Void</button>}
+          </li>
+        ))}
+        {live.length === 0 && <li className="text-slate-500">None. Products sold on this ticket go on the client's next invoice.</li>}
+      </ul>
+      <ErrorMsg error={add.error ?? voidIt.error} />
+      {canWrite && (
+        <form className="mt-2 flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+          <Field label="Product"><select className={inputCls} required value={f.product_id} onChange={(e) => setF({ ...f, product_id: e.target.value })}><option value="">Select…</option>{products.data?.map((p) => <option key={p.id} value={p.id}>{p.name} ({money(p.unit_price_cents)})</option>)}</select></Field>
+          <div className="w-20"><Field label="Qty"><input className={inputCls} value={f.quantity} onChange={(e) => setF({ ...f, quantity: e.target.value })} /></Field></div>
+          <Button type="submit">Add to ticket</Button>
+        </form>
+      )}
     </Card>
   );
 }

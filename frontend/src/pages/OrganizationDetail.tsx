@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { Contact, Organization, Site, api } from "../api";
 import { can, useMe } from "../auth";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../ui";
+import OrgBillingCard from "./OrgBillingCard";
 
 export default function OrganizationDetail() {
   const id = Number(useParams().id);
@@ -31,6 +32,7 @@ export default function OrganizationDetail() {
         {org.data.archived_at && <span className="ml-2 text-sm text-slate-500">(archived)</span>}
       </h1>
       <OrgForm org={org.data} canWrite={canWrite} onDone={refresh} />
+      {can(me, "billing:read") && <OrgBillingCard orgId={id} />}
       <SitesCard orgId={id} sites={sites.data ?? []} canWrite={canWrite} onDone={refresh} />
       <ContactsCard
         orgId={id}

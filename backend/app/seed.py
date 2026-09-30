@@ -7,7 +7,7 @@ NEVER run against production: it creates users with known example.com addresses.
 
 from sqlalchemy import func, select
 
-from app import audit
+from app import audit, billing
 from app import db as dbmod
 from app import repositories as repo
 from app import ticket_services as tsvc
@@ -100,7 +100,7 @@ def seed_tickets(db) -> None:
         return
     ctx = Ctx(db=db, user=admin, scope=Scope.all())
     priorities = {p.name: p.id for p in repo.list_lookup(db, Priority, False)}
-    work_type = repo.list_lookup(db, WorkType, False)[0]
+    work_type = next(w for w in repo.list_lookup(db, WorkType, False) if w.name == "Remote")
     orgs = {o.name: o for o in db.execute(select(Organization)).scalars()}
     for org_name, email, subject, priority, assignee, status, note in TICKETS:
         org = orgs[org_name]
@@ -146,6 +146,75 @@ def seed_tickets(db) -> None:
     )
 
 
+def seed_billing(db) -> None:
+    """Demo rates, agreements and a product sale so a billing run has something to show."""
+    from datetime import date
+
+    from app.models import Agreement, Settings
+
+    if db.execute(select(func.count()).select_from(Agreement)).scalar_one():
+        return
+    admin = repo.get_user_by_email(db, "admin@example.com")
+    if admin is None:
+        return
+    ctx = Ctx(db=db, user=admin, scope=Scope.all())
+    settings = db.get(Settings, 1)
+    settings.company_name = settings.company_name or "Example MSP LLC"
+    settings.company_address = (
+        settings.company_address or "100 Technology Dr\nSpringfield, IL 62701"
+    )
+    settings.invoice_footer = (
+        settings.invoice_footer or "Thank you for your business. Pay by ACH or check."
+    )
+    rates = {"Remote": (15000, False), "Onsite": (20000, True), "After hours": (22500, False)}
+    for wt in repo.list_lookup(db, WorkType, False):
+        if wt.name in rates:
+            wt.rate_cents, wt.taxable = rates[wt.name]
+    db.flush()
+    orgs = {o.name: o for o in db.execute(select(Organization)).scalars()}
+    orgs["Contoso Dental"].tax_rate_bp = 825
+    orgs["Contoso Dental"].payment_terms_days = 15
+    plan = [
+        ("Contoso Dental", "Managed Services", "per_user", 1200, 12, True),
+        ("Fabrikam Engineering", "Endpoint Management", "per_device", 800, 30, False),
+        ("Northwind Legal", "Security Retainer", "flat", 150000, 1, False),
+    ]
+    for org_name, name, kind, price, qty, taxable in plan:
+        billing.create_agreement(
+            ctx,
+            {
+                "organization_id": orgs[org_name].id,
+                "name": name,
+                "type": kind,
+                "unit_price_cents": price,
+                "quantity": qty,
+                "taxable": taxable,
+                "start_date": date(2026, 1, 1),
+                "end_date": None,
+                "notes": None,
+            },
+        )
+    laptop = billing.create_product(
+        ctx,
+        {
+            "sku": "LAP-14",
+            "name": "Laptop 14in (business)",
+            "description": None,
+            "unit_price_cents": 89900,
+            "cost_cents": 72000,
+            "taxable": True,
+        },
+    )
+    billing.create_charge(
+        ctx,
+        {
+            "organization_id": orgs["Fabrikam Engineering"].id,
+            "product_id": laptop.id,
+            "quantity": 2,
+        },
+    )
+
+
 def run() -> None:
     if get_settings().is_production:
         raise SystemExit("Refusing to seed demo data in production")
@@ -154,6 +223,7 @@ def run() -> None:
         if db.execute(select(func.count()).select_from(Organization)).scalar_one():
             print("Organizations already exist; skipping organizations and users.")
             seed_tickets(db)
+            seed_billing(db)
             db.commit()
             return
         for email, name, role in USERS:
@@ -221,8 +291,9 @@ def run() -> None:
                     detail={"seed": True},
                 )
         seed_tickets(db)
+        seed_billing(db)
         db.commit()
-        print(f"Seeded {len(USERS)} users and {len(ORGS)} organizations, plus demo tickets.")
+        print(f"Seeded {len(USERS)} users, {len(ORGS)} organizations, demo tickets and billing.")
 
 
 if __name__ == "__main__":

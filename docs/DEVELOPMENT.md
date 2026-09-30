@@ -60,7 +60,7 @@ and is refused when `ENVIRONMENT=production`). Sign in as `admin@example.com`, `
 `billing@example.com` or `readonly@example.com` after seeding.
 
 ### Browser smoke test
-With the API and `npm run dev` running and seed data loaded:
+With the API and `npm run dev` running and a **freshly seeded** database (the billing spec starts and finalizes the current month's run, which can only happen once per month; reset with `alembic downgrade base && alembic upgrade head && python -m app.seed`):
 `cd frontend && npx playwright test` (set `CHROMIUM_PATH` if the bundled browser is not installed).
 
 ## Conventions
