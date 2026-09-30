@@ -47,7 +47,13 @@ class MailClient(Protocol):
     def list_unread(self, top: int = 25) -> list[InboundMessage]: ...
     def get_attachments(self, message_id: str, max_bytes: int) -> list[InboundAttachment]: ...
     def mark_read(self, message_id: str) -> None: ...
-    def send_mail(self, to: list[str], subject: str, body_text: str) -> None: ...
+    def send_mail(
+        self,
+        to: list[str],
+        subject: str,
+        body_text: str,
+        attachments: list[tuple[str, str, bytes]] | None = None,
+    ) -> None: ...
 
 
 def _addr(obj: dict | None) -> str | None:
@@ -170,16 +176,27 @@ class GraphClient:
     def mark_read(self, message_id: str) -> None:
         self._request("PATCH", f"/messages/{message_id}", json={"isRead": True})
 
-    def send_mail(self, to: list[str], subject: str, body_text: str) -> None:
-        self._request(
-            "POST",
-            "/sendMail",
-            json={
-                "message": {
-                    "subject": subject,
-                    "body": {"contentType": "Text", "content": body_text},
-                    "toRecipients": [{"emailAddress": {"address": a}} for a in to],
-                },
-                "saveToSentItems": True,
-            },
-        )
+    def send_mail(
+        self,
+        to: list[str],
+        subject: str,
+        body_text: str,
+        attachments: list[tuple[str, str, bytes]] | None = None,
+    ) -> None:
+        """attachments: (filename, content_type, bytes). Graph inline limit is ~3 MB per file."""
+        message: dict = {
+            "subject": subject,
+            "body": {"contentType": "Text", "content": body_text},
+            "toRecipients": [{"emailAddress": {"address": a}} for a in to],
+        }
+        if attachments:
+            message["attachments"] = [
+                {
+                    "@odata.type": "#microsoft.graph.fileAttachment",
+                    "name": name,
+                    "contentType": content_type,
+                    "contentBytes": base64.b64encode(data).decode(),
+                }
+                for name, content_type, data in attachments
+            ]
+        self._request("POST", "/sendMail", json={"message": message, "saveToSentItems": True})

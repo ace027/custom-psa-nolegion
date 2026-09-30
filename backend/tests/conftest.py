@@ -29,6 +29,7 @@ from alembic import command  # noqa: E402
 from app.main import app  # noqa: E402
 
 TABLES = (
+    "outbound_attachments, billing_notice_invoices, billing_notices, statements, "
     "write_offs, payment_applications, payments, invoice_counters, product_charges, invoice_lines, invoices, billing_runs, "
     "agreement_quantity_log, agreements, products, org_work_type_rates, "
     "attachments, time_entries, ticket_notes, email_messages, tickets, audit_log, sessions, "
@@ -48,6 +49,7 @@ ALTER SEQUENCE ticket_number_seq RESTART WITH 10001;
 UPDATE work_types SET rate_cents = NULL, taxable = false;
 """
 HIT_ROUTES: set[tuple[str, str]] = set()
+STAGE_DEFAULTS: list[dict] = []
 
 
 class RouteRecorder:
@@ -69,6 +71,16 @@ def owner_engine():
         c.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
     cfg = Config("alembic.ini")
     command.upgrade(cfg, "head")
+    with engine.connect() as c:  # remember the seeded reminder stages so tests can edit freely
+        STAGE_DEFAULTS.extend(
+            dict(r._mapping)
+            for r in c.execute(
+                text(
+                    "SELECT id, position, name, days_past_due, subject, body, enabled "
+                    "FROM reminder_stages ORDER BY id"
+                )
+            )
+        )
     yield engine
     engine.dispose()
 
@@ -80,6 +92,15 @@ def clean_db(owner_engine):
         for stmt in RESEED.strip().split(";\n"):
             if stmt.strip():
                 c.execute(text(stmt))
+        for row in STAGE_DEFAULTS:
+            c.execute(
+                text(
+                    "UPDATE reminder_stages SET position=:position, name=:name, "
+                    "days_past_due=:days_past_due, subject=:subject, body=:body, enabled=:enabled "
+                    "WHERE id=:id"
+                ),
+                row,
+            )
 
 
 @pytest.fixture
@@ -235,3 +256,38 @@ def make_org_with_ticket(admin, make_org):
         return org, t
 
     return _make
+
+
+# ---- shared by the notice / statement tests ----
+from datetime import timedelta as _td  # noqa: E402
+
+from app import notices as _nsvc  # noqa: E402
+from app.mail import ingest as _ingest  # noqa: E402
+from tests.mailfakes import MAILBOX as _MAILBOX  # noqa: E402
+
+
+@pytest.fixture
+def mail_ready():
+    """The worker has reported a configured mailbox, so sending is allowed."""
+    _ingest.heartbeat(_MAILBOX)
+
+
+@pytest.fixture
+def client_org(admin, make_org, company):
+    """A client whose billing contact will receive notices."""
+    org = make_org("Acme Corp")["id"]
+    admin.post(
+        f"/api/organizations/{org}/contacts",
+        json={"name": "Pat Payer", "email": "pat@acme.com", "is_billing_contact": True},
+    )
+    return org
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    """Move 'today' for the reminder logic: clock(days_after_real_today)."""
+
+    def _set(days: int):
+        monkeypatch.setattr(_nsvc, "today", lambda ctx: biz_today() + _td(days=days))
+
+    return _set

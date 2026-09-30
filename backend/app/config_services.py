@@ -85,6 +85,11 @@ def set_lookup_archived(ctx: Ctx, model, label: str, obj_id: int, archived: bool
 
 
 def update_settings(ctx: Ctx, data: dict):
+    from app.notices import validate_template
+
+    for key in ("statement_subject", "statement_body"):
+        if data.get(key) is not None:
+            validate_template(data[key])
     row = repo.get_settings_row(ctx.db)
     before = audit.snapshot(row)
     for key, value in data.items():

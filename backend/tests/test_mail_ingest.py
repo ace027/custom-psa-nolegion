@@ -323,7 +323,12 @@ def test_pending_outbound_mail_is_sent_and_marked(mail, admin, known, make_ticke
     queue_email(admin, t)
     assert ingest.send_pending(mail, MAILBOX) == {"sent": 1, "failed": 0, "retry": 0}
     assert mail.sent == [
-        {"to": ["pat@acme.com"], "subject": f"[#{t['number']}] Printer down", "body": "All fixed"}
+        {
+            "to": ["pat@acme.com"],
+            "subject": f"[#{t['number']}] Printer down",
+            "body": "All fixed",
+            "attachments": [],
+        }
     ]
     assert admin.get(f"/api/tickets/{t['id']}/notes").json()[0]["email_status"] == "sent"
     assert ingest.send_pending(mail, MAILBOX)["sent"] == 0  # not sent twice

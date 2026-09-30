@@ -22,6 +22,24 @@ def _handle(*_):
     _stop = True
 
 
+def billing_jobs() -> None:
+    """Prepare due reminders and the monthly statement batch (idempotent; never sends anything)."""
+    from app import db as dbmod
+    from app.deps import Ctx
+    from app.notices import run_scheduled
+    from app.scope import Scope
+
+    try:
+        with dbmod.new_session() as db:
+            dbmod.set_org_scope(db, "all")
+            result = run_scheduled(Ctx(db=db, user=None, scope=Scope.all()))
+            db.commit()
+        if any(result.values()):
+            log.info("prepared billing notices for review: %s", result)
+    except Exception:
+        log.exception("billing jobs failed")
+
+
 def build_client() -> GraphClient:
     s = get_settings()
     return GraphClient(
@@ -47,6 +65,7 @@ def main(argv: list[str]) -> int:
         )
         while not _stop:
             heartbeat(None)
+            billing_jobs()
             if "--once" in argv:
                 break
             for _ in range(60):
@@ -58,6 +77,7 @@ def main(argv: list[str]) -> int:
     log.info("mail worker started for %s (every %ss)", s.mail_mailbox, s.mail_poll_seconds)
     while not _stop:
         run_cycle(client, s.mail_mailbox)
+        billing_jobs()
         if "--once" in argv:
             break
         for _ in range(s.mail_poll_seconds):

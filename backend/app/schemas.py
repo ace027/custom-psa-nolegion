@@ -340,6 +340,11 @@ class PriorityOut(LookupOut):
 
 
 class SettingsOut(ORM):
+    statement_subject: str
+    statement_body: str
+    auto_prepare_reminders: bool
+    auto_prepare_statements: bool
+    reminder_min_gap_days: int
     company_name: str | None
     company_address: str | None
     invoice_footer: str | None
@@ -352,6 +357,11 @@ class SettingsOut(ORM):
 
 
 class SettingsPatch(BaseModel):
+    statement_subject: str | None = Field(default=None, min_length=1, max_length=500)
+    statement_body: str | None = Field(default=None, min_length=1, max_length=10_000)
+    auto_prepare_reminders: bool | None = None
+    auto_prepare_statements: bool | None = None
+    reminder_min_gap_days: int | None = Field(default=None, ge=0, le=90)
     company_name: str | None = Field(default=None, max_length=200)
     company_address: str | None = Field(default=None, max_length=1000)
     invoice_footer: str | None = Field(default=None, max_length=2000)
@@ -425,12 +435,16 @@ class OrgRateOut(ORM):
 class OrgBillingOut(BaseModel):
     payment_terms_days: int
     tax_rate_bp: int
+    do_not_remind: bool
     rates: list[OrgRateOut]
 
 
 class OrgBillingPatch(BaseModel):
     payment_terms_days: int | None = Field(default=None, ge=0, le=365)
     tax_rate_bp: int | None = Field(default=None, ge=0, le=10000, description="825 = 8.25%")
+    do_not_remind: bool | None = Field(
+        default=None, description="true = never prepare or send payment reminders for this client"
+    )
 
 
 class ProductIn(BaseModel):
@@ -757,3 +771,100 @@ class ReceivablesOut(BaseModel):
 InvoiceOut.model_rebuild()
 InvoiceDetailOut.model_rebuild()
 RunDetailOut.model_rebuild()
+
+
+# ---------------------------------------------------------------------------------------
+# Statements and payment reminders
+# ---------------------------------------------------------------------------------------
+NoticeStatus = Literal["pending", "sent", "dismissed", "expired"]
+
+
+class ReminderStageOut(ORM):
+    id: int
+    position: int
+    name: str
+    days_past_due: int
+    subject: str
+    body: str
+    enabled: bool
+
+
+class ReminderStagePatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    days_past_due: int | None = Field(default=None, ge=0, le=365)
+    subject: str | None = Field(default=None, min_length=1, max_length=500)
+    body: str | None = Field(default=None, min_length=1, max_length=10_000)
+    enabled: bool | None = None
+
+
+class StatementOut(BaseModel):
+    id: int
+    organization_id: int
+    as_of: date
+    created_at: datetime
+    total_due_cents: int
+    overdue_cents: int
+    credit_cents: int
+    invoice_count: int
+    snapshot: dict
+
+
+class NoticeInvoiceOut(BaseModel):
+    invoice_id: int
+    number: str | None
+    due_date: date | None
+    balance_cents: int
+    days_past_due: int
+    new_stage: bool  # this invoice reaches a reminder stage with this notice
+
+
+class NoticeOut(BaseModel):
+    id: int
+    kind: Literal["reminder", "statement"]
+    organization_id: int
+    organization_name: str
+    status: NoticeStatus
+    manual: bool
+    stage_name: str | None
+    subject: str
+    body_text: str
+    to_emails: list[str]
+    blocked_reason: str | None
+    statement_id: int | None
+    stale: bool  # numbers changed since it was prepared: refresh before sending
+    total_due_cents: int
+    created_at: datetime
+    decided_at: datetime | None
+    dismiss_reason: str | None
+    email_status: str | None  # pending | sent | failed once approved
+    invoices: list[NoticeInvoiceOut]
+
+
+class NoticePatch(BaseModel):
+    subject: str | None = Field(default=None, max_length=998)
+    body_text: str | None = Field(default=None, max_length=20_000)
+
+
+class NoticeSendIn(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=200)
+
+
+class SendResult(BaseModel):
+    id: int
+    ok: bool
+    error: str | None = None
+
+
+class PrepareOut(BaseModel):
+    created: int
+    notice_ids: list[int]
+
+
+class ReminderIn(BaseModel):
+    invoice_ids: list[int] | None = Field(
+        default=None, description="Default: all of the client's overdue invoices"
+    )
+
+
+class EmailStatementIn(BaseModel):
+    send: bool = Field(default=False, description="true = approve and queue it immediately")

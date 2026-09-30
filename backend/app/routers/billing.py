@@ -63,6 +63,7 @@ def _org_billing(ctx: Ctx, org_id: int) -> OrgBillingOut:
     return OrgBillingOut(
         payment_terms_days=org.payment_terms_days,
         tax_rate_bp=org.tax_rate_bp,
+        do_not_remind=org.do_not_remind,
         rates=[
             OrgRateOut(work_type_id=r.work_type_id, rate_cents=r.rate_cents)
             for r in brepo.list_org_rates(ctx.db, ctx.scope, org_id)

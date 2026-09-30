@@ -10,6 +10,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     SmallInteger,
     String,
@@ -45,6 +46,9 @@ class Organization(TimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     payment_terms_days: Mapped[int] = mapped_column(Integer, nullable=False, server_default="30")
+    do_not_remind: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     tax_rate_bp: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
 
@@ -188,6 +192,13 @@ class Settings(Base):
     company_name: Mapped[str | None] = mapped_column(Text)
     company_address: Mapped[str | None] = mapped_column(Text)
     invoice_footer: Mapped[str | None] = mapped_column(Text)
+    statement_subject: Mapped[str] = mapped_column(Text, nullable=False)
+    statement_body: Mapped[str] = mapped_column(Text, nullable=False)
+    auto_prepare_reminders: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    auto_prepare_statements: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    reminder_min_gap_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    reminders_prepared_on: Mapped[date | None] = mapped_column(Date)
+    statements_prepared_month: Mapped[date | None] = mapped_column(Date)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
@@ -531,3 +542,88 @@ class WriteOff(Base):
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     voided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     void_reason: Mapped[str | None] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------------------
+# Statements and payment reminders
+# ---------------------------------------------------------------------------------------
+
+
+class ReminderStage(Base):
+    __tablename__ = "reminder_stages"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    days_past_due: Mapped[int] = mapped_column(Integer, nullable=False)
+    subject: Mapped[str] = mapped_column(Text, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class Statement(Base):
+    """A frozen point-in-time account statement (the PDF is rendered from this snapshot)."""
+
+    __tablename__ = "statements"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    as_of: Mapped[date] = mapped_column(Date, nullable=False)
+    snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class BillingNotice(Base):
+    """An email to a client waiting for a human decision (or the record of that decision)."""
+
+    __tablename__ = "billing_notices"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)  # reminder | statement
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    statement_id: Mapped[int | None] = mapped_column(ForeignKey("statements.id"))
+    stage_id: Mapped[int | None] = mapped_column(ForeignKey("reminder_stages.id"))
+    status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="pending")
+    manual: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    batch_month: Mapped[date | None] = mapped_column(Date)
+    subject: Mapped[str] = mapped_column(Text, nullable=False)
+    body_text: Mapped[str] = mapped_column(Text, nullable=False)
+    to_emails: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'"))
+    blocked_reason: Mapped[str | None] = mapped_column(Text)
+    email_message_id: Mapped[int | None] = mapped_column(ForeignKey("email_messages.id"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dismiss_reason: Mapped[str | None] = mapped_column(Text)
+    organization: Mapped[Organization] = relationship(lazy="joined")
+    stage: Mapped[ReminderStage | None] = relationship(lazy="joined")
+
+
+class BillingNoticeInvoice(Base):
+    __tablename__ = "billing_notice_invoices"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    notice_id: Mapped[int] = mapped_column(ForeignKey("billing_notices.id"), nullable=False)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), nullable=False)
+    organization_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    stage_id: Mapped[int | None] = mapped_column(ForeignKey("reminder_stages.id"))
+    balance_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    days_past_due: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class OutboundAttachment(Base):
+    __tablename__ = "outbound_attachments"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    email_message_id: Mapped[int] = mapped_column(ForeignKey("email_messages.id"), nullable=False)
+    organization_id: Mapped[int | None] = mapped_column(BigInteger)
+    filename: Mapped[str] = mapped_column(String(300), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

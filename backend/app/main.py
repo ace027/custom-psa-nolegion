@@ -14,6 +14,7 @@ from app.routers import (
     config,
     health,
     invoices,
+    notices,
     organizations,
     payments,
     tickets,
@@ -83,6 +84,7 @@ def create_app() -> FastAPI:
         billing.router,
         invoices.router,
         payments.router,
+        notices.router,
     ):
         app.include_router(r, prefix="/api")
     return app

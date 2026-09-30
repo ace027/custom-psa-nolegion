@@ -17,7 +17,7 @@ from app import ticket_services as tsvc
 from app.config import get_settings
 from app.deps import Ctx
 from app.mail.graph import InboundMessage, MailClient
-from app.models import Attachment, EmailMessage, MailboxStatus
+from app.models import Attachment, EmailMessage, MailboxStatus, OutboundAttachment
 from app.scope import Scope
 
 log = logging.getLogger("psa.mail")
@@ -286,7 +286,17 @@ def send_pending(client: MailClient, mailbox: str, batch: int = 20) -> dict[str,
             try:
                 if not e.to_emails:
                     raise ValueError("no recipients")
-                client.send_mail(e.to_emails, e.subject or "", e.body_text or "")
+                attachments = [
+                    (a.filename, a.content_type, a.data)
+                    for a in db.execute(
+                        select(OutboundAttachment)
+                        .where(OutboundAttachment.email_message_id == e.id)
+                        .order_by(OutboundAttachment.id)
+                    ).scalars()
+                ]
+                client.send_mail(
+                    e.to_emails, e.subject or "", e.body_text or "", attachments or None
+                )
                 e.send_status, e.sent_at, e.send_error = "sent", datetime.now(UTC), None
                 e.from_email = mailbox
                 stats["sent"] += 1

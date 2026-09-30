@@ -180,6 +180,27 @@ def test_mark_read_and_send_mail_payloads():
     assert seen["send"]["saveToSentItems"] is True
 
 
+def test_send_mail_attaches_files_as_base64():
+    seen = {}
+
+    def send(request):
+        seen["send"] = json.loads(request.content)
+        return httpx.Response(202)
+
+    client, _ = make_client(router(**{"POST /sendMail": send}))
+    client.send_mail(
+        ["pat@acme.com"], "Statement", "Body", [("statement.pdf", "application/pdf", b"%PDF-1")]
+    )
+    assert seen["send"]["message"]["attachments"] == [
+        {
+            "@odata.type": "#microsoft.graph.fileAttachment",
+            "name": "statement.pdf",
+            "contentType": "application/pdf",
+            "contentBytes": "JVBERi0x",
+        }
+    ]
+
+
 # ---- worker entrypoint ----
 def test_worker_idles_and_exits_once_when_mail_is_not_configured(monkeypatch):
     monkeypatch.setattr(get_settings(), "graph_tenant_id", "")
