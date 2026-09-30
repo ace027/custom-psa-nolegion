@@ -1,6 +1,6 @@
 # Custom PSA — Plan
 
-**Status (updated after Phase 1):** plan approved with all §13 defaults accepted. Phase 0 (scaffold) and Phase 1 (Foundation) are built and tested. Phase 2 (Ticketing) has not started; waiting for review of Phase 1.
+**Status (updated after Phase 2):** plan approved with all §13 defaults accepted. Phases 0-2 are built and tested. Phase 3 (Contracts & invoicing) has not started; waiting for review of Phase 2.
 
 ## Progress
 
@@ -8,8 +8,25 @@
 |---|---|
 | 0. Scaffold | Done. Repo layout, Compose stack, CI workflow, Alembic, roles/RLS scaffolding, health checks |
 | 1. Foundation | Done. Orgs/sites/contacts, staff users + roles, Entra OIDC, audit log, seed, UI, 68 backend tests, 6 frontend tests, 1 browser smoke test |
-| 2. Ticketing | Not started |
+| 2. Ticketing | Done. Tickets, queues/categories/priorities, SLA clocks, notes, time, triage, Graph email in/out via a worker, dashboard, settings UI. 191 backend tests, 10 frontend tests, 2 browser smoke tests |
 | 3. Contracts & invoicing | Not started |
+
+### Phase 2 deviations and decisions (read these)
+- **Not verified against real Microsoft 365.** The Graph client is tested with `httpx.MockTransport`, and the whole mail loop (ingest, triage, reply threading, outbound send) was run end to end against a local fake Graph, both as processes and in Docker Compose. Real tenant behavior (Exchange RBAC scoping, throttling, message quirks) is on the manual checklist. **Please do the `docs/MAIL_SETUP.md` steps against a test mailbox before pointing real mail at it.**
+- **Mailbox scoping uses Exchange RBAC for Applications**, not the Application Access Policy named in the original plan: Microsoft documents the latter as legacy and says new setups shouldn't use it. The connector app gets **no Entra-consented mail permissions** (those would be tenant-wide).
+- **Polling design changed from "delta query" to "unread messages in the Inbox, mark read after commit".** Simpler to reason about; idempotent on the Graph message id, so a crash never double-creates tickets. (Graph also rejects `$filter` + a different `$orderby`, so we sort client-side.) Delta sync is in the backlog.
+- **Plain-text email only**: we ask Graph for the text body, so HTML from email is never stored or rendered. Quoted reply history is trimmed for display; the full original is stored.
+- **Security rule added beyond the plan:** a ticket number in a subject is not enough to append to a ticket. The sender must already be associated with it; otherwise a new "needs triage" ticket is created. Automated mail (out-of-office, bounces, bulk, own address) is ignored.
+- **SLA targets live on priorities** (business minutes, first response + resolution) and the single business-hours calendar lives in `settings`: no separate `sla_policies` table. Due dates are always derived as `created + target + business minutes spent paused`, so pausing never mutates dates. Stopped clocks: waiting on customer, resolved, closed. **Changing business hours does not recompute existing due dates** (only priority/pause changes do).
+- **Statuses are a fixed set** (new, open, waiting on customer, resolved, closed) with fixed labels; queues/categories/priorities/work types are editable rows.
+- **Time-entry rule (billing-critical):** billable minutes = actual rounded **up** to the configured increment (default 15), stored per entry at entry time; non-billable = 0. Entries are voided, never deleted; only the owner or an admin can change them. Phase 3 will lock entries once invoiced.
+- **Notes are immutable** (the app database role cannot UPDATE them, except moving them to an organization during triage). Outbound email uses an outbox table + worker retries (5 attempts).
+- **Time zone default is `America/Chicago`** (business hours 08:00-17:00 Mon-Fri). **Please set yours in Settings.** It drives SLA math and the default date of time entries.
+- **Work type has no default on the time form** (the UI makes you pick), because Phase 3 will bill by work type and a silent default would mis-bill.
+- **Worker reports its own state** to the database (mailbox configured, last seen, last error) because the API container deliberately doesn't hold the Graph secret.
+- **Bug caught by tests:** an unscoped duplicate-message check under RLS saw no rows. A new guard test now fails if any table with `organization_id` lacks forced RLS (`audit_log` is the one documented exception: written by unscoped auth events, append-only, admin-only reads).
+- **Backups now include attachments** (separate encrypted tarball); restore handles both.
+- Added `backend/dev/fake_graph.py` (dev-only stand-in for Graph) and configurable `GRAPH_BASE_URL`/`GRAPH_LOGIN_URL` (GCC High).
 
 ### Phase 1 deviations and discoveries (read these)
 - **Backup gotcha found while testing:** `FORCE ROW LEVEL SECURITY` makes `pg_dump` fail for a non-`BYPASSRLS` owner. Good (loud), but the owner role must have `BYPASSRLS`. Documented in `docs/DEVELOPMENT.md` and `docs/BACKUP_RESTORE.md`; an automated dump→restore drill in the test suite now guards it.

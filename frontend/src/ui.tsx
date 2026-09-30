@@ -49,3 +49,27 @@ export function Card({ title, actions, children }: { title: string; actions?: Re
     </section>
   );
 }
+
+const SLA_STYLE: Record<string, string> = {
+  breached: "bg-red-100 text-red-800",
+  at_risk: "bg-amber-100 text-amber-800",
+  ok: "bg-green-100 text-green-800",
+  paused: "bg-slate-100 text-slate-600",
+  done: "bg-slate-100 text-slate-500",
+  none: "hidden",
+};
+const SLA_LABEL: Record<string, string> = {
+  breached: "SLA breached",
+  at_risk: "SLA at risk",
+  ok: "SLA ok",
+  paused: "SLA paused",
+  done: "",
+  none: "",
+};
+
+export function SlaBadge({ state }: { state: string }) {
+  if (!SLA_LABEL[state]) return null;
+  return <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${SLA_STYLE[state]}`}>{SLA_LABEL[state]}</span>;
+}
+
+export const fmt = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString() : "—");

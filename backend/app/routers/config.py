@@ -6,7 +6,6 @@ from sqlalchemy import func, select
 from app import config_services as svc
 from app import permissions as P
 from app import repositories as repo
-from app.config import get_settings
 from app.deps import Ctx, require
 from app.models import Category, EmailMessage, Priority, Queue, Ticket, WorkType
 from app.schemas import (
@@ -138,15 +137,16 @@ def patch_settings(body: SettingsPatch, ctx: Ctx = require(P.CONFIG_MANAGE)):
     summary="Mailbox connector health: last poll, errors, outbound queue (admin)",
 )
 def mail_status(ctx: Ctx = require(P.CONFIG_MANAGE)):
-    s, st = get_settings(), repo.get_mailbox_status(ctx.db)
+    st = repo.get_mailbox_status(ctx.db)
 
     def count(stmt) -> int:
         return ctx.db.execute(stmt).scalar_one()
 
     out = EmailMessage
     return MailStatusOut(
-        configured=s.mail_configured,
-        mailbox=s.mail_mailbox or None,
+        configured=st.mailbox is not None,
+        mailbox=st.mailbox,
+        worker_seen_at=st.worker_seen_at,
         last_poll_at=st.last_poll_at,
         last_success_at=st.last_success_at,
         last_error=st.last_error,

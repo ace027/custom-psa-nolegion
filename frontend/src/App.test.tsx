@@ -11,11 +11,11 @@ function route(handlers: Record<string, () => Response>) {
 }
 const json = (body: unknown, status = 200) => () => new Response(JSON.stringify(body), { status });
 
-function renderApp() {
+function renderApp(path = "/organizations") {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={[path]}>
         <App />
       </MemoryRouter>
     </QueryClientProvider>,

@@ -9,7 +9,9 @@ RUN python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml
 COPY alembic.ini ./
 COPY alembic ./alembic
 COPY app ./app
-RUN useradd --system --uid 10001 psa && chown -R psa /app
+RUN useradd --system --uid 10001 psa \
+ && mkdir -p /data/attachments && chown -R psa /app /data
+ENV ATTACHMENTS_DIR=/data/attachments
 USER psa
 EXPOSE 8000
 # --proxy-headers so audit-log IPs are the real client IPs as forwarded by Caddy

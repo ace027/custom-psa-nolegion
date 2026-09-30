@@ -34,6 +34,19 @@ database, so never point it at anything you care about.
 The suite also enforces API hygiene: every route must have a summary, tag and permission
 (`tests/test_zz_api_contract.py`), and every route must be called by at least one test.
 
+## Trying the mail worker locally (no Microsoft tenant)
+`backend/dev/fake_graph.py` is a tiny in-memory stand-in for the Graph mail endpoints:
+```sh
+python dev/fake_graph.py &                      # http://localhost:9911
+export GRAPH_BASE_URL=http://localhost:9911/v1.0 GRAPH_LOGIN_URL=http://localhost:9911 \
+       GRAPH_TENANT_ID=t GRAPH_CLIENT_ID=c GRAPH_CLIENT_SECRET=s MAIL_MAILBOX=support@msp.example.com
+curl -X POST localhost:9911/_inject -d '{"from":"dana@contoso-dental.example.com","subject":"Scanner broken","body":"Help"}'
+python -m app.worker --once                      # ingest it; run again after emailing a note to send it
+curl localhost:9911/_sent                        # what the PSA "sent"
+```
+The automated tests use an in-memory fake client instead (`tests/mailfakes.py`) plus `httpx.MockTransport`
+tests of the real Graph client, so `pytest` needs none of this.
+
 ## Frontend
 ```sh
 cd frontend

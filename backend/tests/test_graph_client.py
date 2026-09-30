@@ -201,3 +201,29 @@ def test_worker_runs_a_single_cycle_when_configured(monkeypatch):
     assert worker.main(["--once"]) == 0
     assert cycles == ["support@msp.com"]
     assert isinstance(worker.build_client(), GraphClient)
+
+
+def test_sovereign_cloud_urls_are_used_for_token_and_api_calls():
+    seen = []
+
+    def handler(request: httpx.Request):
+        seen.append(request)
+        if "oauth2" in request.url.path:
+            assert request.content.decode().count("graph.microsoft.us%2F.default") == 1 or (
+                "graph.microsoft.us" in request.content.decode()
+            )
+            return httpx.Response(200, json={"access_token": "t", "expires_in": 3600})
+        return httpx.Response(200, json={"value": []})
+
+    client = GraphClient(
+        "tid",
+        "cid",
+        "sec",
+        "support@msp.com",
+        http=httpx.Client(transport=httpx.MockTransport(handler)),
+        base_url="https://graph.microsoft.us/v1.0",
+        login_url="https://login.microsoftonline.us",
+    )
+    client.list_unread()
+    assert seen[0].url.host == "login.microsoftonline.us"
+    assert seen[1].url.host == "graph.microsoft.us"

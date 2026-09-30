@@ -187,6 +187,8 @@ class Settings(Base):
 class MailboxStatus(Base):
     __tablename__ = "mailbox_status"
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    mailbox: Mapped[str | None] = mapped_column(String(320))
+    worker_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_poll_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_error: Mapped[str | None] = mapped_column(Text)

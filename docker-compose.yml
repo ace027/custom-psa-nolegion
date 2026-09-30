@@ -38,6 +38,9 @@ services:
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:?}
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:?}
       DEV_LOGIN_ENABLED: "false"
+      ATTACHMENTS_DIR: /data/attachments
+    volumes:
+      - attachments:/data/attachments:ro   # the API only serves downloads; the worker writes
     depends_on:
       migrate: { condition: service_completed_successfully }
     healthcheck:
@@ -46,6 +49,28 @@ services:
       timeout: 5s
       retries: 5
     # not published: only the proxy can reach the API
+
+  worker:
+    # Polls the support mailbox and sends queued customer emails. Idles (harmlessly) until the
+    # GRAPH_* / MAIL_MAILBOX values in .env are filled in: see docs/MAIL_SETUP.md
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://psa_app:${APP_DB_PASSWORD}@db:5432/psa
+      GRAPH_TENANT_ID: ${GRAPH_TENANT_ID:-}
+      GRAPH_CLIENT_ID: ${GRAPH_CLIENT_ID:-}
+      GRAPH_CLIENT_SECRET: ${GRAPH_CLIENT_SECRET:-}
+      MAIL_MAILBOX: ${MAIL_MAILBOX:-}
+      MAIL_POLL_SECONDS: ${MAIL_POLL_SECONDS:-60}
+      GRAPH_BASE_URL: ${GRAPH_BASE_URL:-https://graph.microsoft.com/v1.0}
+      GRAPH_LOGIN_URL: ${GRAPH_LOGIN_URL:-https://login.microsoftonline.com}
+      ATTACHMENTS_DIR: /data/attachments
+    volumes:
+      - attachments:/data/attachments
+    depends_on:
+      migrate: { condition: service_completed_successfully }
 
   proxy:
     build: ./frontend
@@ -64,3 +89,4 @@ services:
 volumes:
   pgdata:
   caddy_data:
+  attachments:

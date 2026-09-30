@@ -96,3 +96,113 @@ export interface AuditEntry {
   after: Record<string, unknown> | null;
   detail: Record<string, unknown> | null;
 }
+
+// ---- Phase 2 ----
+export type TicketStatus = "new" | "open" | "waiting_on_customer" | "resolved" | "closed";
+export const STATUSES: TicketStatus[] = ["new", "open", "waiting_on_customer", "resolved", "closed"];
+export const STATUS_LABEL: Record<TicketStatus, string> = {
+  new: "New",
+  open: "Open",
+  waiting_on_customer: "Waiting on customer",
+  resolved: "Resolved",
+  closed: "Closed",
+};
+export type SlaState = "none" | "ok" | "at_risk" | "breached" | "paused" | "done";
+
+export interface Ticket {
+  id: number;
+  number: number;
+  organization_id: number | null;
+  organization_name: string | null;
+  contact_id: number | null;
+  contact_name: string | null;
+  site_id: number | null;
+  queue_id: number;
+  queue_name: string;
+  category_id: number | null;
+  category_name: string | null;
+  priority_id: number;
+  priority_name: string;
+  priority_rank: number;
+  status: TicketStatus;
+  assignee_id: number | null;
+  assignee_name: string | null;
+  subject: string;
+  description: string | null;
+  source: string;
+  requester_email: string | null;
+  needs_triage: boolean;
+  sla_state: SlaState;
+  sla_first_response_due: string | null;
+  sla_resolution_due: string | null;
+  first_responded_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface Note {
+  id: number;
+  author_name: string | null;
+  author_email: string | null;
+  visibility: "internal" | "customer";
+  source: string;
+  body: string;
+  created_at: string;
+  email_status: string | null;
+}
+export interface TimeEntry {
+  id: number;
+  user_id: number;
+  work_type_id: number;
+  work_date: string;
+  minutes_actual: number;
+  minutes_billable: number;
+  billable: boolean;
+  note: string | null;
+  voided_at: string | null;
+}
+export interface Attachment {
+  id: number;
+  filename: string;
+  size_bytes: number;
+}
+export interface Lookup {
+  id: number;
+  name: string;
+  archived_at: string | null;
+}
+export interface Queue extends Lookup {
+  is_default: boolean;
+}
+export interface Priority extends Lookup {
+  rank: number;
+  first_response_minutes: number | null;
+  resolution_minutes: number | null;
+  is_default: boolean;
+}
+export interface AppSettings {
+  timezone: string;
+  business_days: number[];
+  business_start_minute: number;
+  business_end_minute: number;
+  billing_increment_minutes: number;
+  sla_at_risk_percent: number;
+}
+export interface Dashboard {
+  my_open: Ticket[];
+  unassigned: Ticket[];
+  sla_at_risk: Ticket[];
+  counts: Record<string, number>;
+}
+export interface MailStatus {
+  configured: boolean;
+  mailbox: string | null;
+  worker_seen_at: string | null;
+  last_poll_at: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+  last_error_at: string | null;
+  messages_ingested: number;
+  outbound_pending: number;
+  outbound_failed: number;
+  tickets_needing_triage: number;
+}

@@ -120,5 +120,17 @@ def test_settings_read_update_and_validation(admin, login):
 
 def test_mail_status_reports_unconfigured_by_default(admin, owner):
     s = admin.get("/api/mail/status").json()
-    assert s["configured"] is False and s["outbound_pending"] == 0
+    assert s["configured"] is False and s["mailbox"] is None and s["worker_seen_at"] is None
+    assert s["outbound_pending"] == 0
     assert s["tickets_needing_triage"] == 0 and s["messages_ingested"] == 0
+
+
+def test_worker_reports_its_own_configuration_and_liveness(admin):
+    from app.mail.ingest import heartbeat
+
+    heartbeat("support@msp.com")
+    s = admin.get("/api/mail/status").json()
+    assert s["configured"] is True and s["mailbox"] == "support@msp.com" and s["worker_seen_at"]
+    heartbeat(None)  # worker running, but mail not configured
+    s = admin.get("/api/mail/status").json()
+    assert s["configured"] is False and s["worker_seen_at"]

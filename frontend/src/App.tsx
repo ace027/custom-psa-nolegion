@@ -3,9 +3,13 @@ import { NavLink, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { api } from "./api";
 import { can, useMe } from "./auth";
 import Audit from "./pages/Audit";
+import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import OrganizationDetail from "./pages/OrganizationDetail";
 import Organizations from "./pages/Organizations";
+import Settings from "./pages/Settings";
+import TicketDetail from "./pages/TicketDetail";
+import Tickets from "./pages/Tickets";
 import Users from "./pages/Users";
 
 function Layout() {
@@ -25,8 +29,11 @@ function Layout() {
       <header className="mb-6 flex items-center justify-between border-b border-slate-200 pb-3">
         <nav className="flex items-center gap-2">
           <span className="mr-4 font-bold">PSA</span>
+          <NavLink to="/dashboard" className={link}>Dashboard</NavLink>
+          <NavLink to="/tickets" className={link}>Tickets</NavLink>
           <NavLink to="/organizations" className={link}>Organizations</NavLink>
           <NavLink to="/users" className={link}>Users</NavLink>
+          {can(me, "config:manage") && <NavLink to="/settings" className={link}>Settings</NavLink>}
           {can(me, "audit:read") && <NavLink to="/audit" className={link}>Audit log</NavLink>}
         </nav>
         <div className="flex items-center gap-3 text-sm">
@@ -47,7 +54,11 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Navigate to="/organizations" replace />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/tickets" element={<Tickets />} />
+        <Route path="/tickets/:id" element={<TicketDetail />} />
+        <Route path="/settings" element={can(me, "config:manage") ? <Settings /> : <Navigate to="/" replace />} />
         <Route path="/organizations" element={<Organizations />} />
         <Route path="/organizations/:id" element={<OrganizationDetail />} />
         <Route path="/users" element={<Users />} />

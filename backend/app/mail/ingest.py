@@ -321,6 +321,7 @@ def run_cycle(client: MailClient, mailbox: str) -> None:
         error, ingest = str(exc)[:1000], {}
     with dbmod.new_session() as db:
         st = db.get(MailboxStatus, 1)
+        st.mailbox, st.worker_seen_at = mailbox, now
         st.last_poll_at = now
         if error is None and not ingest.get("failed"):
             st.last_success_at, st.last_error = now, None
@@ -332,4 +333,12 @@ def run_cycle(client: MailClient, mailbox: str) -> None:
             for k, v in ingest.items()
             if k in ("ticket_created", "ticket_created_unmatched", "appended")
         )
+        db.commit()
+
+
+def heartbeat(mailbox: str | None) -> None:
+    """Tell the admin page the worker is alive (and whether mail is configured)."""
+    with dbmod.new_session() as db:
+        st = db.get(MailboxStatus, 1)
+        st.mailbox, st.worker_seen_at = mailbox, datetime.now(UTC)
         db.commit()

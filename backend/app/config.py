@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     graph_client_id: str = ""
     graph_client_secret: str = ""
     mail_mailbox: str = ""  # e.g. support@yourmsp.com
+    # Sovereign clouds (e.g. GCC High): https://graph.microsoft.us and https://login.microsoftonline.us
+    graph_base_url: str = "https://graph.microsoft.com/v1.0"
+    graph_login_url: str = "https://login.microsoftonline.com"
     mail_poll_seconds: int = 60
     attachments_dir: str = "./data/attachments"
     max_attachment_bytes: int = 10 * 1024 * 1024

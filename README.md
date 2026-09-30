@@ -2,9 +2,16 @@
 
 A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQL + React, run with Docker Compose.
 
-**Status:** Phase 1 (Foundation) complete. See [docs/PLAN.md](docs/PLAN.md) for the roadmap and design decisions, and [docs/BACKLOG.md](docs/BACKLOG.md) for ideas that are deliberately not built yet.
+**Status:** Phases 1 (Foundation) and 2 (Ticketing) complete. See [docs/PLAN.md](docs/PLAN.md) for the roadmap and design decisions, and [docs/BACKLOG.md](docs/BACKLOG.md) for ideas that are deliberately not built yet.
 
-## What works today (Phase 1)
+## What works today
+**Phase 2: ticketing**
+- Tickets with status, priority, queue, category, assignee and business-hours SLA clocks (pause while waiting on customer)
+- Internal vs customer-visible notes; time entries that round billable time up to your increment
+- Email-to-ticket and email replies through Microsoft Graph (one shared mailbox, scoped by Exchange RBAC), threaded by ticket number and headers, with triage for unknown senders
+- Dashboard: my tickets, unassigned, SLA at risk; admin settings for queues, categories, priorities, work types, business hours
+
+**Phase 1: foundation**
 - Organizations, sites and contacts (soft-delete/archive, no hard deletes)
 - Staff users with fixed roles: `admin`, `tech`, `billing`, `read_only`
 - Sign-in with Microsoft Entra ID (OIDC), server-side sessions, admin pre-provisions users
@@ -17,7 +24,7 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 backend/    FastAPI app, Alembic migrations, tests
 frontend/   React + Vite + Tailwind
 deploy/     Caddyfile, DB init, backup/restore scripts
-docs/       PLAN, BACKLOG, DEVELOPMENT, ENTRA_SETUP, BACKUP_RESTORE, verify/
+docs/       PLAN, BACKLOG, DEVELOPMENT, ENTRA_SETUP, MAIL_SETUP, BACKUP_RESTORE, verify/
 docker-compose.yml, .env.example
 ```
 
@@ -35,6 +42,7 @@ cd ../frontend && npm ci && npm run dev  # UI on :5173, dev login enabled
 2. `cp .env.example .env` and fill it in (never commit `.env`)
 3. `docker compose up -d --build`
 4. Create the first admin (one-time): see "First admin" in [docs/ENTRA_SETUP.md](docs/ENTRA_SETUP.md)
+4a. Optional, for email-to-ticket: [docs/MAIL_SETUP.md](docs/MAIL_SETUP.md) (the `worker` container idles until configured)
 5. Set up backups **before** you put real data in: [docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md)
 
 ## Tests

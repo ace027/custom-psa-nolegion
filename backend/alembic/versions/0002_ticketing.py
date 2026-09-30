@@ -70,6 +70,10 @@ def upgrade() -> None:
     op.create_table(
         "mailbox_status",
         sa.Column("id", sa.SmallInteger, primary_key=True),
+        # The WORKER reports its own state here: the API container deliberately does not hold the
+        # Graph secret, so it cannot know whether mail is configured.
+        sa.Column("mailbox", sa.String(320)),  # NULL = worker running but mail not configured
+        sa.Column("worker_seen_at", sa.DateTime(timezone=True)),
         sa.Column("last_poll_at", sa.DateTime(timezone=True)),
         sa.Column("last_success_at", sa.DateTime(timezone=True)),
         sa.Column("last_error", sa.Text),

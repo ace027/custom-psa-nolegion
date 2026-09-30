@@ -366,6 +366,7 @@ class DashboardOut(BaseModel):
 class MailStatusOut(BaseModel):
     configured: bool
     mailbox: str | None
+    worker_seen_at: datetime | None
     last_poll_at: datetime | None
     last_success_at: datetime | None
     last_error: str | None

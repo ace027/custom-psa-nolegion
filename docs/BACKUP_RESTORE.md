@@ -1,12 +1,13 @@
 # Backups and restore
 
-**What must be backed up:** the PostgreSQL database (everything in Phase 1 lives there).
-Later phases add attachments (a volume). `.env` holds secrets: store it separately in your
+**What must be backed up:** the PostgreSQL database, **and** the `attachments` volume (files received by
+email; the database only stores their names). `.env` holds secrets: store it separately in your
 password manager / secret store, *not* alongside the database backups.
 
 ## Nightly backup
-`deploy/backup.sh` runs `pg_dump` inside the db container, encrypts it with [age](https://age-encryption.org)
-and writes `psa-<timestamp>.dump.age`, deleting files older than 14 days.
+`deploy/backup.sh` runs `pg_dump` inside the db container and tars the attachments volume, encrypts both with
+[age](https://age-encryption.org) and writes `psa-<timestamp>.dump.age` + `psa-<timestamp>.attachments.tar.age`,
+deleting files older than 14 days.
 
 One-time setup on the VM:
 ```sh
@@ -40,7 +41,8 @@ dump→restore drill (`backend/tests/test_backup_restore.py`) so the *mechanism*
 1. Provision the VM, install Docker, clone the repo, restore `.env` from your secret store.
 2. `docker compose up -d db` (creates roles; the fresh DB is empty).
 3. `AGE_IDENTITY=~/psa-backup-key.txt ./deploy/restore.sh /path/to/psa-XXXX.dump.age` (asks you to
-   type the database name; stops the API during the restore).
+   type the database name; stops the API and worker during the restore; if the matching
+   `.attachments.tar.age` is next to the dump, attachments are restored too).
 4. `docker compose up -d --build`; migrations are no-ops if the restored DB is already current.
 5. Sign in, spot-check recent records and the audit log.
 

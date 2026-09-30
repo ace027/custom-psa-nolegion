@@ -14,7 +14,6 @@ from typing import Protocol
 import httpx
 
 log = logging.getLogger("psa.mail")
-GRAPH = "https://graph.microsoft.com/v1.0"
 
 
 class GraphError(Exception):
@@ -85,10 +84,14 @@ class GraphClient:
         client_secret: str,
         mailbox: str,
         http: httpx.Client | None = None,
+        base_url: str = "https://graph.microsoft.com/v1.0",
+        login_url: str = "https://login.microsoftonline.com",
     ):
         self.tenant_id, self.client_id, self.client_secret = tenant_id, client_id, client_secret
         self.mailbox = mailbox
+        self.base_url, self.login_url = base_url.rstrip("/"), login_url.rstrip("/")
         self.http = http or httpx.Client(timeout=30)
+        self._resource = self.base_url.split("/v", 1)[0]  # e.g. https://graph.microsoft.com
         self._token: str | None = None
         self._token_expires = 0.0
 
@@ -96,11 +99,11 @@ class GraphClient:
     def _auth(self) -> dict[str, str]:
         if not self._token or time.time() > self._token_expires - 60:
             r = self.http.post(
-                f"https://login.microsoftonline.com/{self.tenant_id}/oauth2/v2.0/token",
+                f"{self.login_url}/{self.tenant_id}/oauth2/v2.0/token",
                 data={
                     "client_id": self.client_id,
                     "client_secret": self.client_secret,
-                    "scope": "https://graph.microsoft.com/.default",
+                    "scope": f"{self._resource}/.default",
                     "grant_type": "client_credentials",
                 },
             )
@@ -113,7 +116,9 @@ class GraphClient:
 
     def _request(self, method: str, path: str, **kw) -> httpx.Response:
         headers = {**self._auth(), **kw.pop("headers", {})}
-        r = self.http.request(method, f"{GRAPH}/users/{self.mailbox}{path}", headers=headers, **kw)
+        r = self.http.request(
+            method, f"{self.base_url}/users/{self.mailbox}{path}", headers=headers, **kw
+        )
         if r.status_code >= 400:
             raise GraphError(f"{method} {path} -> {r.status_code}: {r.text[:300]}")
         return r
