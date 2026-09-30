@@ -4,6 +4,7 @@ import { Receivables as ReceivablesData, api } from "../../api";
 import { can, useMe } from "../../auth";
 import { money } from "../../money";
 import { ErrorMsg } from "../../ui";
+import StatementActions from "./StatementActions";
 
 export function useReceivables() {
   return useQuery({ queryKey: ["receivables"], queryFn: () => api<ReceivablesData>("/receivables"), refetchInterval: 60_000 });
@@ -39,7 +40,7 @@ export default function Receivables() {
                   {cell(r.current_cents)}{cell(r.d1_30_cents, true)}{cell(r.d31_60_cents, true)}{cell(r.d61_90_cents, true)}{cell(r.d90_plus_cents, true)}
                   <td className="text-right font-medium">{money(r.total_open_cents)}</td>
                   {cell(r.credit_cents)}
-                  <td className="pl-4">{can(me, "payment:write") && <Link className="text-blue-700 hover:underline" to={`/billing/payments?new=1&org=${r.organization_id}`}>Record payment</Link>}</td>
+                  <td className="pl-4">{can(me, "payment:write") && <Link className="mr-3 text-blue-700 hover:underline" to={`/billing/payments?new=1&org=${r.organization_id}`}>Record payment</Link>}<StatementActions orgId={r.organization_id} /></td>
                 </tr>
               ))}
               {d.rows.length === 0 && <tr><td colSpan={9} className="p-3 text-slate-500">Nothing outstanding.</td></tr>}

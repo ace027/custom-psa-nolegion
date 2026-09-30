@@ -189,6 +189,11 @@ export interface AppSettings {
   business_end_minute: number;
   billing_increment_minutes: number;
   sla_at_risk_percent: number;
+  statement_subject: string;
+  statement_body: string;
+  auto_prepare_reminders: boolean;
+  auto_prepare_statements: boolean;
+  reminder_min_gap_days: number;
 }
 export interface Dashboard {
   my_open: Ticket[];
@@ -324,6 +329,7 @@ export interface WorkTypeBilling {
 export interface OrgBilling {
   payment_terms_days: number;
   tax_rate_bp: number;
+  do_not_remind: boolean;
   rates: { work_type_id: number; rate_cents: number }[];
 }
 
@@ -366,4 +372,60 @@ export interface Receivables {
   as_of: string;
   rows: AgingRow[];
   totals: AgingRow;
+}
+
+// ---- statements and reminders ----
+export interface ReminderStage {
+  id: number;
+  position: number;
+  name: string;
+  days_past_due: number;
+  subject: string;
+  body: string;
+  enabled: boolean;
+}
+export interface NoticeInvoice {
+  invoice_id: number;
+  number: string | null;
+  due_date: string | null;
+  balance_cents: number;
+  days_past_due: number;
+  new_stage: boolean;
+}
+export type NoticeStatus = "pending" | "sent" | "dismissed" | "expired";
+export interface Notice {
+  id: number;
+  kind: "reminder" | "statement";
+  organization_id: number;
+  organization_name: string;
+  status: NoticeStatus;
+  manual: boolean;
+  stage_name: string | null;
+  subject: string;
+  body_text: string;
+  to_emails: string[];
+  blocked_reason: string | null;
+  statement_id: number | null;
+  stale: boolean;
+  total_due_cents: number;
+  created_at: string;
+  decided_at: string | null;
+  dismiss_reason: string | null;
+  email_status: string | null;
+  invoices: NoticeInvoice[];
+}
+export interface SendResult {
+  id: number;
+  ok: boolean;
+  error: string | null;
+}
+export interface Statement {
+  id: number;
+  organization_id: number;
+  as_of: string;
+  created_at: string;
+  total_due_cents: number;
+  overdue_cents: number;
+  credit_cents: number;
+  invoice_count: number;
 }

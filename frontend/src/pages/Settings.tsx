@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppSettings, Lookup, MailStatus, Priority, Queue, api } from "../api";
+import RemindersCard from "./RemindersCard";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../ui";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -11,6 +12,7 @@ export default function Settings() {
       <h1 className="text-xl font-semibold">Settings</h1>
       <MailCard />
       <InvoicingCard />
+      <RemindersCard />
       <HoursCard />
       <SimpleList title="Queues" path="queues" defaults />
       <SimpleList title="Categories" path="categories" />

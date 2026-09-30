@@ -5,6 +5,7 @@ import { can, useMe } from "../auth";
 import { money, parsePercent, parseMoney, percent } from "../money";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../ui";
 import { useReceivables } from "./billing/Receivables";
+import StatementActions from "./billing/StatementActions";
 
 export default function OrgBillingCard({ orgId }: { orgId: number }) {
   const { data: me } = useMe();
@@ -22,6 +23,10 @@ export default function OrgBillingCard({ orgId }: { orgId: number }) {
       return api(`/organizations/${orgId}/billing`, { method: "PATCH", json: { ...(terms !== null ? { payment_terms_days: Number(terms) } : {}), ...(bp !== undefined ? { tax_rate_bp: bp } : {}) } });
     },
     onSuccess: () => { setTerms(null); setTax(null); refresh(); },
+  });
+  const remind = useMutation({
+    mutationFn: (do_not_remind: boolean) => api(`/organizations/${orgId}/billing`, { method: "PATCH", json: { do_not_remind } }),
+    onSuccess: refresh,
   });
   const setRate = useMutation({
     mutationFn: ({ wt, text }: { wt: number; text: string }) => {
@@ -43,6 +48,13 @@ export default function OrgBillingCard({ orgId }: { orgId: number }) {
         {acct && acct.overdue_invoice_count > 0 && <span className="text-red-700"> ({acct.overdue_invoice_count} overdue, oldest {acct.oldest_days_past_due} days)</span>}
         {acct && acct.credit_cents > 0 && <span> · <b>{money(acct.credit_cents)}</b> unapplied credit</span>}
       </p>
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-sm">
+        <StatementActions orgId={orgId} />
+        <label className="flex items-center gap-1">
+          <input type="checkbox" disabled={!canWrite} checked={b.data.do_not_remind} onChange={(e) => remind.mutate(e.target.checked)} />
+          Do not send payment reminders to this client
+        </label>
+      </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Payment terms (days)"><input className={inputCls} type="number" min={0} max={365} disabled={!canWrite} value={terms ?? b.data.payment_terms_days} onChange={(e) => setTerms(e.target.value)} /></Field>
         <Field label="Sales tax rate (%)"><input className={inputCls} disabled={!canWrite} value={tax ?? percent(b.data.tax_rate_bp).replace("%", "")} onChange={(e) => setTax(e.target.value)} /></Field>
@@ -60,7 +72,7 @@ export default function OrgBillingCard({ orgId }: { orgId: number }) {
           ))}
         </tbody>
       </table>
-      <ErrorMsg error={save.error ?? setRate.error} />
+      <ErrorMsg error={save.error ?? setRate.error ?? remind.error} />
     </Card>
   );
 }
