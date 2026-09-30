@@ -26,6 +26,9 @@ export default function RemindersCard() {
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={val("auto_prepare_reminders")} onChange={(e) => set({ auto_prepare_reminders: e.target.checked })} />Prepare reminders daily</label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={val("auto_prepare_statements")} onChange={(e) => set({ auto_prepare_statements: e.target.checked })} />Prepare statements monthly</label>
         <Field label="Minimum days between reminders to a client"><input className={inputCls} type="number" min={0} max={90} value={val("reminder_min_gap_days")} onChange={(e) => set({ reminder_min_gap_days: Number(e.target.value) })} /></Field>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={val("auto_prepare_invoice_emails")} onChange={(e) => set({ auto_prepare_invoice_emails: e.target.checked })} />Prepare an invoice email when an invoice is finalized</label>
+        <Field label="Invoice email subject"><input className={inputCls} value={val("invoice_email_subject")} onChange={(e) => set({ invoice_email_subject: e.target.value })} /></Field>
+        <div className="sm:col-span-2"><Field label="Invoice email body (also {invoice_number} {invoice_total} {due_date})"><textarea className={inputCls + " font-mono"} rows={5} value={val("invoice_email_body")} onChange={(e) => set({ invoice_email_body: e.target.value })} /></Field></div>
         <Field label="Statement email subject"><input className={inputCls} value={val("statement_subject")} onChange={(e) => set({ statement_subject: e.target.value })} /></Field>
         <div className="sm:col-span-2"><Field label="Statement email body"><textarea className={inputCls + " font-mono"} rows={6} value={val("statement_body")} onChange={(e) => set({ statement_body: e.target.value })} /></Field></div>
       </div>

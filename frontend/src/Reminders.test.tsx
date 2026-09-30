@@ -85,4 +85,13 @@ describe("reminder review queue", () => {
     });
     expect(await screen.findByText("2 to review")).toBeInTheDocument();
   });
+
+  it("labels invoice emails and lists them with the other client emails", async () => {
+    go("/billing/reminders", {
+      "/api/auth/me": json(me("billing", BILL)), "/api/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
+      [PENDING]: json(page([notice({ kind: "invoice", stage_name: null, subject: "Invoice INV-2026-0001 from Acme MSP" })])),
+    });
+    expect(await screen.findByText("Invoice")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Invoice INV-2026-0001 from Acme MSP")).toBeInTheDocument();
+  });
 });

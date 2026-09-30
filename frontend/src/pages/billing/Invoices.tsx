@@ -105,6 +105,7 @@ export function InvoicePage() {
         <StatusPill status={inv.status} />
         <span className="text-slate-600">{inv.organization_name}</span>
         <a className="ml-auto text-sm text-blue-700 hover:underline" href={`/api/invoices/${inv.id}/pdf`}>Download PDF</a>
+        {inv.status === "final" && can(me, "billing:write") && <EmailInvoice id={inv.id} />}
         {inv.billing_run_id && <Link className="text-sm text-blue-700 hover:underline" to={`/billing/runs/${inv.billing_run_id}`}>Billing run</Link>}
       </div>
       {inv.warnings.length > 0 && <Card title="Warnings"><ul className="list-disc pl-5 text-sm text-amber-800">{inv.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></Card>}
@@ -232,5 +233,20 @@ function PaymentSection({ inv, canRecord, canVoid, onDone }: { inv: InvoiceDetai
         </ul>
       )}
     </Card>
+  );
+}
+
+function EmailInvoice({ id }: { id: number }) {
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const prepare = useMutation({
+    mutationFn: () => api(`/invoices/${id}/email`, { method: "POST" }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["notices"] }); nav("/billing/reminders"); },
+  });
+  return (
+    <>
+      <Button variant="secondary" onClick={() => prepare.mutate()}>Prepare email to client</Button>
+      <ErrorMsg error={prepare.error} />
+    </>
   );
 }

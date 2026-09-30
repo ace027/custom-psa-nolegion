@@ -110,6 +110,10 @@ edit if you like, and approve them on Billing > Reminders. Approved notices go t
   one from Receivables or the client page (*Statement PDF*), or *Prepare statement email* to review and send it.
   The monthly batch (Prepare monthly statements, or automatic on the 1st when enabled) prepares one per client
   with a balance or credit, once per month.
+- **Invoice emails.** On any finalized invoice, *Prepare email to client* queues an email with the invoice
+  PDF for review (same recipients rule; one waiting email per invoice, enforced by the database; a voided
+  invoice cannot be sent). Optionally (Settings, off by default) one is prepared automatically whenever an
+  invoice is finalized, including every invoice in a billing run; it is still only sent when you approve it.
 - **Templates.** Placeholders in `{braces}` are checked when saved (unknown ones are refused).
 - **Permissions.** billing:write prepares/edits/refreshes; billing:finalize approves (sends) or dismisses
   (with a reason). Everything is audited (`notice.*`, `statement.create`, `reminder_stage.update`).

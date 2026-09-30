@@ -31,7 +31,6 @@ Ideas that are not in scope for the current phase. Nothing here gets built witho
 - Refunds as a first-class record (currently: void the payment)
 - "Paid" stamp / running balance on a re-issued copy of the invoice PDF
 - Payment terms exceptions (per-invoice due date override)
-- Emailing a newly finalized invoice to the client (reminders and statements are done)
 - Credit memos as a first-class document (currently: negative manual lines)
 - Proration of mid-month agreement start/end and quantity changes
 - Sales tax by jurisdiction / multiple tax rates per client

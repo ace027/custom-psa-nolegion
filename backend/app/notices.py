@@ -55,6 +55,7 @@ PLACEHOLDERS = {
     "overdue_total",
     "credit",
 }
+INVOICE_PLACEHOLDERS = PLACEHOLDERS | {"invoice_number", "invoice_total", "due_date"}
 MAX_INVOICE_ATTACHMENTS = 10
 STATEMENT_LOOKBACK_DAYS = 90
 
@@ -62,12 +63,12 @@ STATEMENT_LOOKBACK_DAYS = 90
 # =========================================================================================
 # Templates
 # =========================================================================================
-def validate_template(text: str) -> None:
-    unknown = sorted(set(re.findall(r"\{(\w+)\}", text)) - PLACEHOLDERS)
+def validate_template(text: str, allowed: set[str] = PLACEHOLDERS) -> None:
+    unknown = sorted(set(re.findall(r"\{(\w+)\}", text)) - allowed)
     if unknown:
         raise Conflict(
             f"Unknown placeholder {{{unknown[0]}}}. Allowed: "
-            + ", ".join("{" + p + "}" for p in sorted(PLACEHOLDERS))
+            + ", ".join("{" + p + "}" for p in sorted(allowed))
         )
 
 
@@ -512,6 +513,91 @@ def create_manual_reminder(ctx: Ctx, org_id: int, invoice_ids: list[int] | None)
 
 
 # =========================================================================================
+# Invoice emails: a finalized invoice, with its PDF, to the client (same review queue)
+# =========================================================================================
+def _invoice_email_values(ctx: Ctx, inv, org: Organization, name: str) -> dict:
+    settings = repo.get_settings_row(ctx.db)
+    applied, written_off = prepo.amounts_for(ctx.db, [inv.id])[inv.id]
+    balance = inv.total_cents - applied - written_off
+    return dict(
+        client=org.name,
+        company=settings.company_name or "",
+        contact_name=_greeting(name, org.name),
+        invoice_number=inv.number or "",
+        invoice_total=format_money(inv.total_cents),
+        due_date=inv.due_date.isoformat() if inv.due_date else "",
+        invoice_list=f"  {inv.number}   due {inv.due_date}   {format_money(inv.total_cents)}",
+        invoice_count="1",
+        total_due=format_money(balance),
+        oldest_days_late="0",
+        as_of=today(ctx).isoformat(),
+        overdue_total="",
+        credit="",
+    )
+
+
+def prepare_invoice_email(ctx: Ctx, invoice_id: int, *, manual: bool = True):
+    """Queue an email of one finalized invoice for review. Returns None when auto and not needed."""
+    inv = brepo.get_invoice(ctx.db, ctx.scope, invoice_id)
+    if inv is None:
+        raise NotFound("Invoice not found")
+    if inv.status != "final":
+        raise Conflict("Only a finalized invoice can be emailed")
+    if ctx.db.execute(
+        select(BillingNotice.id).where(
+            BillingNotice.invoice_id == inv.id,
+            BillingNotice.kind == "invoice",
+            BillingNotice.status == "pending",
+        )
+    ).first():
+        if not manual:
+            return None
+        raise Conflict("An email for this invoice is already waiting for review")
+    org = inv.organization
+    emails, name, blocked = resolve_recipients(ctx, org.id)
+    settings = repo.get_settings_row(ctx.db)
+    values = _invoice_email_values(ctx, inv, org, name)
+    notice = BillingNotice(
+        kind="invoice",
+        organization_id=org.id,
+        invoice_id=inv.id,
+        manual=manual,
+        subject=render(settings.invoice_email_subject, values),
+        body_text=render(settings.invoice_email_body, values),
+        to_emails=emails,
+        blocked_reason=blocked,
+        created_by=ctx.user.id if ctx.user else None,
+    )
+    ctx.db.add(notice)
+    ctx.db.flush()
+    ctx.db.add(
+        BillingNoticeInvoice(
+            notice_id=notice.id,
+            invoice_id=inv.id,
+            organization_id=org.id,
+            balance_cents=inv.total_cents,
+            days_past_due=0,
+        )
+    )
+    ctx.db.flush()
+    ctx.db.refresh(notice)
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "notice.create",
+        notice,
+        organization_id=org.id,
+        detail={
+            "kind": "invoice",
+            "invoice": inv.number,
+            "manual": manual,
+            "blocked": bool(blocked),
+        },
+    )
+    return notice
+
+
+# =========================================================================================
 # Review queue: get, edit, refresh, send, dismiss
 # =========================================================================================
 def get_notice(ctx: Ctx, notice_id: int, lock: bool = False) -> BillingNotice:
@@ -540,8 +626,8 @@ def notice_invoices(ctx: Ctx, notice_id: int) -> list[BillingNoticeInvoice]:
 
 def is_stale(ctx: Ctx, notice: BillingNotice) -> bool:
     """Have the numbers this notice quotes changed since it was prepared?"""
-    if notice.status != "pending":
-        return False
+    if notice.status != "pending" or notice.kind == "invoice":
+        return False  # an invoice email quotes the invoice total, which cannot change
     if notice.kind == "statement":
         org = repo.get_organization(ctx.db, ctx.scope, notice.organization_id)
         fresh = build_statement(ctx, org)
@@ -594,7 +680,25 @@ def refresh_notice(ctx: Ctx, notice_id: int) -> BillingNotice:
     org = notice.organization
     emails, name, blocked = resolve_recipients(ctx, org.id)
     notice.to_emails, notice.blocked_reason = emails, blocked
-    if notice.kind == "statement":
+    if notice.kind == "invoice":
+        inv = brepo.get_invoice(ctx.db, ctx.scope, notice.invoice_id)
+        if inv.status != "final":
+            notice.status, notice.decided_at = "expired", now()
+            ctx.db.flush()
+            audit.record(
+                ctx.db,
+                ctx.user,
+                "notice.expire",
+                notice,
+                organization_id=org.id,
+                detail={"reason": "invoice was voided"},
+            )
+            return notice
+        settings = repo.get_settings_row(ctx.db)
+        values = _invoice_email_values(ctx, inv, org, name)
+        notice.subject = render(settings.invoice_email_subject, values)
+        notice.body_text = render(settings.invoice_email_body, values)
+    elif notice.kind == "statement":
         statement = create_statement(ctx, org.id)
         notice.statement_id = statement.id
         values = _statement_values(ctx, org, statement.snapshot, name)
@@ -658,6 +762,10 @@ def refresh_notice(ctx: Ctx, notice_id: int) -> BillingNotice:
 
 def _attachments_for(ctx: Ctx, notice: BillingNotice) -> list[tuple[str, bytes]]:
     settings = repo.get_settings_row(ctx.db)
+    if notice.kind == "invoice":
+        inv = brepo.get_invoice(ctx.db, ctx.scope, notice.invoice_id)
+        lines = brepo.invoice_lines(ctx.db, ctx.scope, inv.id)
+        return [(f"{inv.number}.pdf", render_invoice_pdf(inv, lines, settings))]
     if notice.kind == "statement":
         snap = ctx.db.get(Statement, notice.statement_id).snapshot
         return [(f"Statement-{snap['as_of']}.pdf", render_statement_pdf(snap))]
@@ -690,6 +798,10 @@ def send_notice(ctx: Ctx, notice_id: int) -> BillingNotice:
         raise Conflict(blocked)
     if is_stale(ctx, notice):
         raise Conflict("The balances changed since this was prepared. Refresh it before sending")
+    if notice.kind == "invoice":
+        inv = brepo.get_invoice(ctx.db, ctx.scope, notice.invoice_id)
+        if inv.status != "final":
+            raise Conflict("This invoice was voided; refresh the notice to close it")
     if notice.kind == "reminder" and not notice_invoices(ctx, notice.id):
         raise Conflict("This reminder has no invoices")
     attachments = _attachments_for(ctx, notice)

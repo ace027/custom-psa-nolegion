@@ -25,6 +25,7 @@ CALLS = [
     ("POST", "/api/billing-notices/prepare-reminders", None, "write"),
     ("POST", "/api/billing-notices/prepare-statements", None, "write"),
     ("POST", "/api/organizations/1/reminders", {}, "write"),
+    ("POST", "/api/invoices/1/email", None, "write"),
 ]
 
 

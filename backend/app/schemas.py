@@ -342,6 +342,9 @@ class PriorityOut(LookupOut):
 class SettingsOut(ORM):
     statement_subject: str
     statement_body: str
+    invoice_email_subject: str
+    invoice_email_body: str
+    auto_prepare_invoice_emails: bool
     auto_prepare_reminders: bool
     auto_prepare_statements: bool
     reminder_min_gap_days: int
@@ -359,6 +362,9 @@ class SettingsOut(ORM):
 class SettingsPatch(BaseModel):
     statement_subject: str | None = Field(default=None, min_length=1, max_length=500)
     statement_body: str | None = Field(default=None, min_length=1, max_length=10_000)
+    invoice_email_subject: str | None = Field(default=None, min_length=1, max_length=500)
+    invoice_email_body: str | None = Field(default=None, min_length=1, max_length=10_000)
+    auto_prepare_invoice_emails: bool | None = None
     auto_prepare_reminders: bool | None = None
     auto_prepare_statements: bool | None = None
     reminder_min_gap_days: int | None = Field(default=None, ge=0, le=90)
@@ -820,7 +826,7 @@ class NoticeInvoiceOut(BaseModel):
 
 class NoticeOut(BaseModel):
     id: int
-    kind: Literal["reminder", "statement"]
+    kind: Literal["reminder", "statement", "invoice"]
     organization_id: int
     organization_name: str
     status: NoticeStatus

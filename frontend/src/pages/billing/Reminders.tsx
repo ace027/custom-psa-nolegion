@@ -29,7 +29,7 @@ export default function Reminders() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Reminders and statements are <b>prepared for you, never sent automatically</b>. Read each one, edit it if you like, then approve it. Approved messages go out from the support mailbox and replies land as tickets.
+        Invoice emails, reminders and statements are <b>prepared for you, never sent automatically</b>. Read each one, edit it if you like, then approve it. Approved messages go out from the support mailbox and replies land as tickets.
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {(["pending", "sent", "dismissed", "expired"] as NoticeStatus[]).map((v) => (
@@ -72,7 +72,7 @@ function NoticeCard({ n, canWrite, canSend, picked, onPick, onChanged }: { n: No
       <div className="flex flex-wrap items-center gap-2">
         {pending && canSend && <input type="checkbox" aria-label={`Select ${n.organization_name}`} disabled={!!n.blocked_reason || n.stale} checked={picked} onChange={(e) => onPick(e.target.checked)} />}
         <h3 className="font-semibold">{n.organization_name}</h3>
-        <span className="rounded bg-slate-100 px-2 text-xs">{n.kind === "statement" ? "Statement" : n.manual ? "Reminder (manual)" : `Reminder: ${n.stage_name}`}</span>
+        <span className="rounded bg-slate-100 px-2 text-xs">{n.kind === "statement" ? "Statement" : n.kind === "invoice" ? "Invoice" : n.manual ? "Reminder (manual)" : `Reminder: ${n.stage_name}`}</span>
         <span className="text-sm text-slate-600">{money(n.total_due_cents)} · {n.invoices.length} invoice{n.invoices.length === 1 ? "" : "s"}</span>
         <span className="flex-1" />
         <span className="text-xs text-slate-500">{n.status === "pending" ? `prepared ${fmt(n.created_at)}` : `${n.status} ${fmt(n.decided_at)}${n.email_status ? ` · email ${n.email_status}` : ""}`}</span>

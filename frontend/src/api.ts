@@ -191,6 +191,9 @@ export interface AppSettings {
   sla_at_risk_percent: number;
   statement_subject: string;
   statement_body: string;
+  invoice_email_subject: string;
+  invoice_email_body: string;
+  auto_prepare_invoice_emails: boolean;
   auto_prepare_reminders: boolean;
   auto_prepare_statements: boolean;
   reminder_min_gap_days: number;
@@ -395,7 +398,7 @@ export interface NoticeInvoice {
 export type NoticeStatus = "pending" | "sent" | "dismissed" | "expired";
 export interface Notice {
   id: number;
-  kind: "reminder" | "statement";
+  kind: "reminder" | "statement" | "invoice";
   organization_id: number;
   organization_name: string;
   status: NoticeStatus;

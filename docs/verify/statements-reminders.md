@@ -29,3 +29,11 @@ setup is only needed for the last section. Sign in as `billing@example.com`.
 - [ ] Reply to it: a ticket is created/updated in the support queue
 - [ ] With the mailbox NOT configured, Approve is refused with a clear message
 - [ ] Audit log shows notice.create / notice.send / notice.dismiss / statement.create rows
+
+## Invoice emails
+- [ ] On a finalized invoice, *Prepare email to client*: lands in Billing > Client emails as an "Invoice" item with the right recipients and total; nothing is sent yet
+- [ ] Preparing it again while it waits is refused; after it is sent you can prepare another
+- [ ] Draft and voided invoices have no button / are refused
+- [ ] Void the invoice while its email waits: Approve is refused; *Refresh* closes it as expired
+- [ ] Settings: turn on "Prepare an invoice email when an invoice is finalized", finalize a run: one item per invoice, none sent
+- [ ] Approve & send: the worker delivers it with `INV-....pdf` attached

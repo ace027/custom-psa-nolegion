@@ -181,7 +181,7 @@ def _notice_out(ctx: Ctx, n) -> NoticeOut:
 )
 def list_notices(
     status: str | None = Query(None, pattern="^(pending|sent|dismissed|expired)$"),
-    kind: str | None = Query(None, pattern="^(reminder|statement)$"),
+    kind: str | None = Query(None, pattern="^(reminder|statement|invoice)$"),
     organization_id: int | None = None,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -286,3 +286,14 @@ def prepare_statements(ctx: Ctx = require(P.BILLING_WRITE)):
 )
 def manual_reminder(org_id: int, body: ReminderIn, ctx: Ctx = require(P.BILLING_WRITE)):
     return _notice_out(ctx, svc.create_manual_reminder(ctx, org_id, body.invoice_ids))
+
+
+@router.post(
+    "/invoices/{invoice_id}/email",
+    response_model=NoticeOut,
+    status_code=201,
+    responses=ERR,
+    summary="Prepare an email of this finalized invoice (with its PDF) for review",
+)
+def email_invoice(invoice_id: int, ctx: Ctx = require(P.BILLING_WRITE)):
+    return _notice_out(ctx, svc.prepare_invoice_email(ctx, invoice_id))

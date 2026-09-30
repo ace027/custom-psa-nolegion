@@ -194,6 +194,9 @@ class Settings(Base):
     invoice_footer: Mapped[str | None] = mapped_column(Text)
     statement_subject: Mapped[str] = mapped_column(Text, nullable=False)
     statement_body: Mapped[str] = mapped_column(Text, nullable=False)
+    invoice_email_subject: Mapped[str] = mapped_column(Text, nullable=False)
+    invoice_email_body: Mapped[str] = mapped_column(Text, nullable=False)
+    auto_prepare_invoice_emails: Mapped[bool] = mapped_column(Boolean, nullable=False)
     auto_prepare_reminders: Mapped[bool] = mapped_column(Boolean, nullable=False)
     auto_prepare_statements: Mapped[bool] = mapped_column(Boolean, nullable=False)
     reminder_min_gap_days: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -582,8 +585,9 @@ class BillingNotice(Base):
 
     __tablename__ = "billing_notices"
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
-    kind: Mapped[str] = mapped_column(String(10), nullable=False)  # reminder | statement
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)  # reminder | statement | invoice
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"))
     statement_id: Mapped[int | None] = mapped_column(ForeignKey("statements.id"))
     stage_id: Mapped[int | None] = mapped_column(ForeignKey("reminder_stages.id"))
     status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="pending")

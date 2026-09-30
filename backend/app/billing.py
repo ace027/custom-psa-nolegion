@@ -740,6 +740,10 @@ def finalize_invoice(ctx: Ctx, invoice: Invoice, invoice_date: date | None = Non
         after=audit.snapshot(invoice),
         organization_id=invoice.organization_id,
     )
+    if st.auto_prepare_invoice_emails:  # prepared for review only; a person approves the send
+        from app.notices import prepare_invoice_email
+
+        prepare_invoice_email(ctx, invoice.id, manual=False)
     return invoice
 
 
