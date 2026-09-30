@@ -874,3 +874,73 @@ class ReminderIn(BaseModel):
 
 class EmailStatementIn(BaseModel):
     send: bool = Field(default=False, description="true = approve and queue it immediately")
+
+
+# ---- reports ----
+class RevenueRow(BaseModel):
+    invoices: int
+    time_cents: int
+    product_cents: int
+    agreement_cents: int
+    manual_cents: int
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+
+
+class RevenueClient(RevenueRow):
+    organization_id: int
+    organization_name: str
+
+
+class RevenueMonth(RevenueRow):
+    month: date
+
+
+class RevenueOut(BaseModel):
+    start: date
+    end: date
+    clients: list[RevenueClient]
+    months: list[RevenueMonth]
+    totals: RevenueRow
+
+
+class UnbilledRow(BaseModel):
+    organization_id: int
+    organization_name: str
+    time_entries: int
+    billable_minutes: int
+    time_value_cents: int
+    unpriced_minutes: int
+    oldest_work_date: date | None
+    charges: int
+    charges_cents: int
+    total_cents: int
+
+
+class UnbilledTotals(BaseModel):
+    time_entries: int
+    billable_minutes: int
+    time_value_cents: int
+    unpriced_minutes: int
+    charges: int
+    charges_cents: int
+    total_cents: int
+
+
+class UnbilledOut(BaseModel):
+    through: date
+    rows: list[UnbilledRow]
+    totals: UnbilledTotals
+
+
+class RecurringMonth(BaseModel):
+    month: date
+    contracted_cents: int
+    agreements: int
+    clients: int
+    invoiced_cents: int
+
+
+class RecurringOut(BaseModel):
+    months: list[RecurringMonth]

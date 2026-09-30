@@ -1,8 +1,10 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { can, useMe } from "../../auth";
 import { usePendingNotices } from "./Reminders";
 import { useReceivables } from "./Receivables";
 
 export default function BillingLayout() {
+  const { data: me } = useMe();
   const rec = useReceivables();
   const pending = usePendingNotices().data?.total ?? 0;
   const overdue = rec.data?.totals.overdue_invoice_count ?? 0;
@@ -20,6 +22,7 @@ export default function BillingLayout() {
         <NavLink to="/billing/agreements" className={tab}>Agreements</NavLink>
         <NavLink to="/billing/products" className={tab}>Products</NavLink>
         <NavLink to="/billing/rates" className={tab}>Rates</NavLink>
+        {can(me, "report:read") && <NavLink to="/billing/reports" className={tab}>Reports</NavLink>}
       </nav>
       <Outlet />
     </div>

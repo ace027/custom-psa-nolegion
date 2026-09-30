@@ -11,6 +11,7 @@ import Products from "./pages/billing/Products";
 import Rates from "./pages/billing/Rates";
 import Receivables from "./pages/billing/Receivables";
 import Reminders from "./pages/billing/Reminders";
+import Reports from "./pages/billing/Reports";
 import { RunList, RunPage } from "./pages/billing/Runs";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
@@ -84,6 +85,7 @@ export default function App() {
             <Route path="agreements" element={<Agreements />} />
             <Route path="products" element={<Products />} />
             <Route path="rates" element={<Rates />} />
+            <Route path="reports" element={can(me, "report:read") ? <Reports /> : <Navigate to="/billing" replace />} />
           </Route>
         )}
         <Route path="/users" element={<Users />} />

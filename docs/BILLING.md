@@ -120,6 +120,23 @@ edit if you like, and approve them on Billing > Reminders. Approved notices go t
 - **Records.** Statements, sent/dismissed notices and the exact PDF bytes that were emailed cannot be changed
   or deleted (database triggers), so you can show what a client was told.
 
+## Reports and CSV exports
+Billing > Reports (admin and billing roles only: the `report:read` permission; techs and read-only
+users do not get revenue figures). Every CSV is in dollars and each download is recorded in the audit
+log (`report.export`). Cells that start with `=`, `+`, `-` or `@` are prefixed with `'` so a spreadsheet
+never runs a client-supplied name as a formula.
+- **Revenue:** finalized, non-void invoices by *invoice date* (not cash received), by client and by
+  month, split into time / products / agreements / other, with tax shown separately. Default: last 12
+  months; ranges over 60 months are refused.
+- **Unbilled work:** billable time and one-off charges not yet on an invoice, priced at *today's*
+  rates (client override, else the work type rate), before tax. Time with no rate anywhere is reported
+  as unpriced hours, not as $0.
+- **Recurring revenue:** per month, *contracted* (each agreement's current quantity x price, for
+  agreements active that month, the same rule the run uses) next to *invoiced* (what agreement lines were
+  actually billed for that month). Past quantity changes are not replayed, so use "invoiced" for history.
+- **Invoice CSV:** one row per finalized or voided invoice by invoice date, with paid, written-off,
+  balance and payment status, for your accountant. Nothing is sent to any accounting system.
+
 ## Not built (by design or deferred)
 No automatic sending (every reminder/statement is approved by a person), no late fees, no accounting/payment-processor integrations (payments
 are *recorded by hand*, nothing is charged or reconciled with a bank), no proration, one tax rate per

@@ -432,3 +432,41 @@ export interface Statement {
   credit_cents: number;
   invoice_count: number;
 }
+
+// ---- reports ----
+export interface RevenueRow {
+  invoices: number;
+  time_cents: number;
+  product_cents: number;
+  agreement_cents: number;
+  manual_cents: number;
+  subtotal_cents: number;
+  tax_cents: number;
+  total_cents: number;
+}
+export interface RevenueReport {
+  start: string;
+  end: string;
+  clients: (RevenueRow & { organization_id: number; organization_name: string })[];
+  months: (RevenueRow & { month: string })[];
+  totals: RevenueRow;
+}
+export interface UnbilledReport {
+  through: string;
+  rows: {
+    organization_id: number;
+    organization_name: string;
+    time_entries: number;
+    billable_minutes: number;
+    time_value_cents: number;
+    unpriced_minutes: number;
+    oldest_work_date: string | null;
+    charges: number;
+    charges_cents: number;
+    total_cents: number;
+  }[];
+  totals: { time_entries: number; billable_minutes: number; time_value_cents: number; unpriced_minutes: number; charges: number; charges_cents: number; total_cents: number };
+}
+export interface RecurringReport {
+  months: { month: string; contracted_cents: number; agreements: number; clients: number; invoiced_cents: number }[];
+}

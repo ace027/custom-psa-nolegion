@@ -37,6 +37,5 @@ Ideas that are not in scope for the current phase. Nothing here gets built witho
 - Late fees
 - Configurable invoice number format; invoice PDF branding/logo
 - Per-user / per-device quantities populated from Microsoft 365 / NinjaOne (the Phase 3 quantity field is the hook)
-- Billing reports: revenue by client, margin on products, unbilled time, agreement MRR trend
-- CSV export of invoices for your accountant
+- Report follow-ups: margin on products, revenue by cash received, replaying past agreement quantity changes, invoice line-item CSV, charts
 - Minimum billable time per entry; retainer / block-hours agreements
