@@ -6,8 +6,10 @@ import Audit from "./pages/Audit";
 import Agreements from "./pages/billing/Agreements";
 import BillingLayout from "./pages/billing/BillingLayout";
 import { InvoiceList, InvoicePage } from "./pages/billing/Invoices";
+import Payments from "./pages/billing/Payments";
 import Products from "./pages/billing/Products";
 import Rates from "./pages/billing/Rates";
+import Receivables from "./pages/billing/Receivables";
 import { RunList, RunPage } from "./pages/billing/Runs";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
@@ -75,6 +77,8 @@ export default function App() {
             <Route path="runs/:id" element={<RunPage />} />
             <Route path="invoices" element={<InvoiceList />} />
             <Route path="invoices/:id" element={<InvoicePage />} />
+            <Route path="receivables" element={<Receivables />} />
+            <Route path="payments" element={<Payments />} />
             <Route path="agreements" element={<Agreements />} />
             <Route path="products" element={<Products />} />
             <Route path="rates" element={<Rates />} />

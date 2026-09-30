@@ -1,21 +1,37 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { InvoiceDetail, InvoiceLine, Invoice, Organization, Page, api } from "../../api";
 import { can, useMe } from "../../auth";
 import { money, parseMoney, parsePercent, percent, qty } from "../../money";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../../ui";
 import { StatusPill } from "./Runs";
 
+const PAY_STYLE: Record<string, string> = {
+  paid: "bg-green-100 text-green-800", partial: "bg-blue-100 text-blue-800", unpaid: "bg-slate-100 text-slate-700", written_off: "bg-slate-100 text-slate-500",
+};
+export function PayPill({ inv }: { inv: Invoice }) {
+  if (!inv.payment_status) return null;
+  return (
+    <span className="flex items-center gap-1">
+      <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${PAY_STYLE[inv.payment_status]}`}>{inv.payment_status.replace("_", " ")}</span>
+      {inv.is_overdue && <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800">{inv.days_past_due}d overdue</span>}
+    </span>
+  );
+}
+
 export function InvoiceList() {
   const { data: me } = useMe();
   const nav = useNavigate();
+  const [sp] = useSearchParams();
   const [status, setStatus] = useState("");
+  const [pay, setPay] = useState(sp.get("pay") ?? "");
+  const filterOrg = sp.get("org");
   const [orgId, setOrgId] = useState("");
   const orgs = useQuery({ queryKey: ["orgs", "", false], queryFn: () => api<Page<Organization>>("/organizations?limit=200&include_archived=false&q=") });
   const list = useQuery({
-    queryKey: ["invoices", status],
-    queryFn: () => api<Page<Invoice>>(`/invoices?limit=100${status ? `&status=${status}` : ""}`),
+    queryKey: ["invoices", status, pay, filterOrg],
+    queryFn: () => api<Page<Invoice>>(`/invoices?limit=100${status ? `&status=${status}` : ""}${pay ? `&payment_status=${pay}` : ""}${filterOrg ? `&organization_id=${filterOrg}` : ""}`),
   });
   const create = useMutation({
     mutationFn: () => api<InvoiceDetail>("/invoices", { method: "POST", json: { organization_id: Number(orgId) } }),
@@ -27,6 +43,11 @@ export function InvoiceList() {
         <Field label="Status">
           <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">Any</option><option value="draft">Draft</option><option value="final">Final</option><option value="void">Void</option>
+          </select>
+        </Field>
+        <Field label="Payment">
+          <select className={inputCls} value={pay} onChange={(e) => setPay(e.target.value)}>
+            <option value="">Any</option><option value="open">Owes money</option><option value="overdue">Overdue</option><option value="unpaid">Nothing paid</option><option value="paid">Paid</option>
           </select>
         </Field>
         {can(me, "billing:write") && (
@@ -43,16 +64,18 @@ export function InvoiceList() {
       </div>
       <ErrorMsg error={create.error ?? list.error} />
       <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
-        <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Number</th><th>Client</th><th>Status</th><th>Date</th><th>Due</th><th className="text-right">Total</th></tr></thead>
+        <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Number</th><th>Client</th><th>Status</th><th>Date</th><th>Due</th><th className="text-right">Total</th><th className="text-right">Balance</th><th>Payment</th></tr></thead>
         <tbody>
           {list.data?.items.map((i) => (
             <tr key={i.id} className="border-b border-slate-100">
               <td className="p-2"><Link className="font-medium text-blue-700 hover:underline" to={`/billing/invoices/${i.id}`}>{i.number ?? `draft #${i.id}`}</Link></td>
               <td>{i.organization_name}</td><td><StatusPill status={i.status} /></td>
               <td>{i.invoice_date ?? ""}</td><td>{i.due_date ?? ""}</td><td className="text-right">{money(i.total_cents)}</td>
+              <td className="text-right">{i.balance_cents === null ? "" : i.balance_cents === 0 ? "–" : money(i.balance_cents)}</td>
+              <td><PayPill inv={i} /></td>
             </tr>
           ))}
-          {list.data?.items.length === 0 && <tr><td colSpan={6} className="p-3 text-slate-500">No invoices.</td></tr>}
+          {list.data?.items.length === 0 && <tr><td colSpan={8} className="p-3 text-slate-500">No invoices.</td></tr>}
         </tbody>
       </table>
     </div>
@@ -86,6 +109,7 @@ export function InvoicePage() {
       </div>
       {inv.warnings.length > 0 && <Card title="Warnings"><ul className="list-disc pl-5 text-sm text-amber-800">{inv.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></Card>}
       {inv.status === "void" && <p className="rounded bg-slate-100 p-2 text-sm">Voided{inv.void_reason ? `: ${inv.void_reason}` : ""}. Its number is kept and never reused.</p>}
+      {inv.status === "final" && <PaymentSection inv={inv} canRecord={can(me, "payment:write")} canVoid={canFinalize} onDone={refresh} />}
       {!draft && <p className="text-sm text-slate-600">Invoice date {inv.invoice_date} · Due {inv.due_date} (Net {inv.terms_days}). This invoice is frozen.</p>}
       <ErrorMsg error={act.error} />
       <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
@@ -170,5 +194,43 @@ function AddLine({ invoiceId, onDone }: { invoiceId: number; onDone: () => void 
       <Button type="submit">Add line</Button>
       <ErrorMsg error={add.error} />
     </form>
+  );
+}
+
+
+function PaymentSection({ inv, canRecord, canVoid, onDone }: { inv: InvoiceDetail; canRecord: boolean; canVoid: boolean; onDone: () => void }) {
+  const unapply = useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => api(`/payment-applications/${id}/void`, { method: "POST", json: { reason } }), onSuccess: onDone });
+  const writeOff = useMutation({ mutationFn: (reason: string) => api(`/invoices/${inv.id}/write-off`, { method: "POST", json: { reason } }), onSuccess: onDone });
+  const voidWo = useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => api(`/write-offs/${id}/void`, { method: "POST", json: { reason } }), onSuccess: onDone });
+  const balance = inv.balance_cents ?? 0;
+  return (
+    <Card title="Payment">
+      <div className="flex flex-wrap items-center gap-4 text-sm">
+        <PayPill inv={inv} />
+        <span>Total <b>{money(inv.total_cents)}</b></span>
+        <span>Paid <b>{money(inv.paid_cents ?? 0)}</b></span>
+        {(inv.written_off_cents ?? 0) > 0 && <span>Written off <b>{money(inv.written_off_cents ?? 0)}</b></span>}
+        <span className={balance > 0 ? "text-base font-semibold" : ""}>Balance <b>{money(balance)}</b></span>
+        {canRecord && balance > 0 && <Link className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700" to={`/billing/payments?new=1&org=${inv.organization_id}&invoice=${inv.id}`}>Record payment</Link>}
+        {canVoid && balance > 0 && <Button variant="secondary" onClick={() => { const r = window.prompt(`Write off the ${money(balance)} balance as uncollectible. Reason (required):`); if (r) writeOff.mutate(r); }}>Write off balance</Button>}
+      </div>
+      <ErrorMsg error={unapply.error ?? writeOff.error ?? voidWo.error} />
+      {(inv.payments.length > 0 || inv.write_offs.length > 0) && (
+        <ul className="mt-3 space-y-1 text-sm">
+          {inv.payments.map((p) => (
+            <li key={p.application_id} className={p.voided_at ? "text-slate-400 line-through" : ""}>
+              {money(p.amount_cents)} · {p.received_on} · {p.method}{p.reference ? ` #${p.reference}` : ""}{p.voided_at ? ` (undone: ${p.void_reason})` : ""}
+              {!p.voided_at && canVoid && <button className="ml-2 text-red-700 hover:underline" onClick={() => { const r = window.prompt("Reason for undoing this payment application:"); if (r) unapply.mutate({ id: p.application_id, reason: r }); }}>undo</button>}
+            </li>
+          ))}
+          {inv.write_offs.map((w) => (
+            <li key={`w${w.id}`} className={w.voided_at ? "text-slate-400 line-through" : ""}>
+              {money(w.amount_cents)} written off: {w.reason}{w.voided_at ? ` (reversed: ${w.void_reason})` : ""}
+              {!w.voided_at && canVoid && <button className="ml-2 text-red-700 hover:underline" onClick={() => { const r = window.prompt("Reason for reversing this write-off:"); if (r) voidWo.mutate({ id: w.id, reason: r }); }}>reverse</button>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }

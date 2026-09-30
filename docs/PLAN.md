@@ -1,6 +1,6 @@
 # Custom PSA — Plan
 
-**Status (updated after Phase 3):** plan approved with all §13 defaults accepted. Phases 0-3 (the MVP) are built and tested. Waiting for your review of Phase 3 and your decision on what comes next (see `docs/BACKLOG.md`).
+**Status (updated after payment tracking):** plan approved with all §13 defaults accepted. Phases 0-3 (the MVP) and payment tracking are built and tested. Waiting for your review of Phase 3 and your decision on what comes next (see `docs/BACKLOG.md`).
 
 ## Progress
 
@@ -9,7 +9,18 @@
 | 0. Scaffold | Done. Repo layout, Compose stack, CI workflow, Alembic, roles/RLS scaffolding, health checks |
 | 1. Foundation | Done. Orgs/sites/contacts, staff users + roles, Entra OIDC, audit log, seed, UI, 68 backend tests, 6 frontend tests, 1 browser smoke test |
 | 2. Ticketing | Done. Tickets, queues/categories/priorities, SLA clocks, notes, time, triage, Graph email in/out via a worker, dashboard, settings UI. 191 backend tests, 10 frontend tests, 2 browser smoke tests |
+| 3b. Payment tracking (added after the MVP, at your request) | Done. Payments, applications, write-offs, receivables aging. 361 backend tests, 57 frontend tests, 3 browser tests |
 | 3. Contracts & invoicing | Done. Agreements, products, rates, one-off charges, invoices, monthly run with review, PDF. 312 backend tests, 49 frontend tests, 3 browser tests |
+
+### Payment tracking (3b): decisions and things to check
+Choices you made: payments can be **partial and split across invoices**; overpayments become **unapplied credit**; **write-offs** exist (reason required); aging is by **days past the due date** in the standard buckets.
+- **Balances are derived, never stored** on the (frozen) invoice: `total - active applications - active write-offs`. Payments, applications and write-offs are **immutable except for voiding with a required reason** (no edits, no deletes). Wrong entry? Void and re-record.
+- **Database-enforced money rules** (triggers, so they hold even if the API is bypassed and under concurrent requests): apply only to a finalized invoice, same client, never more than the invoice balance or the payment's unapplied amount. A test fires ten simultaneous $30 payments at a $100 invoice: exactly three succeed.
+- **An invoice with payments/write-offs cannot be voided** until those are undone.
+- **No processor/bank integration:** nothing is charged or reconciled; payments are entered by hand. No refund record (void the payment), no payment reminders or statements (backlog).
+- **Payment dates can't be in the future** (business time zone). Browser testing caught a real bug here: the form defaulted to the UTC date, which is "tomorrow" in a US evening. The form now leaves the date blank and the server supplies your business-timezone today.
+- **New permission** `payment:write` (admin, billing). Voiding payments/applications, write-offs and their reversal use `billing:finalize`. Techs and read-only can *see* balances and receivables.
+- **Invoice PDFs don't change** when payments arrive (no PAID stamp/balance): they are the document you issued.
 
 ### Phase 3 decisions and things to check (read these)
 - **Your "go" is treated as approval of the §6 billing rules** as written (integer cents, per-line half-up rounding, per-line tax on the rounded amount, tax-rate snapshot, immutable finalized invoices, void + reissue). They are implemented exactly and covered by tests, including an independent exact-arithmetic reference check. Full explanation and a worked example: `docs/BILLING.md`.

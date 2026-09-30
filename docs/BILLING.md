@@ -56,7 +56,40 @@ Client tax rate 8.25%; agreement "Managed Services" 12 users x $12.00 (taxable);
 | Goodwill credit | -$10.00 | - |
 | **Subtotal $246.50, tax $11.88, total $258.38** | | |
 
+## Payments and receivables
+**An invoice's balance is never stored on the invoice** (finalized invoices are frozen). It is always
+`invoice total - payments applied - write-offs`, worked out from the records below.
+
+| Record | What it is | Can it be edited? |
+|---|---|---|
+| **Payment** | Money received from a client: amount, date, method (check/ACH/card/cash/other), reference | No. Void it (reason required) and record it again |
+| **Application** | The part of a payment that pays a particular invoice | No. Undo it (reason required); the money returns to the payment as credit |
+| **Write-off** | An uncollectible balance you give up on, with a required reason | No. Reverse it (reason required) |
+
+Rules (enforced by database triggers as well as the app, including under simultaneous requests):
+- A payment can be **split across several invoices** and can be **partial**; whatever is not applied stays as **credit** on the client's account, to be applied to a later invoice.
+- Money can only be applied to a **finalized** invoice **of the same client**, never more than the invoice's remaining balance, and never more than the payment's unapplied amount.
+- An invoice with payments or write-offs on it **cannot be voided**: undo those first (so nothing is ever left pointing at a void invoice).
+- A payment cannot be dated in the future (your business time zone). Leave the date blank for today.
+- Voiding a payment undoes all of its applications: the invoices it paid become open again.
+
+Invoice payment status: **unpaid** (nothing received), **partial**, **paid** (balance 0), **written off**
+(balance 0 after a write-off). **Overdue** = balance > 0 and past the due date.
+
+**Receivables** (Billing > Receivables) groups open balances by client into Current (not yet due),
+1-30, 31-60, 61-90 and 90+ days **past the due date**, and shows each client's unapplied credit. The
+Billing tab shows how many invoices are overdue. Filter the Invoices list by Payment (owes money /
+overdue / nothing paid / paid).
+
+Recording a payment: Billing > Payments (or *Record payment* on an invoice or a receivables row).
+Pick the client, enter the amount, then *Auto-apply, oldest first* or type amounts per invoice; the
+form tells you how much will be kept as credit. To use credit later: Payments > details > *Apply credit*.
+
+The invoice PDF is the document you issued and does not change when payments arrive (no PAID stamp or
+running balance); see the backlog for statements.
+
 ## Not built (by design or deferred)
-No payment recording or A/R aging, no emailing of invoices, no accounting/payment integrations, no
-proration, one tax rate per client (no per-state/jurisdiction tax), no late fees, fixed invoice number
-format. See `docs/BACKLOG.md`.
+No emailing of invoices or payment reminders, no accounting/payment-processor integrations (payments
+are *recorded by hand*, nothing is charged or reconciled with a bank), no proration, one tax rate per
+client (no per-state/jurisdiction tax), no late fees, no refunds as a separate record (void the
+payment), fixed invoice number format. See `docs/BACKLOG.md`.

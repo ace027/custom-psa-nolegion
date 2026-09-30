@@ -232,6 +232,12 @@ export interface Invoice {
   warnings: string[];
   void_reason: string | null;
   created_at: string;
+  paid_cents: number | null;
+  written_off_cents: number | null;
+  balance_cents: number | null;
+  payment_status: "unpaid" | "partial" | "paid" | "written_off" | null;
+  is_overdue: boolean;
+  days_past_due: number;
 }
 export interface InvoiceLine {
   id: number;
@@ -245,6 +251,17 @@ export interface InvoiceLine {
 }
 export interface InvoiceDetail extends Invoice {
   lines: InvoiceLine[];
+  payments: {
+    application_id: number;
+    payment_id: number;
+    amount_cents: number;
+    received_on: string;
+    method: string;
+    reference: string | null;
+    voided_at: string | null;
+    void_reason: string | null;
+  }[];
+  write_offs: { id: number; amount_cents: number; reason: string; created_at: string; voided_at: string | null; void_reason: string | null }[];
 }
 export interface Run {
   id: number;
@@ -308,4 +325,45 @@ export interface OrgBilling {
   payment_terms_days: number;
   tax_rate_bp: number;
   rates: { work_type_id: number; rate_cents: number }[];
+}
+
+// ---- payments ----
+export type PaymentMethod = "check" | "ach" | "card" | "cash" | "other";
+export const METHODS: PaymentMethod[] = ["check", "ach", "card", "cash", "other"];
+export interface Payment {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  amount_cents: number;
+  received_on: string;
+  method: PaymentMethod;
+  reference: string | null;
+  notes: string | null;
+  status: "active" | "void";
+  applied_cents: number;
+  unapplied_cents: number;
+  void_reason: string | null;
+  created_at: string;
+}
+export interface PaymentDetail extends Payment {
+  applications: { id: number; invoice_id: number; amount_cents: number; voided_at: string | null; void_reason: string | null }[];
+}
+export interface AgingRow {
+  organization_id: number;
+  organization_name: string;
+  current_cents: number;
+  d1_30_cents: number;
+  d31_60_cents: number;
+  d61_90_cents: number;
+  d90_plus_cents: number;
+  total_open_cents: number;
+  credit_cents: number;
+  open_invoice_count: number;
+  overdue_invoice_count: number;
+  oldest_days_past_due: number;
+}
+export interface Receivables {
+  as_of: string;
+  rows: AgingRow[];
+  totals: AgingRow;
 }

@@ -48,4 +48,24 @@ test("monthly billing run: build, review, adjust, re-review, finalize, PDF", asy
   expect(pdf.status()).toBe(200);
   expect(pdf.headers()["content-type"]).toBe("application/pdf");
   expect((await pdf.body()).subarray(0, 4).toString()).toBe("%PDF");
+
+  // ---- payments: record a payment against this invoice, see it paid, and see receivables move ----
+  await page.goto(page.url()); // stay on the finalized invoice
+  await expect(page.getByText("unpaid").first()).toBeVisible();
+  await page.getByRole("link", { name: "Record payment" }).first().click();
+  await expect(page.getByRole("heading", { name: "Record a payment" })).toBeVisible();
+  await page.getByLabel("Reference (check #, ACH id)").fill("E2E-1001");
+  await expect(page.getByText("Fully applied.")).toBeVisible(); // prefilled from the invoice balance
+  await page.getByRole("button", { name: "Record payment" }).click();
+  await expect(page.getByRole("cell", { name: "E2E-1001" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Invoices" }).click();
+  await page.getByLabel("Payment").selectOption("paid");
+  await expect(page.getByRole("link", { name: numbers[0] })).toBeVisible();
+  await page.getByLabel("Payment").selectOption("open");
+  await expect(page.getByRole("link", { name: numbers[0] })).toHaveCount(0);
+
+  await page.getByRole("link", { name: /^Receivables/ }).click();
+  await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
+  await expect(page.getByText("Outstanding", { exact: true })).toBeVisible();
 });

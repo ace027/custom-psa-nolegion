@@ -5,6 +5,10 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 **Status:** Phases 1-3 (Foundation, Ticketing, Contracts & invoicing) complete: the MVP. See [docs/PLAN.md](docs/PLAN.md) for the roadmap and design decisions, and [docs/BACKLOG.md](docs/BACKLOG.md) for ideas that are deliberately not built yet.
 
 ## What works today
+**Payment tracking**
+- Record payments (partial, split across invoices, unapplied credit), write-offs with a reason, paid/partial/overdue status, and a receivables aging report by client
+- Balances are derived; payments, applications and write-offs are never edited (void with a reason), enforced by the database
+
 **Phase 3: contracts and invoicing**
 - Recurring agreements (per user, per device, flat fee), product catalog, hourly rates (per work type, with per-client overrides), one-off product charges
 - Draft invoices from billable time, products and agreements; a **monthly billing run with a review step**, then all-or-nothing finalize with gap-free numbering

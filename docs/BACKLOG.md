@@ -24,7 +24,11 @@ Ideas that are not in scope for the current phase. Nothing here gets built witho
 - Time entry start/stop timers
 - Delta-query mail sync (current design: poll unread in Inbox)
 - Notifications (email/Teams) for new, unassigned or SLA-breached tickets
-- **Payment tracking**: record payments, paid/unpaid/overdue status, A/R aging (no integrations, just tracking)
+- Client statements (PDF of open invoices, payments and credit) and payment reminder emails
+- Bank/CSV import to speed up recording payments; batch deposits
+- Refunds as a first-class record (currently: void the payment)
+- "Paid" stamp / running balance on a re-issued copy of the invoice PDF
+- Payment terms exceptions (per-invoice due date override)
 - Emailing invoices/statements from the PSA (with the PDF attached)
 - Credit memos as a first-class document (currently: negative manual lines)
 - Proration of mid-month agreement start/end and quantity changes

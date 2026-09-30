@@ -7,13 +7,14 @@ import App from "./App";
 const json = (body: unknown, status = 200) => () => new Response(JSON.stringify(body), { status });
 const me = (role: string, permissions: string[]) => ({ id: 1, email: "u@example.com", display_name: "Una User", role, permissions });
 const READ = ["org:read", "user:read", "ticket:read", "billing:read"];
-const BILL = [...READ, "billing:write", "billing:finalize", "charge:write"];
+const BILL = [...READ, "billing:write", "billing:finalize", "charge:write", "payment:write"];
 
 const invoice = (over = {}) => ({
   id: 5, number: null, organization_id: 1, organization_name: "Acme Corp", status: "draft", billing_run_id: null,
   period_start: null, period_end: null, invoice_date: null, due_date: null, terms_days: null,
   subtotal_cents: 30000, tax_cents: 2475, total_cents: 32475, memo: null, warnings: [], void_reason: null,
-  created_at: "2026-09-30T12:00:00Z", lines: [
+  created_at: "2026-09-30T12:00:00Z", paid_cents: null, written_off_cents: null, balance_cents: null,
+  payment_status: null, is_overdue: false, days_past_due: 0, payments: [], write_offs: [], lines: [
     { id: 11, kind: "agreement", description: "Managed Services: 25 users x $12.00 (Sep 2026)", quantity: "25.0000", unit_price_cents: 1200, amount_cents: 30000, tax_rate_bp: 825, tax_cents: 2475 },
   ], ...over,
 });
@@ -53,7 +54,7 @@ describe("invoice page", () => {
   it("shows a finalized invoice as frozen: no edit controls, even for billing", async () => {
     go("/billing/invoices/5", {
       "/api/auth/me": json(me("billing", BILL)),
-      "/api/invoices/5": json(invoice({ status: "final", number: "INV-2026-0001", invoice_date: "2026-09-30", due_date: "2026-10-30", terms_days: 30 })),
+      "/api/invoices/5": json(invoice({ status: "final", number: "INV-2026-0001", invoice_date: "2026-09-30", due_date: "2026-10-30", terms_days: 30, paid_cents: 0, written_off_cents: 0, balance_cents: 32475, payment_status: "unpaid" })),
     });
     expect(await screen.findByText("INV-2026-0001")).toBeInTheDocument();
     expect(screen.getByText(/This invoice is frozen/)).toBeInTheDocument();

@@ -4,6 +4,7 @@ import { OrgBilling, WorkTypeBilling, api } from "../api";
 import { can, useMe } from "../auth";
 import { money, parsePercent, parseMoney, percent } from "../money";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../ui";
+import { useReceivables } from "./billing/Receivables";
 
 export default function OrgBillingCard({ orgId }: { orgId: number }) {
   const { data: me } = useMe();
@@ -31,10 +32,17 @@ export default function OrgBillingCard({ orgId }: { orgId: number }) {
     },
     onSuccess: refresh,
   });
+  const rec = useReceivables();
+  const acct = rec.data?.rows.find((r) => r.organization_id === orgId);
   if (!b.data) return null;
   const overrides = new Map(b.data.rates.map((r) => [r.work_type_id, r.rate_cents]));
   return (
     <Card title="Billing">
+      <p className="mb-3 text-sm">
+        Account: <b>{money(acct?.total_open_cents ?? 0)}</b> outstanding
+        {acct && acct.overdue_invoice_count > 0 && <span className="text-red-700"> ({acct.overdue_invoice_count} overdue, oldest {acct.oldest_days_past_due} days)</span>}
+        {acct && acct.credit_cents > 0 && <span> · <b>{money(acct.credit_cents)}</b> unapplied credit</span>}
+      </p>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Payment terms (days)"><input className={inputCls} type="number" min={0} max={365} disabled={!canWrite} value={terms ?? b.data.payment_terms_days} onChange={(e) => setTerms(e.target.value)} /></Field>
         <Field label="Sales tax rate (%)"><input className={inputCls} disabled={!canWrite} value={tax ?? percent(b.data.tax_rate_bp).replace("%", "")} onChange={(e) => setTax(e.target.value)} /></Field>
