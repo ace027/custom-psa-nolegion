@@ -1,4 +1,5 @@
-FROM node:22-slim AS build
+ARG NODE_IMAGE=node:22-slim
+FROM ${NODE_IMAGE} AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci

@@ -62,3 +62,15 @@ The three client-owned tables use `FORCE ROW LEVEL SECURITY`, which applies even
 Consequence: `pg_dump` as a role WITHOUT `BYPASSRLS` **fails** (good: loud, not a silent partial
 backup). Never "fix" that with `pg_dump --enable-row-security`; that produces an incomplete dump.
 The owner role is only used by operators/migrations, never by the API.
+
+## Docker inside the Claude Code cloud sandbox (for testing the Compose stack)
+The sandbox has Docker installed but the daemon is not running, and outbound TLS goes through an
+intercepting proxy. To exercise `docker compose`:
+1. Start the daemon: `nohup dockerd > /tmp/dockerd.log 2>&1 &` then `docker run --rm hello-world`.
+2. Build base images that trust the proxy CA (`/root/.ccr/ca-bundle.crt`): a tiny Dockerfile that
+   `FROM python:3.12-slim` / `node:22-slim`, copies the CA and sets `PIP_CERT` / `SSL_CERT_FILE` /
+   `NODE_EXTRA_CA_CERTS` / `npm_config_cafile`.
+3. Use an untracked override that passes them through the Dockerfiles' `PYTHON_IMAGE` / `NODE_IMAGE`
+   build args, and set `HTTP_PORT=8080` in `.env`:
+   `docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d --build`
+This is only needed in that sandbox; on your own VM plain `docker compose up -d --build` is enough.

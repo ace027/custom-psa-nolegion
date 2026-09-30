@@ -27,5 +27,5 @@ Prep: dev stack running with seed data (`docs/DEVELOPMENT.md`), or a deployed st
 
 ## Platform
 - [ ] `/api/docs` lists every endpoint with descriptions
-- [ ] `docker compose up -d --build` starts cleanly on your VM (not yet exercised in CI/dev sandbox, see PLAN status)
+- [ ] `docker compose up -d --build` starts cleanly on your VM (it was verified in the dev sandbox; your VM adds real DNS/HTTPS and Entra)
 - [ ] Run the backup script once and do the restore drill from `docs/BACKUP_RESTORE.md`
