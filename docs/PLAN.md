@@ -1,6 +1,25 @@
-# Custom PSA — Plan (DRAFT, awaiting approval)
+# Custom PSA — Plan
 
-Status: **planning only. No code has been written.** Approve, or mark up, this document before scaffolding starts.
+**Status (updated after Phase 1):** plan approved with all §13 defaults accepted. Phase 0 (scaffold) and Phase 1 (Foundation) are built and tested. Phase 2 (Ticketing) has not started; waiting for review of Phase 1.
+
+## Progress
+
+| Phase | Status |
+|---|---|
+| 0. Scaffold | Done. Repo layout, Compose stack, CI workflow, Alembic, roles/RLS scaffolding, health checks |
+| 1. Foundation | Done. Orgs/sites/contacts, staff users + roles, Entra OIDC, audit log, seed, UI, 68 backend tests, 6 frontend tests, 1 browser smoke test |
+| 2. Ticketing | Not started |
+| 3. Contracts & invoicing | Not started |
+
+### Phase 1 deviations and discoveries (read these)
+- **Backup gotcha found while testing:** `FORCE ROW LEVEL SECURITY` makes `pg_dump` fail for a non-`BYPASSRLS` owner. Good (loud), but the owner role must have `BYPASSRLS`. Documented in `docs/DEVELOPMENT.md` and `docs/BACKUP_RESTORE.md`; an automated dump→restore drill in the test suite now guards it.
+- **Not verified in the dev sandbox:** `docker compose up` (no Docker daemon was available). `docker compose config` validates, and the API, migrations, RLS, backup/restore pipeline and browser flow were all run for real against local PostgreSQL 16. **Please do the first `docker compose up --build` on your VM and tell me what breaks.**
+- **Python 3.11 locally / 3.12 in Docker:** code is written to run on both; CI uses 3.12.
+- **CSRF:** besides `SameSite=Lax` cookies, every state-changing request must carry `X-Requested-With: psa` (added beyond the plan; cheap defense in depth).
+- **Dev login:** a development-only sign-in path exists so the app is usable without an Entra tenant. It is disabled unless `DEV_LOGIN_ENABLED=true`, and hard-refused when `ENVIRONMENT=production`.
+- **First admin** on a fresh production DB is bootstrapped with one SQL insert (see `docs/ENTRA_SETUP.md`). It is the only unaudited write.
+- Organization `default tax settings` were left out of Phase 1 (nothing uses them yet); they arrive with Phase 3.
+- The plan's `tests per endpoint` promise is enforced by a test that fails if any route is undocumented, missing a permission declaration, or never called by the suite.
 
 ## 1. Decisions locked in (from your answers)
 
@@ -176,7 +195,7 @@ Each phase ends with: tests passing, README/PLAN updated, seed data, manual veri
 9. **Statuses/priorities as data vs. enums:** fully configurable workflows are a time sink. Plan uses a fixed status enum with editable labels, and priorities/queues/categories as editable rows.
 10. **Time zones:** store UTC, display in org/staff zone, define "billing day" and business hours in a single configured zone.
 
-## 13. Open questions (I've stated my default; tell me if you disagree)
+## 13. Open questions (RESOLVED: all defaults accepted)
 
 1. **Reverse proxy:** do you already run one (nginx / Traefik / NPM)? *Default: ship Caddy in Compose.*
 2. **New Entra user handling:** auto-create as read-only on first login, or require an admin to pre-provision? *Default: pre-provision only (safer).*

@@ -1,0 +1,58 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: psa_owner   # superuser in the image => bypasses RLS, as pg_dump/migrations need
+          POSTGRES_PASSWORD: owner_dev
+          POSTGRES_DB: psa_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U psa_owner" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: owner_dev
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Create runtime DB role (non-owner, RLS applies)
+        run: psql -h localhost -U psa_owner -d psa_test -c "CREATE ROLE psa_app LOGIN PASSWORD 'app_dev' NOSUPERUSER NOBYPASSRLS"
+      - run: pip install -e ".[dev]" pip-audit
+      - run: ruff check app tests
+      - run: ruff format --check app tests
+      - run: pytest -q
+      - run: pip-audit
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
