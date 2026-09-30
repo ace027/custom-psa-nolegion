@@ -8,7 +8,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.config import get_settings
 from app.context import client_ip_var, request_id_var
 from app.errors import Conflict, Forbidden, NotFound
-from app.routers import auth, health, organizations, users
+from app.routers import auth, config, health, organizations, tickets, users
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -64,7 +64,7 @@ def create_app() -> FastAPI:
         return JSONResponse({"detail": str(exc)}, status_code=403)
 
     app.include_router(health.router)
-    for r in (auth.router, organizations.router, users.router):
+    for r in (auth.router, organizations.router, users.router, tickets.router, config.router):
         app.include_router(r, prefix="/api")
     return app
 

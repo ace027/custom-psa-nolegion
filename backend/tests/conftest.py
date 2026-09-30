@@ -28,7 +28,22 @@ from sqlalchemy import create_engine, text  # noqa: E402
 from alembic import command  # noqa: E402
 from app.main import app  # noqa: E402
 
-TABLES = "audit_log, sessions, contacts, sites, organizations, users"
+TABLES = (
+    "attachments, time_entries, ticket_notes, email_messages, tickets, audit_log, sessions, "
+    "contacts, sites, organizations, users, queues, categories, priorities, work_types"
+)
+
+RESEED = """
+INSERT INTO queues (name, is_default) VALUES ('Support', true), ('Security', false);
+INSERT INTO categories (name) VALUES ('General'), ('Microsoft 365'), ('Network');
+INSERT INTO priorities (name, rank, first_response_minutes, resolution_minutes, is_default)
+  VALUES ('Urgent', 1, 30, 240, false), ('High', 2, 60, 480, false),
+         ('Normal', 3, 240, 1440, true), ('Low', 4, 480, 4320, false);
+INSERT INTO work_types (name) VALUES ('Remote'), ('Onsite'), ('After hours');
+DELETE FROM settings; INSERT INTO settings (id) VALUES (1);
+DELETE FROM mailbox_status; INSERT INTO mailbox_status (id) VALUES (1);
+ALTER SEQUENCE ticket_number_seq RESTART WITH 10001;
+"""
 HIT_ROUTES: set[tuple[str, str]] = set()
 
 
@@ -59,6 +74,9 @@ def owner_engine():
 def clean_db(owner_engine):
     with owner_engine.begin() as c:
         c.execute(text(f"TRUNCATE {TABLES} RESTART IDENTITY CASCADE"))
+        for stmt in RESEED.strip().split(";\n"):
+            if stmt.strip():
+                c.execute(text(stmt))
 
 
 @pytest.fixture
@@ -116,6 +134,28 @@ def anon():
 def make_org(admin):
     def _make(name="Acme Corp", **kw):
         r = admin.post("/api/organizations", json={"name": name, **kw})
+        assert r.status_code == 201, r.text
+        return r.json()
+
+    return _make
+
+
+@pytest.fixture
+def org_ctx(admin, make_org):
+    """An organization with a contact, ready to have tickets."""
+    org = make_org("Acme Corp")
+    contact = admin.post(
+        f"/api/organizations/{org['id']}/contacts",
+        json={"name": "Pat Customer", "email": "pat@acme.com"},
+    ).json()
+    return {"org": org["id"], "contact": contact["id"]}
+
+
+@pytest.fixture
+def make_ticket(admin, org_ctx):
+    def _make(**kw):
+        body = {"organization_id": org_ctx["org"], "subject": "Printer down", **kw}
+        r = admin.post("/api/tickets", json=body)
         assert r.status_code == 201, r.text
         return r.json()
 

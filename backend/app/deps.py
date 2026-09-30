@@ -22,7 +22,7 @@ from app.scope import Scope
 @dataclass
 class Ctx:
     db: Session
-    user: User
+    user: User | None  # None = system actor (mail worker)
     scope: Scope
 
 

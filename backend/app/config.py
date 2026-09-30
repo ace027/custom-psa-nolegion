@@ -25,9 +25,28 @@ class Settings(BaseSettings):
 
     dev_login_enabled: bool = False
 
+    # Inbound/outbound mail (Microsoft Graph, application permissions scoped by Exchange RBAC to
+    # ONE mailbox). Use a SEPARATE app registration from the sign-in one. See docs/MAIL_SETUP.md.
+    graph_tenant_id: str = ""
+    graph_client_id: str = ""
+    graph_client_secret: str = ""
+    mail_mailbox: str = ""  # e.g. support@yourmsp.com
+    mail_poll_seconds: int = 60
+    attachments_dir: str = "./data/attachments"
+    max_attachment_bytes: int = 10 * 1024 * 1024
+
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    @property
+    def mail_configured(self) -> bool:
+        return bool(
+            self.graph_tenant_id
+            and self.graph_client_id
+            and self.graph_client_secret
+            and self.mail_mailbox
+        )
 
     @property
     def entra_configured(self) -> bool:

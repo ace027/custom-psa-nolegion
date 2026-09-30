@@ -10,6 +10,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.pool import NullPool
 
 from tests.conftest import HOST, NAME, PORT
+from tests.test_isolation import rls_gaps
 
 pytestmark = pytest.mark.skipif(not shutil.which("pg_dump"), reason="pg_dump not installed")
 
@@ -41,15 +42,7 @@ def test_dump_and_restore_preserves_data_and_security(admin, make_org, owner_eng
         with scratch.connect() as c:
             assert c.execute(text("SELECT name FROM organizations")).scalar_one() == "Backed Up Co"
             assert c.execute(text("SELECT count(*) FROM audit_log")).scalar_one() >= 1
-            forced = c.execute(
-                text(
-                    "SELECT bool_and(relrowsecurity AND relforcerowsecurity) FROM pg_class "
-                    "WHERE relname IN ('organizations','sites','contacts')"
-                )
-            ).scalar_one()
-            assert forced is True
-            policies = c.execute(text("SELECT count(*) FROM pg_policies")).scalar_one()
-            assert policies == 3
+            assert rls_gaps(c) == []  # every client-owned table still has forced RLS + a policy
             assert (
                 c.execute(
                     text("SELECT has_table_privilege('psa_app','audit_log','UPDATE')")

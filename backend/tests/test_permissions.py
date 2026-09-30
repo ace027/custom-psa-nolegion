@@ -19,11 +19,33 @@ def seeded(admin, make_org):
     org = make_org()
     site = admin.post(f"/api/organizations/{org['id']}/sites", json={"name": "HQ"}).json()
     contact = admin.post(f"/api/organizations/{org['id']}/contacts", json={"name": "Pat"}).json()
-    return {"org": org["id"], "site": site["id"], "contact": contact["id"]}
+    ticket = admin.post("/api/tickets", json={"organization_id": org["id"], "subject": "T"}).json()
+    wt = admin.get("/api/work-types").json()[0]["id"]
+    entry = admin.post(
+        f"/api/tickets/{ticket['id']}/time", json={"work_type_id": wt, "minutes": 5}
+    ).json()
+    extras = {
+        path: admin.post(f"/api/{path}", json=body).json()["id"]
+        for path, body in (
+            ("queues", {"name": "Extra"}),
+            ("categories", {"name": "Extra"}),
+            ("work-types", {"name": "Extra"}),
+            ("priorities", {"name": "Extra", "rank": 8}),
+        )
+    }
+    return {
+        "org": org["id"],
+        "site": site["id"],
+        "contact": contact["id"],
+        "ticket": ticket["id"],
+        "entry": entry["id"],
+        "extras": extras,
+    }
 
 
 def calls(ids):
     o, s, c = ids["org"], ids["site"], ids["contact"]
+    t, e, x = ids["ticket"], ids["entry"], ids["extras"]
     # (method, path, json, permission needed)
     return [
         ("GET", "/api/organizations", None, "read"),
@@ -52,6 +74,48 @@ def calls(ids):
         ),
         ("PATCH", "/api/users/1", {"display_name": "Z"}, "admin"),
         ("GET", "/api/audit", None, "admin"),
+        # Phase 2
+        ("GET", "/api/tickets", None, "read"),
+        ("GET", f"/api/tickets/{t}", None, "read"),
+        ("GET", f"/api/tickets/{t}/notes", None, "read"),
+        ("GET", f"/api/tickets/{t}/time", None, "read"),
+        ("GET", f"/api/tickets/{t}/attachments", None, "read"),
+        ("GET", "/api/attachments/1/download", None, "file"),
+        ("GET", "/api/dashboard", None, "read"),
+        ("GET", "/api/settings", None, "read"),
+        ("GET", "/api/queues", None, "read"),
+        ("GET", "/api/categories", None, "read"),
+        ("GET", "/api/priorities", None, "read"),
+        ("GET", "/api/work-types", None, "read"),
+        ("POST", "/api/tickets", {"organization_id": o, "subject": "N"}, "write"),
+        ("PATCH", f"/api/tickets/{t}", {"subject": "S2"}, "write"),
+        ("POST", f"/api/tickets/{t}/notes", {"body": "n"}, "write"),
+        (
+            "POST",
+            f"/api/tickets/{t}/time",
+            {"work_type_id": x["work-types"], "minutes": 5},
+            "write",
+        ),
+        ("PATCH", f"/api/time-entries/{e}", {"minutes": 6}, "write"),
+        ("POST", f"/api/time-entries/{e}/void", None, "write"),
+        ("PATCH", "/api/settings", {"sla_at_risk_percent": 30}, "admin"),
+        ("GET", "/api/mail/status", None, "admin"),
+        ("POST", "/api/queues", {"name": "Q2"}, "admin"),
+        ("PATCH", f"/api/queues/{x['queues']}", {"name": "Q3"}, "admin"),
+        ("POST", f"/api/queues/{x['queues']}/archive", None, "admin"),
+        ("POST", f"/api/queues/{x['queues']}/unarchive", None, "admin"),
+        ("POST", "/api/categories", {"name": "C2"}, "admin"),
+        ("PATCH", f"/api/categories/{x['categories']}", {"name": "C3"}, "admin"),
+        ("POST", f"/api/categories/{x['categories']}/archive", None, "admin"),
+        ("POST", f"/api/categories/{x['categories']}/unarchive", None, "admin"),
+        ("POST", "/api/work-types", {"name": "W2"}, "admin"),
+        ("PATCH", f"/api/work-types/{x['work-types']}", {"name": "W3"}, "admin"),
+        ("POST", f"/api/work-types/{x['work-types']}/archive", None, "admin"),
+        ("POST", f"/api/work-types/{x['work-types']}/unarchive", None, "admin"),
+        ("POST", "/api/priorities", {"name": "P2", "rank": 7}, "admin"),
+        ("PATCH", f"/api/priorities/{x['priorities']}", {"rank": 6}, "admin"),
+        ("POST", f"/api/priorities/{x['priorities']}/archive", None, "admin"),
+        ("POST", f"/api/priorities/{x['priorities']}/unarchive", None, "admin"),
     ]
 
 
@@ -60,15 +124,23 @@ ALLOWED = {
     "read": set(ROLES),
     "write": {"admin", "tech"},
     "admin": {"admin"},
+    "file": set(ROLES),
 }
 
 
 @pytest.mark.parametrize("role", ROLES)
 def test_role_matrix(role, login, seeded):
     client = login(role)
+    if role in ("admin", "tech"):  # editing time is limited to your own entries (or admin)
+        wt = seeded["extras"]["work-types"]
+        seeded["entry"] = client.post(
+            f"/api/tickets/{seeded['ticket']}/time", json={"work_type_id": wt, "minutes": 5}
+        ).json()["id"]
     for method, path, body, need in calls(seeded):
         r = client.request(method, path, json=body)
-        if role in ALLOWED[need]:
+        if need == "file":  # everyone may try; the file itself does not exist in this test
+            assert r.status_code == 404, (role, path, r.status_code)
+        elif role in ALLOWED[need]:
             assert r.status_code < 400, (role, method, path, r.status_code, r.text)
         else:
             assert r.status_code == 403, (role, method, path, r.status_code)

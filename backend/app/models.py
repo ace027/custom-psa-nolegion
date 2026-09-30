@@ -1,19 +1,22 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Identity,
     Index,
+    Integer,
+    SmallInteger,
     String,
     Text,
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -128,3 +131,180 @@ class AuditLog(Base):
     ip: Mapped[str | None] = mapped_column(String(64))
 
     __table_args__ = (Index("ix_audit_entity", "entity_type", "entity_id"),)
+
+
+# ---------------------------------------------------------------------------------------
+# Phase 2: ticketing
+# ---------------------------------------------------------------------------------------
+
+STATUSES = ("new", "open", "waiting_on_customer", "resolved", "closed")
+CLOCK_STOPPED = frozenset({"waiting_on_customer", "resolved", "closed"})
+
+
+class _Lookup(TimestampMixin):
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Queue(_Lookup, Base):
+    __tablename__ = "queues"
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+
+
+class Category(_Lookup, Base):
+    __tablename__ = "categories"
+
+
+class Priority(_Lookup, Base):
+    __tablename__ = "priorities"
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    first_response_minutes: Mapped[int | None] = mapped_column(Integer)
+    resolution_minutes: Mapped[int | None] = mapped_column(Integer)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+
+
+class WorkType(_Lookup, Base):
+    __tablename__ = "work_types"
+
+
+class Settings(Base):
+    """Single-row table (id = 1)."""
+
+    __tablename__ = "settings"
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False)
+    business_days: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)
+    business_start_minute: Mapped[int] = mapped_column(Integer, nullable=False)
+    business_end_minute: Mapped[int] = mapped_column(Integer, nullable=False)
+    billing_increment_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sla_at_risk_percent: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class MailboxStatus(Base):
+    __tablename__ = "mailbox_status"
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    last_poll_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    last_error_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    messages_ingested: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+
+
+class Ticket(TimestampMixin, Base):
+    __tablename__ = "tickets"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    number: Mapped[int] = mapped_column(
+        BigInteger, server_default=text("nextval('ticket_number_seq')")
+    )
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"))
+    contact_id: Mapped[int | None] = mapped_column(ForeignKey("contacts.id"))
+    site_id: Mapped[int | None] = mapped_column(ForeignKey("sites.id"))
+    queue_id: Mapped[int] = mapped_column(ForeignKey("queues.id"), nullable=False)
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"))
+    priority_id: Mapped[int] = mapped_column(ForeignKey("priorities.id"), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, server_default="new")
+    assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    subject: Mapped[str] = mapped_column(String(300), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(10), nullable=False, server_default="ui")
+    requester_email: Mapped[str | None] = mapped_column(String(320))
+    sla_first_response_due: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sla_resolution_due: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    first_responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sla_paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sla_paused_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+    organization: Mapped[Organization | None] = relationship(lazy="joined")
+    contact: Mapped[Contact | None] = relationship(lazy="joined")
+    queue: Mapped[Queue] = relationship(lazy="joined")
+    category: Mapped[Category | None] = relationship(lazy="joined")
+    priority: Mapped[Priority] = relationship(lazy="joined")
+    assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id], lazy="joined")
+
+
+class EmailMessage(Base):
+    __tablename__ = "email_messages"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    direction: Mapped[str] = mapped_column(String(3), nullable=False)
+    graph_message_id: Mapped[str | None] = mapped_column(String(400), unique=True)
+    internet_message_id: Mapped[str | None] = mapped_column(String(998))
+    in_reply_to: Mapped[str | None] = mapped_column(String(998))
+    conversation_id: Mapped[str | None] = mapped_column(String(400))
+    ticket_id: Mapped[int | None] = mapped_column(ForeignKey("tickets.id"))
+    organization_id: Mapped[int | None] = mapped_column(BigInteger)
+    from_email: Mapped[str | None] = mapped_column(String(320))
+    to_emails: Mapped[list | None] = mapped_column(JSONB)
+    subject: Mapped[str | None] = mapped_column(String(998))
+    body_text: Mapped[str | None] = mapped_column(Text)
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ingest_status: Mapped[str | None] = mapped_column(String(20))
+    ingest_detail: Mapped[str | None] = mapped_column(Text)
+    send_status: Mapped[str | None] = mapped_column(String(10))
+    send_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    send_error: Mapped[str | None] = mapped_column(Text)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class TicketNote(Base):
+    """Immutable once written (the app role has no UPDATE except organization_id on triage)."""
+
+    __tablename__ = "ticket_notes"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), nullable=False)
+    organization_id: Mapped[int | None] = mapped_column(BigInteger)
+    author_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    author_email: Mapped[str | None] = mapped_column(String(320))
+    visibility: Mapped[str] = mapped_column(String(10), nullable=False)
+    source: Mapped[str] = mapped_column(String(10), nullable=False, server_default="ui")
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    email_message_id: Mapped[int | None] = mapped_column(ForeignKey("email_messages.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    author: Mapped[User | None] = relationship(lazy="joined")
+
+
+class TimeEntry(TimestampMixin, Base):
+    __tablename__ = "time_entries"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), nullable=False)
+    organization_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    work_type_id: Mapped[int] = mapped_column(ForeignKey("work_types.id"), nullable=False)
+    work_date: Mapped[date] = mapped_column(Date, nullable=False)
+    minutes_actual: Mapped[int] = mapped_column(Integer, nullable=False)
+    minutes_billable: Mapped[int] = mapped_column(Integer, nullable=False)
+    billable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    note: Mapped[str | None] = mapped_column(Text)
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Attachment(Base):
+    __tablename__ = "attachments"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    email_message_id: Mapped[int] = mapped_column(ForeignKey("email_messages.id"), nullable=False)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), nullable=False)
+    organization_id: Mapped[int | None] = mapped_column(BigInteger)
+    filename: Mapped[str] = mapped_column(String(300), nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(200))
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
