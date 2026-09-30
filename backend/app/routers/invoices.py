@@ -4,10 +4,12 @@ from fastapi import APIRouter, HTTPException, Query, Response
 
 from app import billing as svc
 from app import billing_repo as brepo
+from app import payment_repo as prepo
 from app import permissions as P
 from app import repositories as repo
 from app.deps import Ctx, require
 from app.invoice_pdf import render_invoice_pdf
+from app.payments import payment_state
 from app.schemas import (
     ErrorOut,
     FinalizeIn,
@@ -15,6 +17,7 @@ from app.schemas import (
     InvoiceIn,
     InvoiceOut,
     InvoicePatch,
+    InvoicePaymentLine,
     LineIn,
     LineOut,
     LinePatch,
@@ -23,13 +26,14 @@ from app.schemas import (
     RunIn,
     RunOut,
     VoidIn,
+    WriteOffOut,
 )
 
 router = APIRouter(tags=["invoicing"])
 ERR = {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
 
 
-def _invoice_out(inv) -> InvoiceOut:
+def _invoice_out(inv, state: dict | None = None) -> InvoiceOut:
     return InvoiceOut(
         id=inv.id,
         number=inv.number,
@@ -51,12 +55,42 @@ def _invoice_out(inv) -> InvoiceOut:
         created_at=inv.created_at,
         finalized_at=inv.finalized_at,
         voided_at=inv.voided_at,
+        **(state or {}),
     )
+
+
+def _outs(ctx: Ctx, invoices) -> list[InvoiceOut]:
+    """Invoice output with derived payment state (one query for all balances)."""
+    amounts = prepo.amounts_for(ctx.db, [i.id for i in invoices])
+    on = svc.today(ctx)
+    return [_invoice_out(i, payment_state(i, *amounts[i.id], on)) for i in invoices]
 
 
 def _detail(ctx: Ctx, inv) -> InvoiceDetailOut:
     lines = [LineOut.model_validate(x) for x in brepo.invoice_lines(ctx.db, ctx.scope, inv.id)]
-    return InvoiceDetailOut(**_invoice_out(inv).model_dump(), lines=lines)
+    apps = prepo.applications_for_invoice(ctx.db, ctx.scope, inv.id)
+    payments = prepo.payment_lookup(ctx.db, {a.payment_id for a in apps})
+    return InvoiceDetailOut(
+        **_outs(ctx, [inv])[0].model_dump(),
+        lines=lines,
+        payments=[
+            InvoicePaymentLine(
+                application_id=a.id,
+                payment_id=a.payment_id,
+                amount_cents=a.amount_cents,
+                received_on=payments[a.payment_id].received_on,
+                method=payments[a.payment_id].method,
+                reference=payments[a.payment_id].reference,
+                voided_at=a.voided_at,
+                void_reason=a.void_reason,
+            )
+            for a in apps
+        ],
+        write_offs=[
+            WriteOffOut.model_validate(w)
+            for w in prepo.writeoffs_for_invoice(ctx.db, ctx.scope, inv.id)
+        ],
+    )
 
 
 def _invoice_or_404(ctx: Ctx, invoice_id: int):
@@ -82,9 +116,7 @@ def _run_out(ctx: Ctx, run, detail: bool = False):
     )
     if not detail:
         return RunOut(**base)
-    return RunDetailOut(
-        **base, invoices=[_invoice_out(i) for i in brepo.run_invoices(ctx.db, ctx.scope, run.id)]
-    )
+    return RunDetailOut(**base, invoices=_outs(ctx, brepo.run_invoices(ctx.db, ctx.scope, run.id)))
 
 
 # ---- invoices ----
@@ -93,6 +125,11 @@ def list_invoices(
     organization_id: int | None = None,
     status: str | None = None,
     billing_run_id: int | None = None,
+    payment_status: str | None = Query(
+        None,
+        pattern="^(open|overdue|paid|unpaid)$",
+        description="Finalized invoices only: open (owes money), overdue, paid, unpaid",
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     ctx: Ctx = require(P.BILLING_READ),
@@ -105,8 +142,10 @@ def list_invoices(
         run_id=billing_run_id,
         limit=limit,
         offset=offset,
+        payment_filter=payment_status,
+        today=svc.today(ctx),
     )
-    return Page(items=[_invoice_out(i) for i in items], total=total, limit=limit, offset=offset)
+    return Page(items=_outs(ctx, items), total=total, limit=limit, offset=offset)
 
 
 @router.post(

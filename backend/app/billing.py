@@ -760,6 +760,10 @@ def void_invoice(ctx: Ctx, invoice_id: int, reason: str | None) -> Invoice:
         raise NotFound("Invoice not found")
     if invoice.status == "void":
         raise Conflict("Already void")
+    if invoice.status == "final":
+        from app import payments  # local import: payments imports this module
+
+        payments.ensure_can_void_invoice(ctx, invoice)
     if invoice.status == "final" and not (reason and len(reason.strip()) >= 3):
         raise Conflict("A reason is required to void a finalized invoice")
     was = invoice.status

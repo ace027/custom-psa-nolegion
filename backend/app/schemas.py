@@ -591,10 +591,19 @@ class InvoiceOut(BaseModel):
     created_at: datetime
     finalized_at: datetime | None
     voided_at: datetime | None
+    # payment state: only meaningful for finalized invoices (None otherwise)
+    paid_cents: int | None = None
+    written_off_cents: int | None = None
+    balance_cents: int | None = None
+    payment_status: "PaymentStatus | None" = None
+    is_overdue: bool = False
+    days_past_due: int = 0
 
 
 class InvoiceDetailOut(InvoiceOut):
     lines: list[LineOut]
+    payments: "list[InvoicePaymentLine]" = Field(default_factory=list)
+    write_offs: "list[WriteOffOut]" = Field(default_factory=list)
 
 
 class InvoiceIn(BaseModel):
@@ -634,3 +643,117 @@ class RunOut(BaseModel):
 
 class RunDetailOut(RunOut):
     invoices: list[InvoiceOut]
+
+
+# ---------------------------------------------------------------------------------------
+# Payment tracking
+# ---------------------------------------------------------------------------------------
+PaymentMethod = Literal["check", "ach", "card", "cash", "other"]
+PaymentStatus = Literal["unpaid", "partial", "paid", "written_off"]
+
+
+class ApplyIn(BaseModel):
+    invoice_id: int
+    amount_cents: int = Field(gt=0, le=1_000_000_000_00)
+
+
+class PaymentIn(BaseModel):
+    organization_id: int
+    amount_cents: int = Field(gt=0, le=1_000_000_000_00)
+    received_on: date | None = Field(default=None, description="Defaults to today")
+    method: PaymentMethod
+    reference: str | None = Field(
+        default=None, max_length=200, description="Check number, ACH id..."
+    )
+    notes: str | None = None
+    applications: list[ApplyIn] = Field(default_factory=list, description="Invoices this pays")
+
+
+class ReasonIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=1000)
+
+
+class ApplicationOut(ORM):
+    id: int
+    payment_id: int
+    invoice_id: int
+    amount_cents: int
+    created_at: datetime
+    voided_at: datetime | None
+    void_reason: str | None
+
+
+class PaymentOut(BaseModel):
+    id: int
+    organization_id: int
+    organization_name: str
+    amount_cents: int
+    received_on: date
+    method: PaymentMethod
+    reference: str | None
+    notes: str | None
+    status: Literal["active", "void"]
+    applied_cents: int
+    unapplied_cents: int  # credit still available to apply (0 for voided payments)
+    void_reason: str | None
+    voided_at: datetime | None
+    created_at: datetime
+
+
+class PaymentDetailOut(PaymentOut):
+    applications: list[ApplicationOut]
+
+
+class WriteOffIn(BaseModel):
+    amount_cents: int | None = Field(
+        default=None, gt=0, description="Defaults to the whole balance"
+    )
+    reason: str = Field(min_length=3, max_length=1000)
+
+
+class WriteOffOut(ORM):
+    id: int
+    invoice_id: int
+    amount_cents: int
+    reason: str
+    created_at: datetime
+    voided_at: datetime | None
+    void_reason: str | None
+
+
+class InvoicePaymentLine(BaseModel):
+    application_id: int
+    payment_id: int
+    amount_cents: int
+    received_on: date
+    method: PaymentMethod
+    reference: str | None
+    voided_at: datetime | None
+    void_reason: str | None
+
+
+class AgingRow(BaseModel):
+    organization_id: int
+    organization_name: str
+    current_cents: int  # not yet due
+    d1_30_cents: int
+    d31_60_cents: int
+    d61_90_cents: int
+    d90_plus_cents: int
+    total_open_cents: int
+    credit_cents: int  # unapplied payments on account
+    open_invoice_count: int
+    overdue_invoice_count: int
+    oldest_days_past_due: int
+
+
+class ReceivablesOut(BaseModel):
+    as_of: date
+    rows: list[AgingRow]
+    totals: AgingRow
+
+
+# resolve the forward references used by the invoice models above
+InvoiceOut.model_rebuild()
+InvoiceDetailOut.model_rebuild()
+RunDetailOut.model_rebuild()

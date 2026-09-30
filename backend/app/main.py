@@ -8,7 +8,17 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.config import get_settings
 from app.context import client_ip_var, request_id_var
 from app.errors import Conflict, Forbidden, NotFound
-from app.routers import auth, billing, config, health, invoices, organizations, tickets, users
+from app.routers import (
+    auth,
+    billing,
+    config,
+    health,
+    invoices,
+    organizations,
+    payments,
+    tickets,
+    users,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -72,6 +82,7 @@ def create_app() -> FastAPI:
         config.router,
         billing.router,
         invoices.router,
+        payments.router,
     ):
         app.include_router(r, prefix="/api")
     return app

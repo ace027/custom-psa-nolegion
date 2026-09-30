@@ -199,8 +199,23 @@ def get_invoice(db: Session, scope: Scope, invoice_id: int, lock: bool = False):
     return db.execute(stmt).unique().scalar_one_or_none()
 
 
-def list_invoices(db: Session, scope: Scope, *, org_id, status, run_id, limit, offset):
+def list_invoices(
+    db: Session,
+    scope: Scope,
+    *,
+    org_id,
+    status,
+    run_id,
+    limit,
+    offset,
+    payment_filter=None,
+    today=None,
+):
     stmt = scope.apply(select(Invoice), Invoice.organization_id)
+    if payment_filter:
+        from app.payment_repo import filter_invoices
+
+        stmt = filter_invoices(stmt, payment_filter, today)
     if org_id is not None:
         stmt = stmt.where(Invoice.organization_id == org_id)
     if status:
