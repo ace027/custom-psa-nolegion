@@ -65,6 +65,7 @@ export default function Organizations() {
               {o.name}
             </Link>
             {o.status === "inactive" && <span className="ml-2 text-xs text-slate-500">inactive</span>}
+            {o.status === "prospect" && <span className="ml-2 rounded bg-violet-100 px-1.5 text-xs text-violet-800">prospect</span>}
             {o.archived_at && <span className="ml-2 text-xs text-slate-500">archived</span>}
           </li>
         ))}

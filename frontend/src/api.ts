@@ -53,7 +53,7 @@ export interface User extends Omit<Me, "permissions" | "notify_assigned" | "noti
 export interface Organization {
   id: number;
   name: string;
-  status: "active" | "inactive";
+  status: "active" | "inactive" | "prospect";
   billing_address: string | null;
   notes: string | null;
   archived_at: string | null;
@@ -516,4 +516,93 @@ export interface PortalTicket {
 export interface PortalTicketDetail extends PortalTicket {
   description: string | null;
   notes: { id: number; author: string; from_you: boolean; from_support: boolean; body: string; created_at: string }[];
+}
+
+// ---- quoting ----
+export interface QuoteSettings {
+  per_user_rate_cents: number;
+  workstation_rate_cents: number;
+  server_rate_cents: number;
+  network_rate_cents: number;
+  other_rate_cents: number;
+  hardware_uplift_bp: number;
+  server_uplift_bp: number;
+  legacy_app_uplift_bp: number;
+  term_months: number;
+  valid_days: number;
+  agreement_taxable: boolean;
+  intro_text: string | null;
+}
+export type DeviceClass = "workstation" | "server" | "network" | "other";
+export type WarrantyStatus = "in_warranty" | "out_of_warranty" | "unknown";
+export interface SurveyDevice {
+  id?: number;
+  device_class: DeviceClass;
+  label: string | null;
+  make_model: string | null;
+  serial: string | null;
+  warranty_end: string | null;
+  warranty_status: WarrantyStatus;
+  priced: boolean;
+  notes: string | null;
+}
+export interface SurveyApp {
+  id?: number;
+  name: string;
+  vendor: string | null;
+  legacy: boolean;
+  notes: string | null;
+}
+export interface Survey {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  status: "scheduled" | "in_progress" | "completed";
+  scheduled_for: string | null;
+  tech_id: number | null;
+  user_count: number;
+  site_count: number;
+  notes: string | null;
+  completed_at: string | null;
+  devices: SurveyDevice[];
+  apps: SurveyApp[];
+}
+export interface QuoteFactor {
+  key: string;
+  label: string;
+  applies: boolean;
+  bp: number;
+  reason: string;
+}
+export type QuoteStatus = "draft" | "needs_approval" | "approved" | "sent" | "accepted" | "declined" | "cancelled";
+export interface Quote {
+  id: number;
+  number: string;
+  organization_id: number;
+  organization_name: string;
+  survey_id: number;
+  kind: "new" | "reprice";
+  agreement_id: number | null;
+  version: number;
+  status: QuoteStatus;
+  is_expired: boolean;
+  snapshot: {
+    base_lines: { description: string; quantity: number; unit_cents: number; amount_cents: number }[];
+    factors: QuoteFactor[];
+    devices: { priced: number; out: number; unknown: number };
+    users: number;
+  };
+  base_cents: number;
+  uplift_bp: number;
+  computed_price_cents: number;
+  final_price_cents: number;
+  adjustment_reason: string | null;
+  adjusted_by: number | null;
+  term_months: number;
+  valid_until: string | null;
+  effective_date: string | null;
+  notes: string | null;
+  decision_note: string | null;
+  sent_to: string | null;
+  resulting_agreement_id: number | null;
 }

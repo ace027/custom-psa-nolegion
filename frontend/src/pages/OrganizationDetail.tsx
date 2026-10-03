@@ -76,6 +76,7 @@ function OrgForm({ org, canWrite, onDone }: { org: Organization; canWrite: boole
           <select className={inputCls} disabled={!canWrite} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Organization["status"] })}>
             <option value="active">active</option>
             <option value="inactive">inactive</option>
+            <option value="prospect">prospect</option>
           </select>
         </Field>
         <Field label="Billing address">

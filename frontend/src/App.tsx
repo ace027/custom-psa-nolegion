@@ -11,6 +11,10 @@ import Products from "./pages/billing/Products";
 import Rates from "./pages/billing/Rates";
 import Receivables from "./pages/billing/Receivables";
 import PortalApp from "./portal/PortalApp";
+import QuotePage from "./pages/quotes/QuotePage";
+import QuotesList from "./pages/quotes/QuotesList";
+import RateCard from "./pages/quotes/RateCard";
+import SurveyPage from "./pages/quotes/SurveyPage";
 import Profile from "./pages/Profile";
 import Reminders from "./pages/billing/Reminders";
 import Reports from "./pages/billing/Reports";
@@ -38,13 +42,14 @@ function Layout() {
     `rounded px-2 py-1 text-sm ${isActive ? "bg-slate-200 font-medium" : "hover:bg-slate-100"}`;
   return (
     <div className="mx-auto max-w-5xl p-4">
-      <header className="mb-6 flex items-center justify-between border-b border-slate-200 pb-3">
-        <nav className="flex items-center gap-2">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+        <nav className="flex flex-wrap items-center gap-2">
           <span className="mr-4 font-bold">PSA</span>
           <NavLink to="/dashboard" className={link}>Dashboard</NavLink>
           <NavLink to="/tickets" className={link}>Tickets</NavLink>
           <NavLink to="/organizations" className={link}>Organizations</NavLink>
           {can(me, "billing:read") && <NavLink to="/billing" className={link}>Billing</NavLink>}
+          {can(me, "quote:read") && <NavLink to="/quotes" className={link}>Quotes</NavLink>}
           <NavLink to="/users" className={link}>Users</NavLink>
           {can(me, "config:manage") && <NavLink to="/settings" className={link}>Settings</NavLink>}
           {can(me, "audit:read") && <NavLink to="/audit" className={link}>Audit log</NavLink>}
@@ -95,6 +100,14 @@ function StaffApp() {
             <Route path="rates" element={<Rates />} />
             <Route path="reports" element={can(me, "report:read") ? <Reports /> : <Navigate to="/billing" replace />} />
           </Route>
+        )}
+        {can(me, "quote:read") && (
+          <>
+            <Route path="/quotes" element={<QuotesList />} />
+            <Route path="/quotes/rates" element={<RateCard />} />
+            <Route path="/quotes/surveys/:id" element={<SurveyPage />} />
+            <Route path="/quotes/:id" element={<QuotePage />} />
+          </>
         )}
         <Route path="/profile" element={<Profile />} />
         <Route path="/users" element={<Users />} />
