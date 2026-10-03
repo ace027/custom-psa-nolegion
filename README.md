@@ -5,6 +5,9 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 **Status:** Phases 1-3 (Foundation, Ticketing, Contracts & invoicing) complete: the MVP. See [docs/PLAN.md](docs/PLAN.md) for the roadmap and design decisions, and [docs/BACKLOG.md](docs/BACKLOG.md) for ideas that are deliberately not built yet.
 
 ## What works today
+**New-client quoting**
+- Schedule an onsite survey for a prospect, fill it in on a phone or tablet, and get a flat monthly price: base per user/device, +25% when more than half the devices are out of warranty (other uplifts configurable, added not compounded). Price changes need an admin's approval; accepting creates the 12-month flat-fee agreement. See [docs/QUOTING.md](docs/QUOTING.md)
+
 **Client portal** (off until enabled)
 - Clients sign in with an emailed one-time link (no passwords), open and follow tickets, and billing contacts see invoices, PDFs and an account statement; strictly one client's data per session. See [docs/PORTAL.md](docs/PORTAL.md)
 

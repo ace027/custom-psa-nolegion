@@ -1,6 +1,7 @@
 # New-client quoting: plan
 
-Status: **PLAN ONLY. Nothing here is built.** No code starts until you say "go".
+Status: **BUILT** (see [QUOTING.md](QUOTING.md) for how it works and what differs from this plan).
+This page is the original plan, kept for the record.
 Items marked **(assumption)** were not confirmed and should be checked before building.
 
 ## 1. Goal
