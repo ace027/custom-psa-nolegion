@@ -18,6 +18,7 @@ from app.routers import (
     organizations,
     payments,
     portal,
+    quotes,
     reports,
     tickets,
     users,
@@ -88,6 +89,7 @@ def create_app() -> FastAPI:
         payments.router,
         notices.router,
         reports.router,
+        quotes.router,
         portal.router,
     ):
         app.include_router(r, prefix="/api")

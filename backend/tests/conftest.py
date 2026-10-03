@@ -29,7 +29,7 @@ from alembic import command  # noqa: E402
 from app.main import app  # noqa: E402
 
 TABLES = (
-    "staff_notifications, outbound_attachments, billing_notice_invoices, billing_notices, statements, "
+    "quotes, survey_apps, survey_devices, site_surveys, staff_notifications, outbound_attachments, billing_notice_invoices, billing_notices, statements, "
     "write_offs, payment_applications, payments, invoice_counters, product_charges, invoice_lines, invoices, billing_runs, "
     "agreement_quantity_log, agreements, products, org_work_type_rates, "
     "attachments, time_entries, ticket_notes, email_messages, tickets, audit_log, sessions, "
@@ -45,6 +45,7 @@ INSERT INTO priorities (name, rank, first_response_minutes, resolution_minutes, 
 INSERT INTO work_types (name) VALUES ('Remote'), ('Onsite'), ('After hours');
 DELETE FROM settings; INSERT INTO settings (id) VALUES (1);
 DELETE FROM mailbox_status; INSERT INTO mailbox_status (id) VALUES (1);
+DELETE FROM quote_settings; INSERT INTO quote_settings (id) VALUES (1);
 ALTER SEQUENCE ticket_number_seq RESTART WITH 10001;
 UPDATE work_types SET rate_cents = NULL, taxable = false;
 """

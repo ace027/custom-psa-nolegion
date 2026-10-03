@@ -688,3 +688,107 @@ class PortalSession(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ip: Mapped[str | None] = mapped_column(String(64))
     user_agent: Mapped[str | None] = mapped_column(String(300))
+
+
+# ---- new-client quoting (docs/QUOTING.md) -------------------------------------------------
+class QuoteSettings(Base):
+    """Single-row rate card and uplift percentages (id = 1). Basis points: 2500 = 25%."""
+
+    __tablename__ = "quote_settings"
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    per_user_rate_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    workstation_rate_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    server_rate_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    network_rate_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    other_rate_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    hardware_uplift_bp: Mapped[int] = mapped_column(Integer, nullable=False)
+    server_uplift_bp: Mapped[int] = mapped_column(Integer, nullable=False)
+    legacy_app_uplift_bp: Mapped[int] = mapped_column(Integer, nullable=False)
+    term_months: Mapped[int] = mapped_column(Integer, nullable=False)
+    valid_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    agreement_taxable: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    intro_text: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class SiteSurvey(TimestampMixin, Base):
+    __tablename__ = "site_surveys"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, server_default="scheduled")
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    tech_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    user_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    site_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    notes: Mapped[str | None] = mapped_column(Text)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    organization: Mapped[Organization] = relationship(lazy="joined")
+    devices: Mapped[list["SurveyDevice"]] = relationship(
+        order_by="SurveyDevice.id", lazy="selectin", cascade="all, delete-orphan"
+    )
+    apps: Mapped[list["SurveyApp"]] = relationship(
+        order_by="SurveyApp.id", lazy="selectin", cascade="all, delete-orphan"
+    )
+
+
+class SurveyDevice(Base):
+    __tablename__ = "survey_devices"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    survey_id: Mapped[int] = mapped_column(ForeignKey("site_surveys.id"), nullable=False)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    device_class: Mapped[str] = mapped_column(String(12), nullable=False)
+    label: Mapped[str | None] = mapped_column(String(200))
+    make_model: Mapped[str | None] = mapped_column(String(200))
+    serial: Mapped[str | None] = mapped_column(String(100))
+    warranty_end: Mapped[date | None] = mapped_column(Date)
+    warranty_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    priced: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    notes: Mapped[str | None] = mapped_column(Text)
+
+
+class SurveyApp(Base):
+    __tablename__ = "survey_apps"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    survey_id: Mapped[int] = mapped_column(ForeignKey("site_surveys.id"), nullable=False)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    vendor: Mapped[str | None] = mapped_column(String(200))
+    legacy: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    notes: Mapped[str | None] = mapped_column(Text)
+
+
+class Quote(TimestampMixin, Base):
+    __tablename__ = "quotes"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    survey_id: Mapped[int] = mapped_column(ForeignKey("site_surveys.id"), nullable=False)
+    kind: Mapped[str] = mapped_column(String(8), nullable=False, server_default="new")
+    agreement_id: Mapped[int | None] = mapped_column(ForeignKey("agreements.id"))
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    replaces_quote_id: Mapped[int | None] = mapped_column(ForeignKey("quotes.id"))
+    status: Mapped[str] = mapped_column(String(14), nullable=False, server_default="draft")
+    snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    base_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    uplift_bp: Mapped[int] = mapped_column(Integer, nullable=False)
+    computed_price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    final_price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    adjustment_reason: Mapped[str | None] = mapped_column(Text)
+    adjusted_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    term_months: Mapped[int] = mapped_column(Integer, nullable=False)
+    valid_until: Mapped[date | None] = mapped_column(Date)
+    effective_date: Mapped[date | None] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(Text)
+    decision_note: Mapped[str | None] = mapped_column(Text)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_to: Mapped[str | None] = mapped_column(Text)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    resulting_agreement_id: Mapped[int | None] = mapped_column(ForeignKey("agreements.id"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    organization: Mapped[Organization] = relationship(lazy="joined")

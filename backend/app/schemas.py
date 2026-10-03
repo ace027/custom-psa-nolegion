@@ -4,7 +4,7 @@ from typing import Generic, Literal, TypeVar
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 Role = Literal["admin", "tech", "billing", "read_only"]
-OrgStatus = Literal["active", "inactive"]
+OrgStatus = Literal["active", "inactive", "prospect"]
 
 
 class ORM(BaseModel):
