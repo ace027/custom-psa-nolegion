@@ -1,6 +1,6 @@
 # Parity Phase 1: daily-driver tickets (plan)
 
-Status: **plan, awaiting your decisions in section 4.** Nothing here is built.
+Status: **decisions made (section 5); building in slices A to D.**
 Part of [PARITY_ROADMAP.md](PARITY_ROADMAP.md).
 
 ## 1. What exists today (verified in code)
@@ -28,3 +28,12 @@ Part of [PARITY_ROADMAP.md](PARITY_ROADMAP.md).
 2. **Merge.** (a) **Recommended:** "close as duplicate": link both tickets, copy a pointer note, close the source, and keep every note and time entry on the ticket where it was written (preserves the immutable-history guarantee; time stays billable where it was logged). (b) True merge that moves notes and time onto the target: needs UPDATE rights on notes/time, which weakens immutability and billing traceability.
 3. **Custom fields**: in this phase, or later? They are the biggest data-model addition (values stored as validated JSON on the ticket; filtering by them is limited to simple equality at first).
 4. **CSAT**: include now, or later? It needs outbound email and a public (token) page.
+
+## 5. Decisions (from you)
+1. **Statuses:** custom statuses, each mapped to one of the five built-in behaviours.
+2. **Merge:** close as duplicate; notes and time stay where they were written.
+3. **Custom ticket types and fields:** included.
+4. **CSAT:** included. **Escalation on SLA breach:** included. **Auto-acknowledgement:** included.
+
+## 6. Progress
+- **Slice A done:** canned responses (Settings, note-box picker, `{{contact_name}}` / `{{ticket_number}}`), paging and sorting on the ticket list, bulk actions (up to 100, per-ticket results), global search. Checklist: [verify/tickets-phase1a.md](verify/tickets-phase1a.md).

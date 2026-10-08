@@ -179,6 +179,8 @@ def list_tickets(
     q,
     limit,
     offset,
+    sort="updated",
+    descending=True,
 ):
     stmt = _ticket_stmt(scope)
     if statuses:
@@ -203,10 +205,28 @@ def list_tickets(
         else:
             stmt = stmt.where(Ticket.subject.ilike(f"%{q}%"))
     total = _count(db, stmt.with_only_columns(Ticket.id))
-    rows = db.execute(
-        stmt.order_by(Ticket.updated_at.desc(), Ticket.id.desc()).limit(limit).offset(offset)
-    )
+    order = _ticket_order(sort, descending)
+    if sort == "priority":
+        stmt = stmt.join(Priority, Priority.id == Ticket.priority_id)
+    rows = db.execute(stmt.order_by(*order, Ticket.id.desc()).limit(limit).offset(offset))
     return list(rows.unique().scalars()), total
+
+
+TICKET_SORTS = ("updated", "created", "number", "priority", "due")
+
+
+def _ticket_order(sort: str, descending: bool):
+    # 'priority' sorts by rank (1 = most urgent first when ascending); 'due' puts tickets with no
+    # resolution target last in either direction.
+    col = {
+        "updated": Ticket.updated_at,
+        "created": Ticket.created_at,
+        "number": Ticket.number,
+        "priority": Priority.rank,
+        "due": Ticket.sla_resolution_due,
+    }[sort]
+    ordered = col.desc() if descending else col.asc()
+    return (ordered.nulls_last(),) if sort == "due" else (ordered,)
 
 
 def open_tickets(db: Session, scope: Scope, limit: int = 1000) -> list[Ticket]:

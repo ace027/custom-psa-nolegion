@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-  Attachment, Charge, Contact, Note, Organization, Page, Product, STATUSES, STATUS_LABEL, Ticket, TimeEntry, api,
+  Attachment, CannedResponse, Charge, Contact, Note, Organization, Page, Product, STATUSES, STATUS_LABEL, Ticket, TimeEntry, api,
 } from "../api";
 import { can, useMe } from "../auth";
 import { useLookups } from "../lookups";
@@ -142,10 +142,22 @@ function TriagePanel({ ticket: t, onDone }: { ticket: Ticket; onDone: () => void
   );
 }
 
+/** Replaces {{name}} placeholders; unknown ones are left visible so the tech notices them. */
+export function fillCanned(body: string, vars: Record<string, string>): string {
+  return body.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, k: string) => vars[k] ?? m);
+}
+
 function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Ticket; notes: Note[]; canWrite: boolean; onDone: () => void }) {
   const [body, setBody] = useState("");
   const [visibility, setVisibility] = useState<"internal" | "customer">("internal");
   const [email, setEmail] = useState(false);
+  const canned = useQuery({ queryKey: ["canned"], enabled: canWrite, queryFn: () => api<CannedResponse[]>("/canned-responses") });
+  const insertCanned = (id: string) => {
+    const c = canned.data?.find((x) => String(x.id) === id);
+    if (!c) return;
+    const text = fillCanned(c.body, { contact_name: t.contact_name ?? "there", ticket_number: String(t.number) });
+    setBody(body ? `${body}\n${text}` : text);
+  };
   const add = useMutation({
     mutationFn: () => api("/tickets/" + t.id + "/notes", { method: "POST", json: { body, visibility, send_email: email && visibility === "customer" } }),
     onSuccess: () => {
@@ -173,6 +185,12 @@ function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Ticket; not
       </ul>
       {canWrite && (
         <form className="mt-3 space-y-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+          {(canned.data?.length ?? 0) > 0 && (
+            <select aria-label="Insert canned response" className={inputCls} value="" onChange={(e) => insertCanned(e.target.value)}>
+              <option value="">Insert canned response…</option>
+              {canned.data!.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
           <textarea aria-label="Add a note" className={inputCls} rows={3} required value={body} onChange={(e) => setBody(e.target.value)} />
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <label className="flex items-center gap-1"><input type="radio" checked={visibility === "internal"} onChange={() => setVisibility("internal")} />Internal</label>

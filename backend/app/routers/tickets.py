@@ -12,6 +12,8 @@ from app.deps import Ctx, require
 from app.models import EmailMessage
 from app.schemas import (
     AttachmentOut,
+    BulkTicketsIn,
+    BulkTicketsOut,
     DashboardOut,
     ErrorOut,
     NoteIn,
@@ -55,6 +57,8 @@ def list_tickets(
     priority_id: int | None = None,
     needs_triage: bool = False,
     q: str | None = Query(None, description="Subject text or ticket number"),
+    sort: str = Query("updated", pattern="^(updated|created|number|priority|due)$"),
+    descending: bool = True,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     ctx: Ctx = require(P.TICKET_READ),
@@ -74,6 +78,8 @@ def list_tickets(
         q=q,
         limit=limit,
         offset=offset,
+        sort=sort,
+        descending=descending,
     )
     view = _view(ctx)
     return Page(items=[view(t) for t in items], total=total, limit=limit, offset=offset)
@@ -85,6 +91,19 @@ def list_tickets(
 def create_ticket(body: TicketIn, ctx: Ctx = require(P.TICKET_WRITE)):
     ticket = svc.create_ticket(ctx, body.model_dump())
     return _view(ctx)(ticket)
+
+
+@router.post(
+    "/tickets/bulk",
+    response_model=BulkTicketsOut,
+    responses=ERR,
+    summary="Change status, assignee, queue or priority on up to 100 tickets at once",
+)
+def bulk_tickets(body: BulkTicketsIn, ctx: Ctx = require(P.TICKET_WRITE)):
+    updated, failed = svc.bulk_update(
+        ctx, body.ticket_ids, body.changes.model_dump(exclude_unset=True)
+    )
+    return BulkTicketsOut(updated=updated, failed=failed)
 
 
 @router.get("/tickets/{ticket_id}", response_model=TicketOut, responses=ERR, summary="Get a ticket")

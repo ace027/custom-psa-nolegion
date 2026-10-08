@@ -52,7 +52,7 @@ def update_lookup(ctx: Ctx, model, label: str, obj_id: int, data: dict):
         elif obj.is_default:
             raise Conflict(f"Choose another {label} as the default instead")
     for key, value in data.items():
-        if key == "name" and value is None:
+        if key in ("name", "body") and value is None:
             continue
         setattr(obj, key, value)
     _flush(ctx, label)

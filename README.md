@@ -56,7 +56,7 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 backend/    FastAPI app, Alembic migrations, tests
 frontend/   React + Vite + Tailwind
 deploy/     Caddyfile, DB init, backup/restore scripts
-docs/       PLAN, BACKLOG, DESIGN, BILLING, DEVELOPMENT, ENTRA_SETUP, MAIL_SETUP, BACKUP_RESTORE, verify/
+docs/       PLAN, BACKLOG, DESIGN, BILLING, DEVELOPMENT, ENTRA_SETUP, MAIL_SETUP, BACKUP_RESTORE, PARITY_ROADMAP, TICKETS_PLAN, verify/
 docker-compose.yml, .env.example
 ```
 

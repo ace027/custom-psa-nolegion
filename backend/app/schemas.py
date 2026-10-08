@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Generic, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 Role = Literal["admin", "tech", "billing", "read_only"]
 OrgStatus = Literal["active", "inactive", "prospect"]
@@ -218,6 +218,43 @@ class TicketPatch(BaseModel):
     status: TicketStatus | None = None
 
 
+class BulkChanges(BaseModel):
+    """The fields a bulk action may change. Absent = leave alone; assignee_id null = unassign."""
+
+    status: TicketStatus | None = None
+    assignee_id: int | None = None
+    queue_id: int | None = None
+    priority_id: int | None = None
+
+
+class BulkTicketsIn(BaseModel):
+    ticket_ids: list[int] = Field(min_length=1, max_length=100)
+    changes: BulkChanges
+
+
+class BulkFailure(BaseModel):
+    id: int
+    error: str
+
+
+class BulkTicketsOut(BaseModel):
+    updated: int
+    failed: list[BulkFailure]
+
+
+class SearchHit(BaseModel):
+    kind: str  # ticket | organization | contact | asset
+    id: int
+    title: str
+    subtitle: str | None
+    organization_id: int | None
+
+
+class SearchOut(BaseModel):
+    q: str
+    hits: list[SearchHit]
+
+
 class TicketOut(BaseModel):
     id: int
     number: int
@@ -333,6 +370,34 @@ class QueueOut(LookupOut):
 
 class NameIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+
+
+class CannedIn(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    body: str = Field(min_length=1, max_length=10000)
+
+    @field_validator("body")
+    @classmethod
+    def _body_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Body cannot be blank")
+        return v
+
+
+class CannedPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    body: str | None = Field(default=None, min_length=1, max_length=10000)
+
+    @field_validator("body")
+    @classmethod
+    def _body_not_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("Body cannot be blank")
+        return v
+
+
+class CannedOut(LookupOut):
+    body: str
 
 
 class PriorityIn(BaseModel):

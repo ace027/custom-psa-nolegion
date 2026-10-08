@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { api } from "./api";
 import { can, useMe } from "./auth";
 import Audit from "./pages/Audit";
@@ -28,6 +28,7 @@ import OrganizationDetail from "./pages/OrganizationDetail";
 import Organizations from "./pages/Organizations";
 import Settings from "./pages/Settings";
 import TicketDetail from "./pages/TicketDetail";
+import Search from "./pages/Search";
 import Tickets from "./pages/Tickets";
 import Users from "./pages/Users";
 import { ThemeToggle } from "./ui";
@@ -43,6 +44,7 @@ function Layout() {
     },
   });
   const [open, setOpen] = useState(false);
+  const nav = useNavigate();
   const link = ({ isActive }: { isActive: boolean }) =>
     `block rounded-lg px-3 py-2 text-sm ${isActive ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-500 hover:bg-slate-100"}`;
   const close = () => setOpen(false);
@@ -58,6 +60,20 @@ function Layout() {
         <div className="mb-4 hidden items-center gap-2 px-3 pt-2 font-bold md:flex">
           <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-blue-600 text-sm text-on-accent">P</span>PSA
         </div>
+        <form
+          role="search"
+          className="mb-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
+            if (q) {
+              nav(`/search?q=${encodeURIComponent(q)}`);
+              close();
+            }
+          }}
+        >
+          <input name="q" type="search" aria-label="Search" placeholder="Search…" className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-sm" />
+        </form>
         <nav className="space-y-0.5" onClick={close}>
           <NavLink to="/dashboard" className={link}>Dashboard</NavLink>
           <NavLink to="/tickets" className={link}>Tickets</NavLink>
@@ -101,6 +117,7 @@ function StaffApp() {
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/search" element={<Search />} />
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/tickets/:id" element={<TicketDetail />} />
         <Route path="/settings" element={can(me, "config:manage") ? <Settings /> : <Navigate to="/" replace />} />

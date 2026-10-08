@@ -186,6 +186,20 @@ export interface Priority extends Lookup {
   resolution_minutes: number | null;
   is_default: boolean;
 }
+export interface CannedResponse extends Lookup {
+  body: string;
+}
+export interface BulkResult {
+  updated: number;
+  failed: { id: number; error: string }[];
+}
+export interface SearchHit {
+  kind: "ticket" | "organization" | "contact" | "asset";
+  id: number;
+  title: string;
+  subtitle: string | null;
+  organization_id: number | null;
+}
 export interface AppSettings {
   company_name: string | null;
   company_address: string | null;

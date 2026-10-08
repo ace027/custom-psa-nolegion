@@ -173,6 +173,14 @@ class _Lookup(TimestampMixin):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class CannedResponse(_Lookup, Base):
+    """Reusable reply text. Placeholders ({{contact_name}}, {{ticket_number}}...) are filled in by
+    the UI when a tech inserts it; the stored text is never client data."""
+
+    __tablename__ = "canned_responses"
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class Queue(_Lookup, Base):
     __tablename__ = "queues"
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))

@@ -22,6 +22,7 @@ from app.routers import (
     portal,
     quotes,
     reports,
+    search,
     tickets,
     users,
 )
@@ -94,6 +95,7 @@ def create_app() -> FastAPI:
         quotes.router,
         integrations.router,
         assets.router,
+        search.router,
         portal.router,
     ):
         app.include_router(r, prefix="/api")

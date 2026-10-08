@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { AppSettings, Lookup, MailStatus, Priority, Queue, api } from "../api";
+import { AppSettings, CannedResponse, Lookup, MailStatus, Priority, Queue, api } from "../api";
 import RemindersCard from "./RemindersCard";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../ui";
 
@@ -19,6 +19,7 @@ export default function Settings() {
       <SimpleList title="Categories" path="categories" />
       <SimpleList title="Work types" path="work-types" />
       <PrioritiesCard />
+      <CannedCard />
     </div>
   );
 }
@@ -210,6 +211,37 @@ function PortalCard() {
       </label>
       <p className="mt-2 text-xs text-slate-500">Clients sign in at /portal with a one-time link emailed to a contact you have given portal access (Organizations &gt; contact). Needs the mailbox configured. Turning this off signs everyone out at once.</p>
       <ErrorMsg error={save.error} />
+    </Card>
+  );
+}
+
+function CannedCard() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["cfg", "canned-responses"], queryFn: () => api<CannedResponse[]>("/canned-responses?include_archived=true") });
+  const [f, setF] = useState({ name: "", body: "" });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["cfg", "canned-responses"] });
+    qc.invalidateQueries({ queryKey: ["canned"] });
+  };
+  const add = useMutation({ mutationFn: () => api("/canned-responses", { method: "POST", json: f }), onSuccess: () => { setF({ name: "", body: "" }); refresh(); } });
+  const act = useMutation({ mutationFn: ({ id, action }: { id: number; action: string }) => api(`/canned-responses/${id}/${action}`, { method: "POST" }), onSuccess: refresh });
+  return (
+    <Card title="Canned responses">
+      <p className="mb-2 text-sm text-slate-600">Reusable replies for the note box. Placeholders: <code>{"{{contact_name}}"}</code>, <code>{"{{ticket_number}}"}</code>.</p>
+      <ul className="divide-y divide-slate-100 text-sm">
+        {q.data?.map((x) => (
+          <li key={x.id} className="flex items-start justify-between gap-2 py-1.5">
+            <span className={x.archived_at ? "text-slate-400 line-through" : ""}><b>{x.name}</b><span className="block whitespace-pre-wrap text-slate-600">{x.body}</span></span>
+            <Button variant="secondary" onClick={() => act.mutate({ id: x.id, action: x.archived_at ? "unarchive" : "archive" })}>{x.archived_at ? "Restore" : "Archive"}</Button>
+          </li>
+        ))}
+      </ul>
+      <ErrorMsg error={add.error ?? act.error} />
+      <form className="mt-2 space-y-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+        <Field label="Name"><input className={inputCls} required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+        <Field label="Text"><textarea className={inputCls} rows={3} required value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} /></Field>
+        <Button type="submit">Add response</Button>
+      </form>
     </Card>
   );
 }

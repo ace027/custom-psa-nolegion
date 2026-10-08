@@ -463,3 +463,33 @@ def customer_reply(
             ctx, ticket.assignee_id, ticket, "customer_reply", str(email.id), actor=None
         )
     return note
+
+
+# ---- bulk -----------------------------------------------------------------------------------
+def bulk_update(ctx: Ctx, ticket_ids: list[int], changes: dict) -> tuple[int, list[dict]]:
+    """Apply the same change to many tickets. Each ticket goes through the normal update (so SLA,
+    notifications and the per-ticket audit row all happen) inside its own savepoint: one bad
+    ticket is reported and skipped, the rest still succeed."""
+    if not changes:
+        raise Conflict("Choose at least one change")
+    updated, failed = 0, []
+    for ticket_id in dict.fromkeys(ticket_ids):  # de-duplicate, keep order
+        try:
+            with ctx.db.begin_nested():
+                update_ticket(ctx, ticket_id, dict(changes))
+            updated += 1
+        except (NotFound, Conflict, Forbidden) as exc:
+            failed.append({"id": ticket_id, "error": str(exc)})
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "ticket.bulk_update",
+        None,
+        detail={
+            "ticket_ids": ticket_ids,
+            "changes": changes,
+            "updated": updated,
+            "failed": len(failed),
+        },
+    )
+    return updated, failed
