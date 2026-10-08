@@ -423,6 +423,8 @@ class TimesheetDayOut(BaseModel):
 
 
 class TimesheetOut(BaseModel):
+    status: Literal["open", "submitted", "approved", "returned"]
+    return_reason: str | None
     user_id: int
     user_name: str
     week_start: date
@@ -1370,3 +1372,44 @@ class PortalTicketIn(BaseModel):
 
 class PortalReplyIn(BaseModel):
     body: str = Field(min_length=1, max_length=10_000)
+
+
+class WeekIn(BaseModel):
+    week_start: date
+
+
+class WeekUserIn(BaseModel):
+    user_id: int
+    week_start: date
+
+
+class WeekReturnIn(WeekUserIn):
+    reason: str = Field(min_length=1, max_length=1000)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Say why the week is being returned")
+        return v
+
+
+class TimesheetStatusOut(ORM):
+    user_id: int
+    week_start: date
+    status: Literal["submitted", "approved", "returned"]
+    submitted_at: datetime | None
+    approved_at: datetime | None
+    return_reason: str | None
+
+
+class TimesheetQueueRow(BaseModel):
+    id: int
+    user_id: int
+    user_name: str
+    week_start: date
+    status: Literal["submitted", "approved", "returned"]
+    submitted_at: datetime | None
+    approved_at: datetime | None
+    return_reason: str | None
+    total_minutes: int

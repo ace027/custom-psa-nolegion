@@ -439,6 +439,22 @@ class Timer(Base):
     )
 
 
+class Timesheet(TimestampMixin, Base):
+    """A person's week, once submitted. No row = the week is still open for edits."""
+
+    __tablename__ = "timesheets"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    week_start: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(12), nullable=False)  # submitted|approved|returned
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    returned_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    return_reason: Mapped[str | None] = mapped_column(Text)
+
+
 class Attachment(Base):
     __tablename__ = "attachments"
 

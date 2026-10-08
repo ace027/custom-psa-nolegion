@@ -33,5 +33,5 @@ Status: **decisions made (section 4); building in slices A to C.** Part of [PARI
 
 ## 6. Progress
 - **Slice A (timers, internal time, weekly timesheet): built.** Migration 0017; see [verify/time-phase2a.md](verify/time-phase2a.md).
-- Slice B (submit/approve/lock, payroll CSV): next.
+- **Slice B (submit/approve/return, edit lock, payroll CSV): built.** Migration 0018; see [verify/time-phase2b.md](verify/time-phase2b.md). A returned or never-submitted week is editable; a submitted or approved week is locked for everyone including admins (return it first). Reimbursable expenses join the CSV in slice C.
 - Slice C (expenses, mileage, receipts, billing): after B.

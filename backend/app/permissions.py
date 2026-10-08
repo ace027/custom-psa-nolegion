@@ -8,6 +8,7 @@ AUDIT_READ = "audit:read"
 TICKET_READ = "ticket:read"  # tickets, notes, time entries, queues/categories/priorities/settings
 TICKET_WRITE = "ticket:write"  # tickets and notes
 TIME_WRITE = "time:write"
+TIMESHEET_APPROVE = "timesheet:approve"  # approve / return timesheets, payroll export (admins)
 BILLING_READ = "billing:read"  # agreements, products, rates, charges, invoices, runs
 BILLING_WRITE = "billing:write"  # edit those, and DRAFT invoices
 BILLING_FINALIZE = "billing:finalize"  # finalize / void invoices, review and finalize runs
@@ -36,6 +37,7 @@ MATRIX: dict[str, frozenset[str]] = {
             AUDIT_READ,
             TICKET_WRITE,
             TIME_WRITE,
+            TIMESHEET_APPROVE,
             CONFIG_MANAGE,
             PORTAL_MANAGE,
             QUOTE_WRITE,

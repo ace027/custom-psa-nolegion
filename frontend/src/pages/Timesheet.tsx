@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Lookup, Timesheet as Sheet, api } from "../api";
+import { Lookup, Timesheet as Sheet, TimesheetQueueRow, api } from "../api";
+import { can, useMe } from "../auth";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../ui";
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -29,6 +30,9 @@ export default function Timesheet() {
   const voidIt = useMutation({ mutationFn: (id: number) => api(`/internal-time/${id}/void`, { method: "POST" }), onSuccess: refresh });
   const voidTicket = useMutation({ mutationFn: (id: number) => api(`/time-entries/${id}/void`, { method: "POST" }), onSuccess: refresh });
   const s = q.data;
+  const locked = s?.status === "submitted" || s?.status === "approved";
+  const submit = useMutation({ mutationFn: () => api("/timesheet/submit", { method: "POST", json: { week_start: start } }), onSuccess: refresh });
+  const { data: me } = useMe();
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
@@ -40,10 +44,11 @@ export default function Timesheet() {
           <Button variant="secondary" onClick={() => setWeek(mondayOf(new Date()))}>This week</Button>
         </span>
       </div>
-      <ErrorMsg error={q.error ?? voidIt.error ?? voidTicket.error} />
+      <ErrorMsg error={q.error ?? voidIt.error ?? voidTicket.error ?? submit.error} />
+      {s?.status === "returned" && <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">This week was returned: <b>{s.return_reason}</b>. Fix it and submit again.</p>}
       {s && (
         <>
-          <Card title="Hours">
+          <Card title="Hours" actions={<span className="flex items-center gap-2 text-sm"><StatusPill status={s.status} />{!locked && <Button onClick={() => { if (window.confirm("Submit this week? It will be locked until an admin approves or returns it.")) submit.mutate(); }} disabled={submit.isPending || s.total_minutes === 0}>Submit week</Button>}</span>}>
             <table className="w-full text-center text-sm">
               <thead className="text-slate-500"><tr>{s.days.map((d, i) => <th key={d.date}>{DAY[i]} <span className="text-xs">{d.date.slice(5)}</span></th>)}<th>Total</th></tr></thead>
               <tbody>
@@ -65,7 +70,7 @@ export default function Timesheet() {
                     <td>{e.detail}{e.kind === "ticket" && !e.billable && " (non-billable)"}{e.invoiced && " · invoiced"}</td>
                     <td>{e.minutes_actual}</td>
                     <td>{e.note}</td>
-                    <td>{!e.invoiced && <button className="text-red-700 hover:underline" onClick={() => (e.kind === "ticket" ? voidTicket : voidIt).mutate(e.id)}>Void</button>}</td>
+                    <td>{!e.invoiced && !locked && <button className="text-red-700 hover:underline" onClick={() => (e.kind === "ticket" ? voidTicket : voidIt).mutate(e.id)}>Void</button>}</td>
                   </tr>
                 ))}
                 {s.entries.length === 0 && <tr><td colSpan={6} className="text-slate-500">Nothing logged this week.</td></tr>}
@@ -74,7 +79,8 @@ export default function Timesheet() {
           </Card>
         </>
       )}
-      <Card title="Log internal time">
+      {me && can(me, "timesheet:approve") && <Approvals />}
+      {!locked && <Card title="Log internal time">
         <p className="mb-2 text-sm text-slate-600">For work that is not for a client: administration, training, meetings, paid time off. Time on a ticket is logged from the ticket.</p>
         <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
           <Field label="Category">
@@ -89,7 +95,7 @@ export default function Timesheet() {
           <Button type="submit" disabled={add.isPending}>Add</Button>
         </form>
         <ErrorMsg error={add.error} />
-      </Card>
+      </Card>}
       <InternalTimer cats={cats.data ?? []} />
     </div>
   );
@@ -114,6 +120,51 @@ function InternalTimer({ cats }: { cats: Lookup[] }) {
         <Button disabled={!cat || start.isPending} onClick={() => start.mutate()}>Start timer</Button>
       </div>
       <ErrorMsg error={start.error} />
+    </Card>
+  );
+}
+
+const PILL: Record<string, string> = {
+  open: "bg-slate-100 text-slate-700",
+  submitted: "bg-amber-100 text-amber-900",
+  approved: "bg-green-100 text-green-800",
+  returned: "bg-red-100 text-red-800",
+};
+function StatusPill({ status }: { status: string }) {
+  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${PILL[status]}`}>{status}</span>;
+}
+
+/** Admins: the weeks waiting for a decision, plus the payroll export. */
+function Approvals() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["timesheet-queue"], queryFn: () => api<TimesheetQueueRow[]>("/timesheets?status=submitted") });
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["timesheet-queue"] }); qc.invalidateQueries({ queryKey: ["timesheet"] }); };
+  const approve = useMutation({ mutationFn: (r: TimesheetQueueRow) => api("/timesheet/approve", { method: "POST", json: { user_id: r.user_id, week_start: r.week_start } }), onSuccess: refresh });
+  const back = useMutation({ mutationFn: ({ r, reason }: { r: TimesheetQueueRow; reason: string }) => api("/timesheet/return", { method: "POST", json: { user_id: r.user_id, week_start: r.week_start, reason } }), onSuccess: refresh });
+  const [range, setRange] = useState({ from: iso(mondayOf(new Date())), to: iso(new Date()) });
+  return (
+    <Card title="Timesheet approvals">
+      <ErrorMsg error={q.error ?? approve.error ?? back.error} />
+      <table className="w-full text-left text-sm">
+        <thead className="text-slate-500"><tr><th>Person</th><th>Week of</th><th>Hours</th><th /></tr></thead>
+        <tbody>
+          {q.data?.map((r) => (
+            <tr key={r.id} className="border-t border-slate-100">
+              <td>{r.user_name}</td><td>{r.week_start}</td><td>{hours(r.total_minutes)}</td>
+              <td className="flex gap-2 py-1">
+                <Button onClick={() => approve.mutate(r)}>Approve</Button>
+                <Button variant="secondary" onClick={() => { const reason = window.prompt("Why is this week being returned?"); if (reason?.trim()) back.mutate({ r, reason }); }}>Return</Button>
+              </td>
+            </tr>
+          ))}
+          {q.data?.length === 0 && <tr><td colSpan={4} className="text-slate-500">Nothing waiting for approval.</td></tr>}
+        </tbody>
+      </table>
+      <div className="mt-3 flex flex-wrap items-end gap-2">
+        <Field label="Payroll export from"><input className={inputCls} type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></Field>
+        <Field label="to"><input className={inputCls} type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></Field>
+        <a className="pb-2 text-blue-700 hover:underline" href={`/api/timesheets/export.csv?from=${range.from}&to=${range.to}`}>Download hours CSV (approved weeks)</a>
+      </div>
     </Card>
   );
 }

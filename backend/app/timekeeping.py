@@ -8,7 +8,7 @@ from datetime import date, timedelta
 
 from sqlalchemy import select
 
-from app import audit
+from app import audit, timesheets
 from app import repositories as repo
 from app import ticket_services as tsvc
 from app.deps import Ctx
@@ -50,10 +50,12 @@ def add_internal(ctx: Ctx, data: dict) -> InternalTimeEntry:
         target = repo.get_user(ctx.db, user_id)
         if target is None or not target.is_active:
             raise Conflict("Unknown or inactive user")
+    work_date = tsvc._entry_date(ctx, data.get("work_date"))
+    timesheets.assert_open(ctx, user_id, work_date)
     entry = InternalTimeEntry(
         user_id=user_id,
         category_id=data["category_id"],
-        work_date=tsvc._entry_date(ctx, data.get("work_date")),
+        work_date=work_date,
         minutes=data["minutes"],
         note=data.get("note"),
     )
@@ -75,6 +77,9 @@ def _get_internal(ctx: Ctx, entry_id: int) -> InternalTimeEntry:
 
 def update_internal(ctx: Ctx, entry_id: int, data: dict) -> InternalTimeEntry:
     entry = _get_internal(ctx, entry_id)
+    timesheets.assert_open(ctx, entry.user_id, entry.work_date)
+    if data.get("work_date"):
+        timesheets.assert_open(ctx, entry.user_id, data["work_date"])
     before = audit.snapshot(entry)
     if data.get("category_id"):
         _category(ctx, data["category_id"])
@@ -97,6 +102,7 @@ def update_internal(ctx: Ctx, entry_id: int, data: dict) -> InternalTimeEntry:
 
 def void_internal(ctx: Ctx, entry_id: int) -> InternalTimeEntry:
     entry = _get_internal(ctx, entry_id)
+    timesheets.assert_open(ctx, entry.user_id, entry.work_date)
     before = audit.snapshot(entry)
     entry.voided_at = tsvc.now()
     ctx.db.flush()
@@ -289,7 +295,10 @@ def timesheet(ctx: Ctx, week_start: date, user_id: int | None) -> dict:
                 billable_minutes=sum(r["minutes_billable"] for r in day_rows),
             )
         )
+    sheet = timesheets.get(ctx, target_id, week_start)
     return dict(
+        status=sheet.status if sheet else "open",
+        return_reason=sheet.return_reason if sheet and sheet.status == "returned" else None,
         user_id=target.id,
         user_name=target.display_name,
         week_start=week_start,

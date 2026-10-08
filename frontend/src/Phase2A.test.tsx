@@ -21,7 +21,10 @@ const sheet = {
   ],
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 function mount(path: string, handlers: Record<string, (init?: RequestInit) => Response>) {
   vi.stubGlobal(
@@ -91,5 +94,58 @@ describe("timesheet", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(JSON.parse(posts[0])).toMatchObject({ category_id: 4, minutes: 45 });
+  });
+});
+
+describe("timesheet approval", () => {
+  const admin = { ...me, role: "admin", permissions: [...me.permissions, "timesheet:approve"] };
+  const row = { id: 9, user_id: 2, user_name: "Tess Tech", week_start: "2026-10-05", status: "submitted", submitted_at: null, approved_at: null, return_reason: null, total_minutes: 150 };
+
+  it("lets the owner submit, and locks edits once submitted", async () => {
+    const posts: string[] = [];
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    mount("/timesheet", {
+      "/api/auth/me": json(me),
+      "/api/timesheet": json(sheet),
+      "/api/timesheet/submit": (init) => { posts.push(String(init?.body)); return new Response("{}"); },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Submit week" }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(JSON.parse(posts[0]).week_start).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("shows a submitted week as locked and a returned week with its reason", async () => {
+    mount("/timesheet", { "/api/auth/me": json(me), "/api/timesheet": json({ ...sheet, status: "submitted" }) });
+    await screen.findByText("#10005 New starter");
+    expect(screen.queryByRole("button", { name: "Submit week" })).toBeNull();
+    expect(screen.queryByText("Void")).toBeNull();
+    expect(screen.queryByText("Log internal time")).toBeNull();
+  });
+
+  it("shows why a week was returned", async () => {
+    mount("/timesheet", { "/api/auth/me": json(me), "/api/timesheet": json({ ...sheet, status: "returned", return_reason: "Missing Tuesday" }) });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Missing Tuesday");
+    expect(screen.getByRole("button", { name: "Submit week" })).toBeInTheDocument();
+  });
+
+  it("gives admins the approval queue", async () => {
+    const posts: string[] = [];
+    mount("/timesheet", {
+      "/api/auth/me": json(admin),
+      "/api/timesheet": json(sheet),
+      "/api/timesheets": json([row]),
+      "/api/timesheet/approve": (init) => { posts.push(String(init?.body)); return new Response("{}"); },
+    });
+    expect(await screen.findByText("Tess Tech")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(JSON.parse(posts[0])).toEqual({ user_id: 2, week_start: "2026-10-05" });
+    expect(screen.getByRole("link", { name: /Download hours CSV/ })).toHaveAttribute("href", expect.stringContaining("/api/timesheets/export.csv?from="));
+  });
+
+  it("hides approvals from people without the permission", async () => {
+    mount("/timesheet", { "/api/auth/me": json(me), "/api/timesheet": json(sheet) });
+    await screen.findByText("#10005 New starter");
+    expect(screen.queryByText("Timesheet approvals")).toBeNull();
   });
 });

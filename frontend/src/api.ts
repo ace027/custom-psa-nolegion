@@ -235,6 +235,8 @@ export interface TimesheetEntry {
   invoiced: boolean;
 }
 export interface Timesheet {
+  status: "open" | "submitted" | "approved" | "returned";
+  return_reason: string | null;
   user_id: number;
   user_name: string;
   week_start: string;
@@ -244,6 +246,17 @@ export interface Timesheet {
   internal_minutes: number;
   days: { date: string; minutes: number; billable_minutes: number }[];
   entries: TimesheetEntry[];
+}
+export interface TimesheetQueueRow {
+  id: number;
+  user_id: number;
+  user_name: string;
+  week_start: string;
+  status: "submitted" | "approved" | "returned";
+  submitted_at: string | null;
+  approved_at: string | null;
+  return_reason: string | null;
+  total_minutes: number;
 }
 export interface Attachment {
   id: number;

@@ -5,7 +5,9 @@ from datetime import date
 from fastapi import APIRouter, Query, Response
 
 from app import permissions as P
+from app import reports as rpt
 from app import timekeeping as svc
+from app import timesheets as tsh
 from app.deps import Ctx, require
 from app.schemas import (
     ErrorOut,
@@ -16,6 +18,11 @@ from app.schemas import (
     TimerStartIn,
     TimerStopOut,
     TimesheetOut,
+    TimesheetQueueRow,
+    TimesheetStatusOut,
+    WeekIn,
+    WeekReturnIn,
+    WeekUserIn,
 )
 
 router = APIRouter(tags=["time"])
@@ -107,3 +114,65 @@ def timesheet(
     ctx: Ctx = require(P.TIME_WRITE),
 ):
     return svc.timesheet(ctx, week_start, user_id)
+
+
+@router.post(
+    "/timesheet/submit",
+    response_model=TimesheetStatusOut,
+    responses=ERR,
+    summary="Submit my week for approval; it is locked against edits until approved or returned",
+)
+def submit_week(body: WeekIn, ctx: Ctx = require(P.TIME_WRITE)):
+    return tsh.submit(ctx, body.week_start)
+
+
+@router.post(
+    "/timesheet/approve",
+    response_model=TimesheetStatusOut,
+    responses=ERR,
+    summary="Approve a submitted week (payroll and records only; billing is not affected)",
+)
+def approve_week(body: WeekUserIn, ctx: Ctx = require(P.TIMESHEET_APPROVE)):
+    return tsh.approve(ctx, body.user_id, body.week_start)
+
+
+@router.post(
+    "/timesheet/return",
+    response_model=TimesheetStatusOut,
+    responses=ERR,
+    summary="Send a submitted or approved week back to its owner with a reason",
+)
+def return_week(body: WeekReturnIn, ctx: Ctx = require(P.TIMESHEET_APPROVE)):
+    return tsh.return_sheet(ctx, body.user_id, body.week_start, body.reason)
+
+
+@router.get(
+    "/timesheets",
+    response_model=list[TimesheetQueueRow],
+    summary="Submitted timesheets, newest week first (filter by status)",
+)
+def timesheet_queue(
+    status: str | None = Query(None, pattern="^(submitted|approved|returned)$"),
+    ctx: Ctx = require(P.TIMESHEET_APPROVE),
+):
+    return tsh.queue(ctx, status)
+
+
+@router.get(
+    "/timesheets/export.csv",
+    responses=ERR,
+    summary="Payroll CSV: actual hours per person, day and category, approved weeks only",
+)
+def export_hours(
+    start: date = Query(alias="from"),
+    end: date = Query(alias="to"),
+    ctx: Ctx = require(P.TIMESHEET_APPROVE),
+):
+    rows = tsh.export_rows(ctx, start, end)
+    rpt.record_export(ctx, "payroll-hours", {"from": start, "to": end}, len(rows))
+    body = rpt.to_csv(["Employee", "Email", "Date", "Category", "Hours"], rows)
+    return Response(
+        body,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="hours-{start}-{end}.csv"'},
+    )

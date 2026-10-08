@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy import update
 
-from app import audit, custom_fields
+from app import audit, custom_fields, timesheets
 from app import repositories as repo
 from app.deps import Ctx
 from app.errors import Conflict, Forbidden, NotFound
@@ -369,13 +369,15 @@ def add_time(ctx: Ctx, ticket_id: int, data: dict) -> TimeEntry:
         target = repo.get_user(ctx.db, user_id)
         if target is None or not target.is_active:
             raise Conflict("Unknown or inactive user")
+    work_date = _entry_date(ctx, data.get("work_date"))
+    timesheets.assert_open(ctx, user_id, work_date)
     inc = repo.get_settings_row(ctx.db).billing_increment_minutes
     entry = TimeEntry(
         ticket_id=ticket.id,
         organization_id=ticket.organization_id,
         user_id=user_id,
         work_type_id=data["work_type_id"],
-        work_date=_entry_date(ctx, data.get("work_date")),
+        work_date=work_date,
         minutes_actual=data["minutes"],
         billable=data["billable"],
         note=data.get("note"),
@@ -409,6 +411,9 @@ def update_time(ctx: Ctx, entry_id: int, data: dict) -> TimeEntry:
         raise Conflict("Voided time entries cannot be edited")
     if entry.invoice_line_id is not None:
         raise Conflict("This time is on an invoice and is locked")
+    timesheets.assert_open(ctx, entry.user_id, entry.work_date)
+    if data.get("work_date"):
+        timesheets.assert_open(ctx, entry.user_id, data["work_date"])
     before = audit.snapshot(entry)
     if data.get("work_type_id"):
         _active(ctx, WorkType, data["work_type_id"], "work type")
@@ -448,6 +453,7 @@ def void_time(ctx: Ctx, entry_id: int) -> TimeEntry:
         raise Conflict("Already voided")
     if entry.invoice_line_id is not None:
         raise Conflict("This time is on an invoice and is locked")
+    timesheets.assert_open(ctx, entry.user_id, entry.work_date)
     before = audit.snapshot(entry)
     entry.voided_at = now()
     ctx.db.flush()
