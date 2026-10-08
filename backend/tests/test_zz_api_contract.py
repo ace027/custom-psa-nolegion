@@ -14,6 +14,7 @@ PUBLIC = {  # deliberately unauthenticated
     ("POST", "/api/auth/dev-login"),
     ("POST", "/api/portal/login-link"),
     ("POST", "/api/portal/verify"),
+    ("POST", "/api/csat/respond"),
 }
 
 

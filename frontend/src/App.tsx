@@ -11,6 +11,7 @@ import Payments from "./pages/billing/Payments";
 import Products from "./pages/billing/Products";
 import Rates from "./pages/billing/Rates";
 import Receivables from "./pages/billing/Receivables";
+import CsatPage from "./portal/CsatPage";
 import PortalApp from "./portal/PortalApp";
 import QuotePage from "./pages/quotes/QuotePage";
 import QuotesList from "./pages/quotes/QuotesList";
@@ -103,7 +104,9 @@ function Layout() {
 
 export default function App() {
   // The client portal has its own sign-in and shell; it never touches the staff session.
-  if (useLocation().pathname.startsWith("/portal")) return <PortalApp />;
+  const path = useLocation().pathname;
+  if (path === "/csat") return <CsatPage />; // public, opened from an emailed link
+  if (path.startsWith("/portal")) return <PortalApp />;
   return <StaffApp />;
 }
 

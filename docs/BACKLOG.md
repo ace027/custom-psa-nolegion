@@ -46,3 +46,5 @@ Ideas that are not in scope for the current phase. Nothing here gets built witho
 - One-off "recalculate open tickets" button after adding holidays (existing due dates are intentionally left alone).
 - Filter/sort the ticket list by custom field values (today only by ticket type)
 - Add custom fields to the new-ticket form and to the portal's new-ticket form (today set on the ticket page)
+- CSAT: editable survey email wording; notify staff on a low rating; per-technician and per-client satisfaction reports; resend a survey on request
+- Show linked tickets (and parent/child roll-ups) on the ticket list; merge-style combined view of a duplicate's notes

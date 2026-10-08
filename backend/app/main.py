@@ -13,6 +13,7 @@ from app.routers import (
     auth,
     billing,
     config,
+    csat,
     health,
     holidays,
     integrations,
@@ -102,6 +103,7 @@ def create_app() -> FastAPI:
         holidays.router,
         ticket_config.router,
         ticket_links.router,
+        csat.router,
         portal.router,
     ):
         app.include_router(r, prefix="/api")

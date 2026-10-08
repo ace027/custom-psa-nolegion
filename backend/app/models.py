@@ -261,6 +261,7 @@ class Settings(Base):
     auto_ack_body: Mapped[str] = mapped_column(Text, nullable=False)
     escalation_email: Mapped[str | None] = mapped_column(String(320))
     escalation_bump_priority: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    csat_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
@@ -746,6 +747,26 @@ class TicketLink(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class CsatSurvey(Base):
+    """A satisfaction survey sent when a ticket is first resolved. Only the token's hash is
+    stored; it answers once and expires."""
+
+    __tablename__ = "csat_surveys"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), nullable=False, unique=True)
+    organization_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    sent_to: Mapped[str] = mapped_column(String(320), nullable=False)
+    email_message_id: Mapped[int | None] = mapped_column(ForeignKey("email_messages.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    rating: Mapped[int | None] = mapped_column(SmallInteger)
+    comment: Mapped[str | None] = mapped_column(Text)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class TicketAutoAck(Base):

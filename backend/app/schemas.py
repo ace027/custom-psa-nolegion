@@ -512,6 +512,32 @@ class CloseDuplicateIn(BaseModel):
     original_number: int = Field(ge=1)
 
 
+class CsatRespondIn(BaseModel):
+    token: str = Field(min_length=10, max_length=200)
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=2000)
+
+
+class CsatRespondOut(BaseModel):
+    ticket_number: int
+
+
+class CsatOut(BaseModel):
+    sent_to: str
+    requested_at: datetime
+    rating: int | None
+    comment: str | None
+    responded_at: datetime | None
+
+
+class CsatSummaryOut(BaseModel):
+    days: int
+    requested: int
+    responses: int
+    average: float | None
+    distribution: dict[str, int]  # "1".."5" -> count
+
+
 class HolidayIn(BaseModel):
     on_date: date
     name: str = Field(min_length=1, max_length=100)
@@ -544,6 +570,7 @@ class SettingsOut(ORM):
     auto_ack_body: str
     escalation_email: str | None
     escalation_bump_priority: bool
+    csat_enabled: bool
     portal_enabled: bool
     notify_staff: bool
     statement_subject: str
@@ -572,6 +599,7 @@ class SettingsPatch(BaseModel):
     # An empty string clears the address (None means "leave unchanged", like every other field).
     escalation_email: str | None = Field(default=None, max_length=320)
     escalation_bump_priority: bool | None = None
+    csat_enabled: bool | None = None
     portal_enabled: bool | None = None
     notify_staff: bool | None = None
     statement_subject: str | None = Field(default=None, min_length=1, max_length=500)

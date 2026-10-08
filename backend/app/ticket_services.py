@@ -107,6 +107,10 @@ def _apply_status(ctx: Ctx, ticket: Ticket, new: str, named_id: int | None = Non
     ticket.closed_at = t if new == "closed" else None
     ticket.status = new
     ticket.status_id = named_id
+    if new == "resolved":  # after both columns agree: the survey queries autoflush
+        from app import csat
+
+        csat.maybe_request(ctx, ticket)
 
 
 def _mark_first_response(ticket: Ticket) -> None:

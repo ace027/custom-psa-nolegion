@@ -96,3 +96,30 @@ describe("linked tickets", () => {
     expect(JSON.parse(posts[1].slice(4))).toEqual({ original_number: 10003 });
   });
 });
+
+describe("satisfaction page", () => {
+  it("preselects the rating from the link and records it only after confirmation", async () => {
+    const bodies: string[] = [];
+    window.location.hash = "#token=abc1234567890&rating=4";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init?: RequestInit) => {
+        bodies.push(String(init?.body));
+        return Promise.resolve(new Response(JSON.stringify({ ticket_number: 10005 })));
+      }),
+    );
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/csat"]}><App /></MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const four = await screen.findByRole("radio", { name: /4 · Happy/ });
+    expect(four).toHaveAttribute("aria-checked", "true");
+    expect(bodies).toHaveLength(0); // opening the link records nothing
+    fireEvent.change(screen.getByLabelText(/Anything you would like to add/), { target: { value: "Thanks" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
+    expect(await screen.findByText(/request #10005/)).toBeInTheDocument();
+    expect(JSON.parse(bodies[0])).toEqual({ token: "abc1234567890", rating: 4, comment: "Thanks" });
+  });
+});

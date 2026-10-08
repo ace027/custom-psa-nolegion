@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
-  Attachment, CannedResponse, Charge, CustomFieldDef, LinkRelation, TicketLink, Contact, Note, Organization, Page, Product, Ticket, TimeEntry, api,
+  Attachment, CannedResponse, Charge, CustomFieldDef, Csat, LinkRelation, TicketLink, Contact, Note, Organization, Page, Product, Ticket, TimeEntry, api,
 } from "../api";
 import { can, useMe } from "../auth";
 import { useLookups } from "../lookups";
@@ -39,6 +39,7 @@ export default function TicketDetail() {
       </p>
       {t.needs_triage && canWrite && <TriagePanel ticket={t} onDone={refresh} />}
       <Fields ticket={t} canWrite={canWrite} onDone={refresh} />
+      <CsatLine ticketId={t.id} />
       <LinksCard ticket={t} canWrite={canWrite} onDone={refresh} />
       <CustomFieldsCard key={`${t.id}-${t.type_id ?? 0}-${t.updated_at}`} ticket={t} canWrite={canWrite} onDone={refresh} />
       {t.description && (
@@ -107,6 +108,20 @@ function Fields({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boo
       </div>
       <div className="mt-2"><ErrorMsg error={patch.error} /></div>
     </Card>
+  );
+}
+
+function CsatLine({ ticketId }: { ticketId: number }) {
+  const q = useQuery({ queryKey: ["csat", ticketId], queryFn: () => api<Csat | null>(`/tickets/${ticketId}/csat`) });
+  const c = q.data;
+  if (!c) return null;
+  return (
+    <p className="rounded-lg border border-slate-200 bg-surface px-4 py-2 text-sm">
+      <b>Customer satisfaction:</b>{" "}
+      {c.rating === null
+        ? `survey sent to ${c.sent_to} on ${fmt(c.requested_at)}, not answered yet`
+        : `${c.rating} of 5 on ${fmt(c.responded_at)}${c.comment ? ` — “${c.comment}”` : ""}`}
+    </p>
   );
 }
 

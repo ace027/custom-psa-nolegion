@@ -137,6 +137,20 @@ export interface TicketLink {
   status: TicketStatus;
   status_name: string;
 }
+export interface Csat {
+  sent_to: string;
+  requested_at: string;
+  rating: number | null;
+  comment: string | null;
+  responded_at: string | null;
+}
+export interface CsatSummary {
+  days: number;
+  requested: number;
+  responses: number;
+  average: number | null;
+  distribution: Record<string, number>;
+}
 export type SlaState = "none" | "ok" | "at_risk" | "breached" | "paused" | "done";
 
 export interface Ticket {
@@ -241,6 +255,7 @@ export interface AppSettings {
   auto_ack_body: string;
   escalation_email: string | null;
   escalation_bump_priority: boolean;
+  csat_enabled: boolean;
   company_name: string | null;
   company_address: string | null;
   invoice_footer: string | null;

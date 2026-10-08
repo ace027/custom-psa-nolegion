@@ -328,6 +328,11 @@ function EmailAutomationCard() {
           Also raise the ticket's priority by one step
         </label>
         <p className="text-xs text-slate-500">Each ticket escalates once. Turning this on escalates tickets that are already breached.</p>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={s.csat_enabled} onChange={(e) => upd({ csat_enabled: e.target.checked })} />
+          Email a satisfaction survey (1 to 5) when a ticket is first resolved
+        </label>
+        <p className="text-xs text-slate-500">One survey per ticket, only to the ticket's contact at a known client. Each link works once and expires after 30 days; the customer confirms on a page, so mail scanners cannot answer for them.</p>
       </div>
       <ErrorMsg error={save.error} />
       {edit && <div className="mt-2"><Button onClick={() => save.mutate()}>Save</Button></div>}
