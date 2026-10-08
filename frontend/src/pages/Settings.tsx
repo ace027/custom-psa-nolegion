@@ -22,6 +22,7 @@ export default function Settings() {
       <SimpleList title="Queues" path="queues" defaults />
       <SimpleList title="Categories" path="categories" />
       <SimpleList title="Work types" path="work-types" />
+      <SimpleList title="Internal time categories" path="time-categories" />
       <PrioritiesCard />
       <CannedCard />
     </div>

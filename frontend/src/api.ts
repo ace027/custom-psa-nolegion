@@ -209,6 +209,42 @@ export interface TimeEntry {
   note: string | null;
   voided_at: string | null;
 }
+export interface Timer {
+  ticket_id: number | null;
+  ticket_number: number | null;
+  ticket_subject: string | null;
+  work_type_id: number | null;
+  category_id: number | null;
+  category_name: string | null;
+  billable: boolean;
+  note: string | null;
+  started_at: string;
+  elapsed_seconds: number;
+}
+export interface TimesheetEntry {
+  kind: "ticket" | "internal";
+  id: number;
+  work_date: string;
+  label: string;
+  detail: string | null;
+  ticket_id: number | null;
+  minutes_actual: number;
+  minutes_billable: number;
+  billable: boolean;
+  note: string | null;
+  invoiced: boolean;
+}
+export interface Timesheet {
+  user_id: number;
+  user_name: string;
+  week_start: string;
+  week_end: string;
+  total_minutes: number;
+  billable_minutes: number;
+  internal_minutes: number;
+  days: { date: string; minutes: number; billable_minutes: number }[];
+  entries: TimesheetEntry[];
+}
 export interface Attachment {
   id: number;
   filename: string;

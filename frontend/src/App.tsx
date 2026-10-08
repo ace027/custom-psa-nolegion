@@ -28,6 +28,8 @@ import Login from "./pages/Login";
 import OrganizationDetail from "./pages/OrganizationDetail";
 import Organizations from "./pages/Organizations";
 import Settings from "./pages/Settings";
+import Timesheet from "./pages/Timesheet";
+import TimerBar from "./pages/TimerBar";
 import TicketDetail from "./pages/TicketDetail";
 import Search from "./pages/Search";
 import Tickets from "./pages/Tickets";
@@ -79,6 +81,7 @@ function Layout() {
           <NavLink to="/dashboard" className={link}>Dashboard</NavLink>
           <NavLink to="/tickets" className={link}>Tickets</NavLink>
           <NavLink to="/organizations" className={link}>Organizations</NavLink>
+          {can(me, "time:write") && <NavLink to="/timesheet" className={link}>My timesheet</NavLink>}
           {can(me, "billing:read") && <NavLink to="/billing" className={link}>Billing</NavLink>}
           {can(me, "quote:read") && <NavLink to="/quotes" className={link}>Quotes</NavLink>}
           {can(me, "report:read") && <NavLink to="/warranty" className={link}>Warranty</NavLink>}
@@ -96,7 +99,7 @@ function Layout() {
         </div>
       </aside>
       <main className="min-w-0 flex-1 p-4 md:p-8">
-        <div className="mx-auto max-w-6xl"><Outlet /></div>
+        <div className="mx-auto max-w-6xl">{can(me, "time:write") && <TimerBar />}<Outlet /></div>
       </main>
     </div>
   );
@@ -123,6 +126,7 @@ function StaffApp() {
         <Route path="/search" element={<Search />} />
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/tickets/:id" element={<TicketDetail />} />
+        <Route path="/timesheet" element={can(me, "time:write") ? <Timesheet /> : <Navigate to="/" replace />} />
         <Route path="/settings" element={can(me, "config:manage") ? <Settings /> : <Navigate to="/" replace />} />
         <Route path="/organizations" element={<Organizations />} />
         <Route path="/organizations/:id" element={<OrganizationDetail />} />

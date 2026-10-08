@@ -371,6 +371,11 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
     },
   });
   const voidIt = useMutation({ mutationFn: (id: number) => api(`/time-entries/${id}/void`, { method: "POST" }), onSuccess: onDone });
+  const qc = useQueryClient();
+  const start = useMutation({
+    mutationFn: () => api("/timer/start", { method: "POST", json: { ticket_id: t.id, work_type_id: Number(f.work_type_id), billable: f.billable, note: f.note || null } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["timer"] }),
+  });
   const total = entries.reduce((s, e) => s + e.minutes_billable, 0);
   return (
     <Card title="Time">
@@ -391,7 +396,7 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
         </tbody>
       </table>
       <p className="mt-1 text-sm text-slate-600">Total billable: <b>{total} min</b> ({(total / 60).toFixed(2)} h). Billable time rounds up to {lk.settings?.billing_increment_minutes ?? 15}-minute increments.</p>
-      <ErrorMsg error={add.error ?? voidIt.error} />
+      <ErrorMsg error={add.error ?? voidIt.error ?? start.error} />
       {canWrite && !t.needs_triage && (
         <form className="mt-3 flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
           <Field label="Work type">
@@ -404,6 +409,7 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
           <div className="w-64"><Field label="Note"><input className={inputCls} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></Field></div>
           <label className="flex items-center gap-1 pb-2 text-sm"><input type="checkbox" checked={f.billable} onChange={(e) => setF({ ...f, billable: e.target.checked })} />Billable</label>
           <Button type="submit" disabled={add.isPending}>Log time</Button>
+          <Button type="button" variant="secondary" disabled={!f.work_type_id || start.isPending} onClick={() => start.mutate()} title="Choose a work type, then start the clock">Start timer</Button>
         </form>
       )}
       {t.needs_triage && <p className="mt-2 text-sm text-amber-700">Assign an organization before logging time.</p>}

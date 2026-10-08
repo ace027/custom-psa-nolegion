@@ -15,6 +15,7 @@ from app.models import (
     Queue,
     Ticket,
     TicketType,
+    TimeCategory,
     WorkType,
 )
 from app.schemas import (
@@ -45,6 +46,7 @@ LOOKUPS = [
     ("categories", Category, "category", NameIn, NamePatch, LookupOut),
     ("priorities", Priority, "priority", PriorityIn, PriorityPatch, PriorityOut),
     ("work-types", WorkType, "work_type", NameIn, NamePatch, LookupOut),
+    ("time-categories", TimeCategory, "time_category", NameIn, NamePatch, LookupOut),
     ("ticket-types", TicketType, "ticket_type", NameIn, NamePatch, LookupOut),
     ("canned-responses", CannedResponse, "canned_response", CannedIn, CannedPatch, CannedOut),
 ]

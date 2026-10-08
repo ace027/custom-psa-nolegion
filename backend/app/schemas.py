@@ -350,6 +350,90 @@ class TimeOut(ORM):
     voided_at: datetime | None
 
 
+class InternalTimeIn(BaseModel):
+    category_id: int
+    minutes: int = Field(ge=1, le=1440)
+    work_date: date | None = None
+    note: str | None = Field(default=None, max_length=2000)
+    user_id: int | None = None  # admin only; defaults to the caller
+
+
+class InternalTimePatch(BaseModel):
+    category_id: int | None = None
+    minutes: int | None = Field(default=None, ge=1, le=1440)
+    work_date: date | None = None
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class InternalTimeOut(ORM):
+    id: int
+    user_id: int
+    category_id: int
+    work_date: date
+    minutes: int
+    note: str | None
+    voided_at: datetime | None
+
+
+class TimerStartIn(BaseModel):
+    ticket_id: int | None = None  # ticket time: needs work_type_id
+    work_type_id: int | None = None
+    category_id: int | None = None  # internal time
+    billable: bool = True
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class TimerOut(BaseModel):
+    ticket_id: int | None
+    ticket_number: int | None
+    ticket_subject: str | None
+    work_type_id: int | None
+    category_id: int | None
+    category_name: str | None
+    billable: bool
+    note: str | None
+    started_at: datetime
+    elapsed_seconds: int
+
+
+class TimerStopOut(BaseModel):
+    kind: Literal["ticket", "internal"]
+    id: int
+    minutes: int
+
+
+class TimesheetEntryOut(BaseModel):
+    kind: Literal["ticket", "internal"]
+    id: int
+    work_date: date
+    label: str
+    detail: str | None
+    ticket_id: int | None
+    minutes_actual: int
+    minutes_billable: int
+    billable: bool
+    note: str | None
+    invoiced: bool
+
+
+class TimesheetDayOut(BaseModel):
+    date: date
+    minutes: int
+    billable_minutes: int
+
+
+class TimesheetOut(BaseModel):
+    user_id: int
+    user_name: str
+    week_start: date
+    week_end: date
+    total_minutes: int
+    billable_minutes: int
+    internal_minutes: int
+    days: list[TimesheetDayOut]
+    entries: list[TimesheetEntryOut]
+
+
 class AttachmentOut(ORM):
     id: int
     ticket_id: int

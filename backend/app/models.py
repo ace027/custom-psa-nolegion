@@ -404,6 +404,41 @@ class TimeEntry(TimestampMixin, Base):
     invoice_line_id: Mapped[int | None] = mapped_column(ForeignKey("invoice_lines.id"))
 
 
+class TimeCategory(_Lookup, Base):
+    """What internal (non-client) time was spent on: Administration, Training, Paid time off..."""
+
+    __tablename__ = "time_categories"
+
+
+class InternalTimeEntry(TimestampMixin, Base):
+    """Time that belongs to no client or ticket. Never billable; voided, never deleted."""
+
+    __tablename__ = "internal_time_entries"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    category_id: Mapped[int] = mapped_column(ForeignKey("time_categories.id"), nullable=False)
+    work_date: Mapped[date] = mapped_column(Date, nullable=False)
+    minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    category: Mapped[TimeCategory] = relationship(lazy="joined")
+
+
+class Timer(Base):
+    """A person's running timer: on a ticket (with a work type) or on an internal category."""
+
+    __tablename__ = "timers"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    ticket_id: Mapped[int | None] = mapped_column(ForeignKey("tickets.id"))
+    work_type_id: Mapped[int | None] = mapped_column(ForeignKey("work_types.id"))
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("time_categories.id"))
+    billable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    note: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class Attachment(Base):
     __tablename__ = "attachments"
 
