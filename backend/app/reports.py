@@ -111,6 +111,8 @@ def revenue(ctx: Ctx, start: date | None, end: date | None) -> dict:
         bucket["total_cents"] += amount + tax
 
     for org_id, m, kind, amount, tax in ctx.db.execute(stmt):
+        if kind == "proration":
+            kind = "agreement"  # a proration credit nets against its agreement's revenue
         c = by_client.setdefault(org_id, blank())
         add(c, kind, int(amount), int(tax))
         add(by_month[m.date()], kind, int(amount), int(tax))

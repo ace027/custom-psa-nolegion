@@ -27,6 +27,12 @@ def agreement(client, org, **kw):
     return r.json()
 
 
+def start_days(first: date) -> int:
+    import calendar
+
+    return calendar.monthrange(first.year, first.month)[1]
+
+
 def start_run(client, p=None):
     r = client.post("/api/billing-runs", json={"period": p or period()})
     assert r.status_code == 201, r.text
@@ -101,7 +107,12 @@ def test_agreement_inclusion_rules(biller, make_org, company):
     billed = {
         i["organization_name"]: i["total_cents"] for i in run["invoices"] if i["status"] == "draft"
     }
-    assert billed == {"Mid": 30000, "EndsInPeriod": 30000}  # no proration: manual adjust in review
+    # Mid starts on day 15 and EndsInPeriod ends on day 10: each is credited its uncovered days
+    # (credit lines are covered in test_proration.py); here only the full-line total matters.
+    assert billed == {
+        "Mid": 30000 - round(30000 * (14 / start_days(start))),
+        "EndsInPeriod": 30000 - round(30000 * ((start_days(start) - 10) / start_days(start))),
+    }
     assert any("Zero" in w and "quantity 0" in w for w in run["warnings"])
 
 

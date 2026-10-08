@@ -14,7 +14,7 @@
 
 ## What goes on a monthly run
 For each client, one **draft** invoice containing:
-- **Agreements** in force at any point in the month: `unit price x quantity`, **as the quantity is on the day you start the run**. **No proration**: an agreement that starts or ends mid-month is billed for the full month; adjust the draft in review (edit the quantity/price, or add a credit line).
+- **Agreements** in force at any point in the month: `unit price x quantity`, **as the quantity is on the day you start the run**. **Proration**: an agreement that starts or ends mid-month is billed as the full-month line plus a separate negative `proration` line for the calendar days not covered: `-round_half_up(quantity x unit price x days_not_covered / days_in_month)`, taxed at the same rate as the agreement. Starting on the 1st or ending on the last day creates no credit. Quantity changes *within* a month are not prorated; edit the draft. Example: 10 users x $150.00 from 15 Oct = $1,500.00 - $677.42 (14 of 31 days) = $822.58.
 - **Billable time** logged up to the end of the month, grouped by ticket and work type, at the client's hourly rate override or the work type's default rate.
 - **One-off product charges** dated up to the end of the month.
 - **Billable expenses and mileage** dated up to the end of the month (see below).
@@ -147,6 +147,6 @@ never runs a client-supplied name as a formula.
 
 ## Not built (by design or deferred)
 No automatic sending (every reminder/statement is approved by a person), no late fees, no accounting/payment-processor integrations (payments
-are *recorded by hand*, nothing is charged or reconciled with a bank), no proration, one tax rate per
+are *recorded by hand*, nothing is charged or reconciled with a bank), one tax rate per
 client (no per-state/jurisdiction tax), no late fees, no refunds as a separate record (void the
 payment), fixed invoice number format. See `docs/BACKLOG.md`.

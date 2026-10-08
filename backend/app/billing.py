@@ -51,7 +51,7 @@ from app.models import (
     TimeEntry,
     WorkType,
 )
-from app.money import format_money, hours, line_amounts, marked_up, to_qty
+from app.money import format_money, hours, line_amounts, marked_up, round_cents, to_qty
 from app.ticket_services import calendar as business_calendar
 from app.ticket_services import now
 
@@ -524,6 +524,20 @@ def _agreement_description(a: Agreement, period_start: date) -> str:
     return f"{a.name}: {a.quantity} {unit} x {format_money(a.unit_price_cents)} ({month})"
 
 
+def proration_days(a: Agreement, start: date, end: date) -> tuple[int, int]:
+    """-> (days_not_covered, days_in_month). Calendar days, inclusive, within the run month."""
+    days = (end - start).days + 1
+    first = max(a.start_date, start)
+    last = min(a.end_date, end) if a.end_date else end
+    covered = max((last - first).days + 1, 0)
+    return days - covered, days
+
+
+def proration_cents(a: Agreement, not_covered: int, days: int) -> int:
+    """Credit for the uncovered days: round_half_up(quantity x unit price x not_covered / days)."""
+    return round_cents(Decimal(a.quantity) * a.unit_price_cents * not_covered / days)
+
+
 def _pull_agreements(
     ctx: Ctx, invoice: Invoice, org: Organization, start: date, end: date
 ) -> list[str]:
@@ -532,6 +546,7 @@ def _pull_agreements(
         if a.quantity == 0:
             warnings.append(f"Agreement '{a.name}' has quantity 0 and was not billed")
             continue
+        rate = org.tax_rate_bp if a.taxable else 0
         _add_line(
             ctx,
             invoice,
@@ -539,10 +554,26 @@ def _pull_agreements(
             _agreement_description(a, start),
             Decimal(a.quantity),
             a.unit_price_cents,
-            org.tax_rate_bp if a.taxable else 0,
+            rate,
             agreement_id=a.id,
             period_start=start,
         )
+        not_covered, days = proration_days(a, start, end)
+        credit = proration_cents(a, not_covered, days) if not_covered else 0
+        if credit:
+            first = max(a.start_date, start)
+            last = min(a.end_date, end) if a.end_date else end
+            _add_line(
+                ctx,
+                invoice,
+                "proration",
+                f"Proration: {a.name}, {not_covered} of {days} days not covered "
+                f"(active {first.isoformat()} to {last.isoformat()})",
+                Decimal(1),
+                -credit,
+                rate,
+                agreement_id=a.id,  # period_start stays NULL: the agreement line owns the period
+            )
     return warnings
 
 

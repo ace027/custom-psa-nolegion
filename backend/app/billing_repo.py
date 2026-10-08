@@ -8,8 +8,11 @@ from sqlalchemy.orm import Session
 from app.models import (
     Agreement,
     AgreementQuantityLog,
+    Asset,
+    AssetSource,
     BillingRun,
     Expense,
+    Integration,
     Invoice,
     InvoiceLine,
     Organization,
@@ -298,3 +301,19 @@ def run_invoices(db: Session, scope: Scope, run_id: int, include_void: bool = Tr
     if not include_void:
         stmt = stmt.where(Invoice.status != "void")
     return list(db.execute(stmt.order_by(Invoice.id)).unique().scalars())
+
+
+def ninjaone_device_count(db: Session, scope: Scope, org_id: int) -> int:
+    """Active (not retired) assets of this client that NinjaOne reports."""
+    stmt = scope.apply(
+        select(func.count(func.distinct(Asset.id)))
+        .join(AssetSource, AssetSource.asset_id == Asset.id)
+        .join(Integration, Integration.id == AssetSource.integration_id)
+        .where(
+            Asset.organization_id == org_id,
+            Asset.retired_at.is_(None),
+            Integration.kind == "ninjaone",
+        ),
+        Asset.organization_id,
+    )
+    return int(db.execute(stmt).scalar_one())

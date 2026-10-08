@@ -16,6 +16,7 @@ from app.schemas import (
     AgreementPatch,
     ChargeIn,
     ChargeOut,
+    DeviceCountOut,
     ErrorOut,
     OrgBillingOut,
     OrgBillingPatch,
@@ -248,6 +249,24 @@ def agreement_quantity_log(agreement_id: int, ctx: Ctx = require(P.BILLING_READ)
     if brepo.get_agreement(ctx.db, ctx.scope, agreement_id) is None:
         raise HTTPException(404, "Agreement not found")
     return brepo.quantity_log(ctx.db, ctx.scope, agreement_id)
+
+
+@router.get(
+    "/agreements/{agreement_id}/device-count",
+    response_model=DeviceCountOut,
+    responses=ERR,
+    summary="NinjaOne device count for a per-device agreement (a suggestion; nothing changes)",
+)
+def agreement_device_count(agreement_id: int, ctx: Ctx = require(P.BILLING_READ)):
+    a = brepo.get_agreement(ctx.db, ctx.scope, agreement_id)
+    if a is None:
+        raise HTTPException(404, "Agreement not found")
+    if a.type != "per_device":
+        raise HTTPException(409, "Only per-device agreements have a device count")
+    n = brepo.ninjaone_device_count(ctx.db, ctx.scope, a.organization_id)
+    return DeviceCountOut(
+        ninjaone_devices=n, agreement_quantity=a.quantity, differs=n != a.quantity
+    )
 
 
 # ---- one-off product charges ----

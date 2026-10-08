@@ -26,7 +26,7 @@ export default function Agreements() {
   const total = (list.data ?? []).filter((a) => !a.end_date).reduce((s, a) => s + a.monthly_amount_cents, 0);
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">Recurring monthly charges. Per-user and per-device quantities are entered by hand here (and later can be filled by integrations). The monthly run bills the quantity <b>as it is on the day you start the run</b>, with no proration.</p>
+      <p className="text-sm text-slate-600">Recurring monthly charges. Per-user and per-device quantities are entered by hand here (and later can be filled by integrations). The monthly run bills the quantity <b>as it is on the day you start the run</b>. An agreement that starts or ends mid-month is billed in full plus a separate negative <b>proration</b> line for the calendar days not covered.</p>
       <ErrorMsg error={list.error} />
       <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Client</th><th>Agreement</th><th>Type</th><th className="text-right">Unit</th><th>Qty</th><th className="text-right">Monthly</th><th>Dates</th>{canWrite && <th />}</tr></thead>
@@ -66,6 +66,15 @@ function Row({ a, canWrite }: { a: Agreement; canWrite: boolean }) {
     mutationFn: (end_date: string | null) => api(`/agreements/${a.id}`, { method: "PATCH", json: { end_date } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["agreements"] }),
   });
+  const suggest = useQuery({
+    queryKey: ["device-count", a.id, a.quantity],
+    enabled: canWrite && a.type === "per_device" && !a.end_date,
+    queryFn: () => api<{ ninjaone_devices: number; agreement_quantity: number; differs: boolean }>(`/agreements/${a.id}/device-count`),
+  });
+  const adopt = useMutation({
+    mutationFn: (n: number) => api(`/agreements/${a.id}`, { method: "PATCH", json: { quantity: n, reason: "Updated from NinjaOne device count" } }),
+    onSuccess: (_d, n) => { setQty(String(n)); qc.invalidateQueries({ queryKey: ["agreements"] }); qc.invalidateQueries({ queryKey: ["qlog", a.id] }); },
+  });
   const log = useQuery({ queryKey: ["qlog", a.id], enabled: showLog, queryFn: () => api<{ id: number; old_quantity: number | null; new_quantity: number; reason: string | null; changed_at: string }[]>(`/agreements/${a.id}/quantity-log`) });
   return (
     <>
@@ -83,7 +92,14 @@ function Row({ a, canWrite }: { a: Agreement; canWrite: boolean }) {
           {canWrite && (a.end_date ? <button className="ml-2 text-blue-700 hover:underline" onClick={() => end.mutate(null)}>resume</button> : <button className="ml-2 text-red-700 hover:underline" onClick={() => { const d = window.prompt("Last day of service (YYYY-MM-DD):", new Date().toISOString().slice(0, 10)); if (d) end.mutate(d); }}>end</button>)}
         </td>
       </tr>
-      {(save.error || end.error) && <tr><td colSpan={8}><ErrorMsg error={save.error ?? end.error} /></td></tr>}
+      {suggest.data?.differs && (
+        <tr><td colSpan={8} className="bg-amber-50 p-2 text-xs text-amber-900">
+          NinjaOne reports {suggest.data.ninjaone_devices} devices; this agreement says {suggest.data.agreement_quantity}.{" "}
+          <button className="text-blue-700 hover:underline" onClick={() => adopt.mutate(suggest.data.ninjaone_devices)}>Update quantity to {suggest.data.ninjaone_devices}</button>
+          <span className="text-slate-600"> (nothing changes unless you click)</span>
+        </td></tr>
+      )}
+      {(save.error || end.error || adopt.error) && <tr><td colSpan={8}><ErrorMsg error={save.error ?? end.error ?? adopt.error} /></td></tr>}
       {showLog && <tr><td colSpan={8} className="bg-slate-50 p-2 text-xs">{log.data?.map((l) => <div key={l.id}>{fmt(l.changed_at)}: {l.old_quantity ?? "—"} → {l.new_quantity}{l.reason ? ` (${l.reason})` : ""}</div>)}</td></tr>}
     </>
   );

@@ -1,6 +1,8 @@
 # Phase 3: contract and billing depth: money rules for your approval
 
-Status: **proposal. No code is written. Billing math is the highest-regret area, so every rule below is spelled out with a worked example. Tell me which to build, and veto or change any rule.** Part of [PARITY_ROADMAP.md](PARITY_ROADMAP.md).
+Status: **approved by the owner: build slices A, B, C, D; decisions below. Slice A is built. Slice E needs its own written rules and confirmation before code.**
+
+**Decisions recorded:** proration by calendar days with a separate credit line (yes); block-hour unused hours **expire** at month end (no rollover); multiple tax rates: **separate rates for services vs products** (rules to be written and confirmed before building); NinjaOne device counts are suggestions only. Part of [PARITY_ROADMAP.md](PARITY_ROADMAP.md).
 
 All of [BILLING.md](BILLING.md)'s existing rules stay: integer cents, per-line `round_half_up` amounts and tax, immutable finalized invoices (void and reissue), gap-free numbers, one run per month, no payment-processor or accounting integrations.
 

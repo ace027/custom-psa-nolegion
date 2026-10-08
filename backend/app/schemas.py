@@ -752,7 +752,7 @@ from decimal import Decimal  # noqa: E402
 AgreementType = Literal["per_user", "per_device", "flat"]
 InvoiceStatus = Literal["draft", "final", "void"]
 RunStatus = Literal["draft", "reviewed", "finalized", "cancelled"]
-LineKind = Literal["time", "product", "agreement", "manual"]
+LineKind = Literal["time", "product", "agreement", "manual", "proration"]
 Cents = int
 
 
@@ -868,6 +868,12 @@ class QuantityLogOut(ORM):
     reason: str | None
     changed_by: int | None
     changed_at: datetime
+
+
+class DeviceCountOut(BaseModel):
+    ninjaone_devices: int
+    agreement_quantity: int
+    differs: bool
 
 
 class ChargeIn(BaseModel):

@@ -407,7 +407,7 @@ export interface Invoice {
 }
 export interface InvoiceLine {
   id: number;
-  kind: "time" | "product" | "agreement" | "manual";
+  kind: "time" | "product" | "agreement" | "manual" | "proration";
   description: string;
   quantity: string;
   unit_price_cents: number;
