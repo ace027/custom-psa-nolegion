@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { api } from "./api";
 import { can, useMe } from "./auth";
@@ -29,6 +30,7 @@ import Settings from "./pages/Settings";
 import TicketDetail from "./pages/TicketDetail";
 import Tickets from "./pages/Tickets";
 import Users from "./pages/Users";
+import { ThemeToggle } from "./ui";
 
 function Layout() {
   const { data: me } = useMe();
@@ -40,13 +42,23 @@ function Layout() {
       qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" }); // drop cached client data
     },
   });
+  const [open, setOpen] = useState(false);
   const link = ({ isActive }: { isActive: boolean }) =>
-    `rounded px-2 py-1 text-sm ${isActive ? "bg-slate-200 font-medium" : "hover:bg-slate-100"}`;
+    `block rounded-lg px-3 py-2 text-sm ${isActive ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-500 hover:bg-slate-100"}`;
+  const close = () => setOpen(false);
   return (
-    <div className="mx-auto max-w-5xl p-4">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
-        <nav className="flex flex-wrap items-center gap-2">
-          <span className="mr-4 font-bold">PSA</span>
+    <div className="min-h-screen md:flex">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-surface px-4 py-3 md:hidden">
+        <span className="flex items-center gap-2 font-bold">
+          <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-blue-600 text-sm text-on-accent">P</span>PSA
+        </span>
+        <button type="button" aria-expanded={open} aria-controls="sidebar" className="rounded-lg border border-slate-300 px-3 py-1 text-sm" onClick={() => setOpen(!open)}>Menu</button>
+      </div>
+      <aside id="sidebar" className={`${open ? "block" : "hidden"} border-b border-slate-200 bg-surface p-3 md:sticky md:top-0 md:block md:h-screen md:w-56 md:shrink-0 md:overflow-y-auto md:border-b-0 md:border-r`}>
+        <div className="mb-4 hidden items-center gap-2 px-3 pt-2 font-bold md:flex">
+          <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-blue-600 text-sm text-on-accent">P</span>PSA
+        </div>
+        <nav className="space-y-0.5" onClick={close}>
           <NavLink to="/dashboard" className={link}>Dashboard</NavLink>
           <NavLink to="/tickets" className={link}>Tickets</NavLink>
           <NavLink to="/organizations" className={link}>Organizations</NavLink>
@@ -58,12 +70,17 @@ function Layout() {
           {can(me, "config:manage") && <NavLink to="/settings" className={link}>Settings</NavLink>}
           {can(me, "audit:read") && <NavLink to="/audit" className={link}>Audit log</NavLink>}
         </nav>
-        <div className="flex items-center gap-3 text-sm">
-          <Link className="hover:underline" to="/profile" title="Your notification settings">{me?.display_name} <span className="text-slate-500">({me?.role})</span></Link>
-          <button className="text-blue-700 hover:underline" onClick={() => logout.mutate()}>Sign out</button>
+        <div className="mt-6 space-y-2 border-t border-slate-200 px-3 pt-4 text-sm">
+          <Link className="block hover:underline" to="/profile" title="Your notification settings" onClick={close}>{me?.display_name} <span className="text-slate-500">({me?.role})</span></Link>
+          <div className="flex items-center gap-3">
+            <button className="text-blue-700 hover:underline" onClick={() => logout.mutate()}>Sign out</button>
+            <ThemeToggle />
+          </div>
         </div>
-      </header>
-      <Outlet />
+      </aside>
+      <main className="min-w-0 flex-1 p-4 md:p-8">
+        <div className="mx-auto max-w-6xl"><Outlet /></div>
+      </main>
     </div>
   );
 }

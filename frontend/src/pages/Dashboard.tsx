@@ -8,11 +8,11 @@ export default function Dashboard() {
   const d = q.data;
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Dashboard</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
       <ErrorMsg error={q.error} />
       {d && (
         <>
-          <div className="flex flex-wrap gap-3 text-sm">
+          <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-5">
             <Stat label="Open" value={d.counts.open} />
             <Stat label="Mine" value={d.counts.mine} />
             <Stat label="Unassigned" value={d.counts.unassigned} />
@@ -36,7 +36,7 @@ export default function Dashboard() {
 
 function Stat({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
   return (
-    <div className={`rounded-lg border px-4 py-2 ${warn ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white"}`}>
+    <div className={`rounded-xl border px-4 py-3 shadow-card ${warn ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-surface"}`}>
       <div className="text-2xl font-semibold">{value}</div>
       <div className="text-slate-500">{label}</div>
     </div>

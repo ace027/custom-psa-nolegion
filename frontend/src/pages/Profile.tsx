@@ -19,7 +19,7 @@ export default function Profile() {
   if (!me) return null;
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Your settings</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Your settings</h1>
       <Card title="Email me when…">
         <p className="mb-2 text-sm text-slate-600">Sent to {me.email} from the support mailbox, only about tickets assigned to you.</p>
         <ul className="space-y-2 text-sm">

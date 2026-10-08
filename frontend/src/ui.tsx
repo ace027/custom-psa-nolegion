@@ -1,21 +1,22 @@
 import { ReactNode } from "react";
+import { ThemeChoice, useTheme } from "./theme";
 
 export const inputCls =
-  "w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none";
+  "w-full rounded-lg border border-slate-300 bg-surface px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none";
 
 export function Button({
   variant = "primary",
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" }) {
   const styles = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700",
-    secondary: "border border-slate-300 bg-white hover:bg-slate-100",
-    danger: "border border-red-300 bg-white text-red-700 hover:bg-red-50",
+    primary: "bg-blue-600 text-on-accent hover:bg-blue-700",
+    secondary: "border border-slate-300 bg-surface hover:bg-slate-100",
+    danger: "border border-red-300 bg-surface text-red-700 hover:bg-red-50",
   }[variant];
   return (
     <button
       {...props}
-      className={`rounded px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${styles} ${props.className ?? ""}`}
+      className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${styles} ${props.className ?? ""}`}
     />
   );
 }
@@ -32,7 +33,7 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 export function ErrorMsg({ error }: { error: unknown }) {
   if (!error) return null;
   return (
-    <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+    <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
       {error instanceof Error ? error.message : String(error)}
     </p>
   );
@@ -40,9 +41,9 @@ export function ErrorMsg({ error }: { error: unknown }) {
 
 export function Card({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="rounded-xl border border-slate-200 bg-surface p-5 shadow-card">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-semibold">{title}</h2>
+        <h2 className="font-semibold text-slate-900">{title}</h2>
         {actions}
       </div>
       {children}
@@ -69,7 +70,7 @@ const SLA_LABEL: Record<string, string> = {
 
 export function SlaBadge({ state }: { state: string }) {
   if (!SLA_LABEL[state]) return null;
-  return <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${SLA_STYLE[state]}`}>{SLA_LABEL[state]}</span>;
+  return <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${SLA_STYLE[state]}`}>{SLA_LABEL[state]}</span>;
 }
 
 export const fmt = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString() : "—");
@@ -84,5 +85,33 @@ const WARRANTY_STYLE: Record<string, string> = {
 };
 
 export function WarrantyBadge({ state, label }: { state: string; label: string }) {
-  return <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${WARRANTY_STYLE[state]}`}>{label}</span>;
+  return <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${WARRANTY_STYLE[state]}`}>{label}</span>;
+}
+
+export function StatTile({ value, label, tone = "" }: { value: ReactNode; label: string; tone?: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-surface px-4 py-3 shadow-card">
+      <div className={`text-2xl font-bold ${tone}`}>{value}</div>
+      <div className="text-sm text-slate-500">{label}</div>
+    </div>
+  );
+}
+
+const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
+const THEME_LABEL: Record<ThemeChoice, string> = { system: "Auto", light: "Light", dark: "Dark" };
+
+// One button cycling Auto (follow the OS) -> Light -> Dark. The choice is remembered in this browser.
+export function ThemeToggle({ className = "" }: { className?: string }) {
+  const { choice, set } = useTheme();
+  return (
+    <button
+      type="button"
+      onClick={() => set(THEME_NEXT[choice])}
+      title="Colour theme: click to change"
+      aria-label={`Theme: ${THEME_LABEL[choice]}. Click to change.`}
+      className={`rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 ${className}`}
+    >
+      {choice === "dark" ? "☾" : choice === "light" ? "☀" : "◐"} {THEME_LABEL[choice]}
+    </button>
+  );
 }

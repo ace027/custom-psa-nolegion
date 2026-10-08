@@ -14,6 +14,9 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 **Client portal** (off until enabled)
 - Clients sign in with an emailed one-time link (no passwords), open and follow tickets, and billing contacts see invoices, PDFs and an account statement; strictly one client's data per session. See [docs/PORTAL.md](docs/PORTAL.md)
 
+**Look and feel**
+- Light and dark themes (Auto follows the computer's setting, with a toggle remembered per browser) for the staff app and the portal. See [docs/DESIGN.md](docs/DESIGN.md)
+
 **Staff notifications**
 - Assignee is emailed when a ticket is assigned to them, reaches SLA at-risk/breached, or the customer replies; per-person opt-out, global switch, no ticket content in the email
 
@@ -53,7 +56,7 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 backend/    FastAPI app, Alembic migrations, tests
 frontend/   React + Vite + Tailwind
 deploy/     Caddyfile, DB init, backup/restore scripts
-docs/       PLAN, BACKLOG, BILLING, DEVELOPMENT, ENTRA_SETUP, MAIL_SETUP, BACKUP_RESTORE, verify/
+docs/       PLAN, BACKLOG, DESIGN, BILLING, DEVELOPMENT, ENTRA_SETUP, MAIL_SETUP, BACKUP_RESTORE, verify/
 docker-compose.yml, .env.example
 ```
 

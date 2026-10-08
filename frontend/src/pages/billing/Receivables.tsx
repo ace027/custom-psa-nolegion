@@ -29,7 +29,7 @@ export default function Receivables() {
             <Stat label="Overdue invoices" value={String(d.totals.overdue_invoice_count)} warn={d.totals.overdue_invoice_count > 0} />
             <Stat label="Unapplied credit" value={money(d.totals.credit_cents)} />
           </div>
-          <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
+          <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
             <thead className="border-b border-slate-200 text-slate-500">
               <tr><th className="p-2">Client</th><th className="text-right">Current</th><th className="text-right">1–30</th><th className="text-right">31–60</th><th className="text-right">61–90</th><th className="text-right">90+</th><th className="text-right">Total owed</th><th className="text-right">Credit</th><th /></tr>
             </thead>
@@ -60,7 +60,7 @@ export default function Receivables() {
 
 function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
-    <div className={`rounded-lg border px-4 py-2 ${warn ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}>
+    <div className={`rounded-lg border px-4 py-2 ${warn ? "border-red-300 bg-red-50" : "border-slate-200 bg-surface"}`}>
       <div className="text-xl font-semibold">{value}</div>
       <div className="text-slate-500">{label}</div>
     </div>

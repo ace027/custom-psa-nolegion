@@ -13,14 +13,14 @@ export default function Audit() {
   });
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Audit log</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Audit log</h1>
       <div className="w-64">
         <Field label="Action prefix (e.g. auth., contact.)">
           <input className={inputCls} value={action} onChange={(e) => { setAction(e.target.value); setOffset(0); }} />
         </Field>
       </div>
       <ErrorMsg error={q.error} />
-      <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
+      <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500">
           <tr><th className="p-2">When</th><th>Actor</th><th>Action</th><th>Entity</th><th>Detail</th></tr>
         </thead>

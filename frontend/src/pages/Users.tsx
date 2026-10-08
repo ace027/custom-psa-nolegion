@@ -25,12 +25,12 @@ export default function Users() {
   });
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Users</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Users</h1>
       <p className="text-sm text-slate-600">
         Staff sign in with Microsoft Entra ID, but only after an admin has added them here.
       </p>
       <ErrorMsg error={patch.error ?? create.error ?? users.error} />
-      <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
+      <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500">
           <tr><th className="p-2">Name</th><th>Email</th><th>Role</th><th>Active</th></tr>
         </thead>

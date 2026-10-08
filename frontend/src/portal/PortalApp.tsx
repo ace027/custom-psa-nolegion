@@ -3,7 +3,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { WARRANTY_LABEL, ApiError, PortalAssets, PortalInvoice, PortalInvoiceDetail, PortalMe, PortalTicket, PortalTicketDetail, api } from "../api";
 import { money } from "../money";
-import { Button, Card, ErrorMsg, Field, WarrantyBadge, fmt, inputCls } from "../ui";
+import { Button, Card, ErrorMsg, Field, StatTile, ThemeToggle, WarrantyBadge, fmt, inputCls } from "../ui";
 
 function usePortalMe() {
   return useQuery({
@@ -29,11 +29,20 @@ export default function PortalApp() {
   );
 }
 
-function Shell({ title, children }: { title?: string; children: React.ReactNode }) {
+function Shell({ title, right, children }: { title?: string; right?: React.ReactNode; children: React.ReactNode }) {
+  const name = title ?? "Client portal";
   return (
-    <div className="mx-auto max-w-3xl p-4">
-      <header className="mb-6 border-b border-slate-200 pb-3 font-bold">{title ?? "Client portal"}</header>
-      {children}
+    <div className="min-h-screen">
+      <header className="border-b border-slate-200 bg-surface">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+          <div className="flex items-center gap-2.5 font-bold text-slate-900">
+            <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-blue-600 text-sm text-on-accent">{name[0]?.toUpperCase()}</span>
+            {name}
+          </div>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-sm text-slate-500 [&_button]:whitespace-nowrap">{right}<ThemeToggle /></div>
+        </div>
+      </header>
+      <div className="mx-auto max-w-4xl p-4 sm:py-6">{children}</div>
     </div>
   );
 }
@@ -93,14 +102,13 @@ function Signed({ me }: { me: PortalMe }) {
     mutationFn: () => api("/portal/logout", { method: "POST" }),
     onSuccess: () => { qc.clear(); qc.setQueryData(["portal", "me"], null); },
   });
-  const tab = ({ isActive }: { isActive: boolean }) => `rounded px-3 py-1.5 text-sm ${isActive ? "bg-slate-200 font-medium" : "hover:bg-slate-100"}`;
+  const tab = ({ isActive }: { isActive: boolean }) => `rounded-lg px-3.5 py-1.5 text-sm ${isActive ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-500 hover:bg-slate-100"}`;
   return (
-    <Shell title={me.company_name ? `${me.company_name} client portal` : undefined}>
-      <div className="mb-4 flex items-center justify-between text-sm">
-        <span>{me.contact_name} · {me.organization_name}</span>
-        <button className="text-blue-700 hover:underline" onClick={() => logout.mutate()}>Sign out</button>
-      </div>
-      <nav className="mb-4 flex gap-1 border-b border-slate-200 pb-2">
+    <Shell
+      title={me.company_name ? `${me.company_name} client portal` : undefined}
+      right={<><span>{me.contact_name} · {me.organization_name}</span><button className="text-blue-700 hover:underline" onClick={() => logout.mutate()}>Sign out</button></>}
+    >
+      <nav className="mb-5 flex gap-1">
         <NavLink to="/portal/tickets" className={tab}>Tickets</NavLink>
         {me.can_see_billing && <NavLink to="/portal/invoices" className={tab}>Invoices</NavLink>}
         {me.can_see_devices && <NavLink to="/portal/devices" className={tab}>Devices</NavLink>}
@@ -172,7 +180,7 @@ function TicketPage() {
           <h2 className="text-lg font-semibold">#{t.number} {t.subject} <span className="ml-2 rounded bg-slate-100 px-2 py-0.5 text-xs font-normal">{t.status.replace(/_/g, " ")}</span></h2>
           {t.description && <Card title="Original request"><p className="whitespace-pre-wrap text-sm">{t.description}</p></Card>}
           {t.notes.map((n) => (
-            <div key={n.id} className={`rounded-lg border p-3 text-sm ${n.from_support ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-white"}`}>
+            <div key={n.id} className={`rounded-lg border p-3 text-sm ${n.from_support ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-surface"}`}>
               <div className="mb-1 text-xs text-slate-500">{n.author} · {fmt(n.created_at)}</div>
               <p className="whitespace-pre-wrap">{n.body}</p>
             </div>
@@ -239,31 +247,50 @@ function Devices() {
   const q = useQuery({ queryKey: ["portal", "assets"], queryFn: () => api<PortalAssets>("/portal/assets") });
   const d = q.data;
   const soon = d ? d.counts.expiring_30 + d.counts.expiring_60 + d.counts.expiring_90 : 0;
+  const pct = (n: number) => (d && d.total ? `${(n / d.total) * 100}%` : "0%");
   return (
-    <Card title="Devices and warranty">
+    <div className="space-y-4">
       <ErrorMsg error={q.error} />
       {d && (
         <>
-          <p className="mb-3 text-sm">
-            {d.total} device(s) as of {d.as_of}: <b>{soon}</b> with warranty ending in the next 90 days and <b>{d.counts.expired}</b> out of warranty.
-            Devices without a warranty date are shown as unknown.
-          </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-1">Device</th><th>Type</th><th>Make / model</th><th>Warranty ends</th></tr></thead>
-              <tbody>
-                {d.devices.map((x) => (
-                  <tr key={`${x.name}-${x.warranty_end}`} className="border-b border-slate-100">
-                    <td className="p-1">{x.name}</td><td>{x.kind}</td>
-                    <td>{[x.manufacturer, x.model].filter(Boolean).join(" ") || "—"}</td>
-                    <td>{x.warranty_end ?? "—"} <WarrantyBadge state={x.warranty_status} label={WARRANTY_LABEL[x.warranty_status]} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatTile value={d.total} label="Devices" />
+            <StatTile value={soon} label="Expiring in 90 days" tone="text-amber-800" />
+            <StatTile value={d.counts.expired} label="Out of warranty" tone="text-red-700" />
+            <StatTile value={d.counts.unknown} label="Unknown date" tone="text-slate-500" />
           </div>
+          {d.total > 0 && (
+            <Card title="Warranty coverage" actions={<span className="text-sm text-slate-500">as of {d.as_of}</span>}>
+              <div role="img" aria-label={`${d.counts.expired} expired, ${soon} expiring within 90 days, ${d.counts.in_warranty} in warranty, ${d.counts.unknown} unknown`} className="flex h-2 overflow-hidden rounded-full bg-slate-100">
+                <i style={{ width: pct(d.counts.expired) }} className="bg-red-700" />
+                <i style={{ width: pct(soon) }} className="bg-amber-700" />
+                <i style={{ width: pct(d.counts.in_warranty) }} className="bg-green-700" />
+                <i style={{ width: pct(d.counts.unknown) }} className="bg-slate-400" />
+              </div>
+              <p className="mt-2 text-xs text-slate-500">Devices without a warranty date are shown as unknown, never guessed.</p>
+            </Card>
+          )}
+          <Card title="Devices and warranty">
+            <p className="mb-3 text-sm text-slate-600">
+              {d.total} device(s) as of {d.as_of}: <b>{soon}</b> with warranty ending in the next 90 days and <b>{d.counts.expired}</b> out of warranty.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[34rem] text-left text-sm">
+                <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Device</th><th>Type</th><th>Make / model</th><th>Warranty ends</th></tr></thead>
+                <tbody>
+                  {d.devices.map((x) => (
+                    <tr key={`${x.name}-${x.warranty_end}`} className="border-b border-slate-100 last:border-0">
+                      <td className="p-2 font-semibold">{x.name}</td><td className="px-2 text-slate-500">{x.kind}</td>
+                      <td className="px-2">{[x.manufacturer, x.model].filter(Boolean).join(" ") || "—"}</td>
+                      <td className="px-2">{x.warranty_end ?? "—"} <WarrantyBadge state={x.warranty_status} label={WARRANTY_LABEL[x.warranty_status]} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </>
       )}
-    </Card>
+    </div>
   );
 }

@@ -55,18 +55,18 @@ export default function RateCard() {
   return (
     <div className="max-w-2xl space-y-4">
       <p><Link className="text-sm text-blue-700 hover:underline" to="/quotes">← Quotes</Link></p>
-      <h1 className="text-xl font-semibold">Quote rate card</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Quote rate card</h1>
       <p className="text-sm text-slate-600">
         Monthly flat fee = base × (1 + uplifts). The uplifts <b>add</b> (25% + 15% = +40%), never compound. A rate of $0 means that line is not used. Quotes keep the rates they were built with; changing these affects new quotes only.
       </p>
       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
-        <fieldset disabled={!canEdit} className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+        <fieldset disabled={!canEdit} className="space-y-3 rounded-lg border border-slate-200 bg-surface p-4">
           <legend className="px-1 font-semibold">Monthly base rates ($)</legend>
           <div className="grid gap-3 sm:grid-cols-3">
             {RATES.map(([k, label]) => <Field key={k} label={label}><input className={inputCls} value={f[k] ?? ""} onChange={set(k)} /></Field>)}
           </div>
         </fieldset>
-        <fieldset disabled={!canEdit} className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+        <fieldset disabled={!canEdit} className="space-y-3 rounded-lg border border-slate-200 bg-surface p-4">
           <legend className="px-1 font-semibold">Difficulty uplifts (%)</legend>
           {UPLIFTS.map(([k, label, help]) => (
             <div key={k} className="grid items-end gap-3 sm:grid-cols-[10rem_1fr]">
@@ -75,7 +75,7 @@ export default function RateCard() {
             </div>
           ))}
         </fieldset>
-        <fieldset disabled={!canEdit} className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+        <fieldset disabled={!canEdit} className="space-y-3 rounded-lg border border-slate-200 bg-surface p-4">
           <legend className="px-1 font-semibold">Terms</legend>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Contract term (months)"><input className={inputCls} type="number" min={1} value={f.term_months ?? ""} onChange={set("term_months")} /></Field>

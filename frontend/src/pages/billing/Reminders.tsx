@@ -33,7 +33,7 @@ export default function Reminders() {
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {(["pending", "sent", "dismissed", "expired"] as NoticeStatus[]).map((v) => (
-          <button key={v} className={`rounded px-3 py-1 text-sm ${view === v ? "bg-slate-800 text-white" : "border border-slate-300 bg-white"}`} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>
+          <button key={v} className={`rounded px-3 py-1 text-sm ${view === v ? "bg-slate-800 text-slate-50" : "border border-slate-300 bg-surface"}`} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>
         ))}
         <span className="flex-1" />
         {canWrite && <Button variant="secondary" onClick={() => prepare.mutate("reminders")}>Prepare reminders now</Button>}
@@ -68,7 +68,7 @@ function NoticeCard({ n, canWrite, canSend, picked, onPick, onChanged }: { n: No
   const send = useMutation({ mutationFn: () => post("send"), onSuccess: onChanged });
   const dismiss = useMutation({ mutationFn: () => post("dismiss", { reason }), onSuccess: onChanged });
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="rounded-lg border border-slate-200 bg-surface p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         {pending && canSend && <input type="checkbox" aria-label={`Select ${n.organization_name}`} disabled={!!n.blocked_reason || n.stale} checked={picked} onChange={(e) => onPick(e.target.checked)} />}
         <h3 className="font-semibold">{n.organization_name}</h3>

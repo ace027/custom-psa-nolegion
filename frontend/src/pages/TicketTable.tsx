@@ -4,7 +4,7 @@ import { SlaBadge } from "../ui";
 
 export default function TicketTable({ tickets, empty = "No tickets." }: { tickets: Ticket[]; empty?: string }) {
   return (
-    <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
+    <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
       <thead className="border-b border-slate-200 text-slate-500">
         <tr>
           <th className="p-2">#</th>

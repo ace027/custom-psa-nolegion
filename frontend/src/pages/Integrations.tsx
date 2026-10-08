@@ -18,7 +18,7 @@ export default function Integrations() {
   const list = useQuery({ queryKey: ["integrations"], queryFn: () => api<Integration[]>("/integrations") });
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Integrations</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Integrations</h1>
       <p className="text-sm text-slate-600">
         The PSA only reads from these systems; it never changes anything in them. Use a dedicated read-only account for each.
         Credentials are stored encrypted and are never shown again after you save them.

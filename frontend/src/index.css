@@ -1,1 +1,105 @@
 @import "tailwindcss";
+
+/* Design tokens. The app uses Tailwind's slate/blue/status colour names everywhere, so the two
+   themes are made by re-pointing those names: light below, dark under `.dark`. Pages therefore
+   need no per-theme classes. `surface` is the card/input background (never `white`, which must
+   stay white for text on buttons). `on-accent` is text drawn on the accent colour. */
+@theme {
+  --font-sans: Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-surface: #ffffff;
+  --color-on-accent: #ffffff;
+  --shadow-card: 0 1px 2px rgb(20 24 60 / 0.05), 0 6px 18px rgb(20 24 60 / 0.05);
+
+  --color-slate-50: #f6f7fb;
+  --color-slate-100: #eceef6;
+  --color-slate-200: #e3e6f0;
+  --color-slate-300: #cdd1e3;
+  --color-slate-400: #8f95b3;
+  --color-slate-500: #6b7190;
+  --color-slate-600: #50567a;
+  --color-slate-700: #363b5c;
+  --color-slate-800: #262a45;
+  --color-slate-900: #1b1f33;
+
+  --color-blue-50: #eef0ff;
+  --color-blue-100: #e0e4ff;
+  --color-blue-200: #c7cdfd;
+  --color-blue-500: #6366f1;
+  --color-blue-600: #4f46e5;
+  --color-blue-700: #4338ca;
+  --color-blue-800: #3730a3;
+}
+
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --color-surface: #111a2b;
+  --color-on-accent: #06201d;
+  --shadow-card: none;
+
+  --color-slate-50: #0a111d;
+  --color-slate-100: #1a2539;
+  --color-slate-200: #1f2b42;
+  --color-slate-300: #2c3b58;
+  --color-slate-400: #6f819e;
+  --color-slate-500: #8a9ab5;
+  --color-slate-600: #a5b3c9;
+  --color-slate-700: #c3cee0;
+  --color-slate-800: #dae3f0;
+  --color-slate-900: #e6edf7;
+
+  --color-blue-50: #12312f;
+  --color-blue-100: #17403d;
+  --color-blue-200: #1f5a55;
+  --color-blue-500: #2dd4bf;
+  --color-blue-600: #2dd4bf;
+  --color-blue-700: #5eead4;
+  --color-blue-800: #99f6e4;
+
+  --color-red-50: #2a1219;
+  --color-red-100: #3a1620;
+  --color-red-300: #7a2a3a;
+  --color-red-700: #ff8497;
+  --color-red-800: #ff9aa9;
+  --color-amber-50: #2b2210;
+  --color-amber-100: #3a2c10;
+  --color-amber-200: #5a4318;
+  --color-amber-300: #7a5a1e;
+  --color-amber-700: #ffc761;
+  --color-amber-800: #ffc761;
+  --color-amber-900: #ffd98a;
+  --color-yellow-50: #2b2810;
+  --color-yellow-800: #f2d95a;
+  --color-green-50: #0f2a1b;
+  --color-green-100: #10331f;
+  --color-green-700: #5be28f;
+  --color-green-800: #5be28f;
+  --color-violet-100: #2a2150;
+  --color-violet-800: #c4b5fd;
+  --color-purple-700: #d8b4fe;
+  --color-indigo-100: #23284f;
+  --color-indigo-800: #a5b4fc;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  th {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  th + th {
+    padding-left: 0.5rem; /* uppercase headings are wider; keep neighbours from touching */
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-blue-500);
+    outline-offset: 2px;
+  }
+}

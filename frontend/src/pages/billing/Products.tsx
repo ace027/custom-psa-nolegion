@@ -25,7 +25,7 @@ export default function Products() {
     <div className="space-y-4">
       <p className="text-sm text-slate-600">Catalog of things you resell. Prices are copied onto each sale when it is recorded, so changing a price here never changes past charges or invoices.</p>
       <ErrorMsg error={list.error ?? toggle.error} />
-      <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
+      <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">SKU</th><th>Name</th><th className="text-right">Price</th><th className="text-right">Cost</th><th>Tax</th>{canWrite && <th />}</tr></thead>
         <tbody>
           {list.data?.map((p) => (
@@ -39,7 +39,7 @@ export default function Products() {
         </tbody>
       </table>
       {canWrite && (
-        <form className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white p-4" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
+        <form className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-surface p-4" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
           <div className="w-32"><Field label="SKU"><input className={inputCls} value={f.sku} onChange={(e) => setF({ ...f, sku: e.target.value })} /></Field></div>
           <div className="w-64"><Field label="Name"><input className={inputCls} required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field></div>
           <div className="w-28"><Field label="Price ($)"><input className={inputCls} required value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></Field></div>

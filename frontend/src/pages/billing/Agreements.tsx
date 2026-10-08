@@ -28,7 +28,7 @@ export default function Agreements() {
     <div className="space-y-4">
       <p className="text-sm text-slate-600">Recurring monthly charges. Per-user and per-device quantities are entered by hand here (and later can be filled by integrations). The monthly run bills the quantity <b>as it is on the day you start the run</b>, with no proration.</p>
       <ErrorMsg error={list.error} />
-      <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
+      <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Client</th><th>Agreement</th><th>Type</th><th className="text-right">Unit</th><th>Qty</th><th className="text-right">Monthly</th><th>Dates</th>{canWrite && <th />}</tr></thead>
         <tbody>
           {list.data?.map((a) => <Row key={a.id} a={a} canWrite={canWrite} />)}
@@ -37,7 +37,7 @@ export default function Agreements() {
         <tfoot><tr><td colSpan={5} className="p-2 text-right text-slate-500">Active monthly recurring (before tax)</td><td className="text-right font-semibold">{money(total)}</td><td colSpan={2} /></tr></tfoot>
       </table>
       {canWrite && (
-        <form className="grid gap-2 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-4" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
+        <form className="grid gap-2 rounded-lg border border-slate-200 bg-surface p-4 sm:grid-cols-4" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
           <h2 className="col-span-full font-semibold">New agreement</h2>
           <Field label="Client"><select className={inputCls} required value={f.organization_id} onChange={(e) => setF({ ...f, organization_id: e.target.value })}><option value="">Select…</option>{orgs.data?.items.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></Field>
           <Field label="Name"><input className={inputCls} required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>

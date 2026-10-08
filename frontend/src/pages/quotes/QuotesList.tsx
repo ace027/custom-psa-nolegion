@@ -32,7 +32,7 @@ export default function QuotesList() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Quotes</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Quotes</h1>
         <Link className="text-sm text-blue-700 hover:underline" to="/quotes/rates">Rate card</Link>
       </div>
       <ErrorMsg error={quotes.error ?? surveys.error} />

@@ -14,7 +14,7 @@ export default function WarrantyReport() {
   const q = useQuery({ queryKey: ["warranty", qs], queryFn: () => api<Report>(`/reports/warranty${suffix}`) });
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Warranty</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Warranty</h1>
       <Card title="Devices by warranty" actions={<a className="text-sm text-blue-700 hover:underline" href={`/api/reports/warranty.csv${suffix}`}>Download CSV</a>}>
         <div className="flex flex-wrap gap-3">
           <Field label="Client">

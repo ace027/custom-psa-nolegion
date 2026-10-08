@@ -27,7 +27,7 @@ export default function Organizations() {
   });
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Organizations</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Organizations</h1>
       <div className="flex flex-wrap items-end gap-4">
         <div className="w-64">
           <Field label="Search">
@@ -58,7 +58,7 @@ export default function Organizations() {
         </form>
       )}
       <ErrorMsg error={create.error ?? list.error} />
-      <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+      <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-surface">
         {list.data?.items.map((o) => (
           <li key={o.id} className="px-4 py-2">
             <Link to={`/organizations/${o.id}`} className="font-medium text-blue-700 hover:underline">

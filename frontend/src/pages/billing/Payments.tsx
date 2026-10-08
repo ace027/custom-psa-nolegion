@@ -16,7 +16,7 @@ export default function Payments() {
       <p className="text-sm text-slate-600">Record money received. Split one payment across several invoices, or leave part of it as <b>credit</b> to apply later. Payments are never edited: if one was entered wrong, void it (with a reason) and record it again.</p>
       {canWrite && <RecordPayment initialOrg={params.get("org") ?? ""} initialInvoice={params.get("invoice") ?? ""} />}
       <ErrorMsg error={list.error} />
-      <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
+      <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Received</th><th>Client</th><th>Method</th><th>Reference</th><th className="text-right">Amount</th><th className="text-right">Unapplied</th><th /></tr></thead>
         <tbody>{list.data?.items.map((p) => <PaymentRow key={p.id} p={p} />)}
           {list.data?.items.length === 0 && <tr><td colSpan={7} className="p-3 text-slate-500">No payments recorded.</td></tr>}</tbody>
@@ -75,7 +75,7 @@ function RecordPayment({ initialOrg, initialInvoice }: { initialOrg: string; ini
     setAlloc({ [inv.id]: ((inv.balance_cents ?? 0) / 100).toFixed(2) });
   }
   return (
-    <form className="space-y-3 rounded-lg border border-slate-200 bg-white p-4" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+    <form className="space-y-3 rounded-lg border border-slate-200 bg-surface p-4" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
       <h2 className="font-semibold">Record a payment</h2>
       <div className="grid gap-3 sm:grid-cols-5">
         <Field label="Client"><select className={inputCls} required value={orgId} onChange={(e) => { setOrgId(e.target.value); setAlloc({}); }}><option value="">Select…</option>{orgs.data?.items.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></Field>

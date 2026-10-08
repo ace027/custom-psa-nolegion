@@ -39,7 +39,7 @@ export default function QuotePage() {
     <div className="mx-auto max-w-3xl space-y-4">
       <p><Link className="text-sm text-blue-700 hover:underline" to="/quotes">← Quotes</Link></p>
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-xl font-semibold">{q.number}{q.version > 1 ? ` v${q.version}` : ""}: {q.organization_name}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{q.number}{q.version > 1 ? ` v${q.version}` : ""}: {q.organization_name}</h1>
         <Badge status={q.status} expired={q.is_expired} />
         {q.kind === "reprice" && <span className="text-sm text-slate-500">reprice from {q.effective_date}</span>}
       </div>

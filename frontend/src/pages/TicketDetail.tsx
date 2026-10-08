@@ -27,7 +27,7 @@ export default function TicketDetail() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-xl font-semibold">
+        <h1 className="text-2xl font-bold tracking-tight">
           #{t.number} {t.subject}
         </h1>
         <SlaBadge state={t.sla_state} />
@@ -158,7 +158,7 @@ function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Ticket; not
     <Card title="Notes">
       <ul className="space-y-2">
         {notes.map((n) => (
-          <li key={n.id} className={`rounded border p-3 text-sm ${n.visibility === "internal" ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-white"}`}>
+          <li key={n.id} className={`rounded border p-3 text-sm ${n.visibility === "internal" ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-surface"}`}>
             <div className="mb-1 flex flex-wrap justify-between gap-2 text-xs text-slate-500">
               <span>
                 <b>{n.author_name ?? n.author_email ?? "system"}</b> · {n.source === "email" ? "email from customer" : n.visibility === "internal" ? "internal note" : "visible to customer"}

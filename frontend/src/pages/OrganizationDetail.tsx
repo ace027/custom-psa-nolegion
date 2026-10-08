@@ -28,7 +28,7 @@ export default function OrganizationDetail() {
   if (!org.data) return <ErrorMsg error={org.error ?? "Not found"} />;
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">
+      <h1 className="text-2xl font-bold tracking-tight">
         {org.data.name}
         {org.data.archived_at && <span className="ml-2 text-sm text-slate-500">(archived)</span>}
       </h1>

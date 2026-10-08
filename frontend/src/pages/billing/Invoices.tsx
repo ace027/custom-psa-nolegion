@@ -63,7 +63,7 @@ export function InvoiceList() {
         )}
       </div>
       <ErrorMsg error={create.error ?? list.error} />
-      <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
+      <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Number</th><th>Client</th><th>Status</th><th>Date</th><th>Due</th><th className="text-right">Total</th><th className="text-right">Balance</th><th>Payment</th></tr></thead>
         <tbody>
           {list.data?.items.map((i) => (
@@ -113,7 +113,7 @@ export function InvoicePage() {
       {inv.status === "final" && <PaymentSection inv={inv} canRecord={can(me, "payment:write")} canVoid={canFinalize} onDone={refresh} />}
       {!draft && <p className="text-sm text-slate-600">Invoice date {inv.invoice_date} · Due {inv.due_date} (Net {inv.terms_days}). This invoice is frozen.</p>}
       <ErrorMsg error={act.error} />
-      <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
+      <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Description</th><th className="text-right">Qty</th><th className="text-right">Unit price</th><th className="text-right">Amount</th><th className="text-right">Tax</th>{canEdit && <th />}</tr></thead>
         <tbody>{inv.lines.map((l) => <LineRow key={l.id} line={l} editable={canEdit} onDone={refresh} />)}</tbody>
         <tfoot className="text-sm">
@@ -187,7 +187,7 @@ function AddLine({ invoiceId, onDone }: { invoiceId: number; onDone: () => void 
     onSuccess: () => { setF({ description: "", quantity: "1", price: "", taxable: false }); onDone(); },
   });
   return (
-    <form className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white p-3" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+    <form className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-surface p-3" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
       <div className="w-72"><Field label="Add a line (or a credit)"><input className={inputCls} required value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field></div>
       <div className="w-20"><Field label="Qty"><input className={inputCls} value={f.quantity} onChange={(e) => setF({ ...f, quantity: e.target.value })} /></Field></div>
       <div className="w-28"><Field label="Unit price ($)"><input className={inputCls} required value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></Field></div>
@@ -212,7 +212,7 @@ function PaymentSection({ inv, canRecord, canVoid, onDone }: { inv: InvoiceDetai
         <span>Paid <b>{money(inv.paid_cents ?? 0)}</b></span>
         {(inv.written_off_cents ?? 0) > 0 && <span>Written off <b>{money(inv.written_off_cents ?? 0)}</b></span>}
         <span className={balance > 0 ? "text-base font-semibold" : ""}>Balance <b>{money(balance)}</b></span>
-        {canRecord && balance > 0 && <Link className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700" to={`/billing/payments?new=1&org=${inv.organization_id}&invoice=${inv.id}`}>Record payment</Link>}
+        {canRecord && balance > 0 && <Link className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-blue-700" to={`/billing/payments?new=1&org=${inv.organization_id}&invoice=${inv.id}`}>Record payment</Link>}
         {canVoid && balance > 0 && <Button variant="secondary" onClick={() => { const r = window.prompt(`Write off the ${money(balance)} balance as uncollectible. Reason (required):`); if (r) writeOff.mutate(r); }}>Write off balance</Button>}
       </div>
       <ErrorMsg error={unapply.error ?? writeOff.error ?? voidWo.error} />

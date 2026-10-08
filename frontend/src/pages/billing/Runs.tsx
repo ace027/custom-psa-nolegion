@@ -44,7 +44,7 @@ export function RunList() {
         </form>
       )}
       <ErrorMsg error={start.error ?? runs.error} />
-      <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
+      <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Period</th><th>Status</th><th>Invoices</th><th>Total</th><th>Warnings</th></tr></thead>
         <tbody>
           {runs.data?.map((r) => (
@@ -91,7 +91,7 @@ export function RunPage() {
       )}
       <ErrorMsg error={act.error} />
       {fin && (run.status === "draft" || run.status === "reviewed") && (
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-surface p-4">
           {run.status === "draft" && (
             <div className="text-sm">
               <p className="mb-2">Open each invoice, fix anything that looks wrong (quantities, mid-month changes, credits), then mark the run reviewed.</p>
@@ -109,7 +109,7 @@ export function RunPage() {
           <Button variant="danger" onClick={() => { if (window.confirm("Cancel this run and discard its draft invoices?")) act.mutate({ path: "cancel" }); }}>Cancel run</Button>
         </div>
       )}
-      <table className="w-full rounded-lg border border-slate-200 bg-white text-left text-sm">
+      <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Client</th><th>Invoice</th><th>Status</th><th className="text-right">Subtotal</th><th className="text-right">Tax</th><th className="text-right">Total</th><th>Notes</th></tr></thead>
         <tbody>
           {run.invoices.map((i) => (

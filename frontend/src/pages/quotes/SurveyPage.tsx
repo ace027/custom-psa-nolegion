@@ -67,7 +67,7 @@ export default function SurveyPage() {
     <div className="mx-auto max-w-3xl space-y-4">
       <p><Link className="text-sm text-blue-700 hover:underline" to="/quotes">← Quotes</Link></p>
       <div className="flex items-center gap-2">
-        <h1 className="text-xl font-semibold">Site survey: {s.organization_name}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Site survey: {s.organization_name}</h1>
         <Badge status={s.status} />
       </div>
       {locked && <p className="rounded bg-slate-100 px-3 py-2 text-sm">This survey is completed and can no longer be edited. It is the evidence behind the quote.</p>}
@@ -124,7 +124,7 @@ export default function SurveyPage() {
       </fieldset>
       <ErrorMsg error={save.error ?? complete.error} />
       {!locked && (
-        <div className="sticky bottom-0 flex gap-2 border-t border-slate-200 bg-white/95 py-3">
+        <div className="sticky bottom-0 flex gap-2 border-t border-slate-200 bg-surface/95 py-3">
           <Button type="button" disabled={save.isPending} onClick={() => save.mutate(form)}>Save</Button>
           <Button type="button" variant="secondary" disabled={complete.isPending} onClick={() => { if (window.confirm("Complete this survey? It cannot be edited afterwards.")) complete.mutate(); }}>Save and complete</Button>
           {save.isSuccess && !save.isPending && <span role="status" className="self-center text-sm text-green-700">Saved.</span>}

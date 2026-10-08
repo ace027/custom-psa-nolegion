@@ -43,7 +43,7 @@ export default function Tickets() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Tickets</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Tickets</h1>
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-56"><Field label="Search subject or #"><input className={inputCls} value={f.q} onChange={(e) => set("q", e.target.value)} /></Field></div>
         <Field label="Status">
@@ -71,7 +71,7 @@ export default function Tickets() {
       <ErrorMsg error={list.error} />
       <TicketTable tickets={list.data?.items ?? []} />
       {can(me, "ticket:write") && (
-        <form className="grid gap-2 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
+        <form className="grid gap-2 rounded-lg border border-slate-200 bg-surface p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
           <h2 className="col-span-full font-semibold">New ticket</h2>
           <Field label="Organization">
             <select className={inputCls} required value={nt.organization_id} onChange={(e) => setNt({ ...nt, organization_id: e.target.value })}>
