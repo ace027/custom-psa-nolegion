@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy import update
 
-from app import audit
+from app import audit, custom_fields
 from app import repositories as repo
 from app.deps import Ctx
 from app.errors import Conflict, Forbidden, NotFound
@@ -20,6 +20,7 @@ from app.models import (
     Queue,
     Ticket,
     TicketNote,
+    TicketType,
     TimeEntry,
     WorkType,
 )
@@ -129,6 +130,11 @@ def create_ticket(
     if queue is None or priority is None:
         raise Conflict("No default queue/priority configured")
     _active(ctx, Category, data.get("category_id"), "category")
+    type_id = data.get("type_id")
+    _active(ctx, TicketType, type_id, "ticket type")
+    custom_values = custom_fields.merge_values(
+        ctx, type_id, {}, data.get("custom_values"), enforce_required=type_id is not None
+    )
 
     fields = {
         k: v
@@ -148,6 +154,8 @@ def create_ticket(
         **fields,
         queue_id=queue.id,
         priority_id=priority.id,
+        type_id=type_id,
+        custom_values=custom_values,
         source=source,
         requester_email=requester_email,
         created_by_user_id=ctx.user.id if ctx.user else None,
@@ -210,6 +218,19 @@ def update_ticket(ctx: Ctx, ticket_id: int, data: dict) -> Ticket:
         _active(ctx, Queue, data["queue_id"], "queue")
     if data.get("category_id") is not None:
         _active(ctx, Category, data["category_id"], "category")
+    type_changed = "type_id" in data and data["type_id"] != ticket.type_id
+    if data.get("type_id") is not None and type_changed:
+        _active(ctx, TicketType, data["type_id"], "ticket type")
+    new_type = data["type_id"] if "type_id" in data else ticket.type_id
+    new_values = None
+    if type_changed or data.get("custom_values"):
+        new_values = custom_fields.merge_values(
+            ctx,
+            new_type,
+            ticket.custom_values,
+            data.get("custom_values"),
+            enforce_required=new_type is not None,
+        )
     for required in ("queue_id", "priority_id", "subject"):
         if required in data and data[required] is None:
             raise Conflict(f"{required} cannot be cleared")
@@ -228,6 +249,10 @@ def update_ticket(ctx: Ctx, ticket_id: int, data: dict) -> Ticket:
     ):
         if key in data:
             setattr(ticket, key, data[key])
+    if "type_id" in data:
+        ticket.type_id = data["type_id"]
+    if new_values is not None:
+        ticket.custom_values = new_values
     ctx.db.flush()
     ctx.db.refresh(ticket)  # so ticket.priority reflects a changed priority_id
     if "priority_id" in data and data["priority_id"] != before["priority_id"]:

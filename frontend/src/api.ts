@@ -118,6 +118,15 @@ export interface TicketStatusRow extends Lookup {
   behavior: TicketStatus;
   position: number;
 }
+export type FieldType = "text" | "number" | "date" | "dropdown" | "checkbox";
+export interface CustomFieldDef extends Lookup {
+  ticket_type_id: number;
+  field_type: FieldType;
+  options: string[] | null;
+  required: boolean;
+  client_visible: boolean;
+  position: number;
+}
 export type SlaState = "none" | "ok" | "at_risk" | "breached" | "paused" | "done";
 
 export interface Ticket {
@@ -138,6 +147,9 @@ export interface Ticket {
   status: TicketStatus;
   status_id?: number;
   status_name?: string;
+  type_id?: number | null;
+  type_name?: string | null;
+  custom_values?: Record<string, unknown>;
   assignee_id: number | null;
   assignee_name: string | null;
   subject: string;
@@ -551,6 +563,7 @@ export interface PortalTicket {
 }
 export interface PortalTicketDetail extends PortalTicket {
   description: string | null;
+  custom_fields?: { name: string; value: unknown }[];
   notes: { id: number; author: string; from_you: boolean; from_support: boolean; body: string; created_at: string }[];
 }
 

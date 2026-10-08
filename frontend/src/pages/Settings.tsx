@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { AppSettings, CannedResponse, Holiday, Lookup, TicketStatusRow, MailStatus, Priority, Queue, api } from "../api";
+import { AppSettings, CannedResponse, CustomFieldDef, FieldType, Holiday, Lookup, TicketStatusRow, MailStatus, Priority, Queue, api } from "../api";
 import RemindersCard from "./RemindersCard";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../ui";
 
@@ -16,6 +16,7 @@ export default function Settings() {
       <PortalCard />
       <HoursCard />
       <StatusesCard />
+      <TicketTypesCard />
       <HolidaysCard />
       <EmailAutomationCard />
       <SimpleList title="Queues" path="queues" defaults />
@@ -380,5 +381,98 @@ function StatusesCard() {
         <Button type="submit">Add status</Button>
       </form>
     </Card>
+  );
+}
+
+const FIELD_TYPES: FieldType[] = ["text", "number", "date", "dropdown", "checkbox"];
+
+function TicketTypesCard() {
+  const qc = useQueryClient();
+  const types = useQuery({ queryKey: ["cfg", "ticket-types"], queryFn: () => api<Lookup[]>("/ticket-types?include_archived=true") });
+  const [open, setOpen] = useState<number | null>(null);
+  const [name, setName] = useState("");
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["cfg"] });
+    qc.invalidateQueries({ queryKey: ["lookup"] });
+  };
+  const add = useMutation({ mutationFn: () => api("/ticket-types", { method: "POST", json: { name } }), onSuccess: () => { setName(""); refresh(); } });
+  const act = useMutation({ mutationFn: ({ id, action }: { id: number; action: string }) => api(`/ticket-types/${id}/${action}`, { method: "POST" }), onSuccess: refresh });
+  const rename = useMutation({ mutationFn: ({ id, name }: { id: number; name: string }) => api(`/ticket-types/${id}`, { method: "PATCH", json: { name } }), onSuccess: refresh });
+  return (
+    <Card title="Ticket types and custom fields">
+      <p className="mb-2 text-sm text-slate-600">A type (for example New hire) carries its own extra fields. Required fields are enforced when a ticket gets the type. Fields can be hidden but never deleted, so old tickets keep their answers.</p>
+      <ul className="divide-y divide-slate-100 text-sm">
+        {types.data?.map((x) => (
+          <li key={x.id} className="py-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className={x.archived_at ? "text-slate-400 line-through" : "font-semibold"}>{x.name}</span>
+              <span className="flex gap-2">
+                <Button variant="secondary" onClick={() => setOpen(open === x.id ? null : x.id)}>{open === x.id ? "Hide fields" : "Fields"}</Button>
+                <Button variant="secondary" onClick={() => { const n = window.prompt("Rename type", x.name); if (n) rename.mutate({ id: x.id, name: n }); }}>Rename</Button>
+                <Button variant="secondary" onClick={() => act.mutate({ id: x.id, action: x.archived_at ? "unarchive" : "archive" })}>{x.archived_at ? "Restore" : "Archive"}</Button>
+              </span>
+            </div>
+            {open === x.id && <FieldsEditor typeId={x.id} typeArchived={!!x.archived_at} />}
+          </li>
+        ))}
+      </ul>
+      <ErrorMsg error={add.error ?? act.error ?? rename.error} />
+      <form className="mt-2 flex items-end gap-3" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+        <Field label="New type"><input className={inputCls} required value={name} onChange={(e) => setName(e.target.value)} /></Field>
+        <Button type="submit">Add type</Button>
+      </form>
+    </Card>
+  );
+}
+
+function FieldsEditor({ typeId, typeArchived }: { typeId: number; typeArchived: boolean }) {
+  const qc = useQueryClient();
+  const key = ["cfg", "fields", typeId];
+  const q = useQuery({ queryKey: key, queryFn: () => api<CustomFieldDef[]>(`/ticket-types/${typeId}/fields?include_archived=true`) });
+  const blank = { name: "", field_type: "text" as FieldType, options: "", required: false, client_visible: false };
+  const [f, setF] = useState(blank);
+  const refresh = () => qc.invalidateQueries({ queryKey: key });
+  const add = useMutation({
+    mutationFn: () => api(`/ticket-types/${typeId}/fields`, {
+      method: "POST",
+      json: { name: f.name, field_type: f.field_type, required: f.required, client_visible: f.client_visible, options: f.field_type === "dropdown" ? f.options.split(",").map((o) => o.trim()).filter(Boolean) : null },
+    }),
+    onSuccess: () => { setF(blank); refresh(); },
+  });
+  const patch = useMutation({ mutationFn: ({ id, json }: { id: number; json: Record<string, unknown> }) => api(`/custom-fields/${id}`, { method: "PATCH", json }), onSuccess: refresh });
+  const act = useMutation({ mutationFn: ({ id, action }: { id: number; action: string }) => api(`/custom-fields/${id}/${action}`, { method: "POST" }), onSuccess: refresh });
+  return (
+    <div className="mt-2 rounded border border-slate-200 p-3">
+      <ul className="divide-y divide-slate-100">
+        {q.data?.map((d) => (
+          <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-1">
+            <span className={d.archived_at ? "text-slate-400 line-through" : ""}>
+              <b>{d.name}</b> <span className="text-slate-500">{d.field_type}{d.options ? ` (${d.options.join(", ")})` : ""}{d.required ? " · required" : ""}{d.client_visible ? " · shown to client" : ""}</span>
+            </span>
+            <span className="flex gap-2">
+              <Button variant="secondary" onClick={() => patch.mutate({ id: d.id, json: { required: !d.required } })}>{d.required ? "Make optional" : "Make required"}</Button>
+              <Button variant="secondary" onClick={() => patch.mutate({ id: d.id, json: { client_visible: !d.client_visible } })}>{d.client_visible ? "Hide from client" : "Show to client"}</Button>
+              <Button variant="secondary" onClick={() => { const n = window.prompt("Rename field", d.name); if (n) patch.mutate({ id: d.id, json: { name: n } }); }}>Rename</Button>
+              <Button variant="secondary" onClick={() => act.mutate({ id: d.id, action: d.archived_at ? "unarchive" : "archive" })}>{d.archived_at ? "Restore" : "Archive"}</Button>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <ErrorMsg error={add.error ?? patch.error ?? act.error} />
+      {!typeArchived && (
+        <form className="mt-2 flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+          <Field label="Field name"><input className={inputCls} required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+          <Field label="Kind">
+            <select className={inputCls} value={f.field_type} onChange={(e) => setF({ ...f, field_type: e.target.value as FieldType })}>
+              {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </Field>
+          {f.field_type === "dropdown" && <Field label="Options (comma separated)"><input className={inputCls} required value={f.options} onChange={(e) => setF({ ...f, options: e.target.value })} /></Field>}
+          <label className="flex items-center gap-1 pb-2 text-sm"><input type="checkbox" checked={f.required} onChange={(e) => setF({ ...f, required: e.target.checked })} />Required</label>
+          <label className="flex items-center gap-1 pb-2 text-sm"><input type="checkbox" checked={f.client_visible} onChange={(e) => setF({ ...f, client_visible: e.target.checked })} />Show to client</label>
+          <Button type="submit">Add field</Button>
+        </form>
+      )}
+    </div>
   );
 }

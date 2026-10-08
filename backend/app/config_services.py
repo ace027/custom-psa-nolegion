@@ -239,3 +239,96 @@ def set_ticket_status_archived(ctx: Ctx, status_id: int, archived: bool):
         after=audit.snapshot(obj),
     )
     return obj
+
+
+# ---- custom fields ----
+def _field_flush(ctx: Ctx) -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        ctx.db.flush()
+    except IntegrityError as exc:
+        ctx.db.rollback()
+        raise Conflict("An active field with that name already exists on this type") from exc
+
+
+def _get_type(ctx: Ctx, type_id: int):
+    from app.models import TicketType
+
+    obj = ctx.db.get(TicketType, type_id)
+    if obj is None:
+        raise NotFound("Ticket type not found")
+    return obj
+
+
+def _get_field(ctx: Ctx, field_id: int):
+    from app.models import CustomField
+
+    obj = ctx.db.get(CustomField, field_id)
+    if obj is None:
+        raise NotFound("Custom field not found")
+    return obj
+
+
+def create_custom_field(ctx: Ctx, type_id: int, data: dict):
+    from sqlalchemy import func, select
+
+    from app import custom_fields
+    from app.models import CustomField
+
+    ttype = _get_type(ctx, type_id)
+    if ttype.archived_at is not None:
+        raise Conflict("That ticket type is archived")
+    data["options"] = custom_fields.validate_options(data["field_type"], data.get("options"))
+    if data.get("position") is None:
+        data["position"] = (
+            ctx.db.execute(
+                select(func.coalesce(func.max(CustomField.position), 0)).where(
+                    CustomField.ticket_type_id == type_id
+                )
+            ).scalar_one()
+            + 10
+        )
+    obj = CustomField(ticket_type_id=type_id, **data)
+    ctx.db.add(obj)
+    _field_flush(ctx)
+    audit.record(ctx.db, ctx.user, "custom_field.create", obj, after=audit.snapshot(obj))
+    return obj
+
+
+def update_custom_field(ctx: Ctx, field_id: int, data: dict):
+    from app import custom_fields
+
+    obj = _get_field(ctx, field_id)
+    before = audit.snapshot(obj)
+    if "options" in data and data["options"] is not None:
+        data["options"] = custom_fields.validate_options(obj.field_type, data["options"])
+    for key, value in data.items():
+        if value is not None:
+            setattr(obj, key, value)
+    _field_flush(ctx)
+    ctx.db.refresh(obj)
+    audit.record(
+        ctx.db, ctx.user, "custom_field.update", obj, before=before, after=audit.snapshot(obj)
+    )
+    return obj
+
+
+def set_custom_field_archived(ctx: Ctx, field_id: int, archived: bool):
+    from datetime import UTC, datetime
+
+    obj = _get_field(ctx, field_id)
+    if not archived and _get_type(ctx, obj.ticket_type_id).archived_at is not None:
+        raise Conflict("Restore the ticket type first")
+    before = audit.snapshot(obj)
+    obj.archived_at = datetime.now(UTC) if archived else None
+    _field_flush(ctx)
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "custom_field.archive" if archived else "custom_field.unarchive",
+        obj,
+        before=before,
+        after=audit.snapshot(obj),
+    )
+    return obj

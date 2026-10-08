@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, Fragment, useEffect, useState } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { WARRANTY_LABEL, ApiError, PortalAssets, PortalInvoice, PortalInvoiceDetail, PortalMe, PortalTicket, PortalTicketDetail, api } from "../api";
 import { money } from "../money";
@@ -178,6 +178,18 @@ function TicketPage() {
       {t && (
         <>
           <h2 className="text-lg font-semibold">#{t.number} {t.subject} <span className="ml-2 rounded bg-slate-100 px-2 py-0.5 text-xs font-normal">{t.status_name ?? t.status.replace(/_/g, " ")}</span></h2>
+          {!!t.custom_fields?.length && (
+            <Card title="Details">
+              <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+                {t.custom_fields.map((f) => (
+                  <Fragment key={f.name}>
+                    <dt className="text-slate-500">{f.name}</dt>
+                    <dd>{typeof f.value === "boolean" ? (f.value ? "Yes" : "No") : String(f.value)}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+            </Card>
+          )}
           {t.description && <Card title="Original request"><p className="whitespace-pre-wrap text-sm">{t.description}</p></Card>}
           {t.notes.map((n) => (
             <div key={n.id} className={`rounded-lg border p-3 text-sm ${n.from_support ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-surface"}`}>

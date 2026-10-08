@@ -326,6 +326,7 @@ def test_only_customer_visible_facts_are_exposed(admin, sign_in, two_clients):
         "mine",
         "description",
         "notes",
+        "custom_fields",
     }
 
 

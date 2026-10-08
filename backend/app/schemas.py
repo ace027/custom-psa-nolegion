@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
@@ -203,6 +203,8 @@ class TicketIn(BaseModel):
     assignee_id: int | None = None
     subject: str = Field(min_length=1, max_length=300)
     description: str | None = None
+    type_id: int | None = None
+    custom_values: dict[str, Any] = Field(default_factory=dict)  # keys are custom field ids
 
 
 class TicketPatch(BaseModel):
@@ -217,6 +219,8 @@ class TicketPatch(BaseModel):
     assignee_id: int | None = None
     status: TicketStatus | None = None  # a built-in behaviour: uses its first named status
     status_id: int | None = None  # a specific named status (wins over `status`)
+    type_id: int | None = None  # null clears the type (stored values are kept, just hidden)
+    custom_values: dict[str, Any] | None = None  # merged by field id; null/blank clears one
 
 
 class BulkChanges(BaseModel):
@@ -275,6 +279,9 @@ class TicketOut(BaseModel):
     status: TicketStatus
     status_id: int
     status_name: str
+    type_id: int | None
+    type_name: str | None
+    custom_values: dict[str, Any]
     assignee_id: int | None
     assignee_name: str | None
     subject: str
@@ -441,6 +448,45 @@ class TicketStatusPatch(BaseModel):
 class TicketStatusOut(LookupOut):
     behavior: TicketStatus
     position: int
+
+
+CustomFieldType = Literal["text", "number", "date", "dropdown", "checkbox"]
+
+
+class CustomFieldIn(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    field_type: CustomFieldType  # fixed once created
+    options: list[str] | None = None  # dropdown only
+    required: bool = False
+    client_visible: bool = False  # shown to the client in the portal
+    position: int | None = Field(default=None, ge=0, le=10_000)
+
+
+class CustomFieldPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    options: list[str] | None = None
+    required: bool | None = None
+    client_visible: bool | None = None
+    position: int | None = Field(default=None, ge=0, le=10_000)
+
+
+class CustomFieldOut(LookupOut):
+    ticket_type_id: int
+    field_type: CustomFieldType
+    options: list[str] | None
+    required: bool
+    client_visible: bool
+    position: int
+
+
+class TicketFieldOut(BaseModel):
+    field_id: int
+    name: str
+    field_type: CustomFieldType
+    options: list[str] | None
+    required: bool
+    client_visible: bool
+    value: Any = None
 
 
 class HolidayIn(BaseModel):
@@ -1171,8 +1217,14 @@ class PortalNoteOut(BaseModel):
     created_at: datetime
 
 
+class PortalFieldOut(BaseModel):
+    name: str
+    value: Any
+
+
 class PortalTicketDetail(PortalTicketOut):
     description: str | None
+    custom_fields: list[PortalFieldOut]
     notes: list[PortalNoteOut]
 
 

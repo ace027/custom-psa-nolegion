@@ -7,7 +7,16 @@ from app import config_services as svc
 from app import permissions as P
 from app import repositories as repo
 from app.deps import Ctx, require
-from app.models import CannedResponse, Category, EmailMessage, Priority, Queue, Ticket, WorkType
+from app.models import (
+    CannedResponse,
+    Category,
+    EmailMessage,
+    Priority,
+    Queue,
+    Ticket,
+    TicketType,
+    WorkType,
+)
 from app.schemas import (
     CannedIn,
     CannedOut,
@@ -36,6 +45,7 @@ LOOKUPS = [
     ("categories", Category, "category", NameIn, NamePatch, LookupOut),
     ("priorities", Priority, "priority", PriorityIn, PriorityPatch, PriorityOut),
     ("work-types", WorkType, "work_type", NameIn, NamePatch, LookupOut),
+    ("ticket-types", TicketType, "ticket_type", NameIn, NamePatch, LookupOut),
     ("canned-responses", CannedResponse, "canned_response", CannedIn, CannedPatch, CannedOut),
 ]
 

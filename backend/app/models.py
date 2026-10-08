@@ -182,6 +182,23 @@ class TicketStatus(_Lookup, Base):
     position: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
+class TicketType(_Lookup, Base):
+    __tablename__ = "ticket_types"
+
+
+class CustomField(_Lookup, Base):
+    """A field a ticket of one type carries. `field_type` cannot change after creation (stored
+    values would stop making sense); values live on the ticket, keyed by this field's id."""
+
+    __tablename__ = "custom_fields"
+    ticket_type_id: Mapped[int] = mapped_column(ForeignKey("ticket_types.id"), nullable=False)
+    field_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    options: Mapped[list | None] = mapped_column(JSONB(none_as_null=True))
+    required: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    client_visible: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
 class CannedResponse(_Lookup, Base):
     """Reusable reply text. Placeholders ({{contact_name}}, {{ticket_number}}...) are filled in by
     the UI when a tech inserts it; the stored text is never client data."""
@@ -295,6 +312,8 @@ class Ticket(TimestampMixin, Base):
         nullable=False,
         server_default=text("default_status_id('new')"),
     )
+    type_id: Mapped[int | None] = mapped_column(ForeignKey("ticket_types.id"))
+    custom_values: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     subject: Mapped[str] = mapped_column(String(300), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
@@ -315,6 +334,7 @@ class Ticket(TimestampMixin, Base):
     category: Mapped[Category | None] = relationship(lazy="joined")
     priority: Mapped[Priority] = relationship(lazy="joined")
     status_ref: Mapped[TicketStatus] = relationship(lazy="joined")
+    type: Mapped[TicketType | None] = relationship(lazy="joined")
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id], lazy="joined")
 
 

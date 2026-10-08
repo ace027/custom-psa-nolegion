@@ -180,6 +180,7 @@ def list_tickets(
     limit,
     offset,
     status_id=None,
+    type_id=None,
     sort="updated",
     descending=True,
 ):
@@ -188,6 +189,8 @@ def list_tickets(
         stmt = stmt.where(Ticket.status.in_(statuses))
     if status_id is not None:
         stmt = stmt.where(Ticket.status_id == status_id)
+    if type_id is not None:
+        stmt = stmt.where(Ticket.type_id == type_id)
     if open_only:
         stmt = stmt.where(Ticket.status.in_(OPEN_STATUSES))
     if queue_id is not None:

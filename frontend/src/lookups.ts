@@ -12,7 +12,9 @@ export function useLookups() {
   const users = q<User[]>("users", "/users");
   const settings = q<AppSettings>("settings", "/settings");
   const statuses = q<TicketStatusRow[]>("ticket-statuses", "/ticket-statuses");
+  const ticketTypes = q<Lookup[]>("ticket-types", "/ticket-types");
   return {
+    ticketTypes: Array.isArray(ticketTypes.data) ? ticketTypes.data : [],
     queues: queues.data ?? [],
     categories: categories.data ?? [],
     priorities: priorities.data ?? [],

@@ -7,7 +7,7 @@ from datetime import timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app import audit
+from app import audit, custom_fields
 from app import billing_repo as brepo
 from app import payment_repo as prepo
 from app import repositories as repo
@@ -233,7 +233,17 @@ def ticket_detail(ctx: PortalCtx, ticket_id: int) -> dict:
                 created_at=n.created_at,
             )
         )
-    return {**_ticket_out(ctx, t), "description": t.description, "notes": out}
+    visible = [
+        dict(name=d["name"], value=d["value"])
+        for d in custom_fields.definitions_with_values(ctx, t.type_id, t.custom_values)
+        if d["client_visible"] and d["value"] is not None
+    ]
+    return {
+        **_ticket_out(ctx, t),
+        "description": t.description,
+        "notes": out,
+        "custom_fields": visible,
+    }
 
 
 def _count_today(ctx: PortalCtx, model, *conds) -> int:

@@ -14,7 +14,7 @@ export default function Tickets() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const lk = useLookups();
-  const [f, setF] = useState({ q: "", status: "", queue_id: "", assignee: "", open_only: true, triage: false });
+  const [f, setF] = useState({ q: "", status: "", queue_id: "", type_id: "", assignee: "", open_only: true, triage: false });
   const [sort, setSort] = useState<SortState>({ key: "updated", desc: true });
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -22,6 +22,7 @@ export default function Tickets() {
   if (f.q) params.set("q", f.q);
   if (f.status) params.set("status_id", f.status);
   if (f.queue_id) params.set("queue_id", f.queue_id);
+  if (f.type_id) params.set("type_id", f.type_id);
   if (f.assignee === "me" && me) params.set("assignee_id", String(me.id));
   if (f.assignee === "none") params.set("unassigned", "true");
   if (f.open_only && !f.status) params.set("open_only", "true");
@@ -79,6 +80,14 @@ export default function Tickets() {
             {lk.queues.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
           </select>
         </Field>
+        {lk.ticketTypes.length > 0 && (
+          <Field label="Type">
+            <select className={inputCls} value={f.type_id} onChange={(e) => set("type_id", e.target.value)}>
+              <option value="">Any</option>
+              {lk.ticketTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </Field>
+        )}
         <Field label="Assignee">
           <select className={inputCls} value={f.assignee} onChange={(e) => set("assignee", e.target.value)}>
             <option value="">Anyone</option>

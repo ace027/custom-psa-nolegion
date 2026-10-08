@@ -44,3 +44,5 @@ Ideas that are not in scope for the current phase. Nothing here gets built witho
 - Minimum billable time per entry; retainer / block-hours agreements
 - Outbound email threading by real headers (`In-Reply-To`/`References`): Graph `sendMail` only allows `x-` headers, so this needs the createReply flow and a live tenant to test. Today replies thread by the `[#number]` subject tag.
 - One-off "recalculate open tickets" button after adding holidays (existing due dates are intentionally left alone).
+- Filter/sort the ticket list by custom field values (today only by ticket type)
+- Add custom fields to the new-ticket form and to the portal's new-ticket form (today set on the ticket page)

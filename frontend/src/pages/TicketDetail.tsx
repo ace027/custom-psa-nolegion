@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-  Attachment, CannedResponse, Charge, Contact, Note, Organization, Page, Product, Ticket, TimeEntry, api,
+  Attachment, CannedResponse, Charge, CustomFieldDef, Contact, Note, Organization, Page, Product, Ticket, TimeEntry, api,
 } from "../api";
 import { can, useMe } from "../auth";
 import { useLookups } from "../lookups";
@@ -39,6 +39,7 @@ export default function TicketDetail() {
       </p>
       {t.needs_triage && canWrite && <TriagePanel ticket={t} onDone={refresh} />}
       <Fields ticket={t} canWrite={canWrite} onDone={refresh} />
+      <CustomFieldsCard key={`${t.id}-${t.type_id ?? 0}-${t.updated_at}`} ticket={t} canWrite={canWrite} onDone={refresh} />
       {t.description && (
         <Card title="Description">
           <p className="whitespace-pre-wrap text-sm">{t.description}</p>
@@ -104,6 +105,66 @@ function Fields({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boo
         </div>
       </div>
       <div className="mt-2"><ErrorMsg error={patch.error} /></div>
+    </Card>
+  );
+}
+
+function CustomFieldsCard({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boolean; onDone: () => void }) {
+  const lk = useLookups();
+  const [typeId, setTypeId] = useState<string>(t.type_id ? String(t.type_id) : "");
+  const [vals, setVals] = useState<Record<string, unknown>>({});
+  const defs = useQuery({
+    queryKey: ["type-fields", typeId],
+    enabled: !!typeId,
+    queryFn: () => api<CustomFieldDef[]>(`/ticket-types/${typeId}/fields`),
+  });
+  const stored = t.custom_values ?? {};
+  const current = (id: number) => (String(id) in vals ? vals[String(id)] : stored[String(id)]);
+  const save = useMutation({
+    mutationFn: () => api(`/tickets/${t.id}`, { method: "PATCH", json: { type_id: typeId ? Number(typeId) : null, custom_values: vals } }),
+    onSuccess: () => { setVals({}); onDone(); },
+  });
+  const types = lk.ticketTypes.filter((x) => !x.archived_at || x.id === t.type_id);
+  if (types.length === 0 && !t.type_id) return null;
+  const input = (d: CustomFieldDef) => {
+    const v = current(d.id);
+    const set = (x: unknown) => setVals({ ...vals, [String(d.id)]: x });
+    if (d.field_type === "checkbox") return <input type="checkbox" disabled={!canWrite} checked={v === true} onChange={(e) => set(e.target.checked)} />;
+    if (d.field_type === "dropdown")
+      return (
+        <select className={inputCls} disabled={!canWrite} value={String(v ?? "")} onChange={(e) => set(e.target.value)}>
+          <option value="">—</option>
+          {d.options?.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+      );
+    return (
+      <input
+        className={inputCls}
+        disabled={!canWrite}
+        type={d.field_type === "number" ? "number" : d.field_type === "date" ? "date" : "text"}
+        step="any"
+        value={String(v ?? "")}
+        onChange={(e) => set(d.field_type === "number" && e.target.value !== "" ? Number(e.target.value) : e.target.value)}
+      />
+    );
+  };
+  return (
+    <Card title="Type and custom fields">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Field label="Type">
+          <select className={inputCls} disabled={!canWrite} value={typeId} onChange={(e) => { setTypeId(e.target.value); setVals({}); }}>
+            <option value="">None</option>
+            {types.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </select>
+        </Field>
+        {defs.data?.map((d) => (
+          <Field key={d.id} label={`${d.name}${d.required ? " *" : ""}`}>{input(d)}</Field>
+        ))}
+      </div>
+      {canWrite && (
+        <div className="mt-2"><Button disabled={save.isPending} onClick={() => save.mutate()}>Save type and fields</Button></div>
+      )}
+      <div className="mt-2"><ErrorMsg error={save.error} /></div>
     </Card>
   );
 }

@@ -50,6 +50,7 @@ def _ticket_or_404(ctx: Ctx, ticket_id: int):
 def list_tickets(
     status: str | None = Query(None, description="Comma-separated statuses"),
     status_id: int | None = Query(None, description="A specific named status"),
+    type_id: int | None = Query(None, description="A ticket type"),
     open_only: bool = False,
     queue_id: int | None = None,
     assignee_id: int | None = None,
@@ -70,6 +71,7 @@ def list_tickets(
         ctx.scope,
         statuses=statuses,
         status_id=status_id,
+        type_id=type_id,
         open_only=open_only,
         queue_id=queue_id,
         assignee_id=assignee_id,
