@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
-  Attachment, CannedResponse, Charge, CustomFieldDef, Contact, Note, Organization, Page, Product, Ticket, TimeEntry, api,
+  Attachment, CannedResponse, Charge, CustomFieldDef, LinkRelation, TicketLink, Contact, Note, Organization, Page, Product, Ticket, TimeEntry, api,
 } from "../api";
 import { can, useMe } from "../auth";
 import { useLookups } from "../lookups";
@@ -39,6 +39,7 @@ export default function TicketDetail() {
       </p>
       {t.needs_triage && canWrite && <TriagePanel ticket={t} onDone={refresh} />}
       <Fields ticket={t} canWrite={canWrite} onDone={refresh} />
+      <LinksCard ticket={t} canWrite={canWrite} onDone={refresh} />
       <CustomFieldsCard key={`${t.id}-${t.type_id ?? 0}-${t.updated_at}`} ticket={t} canWrite={canWrite} onDone={refresh} />
       {t.description && (
         <Card title="Description">
@@ -105,6 +106,77 @@ function Fields({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boo
         </div>
       </div>
       <div className="mt-2"><ErrorMsg error={patch.error} /></div>
+    </Card>
+  );
+}
+
+const RELATION_LABEL: Record<LinkRelation, string> = {
+  related: "Related to",
+  duplicate_of: "Duplicate of",
+  has_duplicate: "Has duplicate",
+  parent: "Parent",
+  child: "Child",
+};
+
+function LinksCard({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boolean; onDone: () => void }) {
+  const key = ["links", t.id];
+  const qc = useQueryClient();
+  const links = useQuery({ queryKey: key, queryFn: () => api<TicketLink[]>(`/tickets/${t.id}/links`) });
+  const [f, setF] = useState({ relation: "related", number: "" });
+  const [dup, setDup] = useState("");
+  const done = () => { qc.invalidateQueries({ queryKey: key }); onDone(); };
+  const add = useMutation({
+    mutationFn: () => api(`/tickets/${t.id}/links`, { method: "POST", json: { relation: f.relation, other_number: Number(f.number) } }),
+    onSuccess: () => { setF({ ...f, number: "" }); done(); },
+  });
+  const remove = useMutation({ mutationFn: (id: number) => api(`/tickets/${t.id}/links/${id}`, { method: "DELETE" }), onSuccess: done });
+  const close = useMutation({
+    mutationFn: () => api(`/tickets/${t.id}/close-as-duplicate`, { method: "POST", json: { original_number: Number(dup) } }),
+    onSuccess: () => { setDup(""); done(); },
+  });
+  const items = Array.isArray(links.data) ? links.data : [];
+  if (!canWrite && items.length === 0) return null;
+  return (
+    <Card title="Linked tickets">
+      {items.length > 0 && (
+        <ul className="divide-y divide-slate-100 text-sm">
+          {items.map((l) => (
+            <li key={l.id} className="flex items-center justify-between gap-2 py-1.5">
+              <span>
+                <span className="text-slate-500">{RELATION_LABEL[l.relation]}</span>{" "}
+                <Link className="text-blue-700 hover:underline" to={`/tickets/${l.ticket_id}`}>#{l.number} {l.subject}</Link>{" "}
+                <span className="text-slate-500">({l.status_name})</span>
+              </span>
+              {canWrite && <Button variant="secondary" onClick={() => remove.mutate(l.id)}>Unlink</Button>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {canWrite && (
+        <>
+          <form className="mt-2 flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+            <Field label="This ticket is">
+              <select className={inputCls} value={f.relation} onChange={(e) => setF({ ...f, relation: e.target.value })}>
+                <option value="related">related to</option>
+                <option value="duplicate_of">a duplicate of</option>
+                <option value="has_duplicate">the original of</option>
+                <option value="parent">a child of</option>
+                <option value="child">the parent of</option>
+              </select>
+            </Field>
+            <Field label="Ticket number"><input className={inputCls} required inputMode="numeric" value={f.number} onChange={(e) => setF({ ...f, number: e.target.value })} /></Field>
+            <Button type="submit" disabled={add.isPending}>Link</Button>
+          </form>
+          {t.status !== "closed" && (
+            <form className="mt-3 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3" onSubmit={(e) => { e.preventDefault(); close.mutate(); }}>
+              <Field label="Close as duplicate of ticket number"><input className={inputCls} required inputMode="numeric" value={dup} onChange={(e) => setDup(e.target.value)} /></Field>
+              <Button type="submit" variant="secondary" disabled={close.isPending}>Close as duplicate</Button>
+              <span className="pb-2 text-xs text-slate-500">Notes and time stay on this ticket; a pointer note is added to both.</span>
+            </form>
+          )}
+        </>
+      )}
+      <ErrorMsg error={add.error ?? remove.error ?? close.error} />
     </Card>
   );
 }

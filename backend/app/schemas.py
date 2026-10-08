@@ -489,6 +489,29 @@ class TicketFieldOut(BaseModel):
     value: Any = None
 
 
+LinkRelation = Literal["related", "duplicate_of", "has_duplicate", "parent", "child"]
+
+
+class TicketLinkIn(BaseModel):
+    relation: LinkRelation  # what the OTHER ticket is to this one
+    other_number: int = Field(ge=1)  # the other ticket's number
+
+
+class TicketLinkOut(BaseModel):
+    id: int
+    relation: LinkRelation
+    ticket_id: int
+    number: int
+    subject: str
+    status: TicketStatus
+    status_name: str
+    created_at: datetime
+
+
+class CloseDuplicateIn(BaseModel):
+    original_number: int = Field(ge=1)
+
+
 class HolidayIn(BaseModel):
     on_date: date
     name: str = Field(min_length=1, max_length=100)

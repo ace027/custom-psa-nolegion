@@ -60,3 +60,39 @@ describe("ticket type and custom fields", () => {
     expect(JSON.parse(bodies[0])).toEqual({ type_id: 7, custom_values: { "1": "2026-11-02", "2": "HP" } });
   });
 });
+
+describe("linked tickets", () => {
+  it("lists links, adds one by number, and closes as a duplicate", async () => {
+    const posts: string[] = [];
+    const handlers: Record<string, (init?: RequestInit) => Response> = {
+      "/api/auth/me": json(me),
+      "/api/tickets/5": json(ticket),
+      "/api/tickets/5/links": (init) => {
+        if (init?.method === "POST") { posts.push(`links ${init.body}`); return new Response("[]", { status: 201 }); }
+        return new Response(JSON.stringify([{ id: 3, relation: "parent", ticket_id: 9, number: 10009, subject: "Big job", status: "open", status_name: "Open" }]));
+      },
+      "/api/tickets/5/close-as-duplicate": (init) => { posts.push(`dup ${init?.body}`); return new Response(JSON.stringify(ticket)); },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => Promise.resolve(handlers[url]?.(init) ?? new Response("[]", { status: 200 }))),
+    );
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/tickets/5"]}><App /></MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("#10009 Big job")).toBeInTheDocument();
+    expect(screen.getByText("Parent")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("This ticket is"), { target: { value: "duplicate_of" } });
+    fireEvent.change(screen.getByLabelText("Ticket number"), { target: { value: "10002" } });
+    fireEvent.click(screen.getByRole("button", { name: "Link" }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(JSON.parse(posts[0].slice(6))).toEqual({ relation: "duplicate_of", other_number: 10002 });
+    fireEvent.change(screen.getByLabelText("Close as duplicate of ticket number"), { target: { value: "10003" } });
+    fireEvent.click(screen.getByRole("button", { name: "Close as duplicate" }));
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect(JSON.parse(posts[1].slice(4))).toEqual({ original_number: 10003 });
+  });
+});

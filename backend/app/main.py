@@ -25,6 +25,7 @@ from app.routers import (
     reports,
     search,
     ticket_config,
+    ticket_links,
     tickets,
     users,
 )
@@ -100,6 +101,7 @@ def create_app() -> FastAPI:
         search.router,
         holidays.router,
         ticket_config.router,
+        ticket_links.router,
         portal.router,
     ):
         app.include_router(r, prefix="/api")

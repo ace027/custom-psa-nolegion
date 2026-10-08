@@ -127,6 +127,16 @@ export interface CustomFieldDef extends Lookup {
   client_visible: boolean;
   position: number;
 }
+export type LinkRelation = "related" | "duplicate_of" | "has_duplicate" | "parent" | "child";
+export interface TicketLink {
+  id: number;
+  relation: LinkRelation;
+  ticket_id: number;
+  number: number;
+  subject: string;
+  status: TicketStatus;
+  status_name: string;
+}
 export type SlaState = "none" | "ok" | "at_risk" | "breached" | "paused" | "done";
 
 export interface Ticket {

@@ -733,6 +733,21 @@ class StaffNotification(Base):
     )
 
 
+class TicketLink(Base):
+    """A relationship between two tickets of the same client (see docs/TICKETS_PLAN.md)."""
+
+    __tablename__ = "ticket_links"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    source_ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), nullable=False)
+    target_ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), nullable=False)
+    kind: Mapped[str] = mapped_column(String(12), nullable=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class TicketAutoAck(Base):
     """The automatic "we got your request" email sent for a ticket (once per ticket)."""
 
