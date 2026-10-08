@@ -9,10 +9,12 @@ from app.config import get_settings
 from app.context import client_ip_var, request_id_var
 from app.errors import Conflict, Forbidden, NotFound
 from app.routers import (
+    assets,
     auth,
     billing,
     config,
     health,
+    integrations,
     invoices,
     notices,
     organizations,
@@ -90,6 +92,8 @@ def create_app() -> FastAPI:
         notices.router,
         reports.router,
         quotes.router,
+        integrations.router,
+        assets.router,
         portal.router,
     ):
         app.include_router(r, prefix="/api")

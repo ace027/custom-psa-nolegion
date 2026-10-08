@@ -20,6 +20,8 @@ import Reminders from "./pages/billing/Reminders";
 import Reports from "./pages/billing/Reports";
 import { RunList, RunPage } from "./pages/billing/Runs";
 import Dashboard from "./pages/Dashboard";
+import Integrations from "./pages/Integrations";
+import WarrantyReport from "./pages/WarrantyReport";
 import Login from "./pages/Login";
 import OrganizationDetail from "./pages/OrganizationDetail";
 import Organizations from "./pages/Organizations";
@@ -50,7 +52,9 @@ function Layout() {
           <NavLink to="/organizations" className={link}>Organizations</NavLink>
           {can(me, "billing:read") && <NavLink to="/billing" className={link}>Billing</NavLink>}
           {can(me, "quote:read") && <NavLink to="/quotes" className={link}>Quotes</NavLink>}
+          {can(me, "report:read") && <NavLink to="/warranty" className={link}>Warranty</NavLink>}
           <NavLink to="/users" className={link}>Users</NavLink>
+          {can(me, "integration:manage") && <NavLink to="/integrations" className={link}>Integrations</NavLink>}
           {can(me, "config:manage") && <NavLink to="/settings" className={link}>Settings</NavLink>}
           {can(me, "audit:read") && <NavLink to="/audit" className={link}>Audit log</NavLink>}
         </nav>
@@ -109,6 +113,8 @@ function StaffApp() {
             <Route path="/quotes/:id" element={<QuotePage />} />
           </>
         )}
+        <Route path="/warranty" element={can(me, "report:read") ? <WarrantyReport /> : <Navigate to="/" replace />} />
+        <Route path="/integrations" element={can(me, "integration:manage") ? <Integrations /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/users" element={<Users />} />
         <Route path="/audit" element={can(me, "audit:read") ? <Audit /> : <Navigate to="/" replace />} />

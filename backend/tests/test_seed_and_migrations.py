@@ -20,6 +20,7 @@ def test_seed_is_idempotent_and_usable(login, owner):
     assert len(d["my_open"]) == 2
     assert owner.execute(text("SELECT count(*) FROM agreements")).scalar_one() == 3
     assert owner.execute(text("SELECT count(*) FROM product_charges")).scalar_one() == 1
+    assert owner.execute(text("SELECT count(*) FROM assets")).scalar_one() == 5
     biller = login("billing", "billing@example.com")
     r = biller.post("/api/billing-runs", json={"period": biz_today().strftime("%Y-%m")})
     assert r.status_code == 201 and r.json()["invoice_count"] >= 3

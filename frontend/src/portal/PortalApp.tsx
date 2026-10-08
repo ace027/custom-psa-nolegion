@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
-import { ApiError, PortalInvoice, PortalInvoiceDetail, PortalMe, PortalTicket, PortalTicketDetail, api } from "../api";
+import { WARRANTY_LABEL, ApiError, PortalAssets, PortalInvoice, PortalInvoiceDetail, PortalMe, PortalTicket, PortalTicketDetail, api } from "../api";
 import { money } from "../money";
-import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../ui";
+import { Button, Card, ErrorMsg, Field, WarrantyBadge, fmt, inputCls } from "../ui";
 
 function usePortalMe() {
   return useQuery({
@@ -103,6 +103,7 @@ function Signed({ me }: { me: PortalMe }) {
       <nav className="mb-4 flex gap-1 border-b border-slate-200 pb-2">
         <NavLink to="/portal/tickets" className={tab}>Tickets</NavLink>
         {me.can_see_billing && <NavLink to="/portal/invoices" className={tab}>Invoices</NavLink>}
+        {me.can_see_devices && <NavLink to="/portal/devices" className={tab}>Devices</NavLink>}
       </nav>
       <Routes>
         <Route index element={<Navigate to="/portal/tickets" replace />} />
@@ -110,6 +111,7 @@ function Signed({ me }: { me: PortalMe }) {
         <Route path="tickets/:id" element={<TicketPage />} />
         {me.can_see_billing && <Route path="invoices" element={<Invoices />} />}
         {me.can_see_billing && <Route path="invoices/:id" element={<InvoicePage />} />}
+        {me.can_see_devices && <Route path="devices" element={<Devices />} />}
         <Route path="*" element={<Navigate to="/portal/tickets" replace />} />
       </Routes>
     </Shell>
@@ -230,5 +232,38 @@ function InvoicePage() {
         </Card>
       )}
     </div>
+  );
+}
+
+function Devices() {
+  const q = useQuery({ queryKey: ["portal", "assets"], queryFn: () => api<PortalAssets>("/portal/assets") });
+  const d = q.data;
+  const soon = d ? d.counts.expiring_30 + d.counts.expiring_60 + d.counts.expiring_90 : 0;
+  return (
+    <Card title="Devices and warranty">
+      <ErrorMsg error={q.error} />
+      {d && (
+        <>
+          <p className="mb-3 text-sm">
+            {d.total} device(s) as of {d.as_of}: <b>{soon}</b> with warranty ending in the next 90 days and <b>{d.counts.expired}</b> out of warranty.
+            Devices without a warranty date are shown as unknown.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-1">Device</th><th>Type</th><th>Make / model</th><th>Warranty ends</th></tr></thead>
+              <tbody>
+                {d.devices.map((x) => (
+                  <tr key={`${x.name}-${x.warranty_end}`} className="border-b border-slate-100">
+                    <td className="p-1">{x.name}</td><td>{x.kind}</td>
+                    <td>{[x.manufacturer, x.model].filter(Boolean).join(" ") || "—"}</td>
+                    <td>{x.warranty_end ?? "—"} <WarrantyBadge state={x.warranty_status} label={WARRANTY_LABEL[x.warranty_status]} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </Card>
   );
 }

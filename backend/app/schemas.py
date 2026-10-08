@@ -46,6 +46,7 @@ class OrganizationOut(ORM):
     status: str
     billing_address: str | None
     notes: str | None
+    assets_published: bool
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -96,6 +97,7 @@ class ContactIn(BaseModel):
     is_billing_contact: bool = False
     portal_access: bool = False
     portal_org_tickets: bool = False
+    portal_assets: bool = False
 
 
 class ContactPatch(BaseModel):
@@ -108,6 +110,7 @@ class ContactPatch(BaseModel):
     is_billing_contact: bool | None = None
     portal_access: bool | None = None
     portal_org_tickets: bool | None = None
+    portal_assets: bool | None = None
 
 
 class ContactOut(ORM):
@@ -122,6 +125,7 @@ class ContactOut(ORM):
     is_billing_contact: bool
     portal_access: bool
     portal_org_tickets: bool
+    portal_assets: bool
     archived_at: datetime | None
 
 
@@ -981,6 +985,7 @@ class PortalMeOut(BaseModel):
     company_name: str | None
     can_see_billing: bool
     can_see_all_tickets: bool
+    can_see_devices: bool = False
 
 
 class PortalNoticeOut(BaseModel):

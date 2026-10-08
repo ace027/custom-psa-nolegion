@@ -58,6 +58,34 @@ def notify_jobs() -> None:
         log.exception("notification jobs failed")
 
 
+def integration_jobs() -> None:
+    """Sync vendor integrations that are due (or were asked to sync now). Read-only toward vendors;
+    a failure is recorded on the run and never raises."""
+    from app import db as dbmod
+    from app.asset_sync import due, sync_integration
+    from app.deps import Ctx
+    from app.scope import Scope
+
+    try:
+        with dbmod.new_session() as db:
+            dbmod.set_org_scope(db, "all")
+            ctx = Ctx(db=db, user=None, scope=Scope.all())
+            for integration in due(ctx):
+                run = sync_integration(ctx, integration)
+                db.commit()  # one commit per vendor so a later failure keeps earlier runs
+                log.info(
+                    "synced %s: %s (+%d ~%d -%d, %d client(s) failed)",
+                    integration.name,
+                    run.status,
+                    run.added,
+                    run.changed,
+                    run.retired,
+                    run.clients_failed,
+                )
+    except Exception:
+        log.exception("integration jobs failed")
+
+
 def build_client() -> GraphClient:
     s = get_settings()
     return GraphClient(
@@ -85,6 +113,7 @@ def main(argv: list[str]) -> int:
             heartbeat(None)
             billing_jobs()
             notify_jobs()
+            integration_jobs()
             if "--once" in argv:
                 break
             for _ in range(60):
@@ -98,6 +127,7 @@ def main(argv: list[str]) -> int:
         run_cycle(client, s.mail_mailbox)
         billing_jobs()
         notify_jobs()
+        integration_jobs()
         if "--once" in argv:
             break
         for _ in range(s.mail_poll_seconds):

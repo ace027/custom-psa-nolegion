@@ -1,6 +1,6 @@
 # vCISO platform and asset intelligence: plan
 
-Status: **PLAN ONLY. Nothing here is built.** Written for review; no code starts until it is approved.
+Status: **Phase 1 is BUILT** (see [INTEGRATIONS.md](INTEGRATIONS.md) for how it works and what differs from this plan). **Phases 2 to 5 are plan only.**
 Sections marked **(assumption)** were not confirmed and should be checked before building.
 
 ## 1. Goal

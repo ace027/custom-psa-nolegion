@@ -5,6 +5,9 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 **Status:** Phases 1-3 (Foundation, Ticketing, Contracts & invoicing) complete: the MVP. See [docs/PLAN.md](docs/PLAN.md) for the roadmap and design decisions, and [docs/BACKLOG.md](docs/BACKLOG.md) for ideas that are deliberately not built yet.
 
 ## What works today
+**Vendor integrations and warranty** (NinjaOne, Hudu; read-only)
+- Pulls devices and warranty dates, merges them into one list per client with a derived status (expired / expiring / in warranty / unknown), keeps tech corrections across syncs, reports across clients with CSV, and can show a Devices page to designated portal contacts. Credentials are stored encrypted. NinjaOne field names need confirming on first connection. See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)
+
 **New-client quoting**
 - Schedule an onsite survey for a prospect, fill it in on a phone or tablet, and get a flat monthly price: base per user/device, +25% when more than half the devices are out of warranty (other uplifts configurable, added not compounded). Price changes need an admin's approval; accepting creates the 12-month flat-fee agreement. See [docs/QUOTING.md](docs/QUOTING.md)
 

@@ -4,6 +4,8 @@
 email; the database only stores their names). `.env` holds secrets: store it separately in your
 password manager / secret store, *not* alongside the database backups.
 
+**Vendor credentials** (NinjaOne, Hudu) are stored in the database as ciphertext, encrypted with `CREDENTIALS_KEY` from `.env`. A restored backup without that key has no usable vendor secrets: restore `.env` from your secret store first (or re-enter the credentials under Integrations). See [INTEGRATIONS.md](INTEGRATIONS.md).
+
 ## Nightly backup
 `deploy/backup.sh` runs `pg_dump` inside the db container and tars the attachments volume, encrypts both with
 [age](https://age-encryption.org) and writes `psa-<timestamp>.dump.age` + `psa-<timestamp>.attachments.tar.age`,

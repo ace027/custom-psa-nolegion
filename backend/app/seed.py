@@ -215,6 +215,42 @@ def seed_billing(db) -> None:
     )
 
 
+def seed_assets(db) -> None:
+    """A handful of demo devices (not from any vendor) so the warranty views have something to
+    show before NinjaOne/Hudu are connected."""
+    from datetime import date, timedelta
+
+    from app.models import Asset
+
+    if db.execute(select(func.count()).select_from(Asset)).scalar_one():
+        return
+    org = db.execute(select(Organization).where(Organization.name == "Contoso Dental")).scalar()
+    if org is None:
+        return
+    today = date.today()
+    demo = [
+        ("FRONTDESK-01", "computer", "Dell", "OptiPlex 3080", "DEMO0001", -40),
+        ("CHAIRSIDE-02", "computer", "HP", "EliteDesk 800", "DEMO0002", 25),
+        ("DOC-LAPTOP", "computer", "Lenovo", "ThinkPad T14", "DEMO0003", 70),
+        ("DC01", "server", "Dell", "PowerEdge T350", "DEMO0004", 400),
+        ("CORE-SWITCH", "network", "Cisco", "Catalyst 1000", "DEMO0005", None),
+    ]
+    for name, kind, make, model, serial, days in demo:
+        db.add(
+            Asset(
+                organization_id=org.id,
+                kind=kind,
+                name=name,
+                manufacturer=make,
+                model=model,
+                serial=serial,
+                serial_norm=serial,
+                warranty_end=today + timedelta(days=days) if days is not None else None,
+            )
+        )
+    db.flush()
+
+
 def run() -> None:
     if get_settings().is_production:
         raise SystemExit("Refusing to seed demo data in production")
@@ -224,6 +260,7 @@ def run() -> None:
             print("Organizations already exist; skipping organizations and users.")
             seed_tickets(db)
             seed_billing(db)
+            seed_assets(db)
             db.commit()
             return
         for email, name, role in USERS:
@@ -292,8 +329,12 @@ def run() -> None:
                 )
         seed_tickets(db)
         seed_billing(db)
+        seed_assets(db)
         db.commit()
-        print(f"Seeded {len(USERS)} users, {len(ORGS)} organizations, demo tickets and billing.")
+        print(
+            f"Seeded {len(USERS)} users, {len(ORGS)} organizations, demo tickets, billing "
+            "and devices."
+        )
 
 
 if __name__ == "__main__":

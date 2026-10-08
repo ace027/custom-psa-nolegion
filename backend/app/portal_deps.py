@@ -79,3 +79,16 @@ def public_session() -> Iterator[Session]:
         raise
     finally:
         db.close()
+
+
+def devices_only(ctx: PortalCtx) -> None:
+    """Device and warranty data needs BOTH a tech publishing it for the client and an explicit
+    flag on this contact. The two reasons look the same to the caller."""
+    from app import portal as svc
+
+    org = repo.get_organization(ctx.db, ctx.scope, ctx.contact.organization_id)
+    if not svc.devices_visible(ctx, org):
+        audit.record_auth_event(
+            "portal.denied", detail={"contact_id": ctx.contact.id, "reason": "devices_not_shared"}
+        )
+        raise HTTPException(status_code=403, detail="Device information is not available to you")

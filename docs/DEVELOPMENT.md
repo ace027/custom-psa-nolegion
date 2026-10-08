@@ -26,6 +26,8 @@ Interactive API docs: http://localhost:8000/api/docs
 
 Lint/format: `ruff check app tests && ruff format app tests`
 
+Vendor integrations need `CREDENTIALS_KEY` in `backend/.env` before you can save NinjaOne/Hudu credentials (generate one with the command in [INTEGRATIONS.md](INTEGRATIONS.md)). The tests set their own key and use fake vendors.
+
 ### Tests
 `pytest` runs against a real PostgreSQL database `psa_test` (never SQLite: RLS must be exercised).
 Override with `PSA_TEST_DB_HOST/PORT/NAME`. The suite drops and recreates the `public` schema of that

@@ -20,6 +20,7 @@ PORTAL_MANAGE = (
 QUOTE_READ = "quote:read"  # surveys, quotes, the rate card
 QUOTE_WRITE = "quote:write"  # run surveys, build / adjust / send quotes (techs)
 QUOTE_MANAGE = "quote:manage"  # approve adjusted prices, record accept/decline, edit the rate card
+INTEGRATION_MANAGE = "integration:manage"  # vendor connections, credentials, client mapping
 CONFIG_MANAGE = "config:manage"  # queues, categories, priorities, work types, settings, mail status
 
 ROLES = ("admin", "tech", "billing", "read_only")
@@ -39,6 +40,7 @@ MATRIX: dict[str, frozenset[str]] = {
             PORTAL_MANAGE,
             QUOTE_WRITE,
             QUOTE_MANAGE,
+            INTEGRATION_MANAGE,
         }
         | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE, PAYMENT_WRITE, REPORT_READ}
     ),

@@ -8,12 +8,13 @@ from app import audit
 from app import billing_repo as brepo
 from app import portal as svc
 from app import repositories as repo
+from app.asset_schemas import PortalAssetsOut
 from app.auth import portal_sessions
 from app.config import get_settings
 from app.context import client_ip_var
 from app.invoice_pdf import render_invoice_pdf
 from app.notices import build_statement
-from app.portal_deps import PortalCtx, billing_only, portal_required, public_session
+from app.portal_deps import PortalCtx, billing_only, devices_only, portal_required, public_session
 from app.schemas import (
     ErrorOut,
     PortalInvoiceDetail,
@@ -157,6 +158,18 @@ def statement_pdf(ctx: PortalCtx = portal_required()):
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="Statement-{snap["as_of"]}.pdf"'},
     )
+
+
+# ---- devices and warranty ----
+@router.get(
+    "/assets",
+    response_model=PortalAssetsOut,
+    responses={403: {"model": ErrorOut}},
+    summary="Your devices and their warranty status (designated contacts only)",
+)
+def devices(ctx: PortalCtx = portal_required()):
+    devices_only(ctx)
+    return svc.list_devices(ctx)
 
 
 # ---- tickets ----

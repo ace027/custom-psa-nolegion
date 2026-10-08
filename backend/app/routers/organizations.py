@@ -144,9 +144,9 @@ def unarchive_site(site_id: int, ctx: Ctx = require(P.ORG_WRITE)):
 def _portal_grant_needs_permission(ctx: Ctx, data: dict) -> None:
     """Giving someone client-portal access exposes a client's data, so it is an admin decision.
     Turning access off (or leaving it alone) needs only the normal contact permission."""
-    if (data.get("portal_access") or data.get("portal_org_tickets")) and not P.has_permission(
-        ctx.user.role, P.PORTAL_MANAGE
-    ):
+    if (
+        data.get("portal_access") or data.get("portal_org_tickets") or data.get("portal_assets")
+    ) and not P.has_permission(ctx.user.role, P.PORTAL_MANAGE):
         raise HTTPException(status_code=403, detail="Only an admin can grant client portal access")
 
 

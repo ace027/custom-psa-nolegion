@@ -61,6 +61,27 @@ def request_link(db: Session, email: str, ip: str | None) -> dict:
     return {**outcome, "sent": True}
 
 
+# ---- devices and warranty (designated contacts, published clients only) ----
+def devices_visible(ctx: PortalCtx, org) -> bool:
+    return bool(org.assets_published and ctx.contact.portal_assets)
+
+
+def list_devices(ctx: PortalCtx) -> dict:
+    from app import assets as asvc
+
+    rows = asvc.list_assets(ctx, ctx.contact.organization_id)
+    counts = {s: 0 for s in asvc.STATUSES}
+    for r in rows:
+        counts[r["warranty_status"]] += 1
+    keep = ("name", "kind", "manufacturer", "model", "warranty_end", "warranty_status")
+    return dict(
+        as_of=asvc.today(ctx),
+        total=len(rows),
+        counts=counts,
+        devices=[{k: r[k] for k in keep} for r in rows],
+    )
+
+
 # ---- who am I --------------------------------------------------------------------------
 def me(ctx: PortalCtx) -> dict:
     org = repo.get_organization(ctx.db, ctx.scope, ctx.contact.organization_id)
@@ -71,6 +92,7 @@ def me(ctx: PortalCtx) -> dict:
         company_name=repo.get_settings_row(ctx.db).company_name,
         can_see_billing=ctx.contact.is_billing_contact,
         can_see_all_tickets=ctx.contact.portal_org_tickets,
+        can_see_devices=devices_visible(ctx, org),
     )
 
 

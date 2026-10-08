@@ -19,6 +19,9 @@ os.environ["ENTRA_TENANT_ID"] = "tenant-1"
 os.environ["ENTRA_CLIENT_ID"] = "client-1"
 os.environ["ENTRA_CLIENT_SECRET"] = "secret-1"
 os.environ["SESSION_SECRET"] = "test-secret"
+os.environ["CREDENTIALS_KEY"] = (
+    "ZmFrZS1rZXktZm9yLXRlc3RzLW9ubHktMDAwMDAwMDA="  # test key, not a secret
+)
 
 import pytest  # noqa: E402
 from alembic.config import Config  # noqa: E402
@@ -29,7 +32,7 @@ from alembic import command  # noqa: E402
 from app.main import app  # noqa: E402
 
 TABLES = (
-    "quotes, survey_apps, survey_devices, site_surveys, staff_notifications, outbound_attachments, billing_notice_invoices, billing_notices, statements, "
+    "asset_overrides, asset_sources, assets, sync_runs, integration_client_maps, integrations, quotes, survey_apps, survey_devices, site_surveys, staff_notifications, outbound_attachments, billing_notice_invoices, billing_notices, statements, "
     "write_offs, payment_applications, payments, invoice_counters, product_charges, invoice_lines, invoices, billing_runs, "
     "agreement_quantity_log, agreements, products, org_work_type_rates, "
     "attachments, time_entries, ticket_notes, email_messages, tickets, audit_log, sessions, "

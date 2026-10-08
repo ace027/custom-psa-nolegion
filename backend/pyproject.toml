@@ -16,6 +16,7 @@ dependencies = [
   "email-validator>=2.2",
   "tzdata>=2024.1",
   "reportlab>=4.0",
+  "cryptography>=42",
 ]
 
 [project.optional-dependencies]
@@ -34,7 +35,7 @@ select = ["E", "F", "I", "B", "UP"]
 ignore = ["B008"]  # FastAPI Depends() in defaults is the idiom
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["E501"]  # long SQL/JSON literals read better unwrapped
+"tests/*" = ["E501", "F811"]  # long SQL/JSON literals read better unwrapped
 
 [build-system]
 requires = ["setuptools>=68"]

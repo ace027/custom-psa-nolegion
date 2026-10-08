@@ -73,3 +73,16 @@ export function SlaBadge({ state }: { state: string }) {
 }
 
 export const fmt = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString() : "—");
+
+const WARRANTY_STYLE: Record<string, string> = {
+  expired: "bg-red-100 text-red-800",
+  expiring_30: "bg-amber-100 text-amber-800",
+  expiring_60: "bg-amber-50 text-amber-800",
+  expiring_90: "bg-yellow-50 text-yellow-800",
+  in_warranty: "bg-green-100 text-green-800",
+  unknown: "bg-slate-100 text-slate-600",
+};
+
+export function WarrantyBadge({ state, label }: { state: string; label: string }) {
+  return <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${WARRANTY_STYLE[state]}`}>{label}</span>;
+}

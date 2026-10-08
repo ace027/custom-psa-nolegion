@@ -56,6 +56,7 @@ export interface Organization {
   status: "active" | "inactive" | "prospect";
   billing_address: string | null;
   notes: string | null;
+  assets_published: boolean;
   archived_at: string | null;
 }
 export interface Site {
@@ -71,6 +72,7 @@ export interface Site {
 export interface Contact {
   portal_access: boolean;
   portal_org_tickets: boolean;
+  portal_assets: boolean;
   id: number;
   organization_id: number;
   site_id: number | null;
@@ -486,6 +488,7 @@ export interface PortalMe {
   company_name: string | null;
   can_see_billing: boolean;
   can_see_all_tickets: boolean;
+  can_see_devices: boolean;
 }
 export interface PortalInvoice {
   id: number;
@@ -605,4 +608,79 @@ export interface Quote {
   decision_note: string | null;
   sent_to: string | null;
   resulting_agreement_id: number | null;
+}
+
+
+// ---- integrations, assets, warranty ----
+export type WarrantyState = "expired" | "expiring_30" | "expiring_60" | "expiring_90" | "in_warranty" | "unknown";
+export const WARRANTY_LABEL: Record<WarrantyState, string> = {
+  expired: "Expired",
+  expiring_30: "Expires within 30 days",
+  expiring_60: "Expires within 60 days",
+  expiring_90: "Expires within 90 days",
+  in_warranty: "In warranty",
+  unknown: "Unknown",
+};
+export interface Integration {
+  id: number;
+  kind: "ninjaone" | "hudu";
+  name: string;
+  base_url: string;
+  config: Record<string, unknown>;
+  credentials_set: boolean;
+  credentials_set_at: string | null;
+  enabled: boolean;
+  status: "unknown" | "ok" | "error";
+  last_error: string | null;
+  last_sync_at: string | null;
+  sync_requested: boolean;
+}
+export interface SyncRun {
+  id: number;
+  status: "running" | "ok" | "partial" | "failed";
+  started_at: string;
+  finished_at: string | null;
+  added: number;
+  changed: number;
+  retired: number;
+  clients_synced: number;
+  clients_failed: number;
+  error: string | null;
+}
+export interface ClientMap {
+  id: number;
+  external_id: string;
+  external_name: string;
+  organization_id: number | null;
+  ignored: boolean;
+  needs_mapping: boolean;
+  suggested_organization_id: number | null;
+}
+export interface Asset {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  kind: "computer" | "server" | "network" | "other";
+  name: string;
+  manufacturer: string | null;
+  model: string | null;
+  serial: string | null;
+  warranty_start: string | null;
+  warranty_end: string | null;
+  warranty_status: WarrantyState;
+  warranty_overridden: boolean;
+  conflict: boolean;
+  retired_at: string | null;
+}
+export interface WarrantyReport {
+  as_of: string;
+  total: number;
+  counts: Record<WarrantyState, number>;
+  rows: Asset[];
+}
+export interface PortalAssets {
+  as_of: string;
+  total: number;
+  counts: Record<WarrantyState, number>;
+  devices: { name: string; kind: string; manufacturer: string | null; model: string | null; warranty_end: string | null; warranty_status: WarrantyState }[];
 }

@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { Contact, Organization, Site, api } from "../api";
 import { can, useMe } from "../auth";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../ui";
+import OrgAssetsCard from "./OrgAssetsCard";
 import OrgBillingCard from "./OrgBillingCard";
 
 export default function OrganizationDetail() {
@@ -33,6 +34,7 @@ export default function OrganizationDetail() {
       </h1>
       <OrgForm org={org.data} canWrite={canWrite} onDone={refresh} />
       {can(me, "billing:read") && <OrgBillingCard orgId={id} />}
+      <OrgAssetsCard org={org.data} />
       <SitesCard orgId={id} sites={sites.data ?? []} canWrite={canWrite} onDone={refresh} />
       <ContactsCard
         orgId={id}
@@ -182,7 +184,7 @@ function ContactsCard({ orgId, contacts, sites, canWrite, onDone }: { orgId: num
     onSuccess: onDone,
   });
   const portal = useMutation({
-    mutationFn: ({ c, patch }: { c: Contact; patch: Partial<Pick<Contact, "portal_access" | "portal_org_tickets">> }) => api(`/contacts/${c.id}`, { method: "PATCH", json: patch }),
+    mutationFn: ({ c, patch }: { c: Contact; patch: Partial<Pick<Contact, "portal_access" | "portal_org_tickets" | "portal_assets">> }) => api(`/contacts/${c.id}`, { method: "PATCH", json: patch }),
     onSuccess: onDone,
   });
   const { data: me } = useMe();
@@ -202,7 +204,7 @@ function ContactsCard({ orgId, contacts, sites, canWrite, onDone }: { orgId: num
               {c.email ? ` <${c.email}>` : ""}
               {c.is_primary && <b className="ml-2 text-xs text-blue-700">primary</b>}
               {c.is_billing_contact && <b className="ml-2 text-xs text-green-700">billing</b>}
-              {c.portal_access && <b className="ml-2 text-xs text-purple-700">portal{c.portal_org_tickets ? " (all company tickets)" : ""}</b>}
+              {c.portal_access && <b className="ml-2 text-xs text-purple-700">portal{c.portal_org_tickets ? " (all company tickets)" : ""}{c.portal_assets ? " (devices)" : ""}</b>}
             </span>
             {canWrite && (
               <span className="flex gap-2">
@@ -213,10 +215,13 @@ function ContactsCard({ orgId, contacts, sites, canWrite, onDone }: { orgId: num
                   <Button variant="secondary" onClick={() => portal.mutate({ c, patch: { portal_access: true } })}>Give portal access</Button>
                 )}
                 {c.portal_access && (
-                  <Button variant="secondary" onClick={() => portal.mutate({ c, patch: { portal_access: false, portal_org_tickets: false } })}>Remove portal access</Button>
+                  <Button variant="secondary" onClick={() => portal.mutate({ c, patch: { portal_access: false, portal_org_tickets: false, portal_assets: false } })}>Remove portal access</Button>
                 )}
                 {c.portal_access && isAdmin && (
                   <Button variant="secondary" onClick={() => portal.mutate({ c, patch: { portal_org_tickets: !c.portal_org_tickets } })}>{c.portal_org_tickets ? "Own tickets only" : "See all company tickets"}</Button>
+                )}
+                {c.portal_access && isAdmin && (
+                  <Button variant="secondary" onClick={() => portal.mutate({ c, patch: { portal_assets: !c.portal_assets } })}>{c.portal_assets ? "Hide devices" : "Show devices"}</Button>
                 )}
                 <Button variant="secondary" onClick={() => toggle.mutate(c)}>
                   {c.archived_at ? "Restore" : "Archive"}

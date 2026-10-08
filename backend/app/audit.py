@@ -15,7 +15,7 @@ from app.models import AuditLog, User
 
 auth_logger = logging.getLogger("psa.auth")  # separate logger so it can be shipped to a SIEM
 
-REDACTED_KEYS = {"token_hash", "password", "password_hash", "secret", "token"}
+REDACTED_KEYS = {"token_hash", "password", "password_hash", "secret", "token", "credentials"}
 
 
 def snapshot(obj: Any) -> dict[str, Any]:

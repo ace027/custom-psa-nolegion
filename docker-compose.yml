@@ -37,6 +37,7 @@ services:
       ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:?}
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:?}
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:?}
+      CREDENTIALS_KEY: ${CREDENTIALS_KEY:-}
       DEV_LOGIN_ENABLED: "false"
       ATTACHMENTS_DIR: /data/attachments
     volumes:
@@ -66,6 +67,7 @@ services:
       MAIL_POLL_SECONDS: ${MAIL_POLL_SECONDS:-60}
       GRAPH_BASE_URL: ${GRAPH_BASE_URL:-https://graph.microsoft.com/v1.0}
       GRAPH_LOGIN_URL: ${GRAPH_LOGIN_URL:-https://login.microsoftonline.com}
+      CREDENTIALS_KEY: ${CREDENTIALS_KEY:-}
       ATTACHMENTS_DIR: /data/attachments
     volumes:
       - attachments:/data/attachments

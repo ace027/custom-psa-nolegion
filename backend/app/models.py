@@ -51,6 +51,9 @@ class Organization(TimestampMixin, Base):
         Boolean, nullable=False, server_default=text("false")
     )
     tax_rate_bp: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    assets_published: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
 
 class Site(TimestampMixin, Base):
@@ -90,6 +93,9 @@ class Contact(TimestampMixin, Base):
         Boolean, nullable=False, server_default=text("false")
     )
     portal_org_tickets: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    portal_assets: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -792,3 +798,111 @@ class Quote(TimestampMixin, Base):
     resulting_agreement_id: Mapped[int | None] = mapped_column(ForeignKey("agreements.id"))
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     organization: Mapped[Organization] = relationship(lazy="joined")
+
+
+class Integration(TimestampMixin, Base):
+    """A connected vendor (MSP-level). `credentials` is ciphertext; see app/crypto.py."""
+
+    __tablename__ = "integrations"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(12), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    base_url: Mapped[str] = mapped_column(String(300), nullable=False)
+    credentials: Mapped[str | None] = mapped_column(Text)
+    credentials_set_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    config: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="unknown")
+    last_error: Mapped[str | None] = mapped_column(Text)
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sync_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class IntegrationClientMap(Base):
+    __tablename__ = "integration_client_maps"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    integration_id: Mapped[int] = mapped_column(ForeignKey("integrations.id"), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    external_name: Mapped[str] = mapped_column(String(300), nullable=False)
+    psa_organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"))
+    ignored: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SyncRun(Base):
+    __tablename__ = "sync_runs"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    integration_id: Mapped[int] = mapped_column(ForeignKey("integrations.id"), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="running")
+    added: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    changed: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    retired: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    clients_synced: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    clients_failed: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    error: Mapped[str | None] = mapped_column(Text)
+
+
+class Asset(TimestampMixin, Base):
+    __tablename__ = "assets"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(300), nullable=False)
+    manufacturer: Mapped[str | None] = mapped_column(String(200))
+    model: Mapped[str | None] = mapped_column(String(200))
+    serial: Mapped[str | None] = mapped_column(String(100))
+    serial_norm: Mapped[str | None] = mapped_column(String(100))
+    warranty_start: Mapped[date | None] = mapped_column(Date)  # synced value, before overrides
+    warranty_end: Mapped[date | None] = mapped_column(Date)
+    conflict: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    organization: Mapped[Organization] = relationship(lazy="joined")
+    sources: Mapped[list["AssetSource"]] = relationship(
+        order_by="AssetSource.id", lazy="selectin", cascade="all, delete-orphan"
+    )
+    overrides: Mapped[list["AssetOverride"]] = relationship(
+        order_by="AssetOverride.id", lazy="selectin", cascade="all, delete-orphan"
+    )
+
+
+class AssetSource(Base):
+    __tablename__ = "asset_sources"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"), nullable=False)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    integration_id: Mapped[int] = mapped_column(ForeignKey("integrations.id"), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    data_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class AssetOverride(TimestampMixin, Base):
+    __tablename__ = "asset_overrides"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"), nullable=False)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    field: Mapped[str] = mapped_column(String(20), nullable=False)
+    value_date: Mapped[date] = mapped_column(Date, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))

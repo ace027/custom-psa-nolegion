@@ -2,11 +2,11 @@
 
 Ideas that are not in scope for the current phase. Nothing here gets built without approval.
 
-- vCISO platform and asset intelligence: see docs/VCISO_PLAN.md (plan only; Phase 1 = NinjaOne/Hudu warranty inventory)
+- vCISO platform: Phase 1 (NinjaOne/Hudu warranty inventory) is built; Phases 2 to 5 are in docs/VCISO_PLAN.md
+- Warranty follow-ups: warranty-expiry alert emails, Hudu *Expiration* entries as a warranty source, per-device notes, bulk override, a refresh-planning summary for the portal, NinjaOne custom-field mapping, retire-after-days setting in the UI
 - Quoting follow-ups: survey photos, offline mode, e-signature / portal acceptance, visit as a ticket/calendar entry, custom uplift factors, import survey from NinjaOne/Hudu, quote pipeline reporting, survey fields beyond notes (email platform, printers, phone system, compliance needs)
 - Microsoft Entra SSO sign-in for client portal users (staff already use Entra; portal currently uses emailed one-time links)
 - Portal follow-ups: file attachments, online card/ACH payment, contact self-service, SSO for portal users, alert staff on new portal tickets
-- Asset inventory
 - Project/task boards
 - Reporting
 - Integrations: NinjaOne, Hudu, Microsoft 365 sync, n8n webhooks

@@ -1,7 +1,7 @@
 # Custom PSA — Plan
 
 **Status (updated after payment tracking):** plan approved with all §13 defaults accepted. Phases 0-3 (the MVP) and payment tracking are built and tested. Waiting for your review of Phase 3 and your decision on what comes next (see `docs/BACKLOG.md`).
-**Since then:** statements/reminders, invoice emails, reports, staff notifications, the client portal and new-client quoting ([docs/QUOTING.md](QUOTING.md)) were added. vCISO/warranty is planned, not built ([docs/VCISO_PLAN.md](VCISO_PLAN.md)).
+**Since then:** statements/reminders, invoice emails, reports, staff notifications, the client portal and new-client quoting ([docs/QUOTING.md](QUOTING.md)) were added. vCISO Phase 1 (NinjaOne/Hudu warranty inventory) is built ([docs/INTEGRATIONS.md](INTEGRATIONS.md)); later vCISO phases are planned ([docs/VCISO_PLAN.md](VCISO_PLAN.md)).
 
 ## Progress
 

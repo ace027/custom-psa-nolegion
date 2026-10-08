@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     attachments_dir: str = "./data/attachments"
     max_attachment_bytes: int = 10 * 1024 * 1024
 
+    # Fernet key(s) protecting vendor API credentials stored in the database. Comma-separated for
+    # rotation: the FIRST key encrypts, every key can decrypt. Generate with
+    #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    credentials_key: str = ""
+
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
