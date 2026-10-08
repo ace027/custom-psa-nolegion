@@ -355,6 +355,10 @@ export interface AppSettings {
   auto_prepare_reminders: boolean;
   auto_prepare_statements: boolean;
   reminder_min_gap_days: number;
+  late_fee_percent_bp: number;
+  late_fee_flat_cents: number;
+  late_fee_grace_days: number;
+  late_fee_max_per_invoice: number;
 }
 export interface Dashboard {
   my_open: Ticket[];
@@ -492,6 +496,7 @@ export interface OrgBilling {
   payment_terms_days: number;
   tax_rate_bp: number;
   do_not_remind: boolean;
+  late_fees_enabled: boolean;
   rates: { work_type_id: number; rate_cents: number }[];
 }
 
@@ -871,4 +876,29 @@ export interface PortalAssets {
   total: number;
   counts: Record<WarrantyState, number>;
   devices: { name: string; kind: string; manufacturer: string | null; model: string | null; warranty_end: string | null; warranty_status: WarrantyState }[];
+}
+
+// ---- late fees ----
+export interface LateFeeRow {
+  invoice_id: number;
+  invoice_number: string;
+  organization_id: number;
+  organization_name: string;
+  due_date: string;
+  days_overdue: number;
+  balance_cents: number;
+  base_cents: number;
+  percent_bp: number;
+  percent_fee_cents: number;
+  flat_fee_cents: number;
+  fee_cents: number;
+  fees_so_far: number;
+}
+export interface LateFeePreview {
+  configured: boolean;
+  percent_bp: number;
+  flat_cents: number;
+  grace_days: number;
+  max_per_invoice: number;
+  rows: LateFeeRow[];
 }

@@ -30,7 +30,7 @@ All of [BILLING.md](BILLING.md)'s existing rules stay: integer cents, per-line `
 
 **Refunds.** A refund records money you **paid back** to a client against a payment (by hand: check, ACH, whatever; nothing is sent anywhere). It reduces net payments received, can restore an invoice balance if the payment was applied, and cannot exceed the unrefunded part of the payment. Not the same as voiding a payment recorded by mistake.
 
-### C. Late fees
+### C. Late fees (BUILT)
 Off by default, per client opt-in. Rule you set in Settings: percent of the overdue **invoice balance** (basis points) and/or a flat fee, a grace period in days, and a cap of how many times per invoice. **A person approves each fee batch** (like reminders): the screen lists "Invoice 0042, 21 days overdue, balance $1,000.00, fee 1.5% = $15.00" and you tick which to apply. Applying creates an ordinary product charge billed on the next invoice (never edits the overdue invoice, never compounds on earlier fees: the base excludes fee lines).
 - Example: balance 100,000 c, 150 bp -> 1,500 c ($15.00); flat $10 added -> 2,500 c.
 

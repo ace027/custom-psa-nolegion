@@ -20,6 +20,7 @@ export default function BillingLayout() {
         <NavLink to="/billing/reminders" className={tab}>Client emails{pending > 0 && <span className="ml-1 rounded bg-amber-100 px-1.5 text-xs text-amber-900">{pending} to review</span>}</NavLink>
         <NavLink to="/billing/payments" className={tab}>Payments</NavLink>
         <NavLink to="/billing/credit-memos" className={tab}>Credit memos</NavLink>
+        <NavLink to="/billing/late-fees" className={tab}>Late fees</NavLink>
         <NavLink to="/billing/agreements" className={tab}>Agreements</NavLink>
         <NavLink to="/billing/products" className={tab}>Products</NavLink>
         <NavLink to="/billing/rates" className={tab}>Rates</NavLink>

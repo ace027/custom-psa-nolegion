@@ -668,6 +668,10 @@ class SettingsOut(ORM):
     auto_prepare_reminders: bool
     auto_prepare_statements: bool
     reminder_min_gap_days: int
+    late_fee_percent_bp: int
+    late_fee_flat_cents: int
+    late_fee_grace_days: int
+    late_fee_max_per_invoice: int
     company_name: str | None
     company_address: str | None
     invoice_footer: str | None
@@ -698,6 +702,10 @@ class SettingsPatch(BaseModel):
     auto_prepare_reminders: bool | None = None
     auto_prepare_statements: bool | None = None
     reminder_min_gap_days: int | None = Field(default=None, ge=0, le=90)
+    late_fee_percent_bp: int | None = Field(default=None, ge=0, le=10_000, description="150 = 1.5%")
+    late_fee_flat_cents: int | None = Field(default=None, ge=0, le=1_000_000_00)
+    late_fee_grace_days: int | None = Field(default=None, ge=0, le=365)
+    late_fee_max_per_invoice: int | None = Field(default=None, ge=1, le=12)
     company_name: str | None = Field(default=None, max_length=200)
     company_address: str | None = Field(default=None, max_length=1000)
     invoice_footer: str | None = Field(default=None, max_length=2000)
@@ -782,6 +790,7 @@ class OrgBillingOut(BaseModel):
     payment_terms_days: int
     tax_rate_bp: int
     do_not_remind: bool
+    late_fees_enabled: bool
     rates: list[OrgRateOut]
 
 
@@ -791,6 +800,51 @@ class OrgBillingPatch(BaseModel):
     do_not_remind: bool | None = Field(
         default=None, description="true = never prepare or send payment reminders for this client"
     )
+    late_fees_enabled: bool | None = Field(
+        default=None, description="true = this client may be proposed late fees (off by default)"
+    )
+
+
+class LateFeeRow(BaseModel):
+    invoice_id: int
+    invoice_number: str
+    organization_id: int
+    organization_name: str
+    due_date: date
+    days_overdue: int
+    balance_cents: int
+    base_cents: int  # balance excluding earlier late-fee lines: fees never compound
+    percent_bp: int
+    percent_fee_cents: int
+    flat_fee_cents: int
+    fee_cents: int
+    fees_so_far: int
+
+
+class LateFeePreviewOut(BaseModel):
+    configured: bool  # a percent or flat fee is set in Settings
+    percent_bp: int
+    flat_cents: int
+    grace_days: int
+    max_per_invoice: int
+    rows: list[LateFeeRow]
+
+
+class LateFeeApplyIn(BaseModel):
+    invoice_ids: list[int] = Field(min_length=1, max_length=200)
+
+
+class LateFeeAppliedOut(ORM):
+    id: int
+    organization_id: int
+    invoice_id: int
+    charge_id: int
+    days_overdue: int
+    base_cents: int
+    percent_bp: int
+    flat_cents: int
+    fee_cents: int
+    applied_at: datetime
 
 
 class ProductIn(BaseModel):

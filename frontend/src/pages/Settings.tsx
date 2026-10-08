@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppSettings, CannedResponse, CustomFieldDef, FieldType, Holiday, Lookup, TicketStatusRow, MailStatus, Priority, Queue, api } from "../api";
+import LateFeesCard from "./LateFeesCard";
 import RemindersCard from "./RemindersCard";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../ui";
 
@@ -13,6 +14,7 @@ export default function Settings() {
       <MailCard />
       <InvoicingCard />
       <RemindersCard />
+      <LateFeesCard />
       <PortalCard />
       <HoursCard />
       <StatusesCard />

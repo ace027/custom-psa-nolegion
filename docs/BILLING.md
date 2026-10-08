@@ -139,6 +139,14 @@ edit if you like, and approve them on Billing > Reminders. Approved notices go t
 - Every create, apply, unapply and void is in the audit log (`credit_memo.*`, `payment.refund*`).
 - Invoices that are fully cleared by credit show status `paid` and a **Credited** amount; the invoices CSV has a `credited` column.
 
+## Late fees
+- **Off by default**, and nothing is charged by itself. Set the rule in **Settings > Late fees** (percent of balance, flat fee, grace days, most fees per invoice), then tick **Charge late fees to this client** on each client you want it for.
+- **Billing > Late fees** lists final invoices that still owe money and are *more than* the grace days past due. A person ticks the ones to charge (`billing:finalize`) and applies. The server recomputes every amount; the browser only says which invoices.
+- Fee = round half-up (balance x percent / 10,000) + flat fee, in cents. Example: balance 100,000 c, 150 bp = 1,500 c ($15.00); with a $10.00 flat fee, 2,500 c.
+- An applied fee is an ordinary **non-taxable product charge** dated today, billed on the client's next invoice like any charge. Void the charge before it is invoiced to cancel the fee (that frees the invoice's slot). After it is invoiced, correct it with a credit memo.
+- **No compounding:** fee lines already sitting on an invoice are excluded from that invoice's base, so a fee is never charged on a fee. An invoice takes at most the configured number of fees (default 1).
+- Each fee is recorded in `late_fee_applications` (append-only, forced RLS) and audited as `late_fee.apply`.
+
 ## Reports and CSV exports
 Billing > Reports (admin and billing roles only: the `report:read` permission; techs and read-only
 users do not get revenue figures). Every CSV is in dollars and each download is recorded in the audit
@@ -157,6 +165,6 @@ never runs a client-supplied name as a formula.
   balance and payment status, for your accountant. Nothing is sent to any accounting system.
 
 ## Not built (by design or deferred)
-No automatic sending (every reminder/statement is approved by a person), no late fees, no accounting/payment-processor integrations (payments
+No automatic sending (every reminder/statement is approved by a person), no automatic late fees (a person approves each one), no accounting/payment-processor integrations (payments
 are *recorded by hand*, nothing is charged or reconciled with a bank), one tax rate per
-client (no per-state/jurisdiction tax), no late fees, no credit memo PDF or portal view, fixed invoice number format. See `docs/BACKLOG.md`.
+client (no per-state/jurisdiction tax), no credit memo PDF or portal view, fixed invoice number format. See `docs/BACKLOG.md`.

@@ -51,6 +51,9 @@ class Organization(TimestampMixin, Base):
         Boolean, nullable=False, server_default=text("false")
     )
     tax_rate_bp: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    late_fees_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     assets_published: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
@@ -254,6 +257,12 @@ class Settings(Base):
     auto_prepare_reminders: Mapped[bool] = mapped_column(Boolean, nullable=False)
     auto_prepare_statements: Mapped[bool] = mapped_column(Boolean, nullable=False)
     reminder_min_gap_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    late_fee_percent_bp: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    late_fee_flat_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+    late_fee_grace_days: Mapped[int] = mapped_column(Integer, nullable=False, server_default="15")
+    late_fee_max_per_invoice: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="1"
+    )
     reminders_prepared_on: Mapped[date | None] = mapped_column(Date)
     statements_prepared_month: Mapped[date | None] = mapped_column(Date)
     auto_ack_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -729,6 +738,27 @@ class WriteOff(Base):
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     voided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     void_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class LateFeeApplication(Base):
+    """A person-approved late fee: links the overdue invoice to the charge that bills it."""
+
+    __tablename__ = "late_fee_applications"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), nullable=False)
+    charge_id: Mapped[int] = mapped_column(
+        ForeignKey("product_charges.id"), nullable=False, unique=True
+    )
+    days_overdue: Mapped[int] = mapped_column(Integer, nullable=False)
+    base_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    percent_bp: Mapped[int] = mapped_column(Integer, nullable=False)
+    flat_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    fee_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    applied_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    applied_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class CreditMemo(Base):

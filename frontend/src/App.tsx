@@ -8,6 +8,7 @@ import Agreements from "./pages/billing/Agreements";
 import BillingLayout from "./pages/billing/BillingLayout";
 import { InvoiceList, InvoicePage } from "./pages/billing/Invoices";
 import CreditMemos from "./pages/billing/CreditMemos";
+import LateFees from "./pages/billing/LateFees";
 import Payments from "./pages/billing/Payments";
 import Products from "./pages/billing/Products";
 import Rates from "./pages/billing/Rates";
@@ -145,6 +146,7 @@ function StaffApp() {
             <Route path="reminders" element={<Reminders />} />
             <Route path="payments" element={<Payments />} />
             <Route path="credit-memos" element={<CreditMemos />} />
+            <Route path="late-fees" element={<LateFees />} />
             <Route path="agreements" element={<Agreements />} />
             <Route path="products" element={<Products />} />
             <Route path="rates" element={<Rates />} />

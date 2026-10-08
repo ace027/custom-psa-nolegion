@@ -52,3 +52,5 @@ Ideas that are not in scope for the current phase. Nothing here gets built witho
 - Timesheets: an admin's page to view and fix another person's week; reminders for unsubmitted weeks; overtime / pay-period rules (the CSV gives actual hours per day only)
 
 - Credit memo PDF and a client-portal view of credit memos (slice B left these out).
+
+- Late fees: no automatic apply, no fee on a schedule other than the per-invoice cap, no per-client override of the rule, no late-fee tax option (fees are non-taxable). Add only if asked.

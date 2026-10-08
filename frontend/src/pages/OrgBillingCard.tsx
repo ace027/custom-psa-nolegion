@@ -28,6 +28,10 @@ export default function OrgBillingCard({ orgId }: { orgId: number }) {
     mutationFn: (do_not_remind: boolean) => api(`/organizations/${orgId}/billing`, { method: "PATCH", json: { do_not_remind } }),
     onSuccess: refresh,
   });
+  const lateFees = useMutation({
+    mutationFn: (late_fees_enabled: boolean) => api(`/organizations/${orgId}/billing`, { method: "PATCH", json: { late_fees_enabled } }),
+    onSuccess: refresh,
+  });
   const setRate = useMutation({
     mutationFn: ({ wt, text }: { wt: number; text: string }) => {
       if (text.trim() === "") return api(`/organizations/${orgId}/billing/rates/${wt}`, { method: "DELETE" });
@@ -54,6 +58,10 @@ export default function OrgBillingCard({ orgId }: { orgId: number }) {
           <input type="checkbox" disabled={!canWrite} checked={b.data.do_not_remind} onChange={(e) => remind.mutate(e.target.checked)} />
           Do not send payment reminders to this client
         </label>
+        <label className="flex items-center gap-1">
+          <input type="checkbox" disabled={!canWrite} checked={b.data.late_fees_enabled} onChange={(e) => lateFees.mutate(e.target.checked)} />
+          Charge late fees to this client (when approved on Billing → Late fees)
+        </label>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Payment terms (days)"><input className={inputCls} type="number" min={0} max={365} disabled={!canWrite} value={terms ?? b.data.payment_terms_days} onChange={(e) => setTerms(e.target.value)} /></Field>
@@ -72,7 +80,7 @@ export default function OrgBillingCard({ orgId }: { orgId: number }) {
           ))}
         </tbody>
       </table>
-      <ErrorMsg error={save.error ?? setRate.error ?? remind.error} />
+      <ErrorMsg error={save.error ?? setRate.error ?? remind.error ?? lateFees.error} />
     </Card>
   );
 }
