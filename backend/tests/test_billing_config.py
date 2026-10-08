@@ -30,7 +30,13 @@ def test_work_type_rates_default_to_unset_and_are_editable(admin, biller):
 def test_org_billing_settings_and_rate_overrides(admin, biller, org_ctx, wt):
     org = org_ctx["org"]
     b = biller.get(f"/api/organizations/{org}/billing").json()
-    assert b == {"payment_terms_days": 30, "tax_rate_bp": 0, "do_not_remind": False, "rates": []}
+    assert b == {
+        "payment_terms_days": 30,
+        "tax_rate_bp": 0,
+        "do_not_remind": False,
+        "late_fees_enabled": False,
+        "rates": [],
+    }
     r = biller.patch(
         f"/api/organizations/{org}/billing", json={"payment_terms_days": 15, "tax_rate_bp": 825}
     )
