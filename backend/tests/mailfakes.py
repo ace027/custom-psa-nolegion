@@ -78,6 +78,6 @@ class FakeMail:
                 "subject": subject,
                 "body": body_text,
                 "attachments": [(n, ct, data) for n, ct, data in (attachments or [])],
-                "headers": headers or {},
+                **({"headers": headers} if headers else {}),
             }
         )

@@ -107,7 +107,7 @@ def update_settings(ctx: Ctx, data: dict):
         row.escalation_email = None
     try:
         ZoneInfo(row.timezone)
-        Calendar.from_settings(row, repo.holiday_exceptions(ctx.db)).validate()
+        Calendar.from_settings(row).validate()  # no query here: it would autoflush a bad row
     except (ZoneInfoNotFoundError, ValueError, KeyError) as exc:
         ctx.db.rollback()
         raise Conflict(f"Invalid settings: {exc}") from exc
