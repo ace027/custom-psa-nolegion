@@ -215,13 +215,15 @@ class TicketPatch(BaseModel):
     category_id: int | None = None
     priority_id: int | None = None
     assignee_id: int | None = None
-    status: TicketStatus | None = None
+    status: TicketStatus | None = None  # a built-in behaviour: uses its first named status
+    status_id: int | None = None  # a specific named status (wins over `status`)
 
 
 class BulkChanges(BaseModel):
     """The fields a bulk action may change. Absent = leave alone; assignee_id null = unassign."""
 
     status: TicketStatus | None = None
+    status_id: int | None = None
     assignee_id: int | None = None
     queue_id: int | None = None
     priority_id: int | None = None
@@ -271,6 +273,8 @@ class TicketOut(BaseModel):
     priority_name: str
     priority_rank: int
     status: TicketStatus
+    status_id: int
+    status_name: str
     assignee_id: int | None
     assignee_name: str | None
     subject: str
@@ -421,6 +425,22 @@ class PriorityOut(LookupOut):
     first_response_minutes: int | None
     resolution_minutes: int | None
     is_default: bool
+
+
+class TicketStatusIn(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    behavior: TicketStatus  # fixed once created: it decides SLA pausing and reopening
+    position: int | None = Field(default=None, ge=0, le=10_000)
+
+
+class TicketStatusPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    position: int | None = Field(default=None, ge=0, le=10_000)
+
+
+class TicketStatusOut(LookupOut):
+    behavior: TicketStatus
+    position: int
 
 
 class HolidayIn(BaseModel):
@@ -1136,6 +1156,7 @@ class PortalTicketOut(BaseModel):
     number: int
     subject: str
     status: str
+    status_name: str
     created_at: datetime
     updated_at: datetime
     mine: bool

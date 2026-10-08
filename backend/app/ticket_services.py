@@ -79,9 +79,16 @@ def recompute_sla(ctx: Ctx, ticket: Ticket) -> None:
     )
 
 
-def _apply_status(ctx: Ctx, ticket: Ticket, new: str) -> None:
+def _apply_status(ctx: Ctx, ticket: Ticket, new: str, named_id: int | None = None) -> None:
+    """Move to a behaviour. Resolve the named status FIRST: a query between changing `status`
+    and `status_id` would autoflush a half-updated row (the database trigger rejects that)."""
     old = ticket.status
+    if named_id is None:
+        keep = ticket.status_ref is not None and ticket.status_ref.behavior == new
+        named_id = ticket.status_id if keep else repo.default_status(ctx.db, new).id
     if new == old:
+        if named_id != ticket.status_id:
+            ticket.status_id = named_id
         return
     t = now()
     was_stopped, will_stop = old in CLOCK_STOPPED, new in CLOCK_STOPPED
@@ -98,6 +105,7 @@ def _apply_status(ctx: Ctx, ticket: Ticket, new: str) -> None:
     )
     ticket.closed_at = t if new == "closed" else None
     ticket.status = new
+    ticket.status_id = named_id
 
 
 def _mark_first_response(ticket: Ticket) -> None:
@@ -224,7 +232,12 @@ def update_ticket(ctx: Ctx, ticket_id: int, data: dict) -> Ticket:
     ctx.db.refresh(ticket)  # so ticket.priority reflects a changed priority_id
     if "priority_id" in data and data["priority_id"] != before["priority_id"]:
         recompute_sla(ctx, ticket)
-    if "status" in data and data["status"] is not None:
+    if data.get("status_id") is not None:
+        named = repo.get_ticket_status(ctx.db, data["status_id"])
+        if named is None or named.archived_at is not None:
+            raise Conflict("That status does not exist or is archived")
+        _apply_status(ctx, ticket, named.behavior, named.id)
+    elif data.get("status") is not None:
         _apply_status(ctx, ticket, data["status"])
     if ticket.status == "new" and ticket.assignee_id and "assignee_id" in data:
         _apply_status(ctx, ticket, "open")  # picking up a new ticket opens it

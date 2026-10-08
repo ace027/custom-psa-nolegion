@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BulkResult, Organization, Page, STATUSES, STATUS_LABEL, Ticket, api } from "../api";
+import { BulkResult, Organization, Page, Ticket, api } from "../api";
 import { can, useMe } from "../auth";
 import { useLookups } from "../lookups";
 import { Button, ErrorMsg, Field, inputCls } from "../ui";
@@ -20,7 +20,7 @@ export default function Tickets() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const params = new URLSearchParams({ limit: String(PAGE), offset: String(offset), sort: sort.key, descending: String(sort.desc) });
   if (f.q) params.set("q", f.q);
-  if (f.status) params.set("status", f.status);
+  if (f.status) params.set("status_id", f.status);
   if (f.queue_id) params.set("queue_id", f.queue_id);
   if (f.assignee === "me" && me) params.set("assignee_id", String(me.id));
   if (f.assignee === "none") params.set("unassigned", "true");
@@ -70,7 +70,7 @@ export default function Tickets() {
         <Field label="Status">
           <select className={inputCls} value={f.status} onChange={(e) => set("status", e.target.value)}>
             <option value="">{f.open_only ? "Open" : "Any"}</option>
-            {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+            {lk.statuses.filter((s) => !s.archived_at).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </Field>
         <Field label="Queue">
@@ -131,7 +131,7 @@ function BulkBar({ ids, onDone }: { ids: number[]; onDone: () => void }) {
   const [c, setC] = useState({ status: "", assignee_id: "", queue_id: "", priority_id: "" });
   const [result, setResult] = useState<BulkResult | null>(null);
   const changes = {
-    ...(c.status && { status: c.status }),
+    ...(c.status && { status_id: Number(c.status) }),
     ...(c.assignee_id && { assignee_id: Number(c.assignee_id) }),
     ...(c.queue_id && { queue_id: Number(c.queue_id) }),
     ...(c.priority_id && { priority_id: Number(c.priority_id) }),
@@ -155,7 +155,7 @@ function BulkBar({ ids, onDone }: { ids: number[]; onDone: () => void }) {
     <div className="space-y-2 rounded-lg border border-blue-300 bg-blue-50 p-3" role="region" aria-label="Bulk actions">
       <div className="flex flex-wrap items-end gap-3">
         <b className="pb-2 text-sm">{ids.length} selected</b>
-        {sel("Status", "status", STATUSES.map((s) => ({ id: s, name: STATUS_LABEL[s] })))}
+        {sel("Status", "status", lk.statuses.filter((s) => !s.archived_at).map((s) => ({ id: s.id, name: s.name })))}
         {sel("Assignee", "assignee_id", lk.techs.map((u) => ({ id: u.id, name: u.display_name })))}
         {sel("Queue", "queue_id", lk.queues.map((q) => ({ id: q.id, name: q.name })))}
         {sel("Priority", "priority_id", lk.priorities.map((p) => ({ id: p.id, name: p.name })))}

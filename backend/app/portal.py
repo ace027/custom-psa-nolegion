@@ -170,6 +170,7 @@ def _ticket_out(ctx: PortalCtx, t: Ticket) -> dict:
         number=t.number,
         subject=t.subject,
         status=t.status,
+        status_name=t.status_ref.name,
         created_at=t.created_at,
         updated_at=t.updated_at,
         mine=t.contact_id == ctx.contact.id,

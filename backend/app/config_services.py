@@ -163,3 +163,79 @@ def delete_holiday(ctx: Ctx, holiday_id: int) -> None:
     audit.record(ctx.db, ctx.user, "holiday.delete", obj, before=audit.snapshot(obj))
     ctx.db.delete(obj)
     ctx.db.flush()
+
+
+# ---- ticket statuses ----
+def _status_flush(ctx: Ctx) -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        ctx.db.flush()
+    except IntegrityError as exc:
+        ctx.db.rollback()
+        raise Conflict("An active status with that name already exists") from exc
+
+
+def create_ticket_status(ctx: Ctx, data: dict):
+    from sqlalchemy import func, select
+
+    from app.models import TicketStatus
+
+    if data.get("position") is None:
+        data["position"] = (
+            ctx.db.execute(select(func.coalesce(func.max(TicketStatus.position), 0))).scalar_one()
+            + 10
+        )
+    obj = TicketStatus(**data)
+    ctx.db.add(obj)
+    _status_flush(ctx)
+    audit.record(ctx.db, ctx.user, "ticket_status.create", obj, after=audit.snapshot(obj))
+    return obj
+
+
+def update_ticket_status(ctx: Ctx, status_id: int, data: dict):
+    obj = repo.get_ticket_status(ctx.db, status_id)
+    if obj is None:
+        raise NotFound("Status not found")
+    before = audit.snapshot(obj)
+    for key, value in data.items():
+        if value is not None:
+            setattr(obj, key, value)
+    _status_flush(ctx)
+    ctx.db.refresh(obj)
+    audit.record(
+        ctx.db, ctx.user, "ticket_status.update", obj, before=before, after=audit.snapshot(obj)
+    )
+    return obj
+
+
+def set_ticket_status_archived(ctx: Ctx, status_id: int, archived: bool):
+    from datetime import UTC, datetime
+
+    obj = repo.get_ticket_status(ctx.db, status_id)
+    if obj is None:
+        raise NotFound("Status not found")
+    if archived:
+        others = [
+            s
+            for s in repo.list_ticket_statuses(ctx.db, False)
+            if s.behavior == obj.behavior and s.id != obj.id
+        ]
+        if not others and obj.archived_at is None:
+            raise Conflict(
+                "Every behaviour needs at least one active status; add another "
+                f"'{obj.behavior.replace('_', ' ')}' status first"
+            )
+    before = audit.snapshot(obj)
+    obj.archived_at = datetime.now(UTC) if archived else None
+    _status_flush(ctx)
+    ctx.db.refresh(obj)
+    audit.record(
+        ctx.db,
+        ctx.user,
+        f"ticket_status.{'archive' if archived else 'unarchive'}",
+        obj,
+        before=before,
+        after=audit.snapshot(obj),
+    )
+    return obj

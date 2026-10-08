@@ -66,7 +66,7 @@ export default function TicketTable({ tickets, empty = "No tickets.", sort, onSo
             </td>
             <td>{t.needs_triage ? <b className="text-amber-700">Needs triage</b> : t.organization_name}</td>
             <td>{t.priority_name}</td>
-            <td>{STATUS_LABEL[t.status]}</td>
+            <td>{t.status_name ?? STATUS_LABEL[t.status]}</td>
             <td>{t.assignee_name ?? <span className="text-slate-400">unassigned</span>}</td>
             <td>
               <SlaBadge state={t.sla_state} />

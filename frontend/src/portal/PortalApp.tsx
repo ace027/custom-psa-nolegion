@@ -151,7 +151,7 @@ function Tickets() {
           {list.data?.map((t) => (
             <li key={t.id} className="flex items-center justify-between py-2">
               <Link className="text-blue-700 hover:underline" to={`/portal/tickets/${t.id}`}>#{t.number} {t.subject}</Link>
-              <span className="text-slate-500">{t.status.replace(/_/g, " ")} · {fmt(t.updated_at)}</span>
+              <span className="text-slate-500">{t.status_name ?? t.status.replace(/_/g, " ")} · {fmt(t.updated_at)}</span>
             </li>
           ))}
           {list.data?.length === 0 && <li className="py-2 text-slate-500">No tickets yet.</li>}
@@ -177,7 +177,7 @@ function TicketPage() {
       <ErrorMsg error={q.error} />
       {t && (
         <>
-          <h2 className="text-lg font-semibold">#{t.number} {t.subject} <span className="ml-2 rounded bg-slate-100 px-2 py-0.5 text-xs font-normal">{t.status.replace(/_/g, " ")}</span></h2>
+          <h2 className="text-lg font-semibold">#{t.number} {t.subject} <span className="ml-2 rounded bg-slate-100 px-2 py-0.5 text-xs font-normal">{t.status_name ?? t.status.replace(/_/g, " ")}</span></h2>
           {t.description && <Card title="Original request"><p className="whitespace-pre-wrap text-sm">{t.description}</p></Card>}
           {t.notes.map((n) => (
             <div key={n.id} className={`rounded-lg border p-3 text-sm ${n.from_support ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-surface"}`}>

@@ -32,7 +32,7 @@ from alembic import command  # noqa: E402
 from app.main import app  # noqa: E402
 
 TABLES = (
-    "holidays, ticket_auto_acks, ticket_escalations, canned_responses, asset_overrides, asset_sources, assets, sync_runs, integration_client_maps, integrations, quotes, survey_apps, survey_devices, site_surveys, staff_notifications, outbound_attachments, billing_notice_invoices, billing_notices, statements, "
+    "ticket_statuses, holidays, ticket_auto_acks, ticket_escalations, canned_responses, asset_overrides, asset_sources, assets, sync_runs, integration_client_maps, integrations, quotes, survey_apps, survey_devices, site_surveys, staff_notifications, outbound_attachments, billing_notice_invoices, billing_notices, statements, "
     "write_offs, payment_applications, payments, invoice_counters, product_charges, invoice_lines, invoices, billing_runs, "
     "agreement_quantity_log, agreements, products, org_work_type_rates, "
     "attachments, time_entries, ticket_notes, email_messages, tickets, audit_log, sessions, "
@@ -40,6 +40,9 @@ TABLES = (
 )
 
 RESEED = """
+INSERT INTO ticket_statuses (name, behavior, position) VALUES
+  ('New','new',10), ('Open','open',20), ('Waiting on customer','waiting_on_customer',30),
+  ('Resolved','resolved',40), ('Closed','closed',50);
 INSERT INTO queues (name, is_default) VALUES ('Support', true), ('Security', false);
 INSERT INTO categories (name) VALUES ('General'), ('Microsoft 365'), ('Network');
 INSERT INTO priorities (name, rank, first_response_minutes, resolution_minutes, is_default)

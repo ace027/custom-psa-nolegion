@@ -320,6 +320,7 @@ def test_only_customer_visible_facts_are_exposed(admin, sign_in, two_clients):
         "number",
         "subject",
         "status",
+        "status_name",  # the admin-chosen label, intentionally client-visible
         "created_at",
         "updated_at",
         "mine",

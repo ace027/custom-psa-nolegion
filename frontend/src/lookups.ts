@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { AppSettings, Lookup, Priority, Queue, User, api } from "./api";
+import { AppSettings, Lookup, Priority, Queue, TicketStatusRow, User, api } from "./api";
 
 /** Reference data used by ticket forms. Small tables, so fetch once and cache. */
 export function useLookups() {
@@ -11,12 +11,14 @@ export function useLookups() {
   const workTypes = q<Lookup[]>("work-types", "/work-types");
   const users = q<User[]>("users", "/users");
   const settings = q<AppSettings>("settings", "/settings");
+  const statuses = q<TicketStatusRow[]>("ticket-statuses", "/ticket-statuses");
   return {
     queues: queues.data ?? [],
     categories: categories.data ?? [],
     priorities: priorities.data ?? [],
     workTypes: workTypes.data ?? [],
     techs: (users.data ?? []).filter((u) => u.is_active && (u.role === "admin" || u.role === "tech")),
+    statuses: Array.isArray(statuses.data) ? statuses.data : [],
     settings: settings.data,
   };
 }

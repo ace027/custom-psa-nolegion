@@ -24,6 +24,7 @@ from app.routers import (
     quotes,
     reports,
     search,
+    ticket_config,
     tickets,
     users,
 )
@@ -98,6 +99,7 @@ def create_app() -> FastAPI:
         assets.router,
         search.router,
         holidays.router,
+        ticket_config.router,
         portal.router,
     ):
         app.include_router(r, prefix="/api")

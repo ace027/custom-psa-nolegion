@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-  Attachment, CannedResponse, Charge, Contact, Note, Organization, Page, Product, STATUSES, STATUS_LABEL, Ticket, TimeEntry, api,
+  Attachment, CannedResponse, Charge, Contact, Note, Organization, Page, Product, Ticket, TimeEntry, api,
 } from "../api";
 import { can, useMe } from "../auth";
 import { useLookups } from "../lookups";
@@ -71,13 +71,18 @@ function Fields({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boo
     mutationFn: (json: Record<string, unknown>) => api(`/tickets/${t.id}`, { method: "PATCH", json }),
     onSuccess: onDone,
   });
+  // active statuses, plus the ticket's own if it has since been archived
+  const statusOptions = [
+    ...lk.statuses.filter((x) => !x.archived_at || x.id === t.status_id).map((x) => ({ id: x.id, name: x.name })),
+  ];
+  if (statusOptions.length === 0 && t.status_id) statusOptions.push({ id: t.status_id, name: t.status_name ?? t.status });
   const sel = (label: string, value: string | number | null, opts: { id: number | string; name: string }[], key: string, blank?: string) => (
     <Field label={label}>
       <select
         className={inputCls}
         disabled={!canWrite}
         value={value ?? ""}
-        onChange={(e) => patch.mutate({ [key]: e.target.value === "" ? null : key === "status" ? e.target.value : Number(e.target.value) })}
+        onChange={(e) => patch.mutate({ [key]: e.target.value === "" ? null : Number(e.target.value) })}
       >
         {blank !== undefined && <option value="">{blank}</option>}
         {opts.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
@@ -87,7 +92,7 @@ function Fields({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boo
   return (
     <Card title="Details">
       <div className="grid gap-3 sm:grid-cols-3">
-        {sel("Status", t.status, STATUSES.map((s) => ({ id: s, name: STATUS_LABEL[s] })), "status")}
+        {sel("Status", t.status_id ?? null, statusOptions, "status_id")}
         {sel("Assignee", t.assignee_id, lk.techs.map((u) => ({ id: u.id, name: u.display_name })), "assignee_id", "Unassigned")}
         {sel("Priority", t.priority_id, lk.priorities.map((p) => ({ id: p.id, name: p.name })), "priority_id")}
         {sel("Queue", t.queue_id, lk.queues.map((q) => ({ id: q.id, name: q.name })), "queue_id")}

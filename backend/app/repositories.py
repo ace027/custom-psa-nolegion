@@ -179,12 +179,15 @@ def list_tickets(
     q,
     limit,
     offset,
+    status_id=None,
     sort="updated",
     descending=True,
 ):
     stmt = _ticket_stmt(scope)
     if statuses:
         stmt = stmt.where(Ticket.status.in_(statuses))
+    if status_id is not None:
+        stmt = stmt.where(Ticket.status_id == status_id)
     if open_only:
         stmt = stmt.where(Ticket.status.in_(OPEN_STATUSES))
     if queue_id is not None:
@@ -320,3 +323,31 @@ def holiday_exceptions(db: Session) -> dict:
     return {
         h.on_date: None if h.open_minute is None else (h.open_minute, h.close_minute) for h in rows
     }
+
+
+# ---- ticket statuses ----
+def get_ticket_status(db: Session, status_id: int):
+    from app.models import TicketStatus
+
+    return db.get(TicketStatus, status_id)
+
+
+def default_status(db: Session, behavior: str):
+    """The first active status with this behaviour (the one used when only a behaviour is known)."""
+    from app.models import TicketStatus
+
+    return db.execute(
+        select(TicketStatus)
+        .where(TicketStatus.behavior == behavior, TicketStatus.archived_at.is_(None))
+        .order_by(TicketStatus.position, TicketStatus.id)
+        .limit(1)
+    ).scalar_one()
+
+
+def list_ticket_statuses(db: Session, include_archived: bool):
+    from app.models import TicketStatus
+
+    stmt = select(TicketStatus)
+    if not include_archived:
+        stmt = stmt.where(TicketStatus.archived_at.is_(None))
+    return list(db.execute(stmt.order_by(TicketStatus.position, TicketStatus.id)).scalars())

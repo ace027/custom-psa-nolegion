@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { AppSettings, CannedResponse, Holiday, Lookup, MailStatus, Priority, Queue, api } from "../api";
+import { AppSettings, CannedResponse, Holiday, Lookup, TicketStatusRow, MailStatus, Priority, Queue, api } from "../api";
 import RemindersCard from "./RemindersCard";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../ui";
 
@@ -15,6 +15,7 @@ export default function Settings() {
       <RemindersCard />
       <PortalCard />
       <HoursCard />
+      <StatusesCard />
       <HolidaysCard />
       <EmailAutomationCard />
       <SimpleList title="Queues" path="queues" defaults />
@@ -329,6 +330,55 @@ function EmailAutomationCard() {
       </div>
       <ErrorMsg error={save.error} />
       {edit && <div className="mt-2"><Button onClick={() => save.mutate()}>Save</Button></div>}
+    </Card>
+  );
+}
+
+const BEHAVIOR_LABEL: Record<string, string> = {
+  new: "counts as New",
+  open: "counts as Open",
+  waiting_on_customer: "pauses the SLA clock (waiting)",
+  resolved: "stops the SLA clock (resolved)",
+  closed: "stops the SLA clock (closed)",
+};
+
+function StatusesCard() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["cfg", "ticket-statuses"], queryFn: () => api<TicketStatusRow[]>("/ticket-statuses?include_archived=true") });
+  const [f, setF] = useState({ name: "", behavior: "open" });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["cfg", "ticket-statuses"] });
+    qc.invalidateQueries({ queryKey: ["lookup"] });
+  };
+  const add = useMutation({ mutationFn: () => api("/ticket-statuses", { method: "POST", json: f }), onSuccess: () => { setF({ ...f, name: "" }); refresh(); } });
+  const act = useMutation({ mutationFn: ({ id, action }: { id: number; action: string }) => api(`/ticket-statuses/${id}/${action}`, { method: "POST" }), onSuccess: refresh });
+  const rename = useMutation({ mutationFn: ({ id, name }: { id: number; name: string }) => api(`/ticket-statuses/${id}`, { method: "PATCH", json: { name } }), onSuccess: refresh });
+  return (
+    <Card title="Ticket statuses">
+      <p className="mb-2 text-sm text-slate-600">Each status behaves like one of the five built-in states, chosen when you create it and fixed afterwards, so SLA clocks, reopening on customer replies, and the dashboard keep working.</p>
+      <ul className="divide-y divide-slate-100 text-sm">
+        {q.data?.map((x) => (
+          <li key={x.id} className="flex items-center justify-between gap-2 py-1.5">
+            <span className={x.archived_at ? "text-slate-400 line-through" : ""}>
+              <b>{x.name}</b> <span className="text-slate-500">{BEHAVIOR_LABEL[x.behavior]}</span>
+            </span>
+            <span className="flex gap-2">
+              <Button variant="secondary" onClick={() => { const name = window.prompt("Rename status", x.name); if (name) rename.mutate({ id: x.id, name }); }}>Rename</Button>
+              <Button variant="secondary" onClick={() => act.mutate({ id: x.id, action: x.archived_at ? "unarchive" : "archive" })}>{x.archived_at ? "Restore" : "Archive"}</Button>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <ErrorMsg error={add.error ?? act.error ?? rename.error} />
+      <form className="mt-2 flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+        <Field label="Name"><input className={inputCls} required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+        <Field label="Behaves like">
+          <select className={inputCls} value={f.behavior} onChange={(e) => setF({ ...f, behavior: e.target.value })}>
+            {Object.entries(BEHAVIOR_LABEL).map(([k, v]) => <option key={k} value={k}>{k.replace(/_/g, " ")} ({v})</option>)}
+          </select>
+        </Field>
+        <Button type="submit">Add status</Button>
+      </form>
     </Card>
   );
 }

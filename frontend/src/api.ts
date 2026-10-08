@@ -114,6 +114,10 @@ export const STATUS_LABEL: Record<TicketStatus, string> = {
   resolved: "Resolved",
   closed: "Closed",
 };
+export interface TicketStatusRow extends Lookup {
+  behavior: TicketStatus;
+  position: number;
+}
 export type SlaState = "none" | "ok" | "at_risk" | "breached" | "paused" | "done";
 
 export interface Ticket {
@@ -132,6 +136,8 @@ export interface Ticket {
   priority_name: string;
   priority_rank: number;
   status: TicketStatus;
+  status_id?: number;
+  status_name?: string;
   assignee_id: number | null;
   assignee_name: string | null;
   subject: string;
@@ -538,6 +544,7 @@ export interface PortalTicket {
   number: number;
   subject: string;
   status: string;
+  status_name?: string;
   created_at: string;
   updated_at: string;
   mine: boolean;

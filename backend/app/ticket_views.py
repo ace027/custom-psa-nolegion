@@ -24,6 +24,8 @@ def ticket_out(t: Ticket, cal: Calendar, at_risk_percent: int, now: datetime) ->
         priority_name=t.priority.name,
         priority_rank=t.priority.rank,
         status=t.status,
+        status_id=t.status_id,
+        status_name=t.status_ref.name,
         assignee_id=t.assignee_id,
         assignee_name=t.assignee.display_name if t.assignee else None,
         subject=t.subject,

@@ -22,6 +22,10 @@ const base: Record<string, () => Response> = {
   "/api/priorities": json([{ id: 3, name: "Normal", rank: 3, archived_at: null, is_default: true, first_response_minutes: 1, resolution_minutes: 1 }]),
   "/api/work-types": json([]),
   "/api/users": json([]),
+  "/api/ticket-statuses": json([
+    { id: 1, name: "Open", behavior: "open", position: 20, archived_at: null },
+    { id: 4, name: "Resolved", behavior: "resolved", position: 40, archived_at: null },
+  ]),
   "/api/settings": json({}),
   "/api/organizations?limit=200&include_archived=false&q=": json({ items: [], total: 0, limit: 200, offset: 0 }),
 };
@@ -72,10 +76,10 @@ describe("ticket list", () => {
     expect(screen.getByText("1–2 of 2")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: "Select all tickets" }));
     expect(screen.getByText("2 selected")).toBeInTheDocument();
-    fireEvent.change(within(screen.getByRole("region", { name: "Bulk actions" })).getByRole("combobox", { name: "Status" }), { target: { value: "resolved" } });
+    fireEvent.change(within(screen.getByRole("region", { name: "Bulk actions" })).getByRole("combobox", { name: "Status" }), { target: { value: "4" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply to 2" }));
     await waitFor(() => expect(bodies).toHaveLength(1));
-    expect(JSON.parse(bodies[0])).toEqual({ ticket_ids: [1, 2], changes: { status: "resolved" } });
+    expect(JSON.parse(bodies[0])).toEqual({ ticket_ids: [1, 2], changes: { status_id: 4 } });
   });
 
   it("asks the server to sort when a header is clicked", async () => {

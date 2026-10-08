@@ -173,6 +173,15 @@ class _Lookup(TimestampMixin):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class TicketStatus(_Lookup, Base):
+    """A named status. `behavior` is one of the five built-in states and decides SLA pause,
+    reopen and "open" filters; it cannot be changed after creation."""
+
+    __tablename__ = "ticket_statuses"
+    behavior: Mapped[str] = mapped_column(String(30), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
 class CannedResponse(_Lookup, Base):
     """Reusable reply text. Placeholders ({{contact_name}}, {{ticket_number}}...) are filled in by
     the UI when a tech inserts it; the stored text is never client data."""
@@ -281,6 +290,11 @@ class Ticket(TimestampMixin, Base):
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"))
     priority_id: Mapped[int] = mapped_column(ForeignKey("priorities.id"), nullable=False)
     status: Mapped[str] = mapped_column(String(30), nullable=False, server_default="new")
+    status_id: Mapped[int] = mapped_column(
+        ForeignKey("ticket_statuses.id"),
+        nullable=False,
+        server_default=text("default_status_id('new')"),
+    )
     assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     subject: Mapped[str] = mapped_column(String(300), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
@@ -300,6 +314,7 @@ class Ticket(TimestampMixin, Base):
     queue: Mapped[Queue] = relationship(lazy="joined")
     category: Mapped[Category | None] = relationship(lazy="joined")
     priority: Mapped[Priority] = relationship(lazy="joined")
+    status_ref: Mapped[TicketStatus] = relationship(lazy="joined")
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id], lazy="joined")
 
 
