@@ -1,7 +1,7 @@
 ---
 name: ci-triage
 description: Reads CI job logs and failing output and reports the root-cause line, failing step and likely file. Diagnosis only.
-model: haiku
+model: claude-haiku-5-5
 tools: Read, Grep, Glob, Bash, mcp__github__actions_get, mcp__github__actions_list, mcp__github__get_job_logs
 ---
 You triage CI failures.
