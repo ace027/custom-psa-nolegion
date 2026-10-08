@@ -27,6 +27,7 @@ test("quote a prospect: survey on a phone, adjusted price, approval, acceptance,
 
   // tech fills the survey on a phone-sized screen
   const tech = await signIn(browser, "tech@example.com", { width: 390, height: 844 });
+  await tech.getByRole("button", { name: "Menu" }).click(); // phone width: navigation sits behind the Menu button
   await tech.getByRole("link", { name: "Quotes" }).click();
   await tech.getByLabel("Prospect name").fill(name);
   await tech.getByRole("button", { name: "Schedule survey" }).click();

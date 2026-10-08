@@ -6,7 +6,7 @@ test("monthly billing run: build, review, adjust, re-review, finalize, PDF", asy
   await page.goto("/");
   await page.getByLabel("Email").fill("billing@example.com");
   await page.getByRole("button", { name: "Dev login" }).click();
-  await page.getByRole("link", { name: "Billing" }).click();
+  await page.getByRole("link", { name: "Billing", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
 
   // start the run for the current month
