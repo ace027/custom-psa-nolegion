@@ -42,3 +42,5 @@ Ideas that are not in scope for the current phase. Nothing here gets built witho
 - Per-user / per-device quantities populated from Microsoft 365 / NinjaOne (the Phase 3 quantity field is the hook)
 - Report follow-ups: margin on products, revenue by cash received, replaying past agreement quantity changes, invoice line-item CSV, charts
 - Minimum billable time per entry; retainer / block-hours agreements
+- Outbound email threading by real headers (`In-Reply-To`/`References`): Graph `sendMail` only allows `x-` headers, so this needs the createReply flow and a live tenant to test. Today replies thread by the `[#number]` subject tag.
+- One-off "recalculate open tickets" button after adding holidays (existing due dates are intentionally left alone).

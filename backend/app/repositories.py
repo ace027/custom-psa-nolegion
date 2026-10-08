@@ -309,3 +309,14 @@ def orgs_by_email_domain(db: Session, domain: str) -> list[int]:
         .distinct()
     )
     return [r[0] for r in rows]
+
+
+# ---- holidays (SLA calendar) ----
+def holiday_exceptions(db: Session) -> dict:
+    """date -> None (closed) or (open, close) minutes, for Calendar."""
+    from app.models import Holiday
+
+    rows = db.execute(select(Holiday)).scalars()
+    return {
+        h.on_date: None if h.open_minute is None else (h.open_minute, h.close_minute) for h in rows
+    }

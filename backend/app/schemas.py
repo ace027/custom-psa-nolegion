@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Generic, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 Role = Literal["admin", "tech", "billing", "read_only"]
 OrgStatus = Literal["active", "inactive", "prospect"]
@@ -423,7 +423,38 @@ class PriorityOut(LookupOut):
     is_default: bool
 
 
+class HolidayIn(BaseModel):
+    on_date: date
+    name: str = Field(min_length=1, max_length=100)
+    # Both null = closed all day. Both set = shortened hours (minutes from midnight).
+    open_minute: int | None = Field(default=None, ge=0, le=1439)
+    close_minute: int | None = Field(default=None, ge=1, le=1440)
+
+    @model_validator(mode="after")
+    def _hours(self):
+        if not self.name.strip():
+            raise ValueError("Name cannot be blank")
+        if (self.open_minute is None) != (self.close_minute is None):
+            raise ValueError("Give both opening and closing minutes, or neither (closed all day)")
+        if self.open_minute is not None and self.open_minute >= self.close_minute:
+            raise ValueError("Opening must be before closing")
+        return self
+
+
+class HolidayOut(ORM):
+    id: int
+    on_date: date
+    name: str
+    open_minute: int | None
+    close_minute: int | None
+
+
 class SettingsOut(ORM):
+    auto_ack_enabled: bool
+    auto_ack_subject: str
+    auto_ack_body: str
+    escalation_email: str | None
+    escalation_bump_priority: bool
     portal_enabled: bool
     notify_staff: bool
     statement_subject: str
@@ -446,6 +477,12 @@ class SettingsOut(ORM):
 
 
 class SettingsPatch(BaseModel):
+    auto_ack_enabled: bool | None = None
+    auto_ack_subject: str | None = Field(default=None, min_length=1, max_length=500)
+    auto_ack_body: str | None = Field(default=None, min_length=1, max_length=10_000)
+    # An empty string clears the address (None means "leave unchanged", like every other field).
+    escalation_email: str | None = Field(default=None, max_length=320)
+    escalation_bump_priority: bool | None = None
     portal_enabled: bool | None = None
     notify_staff: bool | None = None
     statement_subject: str | None = Field(default=None, min_length=1, max_length=500)
@@ -465,6 +502,16 @@ class SettingsPatch(BaseModel):
     business_end_minute: int | None = None
     billing_increment_minutes: int | None = Field(default=None, ge=1, le=240)
     sla_at_risk_percent: int | None = Field(default=None, ge=0, le=100)
+
+    @field_validator("escalation_email")
+    @classmethod
+    def _email(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return v
+        v = v.strip()
+        if " " in v or v.count("@") != 1 or "." not in v.split("@")[1] or v.startswith("@"):
+            raise ValueError("Enter a valid email address")
+        return v
 
 
 class DashboardOut(BaseModel):

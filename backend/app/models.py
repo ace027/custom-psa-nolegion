@@ -230,8 +230,28 @@ class Settings(Base):
     reminder_min_gap_days: Mapped[int] = mapped_column(Integer, nullable=False)
     reminders_prepared_on: Mapped[date | None] = mapped_column(Date)
     statements_prepared_month: Mapped[date | None] = mapped_column(Date)
+    auto_ack_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    auto_ack_subject: Mapped[str] = mapped_column(Text, nullable=False)
+    auto_ack_body: Mapped[str] = mapped_column(Text, nullable=False)
+    escalation_email: Mapped[str | None] = mapped_column(String(320))
+    escalation_bump_priority: Mapped[bool] = mapped_column(Boolean, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class Holiday(Base):
+    """A day the business is closed (both hours null) or open shorter hours (minutes from midnight).
+    Only matters on normal business days."""
+
+    __tablename__ = "holidays"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    on_date: Mapped[date] = mapped_column(Date, nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    open_minute: Mapped[int | None] = mapped_column(Integer)
+    close_minute: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
 
@@ -304,6 +324,7 @@ class EmailMessage(Base):
     send_status: Mapped[str | None] = mapped_column(String(10))
     send_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     send_error: Mapped[str | None] = mapped_column(Text)
+    auto_generated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -672,6 +693,32 @@ class StaffNotification(Base):
     event: Mapped[str] = mapped_column(String(20), nullable=False)
     dedupe_key: Mapped[str] = mapped_column(String(100), nullable=False)
     email_message_id: Mapped[int] = mapped_column(ForeignKey("email_messages.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class TicketAutoAck(Base):
+    """The automatic "we got your request" email sent for a ticket (once per ticket)."""
+
+    __tablename__ = "ticket_auto_acks"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), nullable=False, unique=True)
+    sent_to: Mapped[str] = mapped_column(String(320), nullable=False)
+    email_message_id: Mapped[int] = mapped_column(ForeignKey("email_messages.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class TicketEscalation(Base):
+    """A ticket was escalated after breaching its SLA (once per ticket)."""
+
+    __tablename__ = "ticket_escalations"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), nullable=False, unique=True)
+    email_message_id: Mapped[int | None] = mapped_column(ForeignKey("email_messages.id"))
+    bumped_from_priority_id: Mapped[int | None] = mapped_column(ForeignKey("priorities.id"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -6,8 +6,8 @@ so pausing (waiting on customer, resolved, closed) never needs due dates to be "
 we just credit the business minutes spent stopped and recompute.
 """
 
-from collections.abc import Iterator
-from dataclasses import dataclass
+from collections.abc import Iterator, Mapping
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -22,14 +22,17 @@ class Calendar:
     days: frozenset[int]  # 0 = Monday
     start_minute: int
     end_minute: int
+    # Local date -> None (closed all day) or (open, close) minutes. Only applies on business days.
+    exceptions: Mapping[date, tuple[int, int] | None] = field(default_factory=dict, compare=False)
 
     @classmethod
-    def from_settings(cls, s) -> "Calendar":
+    def from_settings(cls, s, exceptions: Mapping | None = None) -> "Calendar":
         return cls(
             ZoneInfo(s.timezone),
             frozenset(s.business_days),
             s.business_start_minute,
             s.business_end_minute,
+            exceptions or {},
         )
 
     def validate(self) -> None:
@@ -52,9 +55,11 @@ def windows_from(start: datetime, cal: Calendar) -> Iterator[tuple[datetime, dat
     day = start.astimezone(cal.tz).date()
     for _ in range(MAX_DAYS):
         if day.weekday() in cal.days:
-            w_start, w_end = _at(day, cal.start_minute, cal.tz), _at(day, cal.end_minute, cal.tz)
-            if w_end > start:
-                yield w_start, w_end
+            hours = cal.exceptions.get(day, (cal.start_minute, cal.end_minute))
+            if hours is not None:
+                w_start, w_end = _at(day, hours[0], cal.tz), _at(day, hours[1], cal.tz)
+                if w_end > start:
+                    yield w_start, w_end
         day += timedelta(days=1)
 
 

@@ -69,7 +69,7 @@ class FakeMail:
             raise RuntimeError("cannot mark read")
         self.read.add(message_id)
 
-    def send_mail(self, to, subject, body_text, attachments=None):
+    def send_mail(self, to, subject, body_text, attachments=None, headers=None):
         if self.fail_send:
             raise RuntimeError("send failed")
         self.sent.append(
@@ -78,5 +78,6 @@ class FakeMail:
                 "subject": subject,
                 "body": body_text,
                 "attachments": [(n, ct, data) for n, ct, data in (attachments or [])],
+                "headers": headers or {},
             }
         )

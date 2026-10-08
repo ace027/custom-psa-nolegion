@@ -35,7 +35,7 @@ ERR = {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
 
 def _view(ctx: Ctx):
     s = repo.get_settings_row(ctx.db)
-    cal, now = Calendar.from_settings(s), svc.now()
+    cal, now = Calendar.from_settings(s, repo.holiday_exceptions(ctx.db)), svc.now()
     return lambda t: ticket_out(t, cal, s.sla_at_risk_percent, now)
 
 

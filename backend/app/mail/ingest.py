@@ -14,6 +14,7 @@ from app import audit
 from app import db as dbmod
 from app import repositories as repo
 from app import ticket_services as tsvc
+from app.autoreply import AUTO_HEADERS, maybe_acknowledge
 from app.config import get_settings
 from app.deps import Ctx
 from app.mail.graph import InboundMessage, MailClient
@@ -228,6 +229,7 @@ def process_message(db: Session, client: MailClient, msg: InboundMessage, mailbo
             written = (
                 _store_attachments(ctx, client, msg, email, new) if msg.has_attachments else []
             )
+            maybe_acknowledge(ctx, new, sender, mailbox)
             outcome = "ticket_created"
         db.flush()
     except BaseException:
@@ -294,8 +296,9 @@ def send_pending(client: MailClient, mailbox: str, batch: int = 20) -> dict[str,
                         .order_by(OutboundAttachment.id)
                     ).scalars()
                 ]
+                extra = {"headers": AUTO_HEADERS} if e.auto_generated else {}
                 client.send_mail(
-                    e.to_emails, e.subject or "", e.body_text or "", attachments or None
+                    e.to_emails, e.subject or "", e.body_text or "", attachments or None, **extra
                 )
                 e.send_status, e.sent_at, e.send_error = "sent", datetime.now(UTC), None
                 e.from_email = mailbox
@@ -339,9 +342,7 @@ def run_cycle(client: MailClient, mailbox: str) -> None:
             st.last_error = error or f"{ingest['failed']} message(s) could not be ingested"
             st.last_error_at = now
         st.messages_ingested += sum(
-            v
-            for k, v in ingest.items()
-            if k in ("ticket_created", "ticket_created_unmatched", "appended")
+            v for k, v in ingest.items() if k in ("ticket_created", "appended")
         )
         db.commit()
 

@@ -29,7 +29,7 @@ ASSIGNABLE_ROLES = ("admin", "tech")
 
 
 def calendar(ctx: Ctx) -> Calendar:
-    return Calendar.from_settings(repo.get_settings_row(ctx.db))
+    return Calendar.from_settings(repo.get_settings_row(ctx.db), repo.holiday_exceptions(ctx.db))
 
 
 def now() -> datetime:

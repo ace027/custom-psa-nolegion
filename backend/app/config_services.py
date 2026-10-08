@@ -93,14 +93,21 @@ def update_settings(ctx: Ctx, data: dict):
     for key in ("invoice_email_subject", "invoice_email_body"):
         if data.get(key) is not None:
             validate_template(data[key], INVOICE_PLACEHOLDERS)
+    from app.autoreply import ACK_PLACEHOLDERS
+
+    for key in ("auto_ack_subject", "auto_ack_body"):
+        if data.get(key) is not None:
+            validate_template(data[key], ACK_PLACEHOLDERS)
     row = repo.get_settings_row(ctx.db)
     before = audit.snapshot(row)
     for key, value in data.items():
         if value is not None:
             setattr(row, key, value)
+    if data.get("escalation_email") == "":
+        row.escalation_email = None
     try:
         ZoneInfo(row.timezone)
-        Calendar.from_settings(row).validate()
+        Calendar.from_settings(row, repo.holiday_exceptions(ctx.db)).validate()
     except (ZoneInfoNotFoundError, ValueError, KeyError) as exc:
         ctx.db.rollback()
         raise Conflict(f"Invalid settings: {exc}") from exc
@@ -109,3 +116,50 @@ def update_settings(ctx: Ctx, data: dict):
     ctx.db.refresh(row)
     audit.record(ctx.db, ctx.user, "settings.update", row, before=before, after=audit.snapshot(row))
     return row
+
+
+# ---- holidays ----
+def _holiday_flush(ctx: Ctx) -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        ctx.db.flush()
+    except IntegrityError as exc:
+        ctx.db.rollback()
+        raise Conflict("That date already has a holiday entry") from exc
+
+
+def create_holiday(ctx: Ctx, data: dict):
+    from app.models import Holiday
+
+    obj = Holiday(**data)
+    ctx.db.add(obj)
+    _holiday_flush(ctx)
+    audit.record(ctx.db, ctx.user, "holiday.create", obj, after=audit.snapshot(obj))
+    return obj
+
+
+def update_holiday(ctx: Ctx, holiday_id: int, data: dict):
+    from app.models import Holiday
+
+    obj = ctx.db.get(Holiday, holiday_id)
+    if obj is None:
+        raise NotFound("Holiday not found")
+    before = audit.snapshot(obj)
+    for key, value in data.items():
+        setattr(obj, key, value)
+    _holiday_flush(ctx)
+    ctx.db.refresh(obj)
+    audit.record(ctx.db, ctx.user, "holiday.update", obj, before=before, after=audit.snapshot(obj))
+    return obj
+
+
+def delete_holiday(ctx: Ctx, holiday_id: int) -> None:
+    from app.models import Holiday
+
+    obj = ctx.db.get(Holiday, holiday_id)
+    if obj is None:
+        raise NotFound("Holiday not found")
+    audit.record(ctx.db, ctx.user, "holiday.delete", obj, before=audit.snapshot(obj))
+    ctx.db.delete(obj)
+    ctx.db.flush()

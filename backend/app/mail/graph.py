@@ -53,6 +53,7 @@ class MailClient(Protocol):
         subject: str,
         body_text: str,
         attachments: list[tuple[str, str, bytes]] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None: ...
 
 
@@ -182,13 +183,22 @@ class GraphClient:
         subject: str,
         body_text: str,
         attachments: list[tuple[str, str, bytes]] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
-        """attachments: (filename, content_type, bytes). Graph inline limit is ~3 MB per file."""
+        """attachments: (filename, content_type, bytes). Graph inline limit is ~3 MB per file.
+        headers: Graph only accepts custom headers whose names start with "x-"."""
         message: dict = {
             "subject": subject,
             "body": {"contentType": "Text", "content": body_text},
             "toRecipients": [{"emailAddress": {"address": a}} for a in to],
         }
+        if headers:
+            bad = [k for k in headers if not k.lower().startswith("x-")]
+            if bad:
+                raise GraphError(f"Graph only allows x- headers, not {bad[0]}")
+            message["internetMessageHeaders"] = [
+                {"name": k, "value": v} for k, v in headers.items()
+            ]
         if attachments:
             message["attachments"] = [
                 {

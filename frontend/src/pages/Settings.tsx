@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { AppSettings, CannedResponse, Lookup, MailStatus, Priority, Queue, api } from "../api";
+import { AppSettings, CannedResponse, Holiday, Lookup, MailStatus, Priority, Queue, api } from "../api";
 import RemindersCard from "./RemindersCard";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../ui";
 
@@ -15,6 +15,8 @@ export default function Settings() {
       <RemindersCard />
       <PortalCard />
       <HoursCard />
+      <HolidaysCard />
+      <EmailAutomationCard />
       <SimpleList title="Queues" path="queues" defaults />
       <SimpleList title="Categories" path="categories" />
       <SimpleList title="Work types" path="work-types" />
@@ -85,7 +87,7 @@ function HoursCard() {
           ))}
         </div>
       </div>
-      <p className="mt-2 text-xs text-slate-500">Changes apply to new tickets and future SLA calculations; existing due dates are recomputed only when a ticket's priority or pause state changes.</p>
+      <p className="mt-2 text-xs text-slate-500">Changes apply to new tickets and future SLA calculations; existing due dates are recomputed only when a ticket's priority or pause state changes. Holidays work the same way.</p>
       <ErrorMsg error={save.error} />
       {edit && <div className="mt-2"><Button onClick={() => save.mutate()}>Save</Button></div>}
     </Card>
@@ -242,6 +244,91 @@ function CannedCard() {
         <Field label="Text"><textarea className={inputCls} rows={3} required value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} /></Field>
         <Button type="submit">Add response</Button>
       </form>
+    </Card>
+  );
+}
+
+const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+function HolidaysCard() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["cfg", "holidays"], queryFn: () => api<Holiday[]>("/holidays") });
+  const [f, setF] = useState({ on_date: "", name: "", short: false, open: "09:00", close: "12:00" });
+  const toMin = (v: string) => Number(v.slice(0, 2)) * 60 + Number(v.slice(3, 5));
+  const refresh = () => qc.invalidateQueries({ queryKey: ["cfg", "holidays"] });
+  const add = useMutation({
+    mutationFn: () =>
+      api("/holidays", {
+        method: "POST",
+        json: { on_date: f.on_date, name: f.name, open_minute: f.short ? toMin(f.open) : null, close_minute: f.short ? toMin(f.close) : null },
+      }),
+    onSuccess: () => { setF({ ...f, on_date: "", name: "" }); refresh(); },
+  });
+  const del = useMutation({ mutationFn: (id: number) => api(`/holidays/${id}`, { method: "DELETE" }), onSuccess: refresh });
+  return (
+    <Card title="Holidays">
+      <p className="mb-2 text-sm text-slate-600">SLA clocks do not run on a closed day, and run only the shortened hours on a half day. Only affects business days. Tickets that already have a due date keep it until something recomputes it.</p>
+      <ul className="divide-y divide-slate-100 text-sm">
+        {q.data?.map((h) => (
+          <li key={h.id} className="flex items-center justify-between py-1.5">
+            <span>
+              <b>{h.on_date}</b> {h.name}
+              <span className="ml-2 text-slate-500">{h.open_minute === null || h.close_minute === null ? "closed" : `open ${hhmm(h.open_minute)}–${hhmm(h.close_minute)}`}</span>
+            </span>
+            <Button variant="secondary" onClick={() => del.mutate(h.id)}>Remove</Button>
+          </li>
+        ))}
+        {q.data?.length === 0 && <li className="py-1.5 text-slate-500">No holidays yet.</li>}
+      </ul>
+      <ErrorMsg error={add.error ?? del.error} />
+      <form className="mt-2 flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+        <Field label="Date"><input className={inputCls} type="date" required value={f.on_date} onChange={(e) => setF({ ...f, on_date: e.target.value })} /></Field>
+        <Field label="Name"><input className={inputCls} required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+        <label className="flex items-center gap-1 pb-2 text-sm"><input type="checkbox" checked={f.short} onChange={(e) => setF({ ...f, short: e.target.checked })} />Half day</label>
+        {f.short && (
+          <>
+            <Field label="Opens"><input className={inputCls} type="time" value={f.open} onChange={(e) => setF({ ...f, open: e.target.value })} /></Field>
+            <Field label="Closes"><input className={inputCls} type="time" value={f.close} onChange={(e) => setF({ ...f, close: e.target.value })} /></Field>
+          </>
+        )}
+        <Button type="submit">Add holiday</Button>
+      </form>
+    </Card>
+  );
+}
+
+function EmailAutomationCard() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["lookup", "settings"], queryFn: () => api<AppSettings>("/settings") });
+  const [edit, setEdit] = useState<Partial<AppSettings> | null>(null);
+  const save = useMutation({
+    mutationFn: () => api("/settings", { method: "PATCH", json: { ...edit, escalation_email: edit?.escalation_email ?? undefined } }),
+    onSuccess: () => { setEdit(null); qc.invalidateQueries({ queryKey: ["lookup"] }); },
+  });
+  if (!q.data) return null;
+  const s = { ...q.data, ...edit };
+  const upd = (p: Partial<AppSettings>) => setEdit({ ...edit, ...p });
+  return (
+    <Card title="Auto-acknowledgement and escalation">
+      <div className="space-y-3">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={s.auto_ack_enabled} onChange={(e) => upd({ auto_ack_enabled: e.target.checked })} />
+          Email a confirmation when a known client emails in a new request
+        </label>
+        <p className="text-xs text-slate-500">Never sent to unknown senders, automated mail or replies; at most 3 per address per day; one per ticket. Placeholders: {"{ticket_number}"} {"{contact_name}"} {"{company}"} {"{subject}"}. The subject always keeps the [#number] tag so replies thread.</p>
+        <Field label="Subject"><input className={inputCls} value={s.auto_ack_subject} onChange={(e) => upd({ auto_ack_subject: e.target.value })} /></Field>
+        <Field label="Message"><textarea className={inputCls} rows={5} value={s.auto_ack_body} onChange={(e) => upd({ auto_ack_body: e.target.value })} /></Field>
+        <Field label="When a ticket breaches its SLA, email this address (blank = off)">
+          <input className={inputCls} type="email" value={s.escalation_email ?? ""} onChange={(e) => upd({ escalation_email: e.target.value })} />
+        </Field>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={s.escalation_bump_priority} onChange={(e) => upd({ escalation_bump_priority: e.target.checked })} />
+          Also raise the ticket's priority by one step
+        </label>
+        <p className="text-xs text-slate-500">Each ticket escalates once. Turning this on escalates tickets that are already breached.</p>
+      </div>
+      <ErrorMsg error={save.error} />
+      {edit && <div className="mt-2"><Button onClick={() => save.mutate()}>Save</Button></div>}
     </Card>
   );
 }

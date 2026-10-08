@@ -200,7 +200,19 @@ export interface SearchHit {
   subtitle: string | null;
   organization_id: number | null;
 }
+export interface Holiday {
+  id: number;
+  on_date: string;
+  name: string;
+  open_minute: number | null;
+  close_minute: number | null;
+}
 export interface AppSettings {
+  auto_ack_enabled: boolean;
+  auto_ack_subject: string;
+  auto_ack_body: string;
+  escalation_email: string | null;
+  escalation_bump_priority: boolean;
   company_name: string | null;
   company_address: string | null;
   invoice_footer: string | null;

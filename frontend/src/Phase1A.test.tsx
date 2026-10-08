@@ -101,3 +101,33 @@ describe("search page", () => {
     expect(screen.getByRole("heading", { name: "Clients" })).toBeInTheDocument();
   });
 });
+
+describe("settings: holidays and email automation (slice B)", () => {
+  const admin = { ...me, role: "admin", permissions: [...me.permissions, "config:manage"] };
+  const settings = {
+    timezone: "America/Chicago", business_days: [0, 1, 2, 3, 4], business_start_minute: 480, business_end_minute: 1020,
+    billing_increment_minutes: 15, sla_at_risk_percent: 25, portal_enabled: false, auto_ack_enabled: false,
+    auto_ack_subject: "[#{ticket_number}] Hi", auto_ack_body: "Body", escalation_email: null, escalation_bump_priority: false,
+  };
+  it("lists holidays and adds a closed day", async () => {
+    const bodies: string[] = [];
+    run("/settings", {
+      ...base,
+      "/api/auth/me": json(admin),
+      "/api/settings": json(settings),
+      "/api/mail/status": json({ configured: false }),
+      "/api/holidays": (init) => {
+        if (init?.method === "POST") { bodies.push(String(init.body)); return new Response("{}", { status: 201 }); }
+        return new Response(JSON.stringify([{ id: 1, on_date: "2026-12-25", name: "Christmas", open_minute: null, close_minute: null }]));
+      },
+    });
+    expect(await screen.findByText("Christmas", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("closed")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-07-04" } });
+    const form = screen.getByRole("button", { name: "Add holiday" }).closest("form")!;
+    fireEvent.change(within(form).getByLabelText("Name"), { target: { value: "Independence Day" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add holiday" }));
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(JSON.parse(bodies[0])).toEqual({ on_date: "2026-07-04", name: "Independence Day", open_minute: null, close_minute: null });
+  });
+});
