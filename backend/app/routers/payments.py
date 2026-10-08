@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app import credits
 from app import payment_repo as prepo
 from app import payments as svc
 from app import permissions as P
@@ -16,6 +17,8 @@ from app.schemas import (
     PaymentOut,
     ReasonIn,
     ReceivablesOut,
+    RefundIn,
+    RefundOut,
     WriteOffIn,
     WriteOffOut,
 )
@@ -26,6 +29,7 @@ ERR = {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
 
 def _out(ctx: Ctx, payments) -> list[PaymentOut]:
     applied = prepo.applied_by_payment(ctx.db, [p.id for p in payments])
+    refunded = prepo.refunded_by_payment(ctx.db, [p.id for p in payments])
     return [
         PaymentOut(
             id=p.id,
@@ -38,7 +42,10 @@ def _out(ctx: Ctx, payments) -> list[PaymentOut]:
             notes=p.notes,
             status=p.status,
             applied_cents=applied[p.id],
-            unapplied_cents=p.amount_cents - applied[p.id] if p.status == "active" else 0,
+            refunded_cents=refunded[p.id],
+            unapplied_cents=(
+                p.amount_cents - applied[p.id] - refunded[p.id] if p.status == "active" else 0
+            ),
             void_reason=p.void_reason,
             voided_at=p.voided_at,
             created_at=p.created_at,
@@ -52,6 +59,10 @@ def _detail(ctx: Ctx, payment) -> PaymentDetailOut:
     return PaymentDetailOut(
         **_out(ctx, [payment])[0].model_dump(),
         applications=[ApplicationOut.model_validate(a) for a in apps],
+        refunds=[
+            RefundOut.model_validate(r)
+            for r in prepo.refunds_for_payment(ctx.db, ctx.scope, payment.id)
+        ],
     )
 
 
@@ -112,6 +123,27 @@ def apply_payment(payment_id: int, body: ApplyIn, ctx: Ctx = require(P.PAYMENT_W
 )
 def void_payment(payment_id: int, body: ReasonIn, ctx: Ctx = require(P.BILLING_FINALIZE)):
     return _detail(ctx, svc.void_payment(ctx, payment_id, body.reason))
+
+
+@router.post(
+    "/payments/{payment_id}/refunds",
+    response_model=RefundOut,
+    status_code=201,
+    responses=ERR,
+    summary="Record money paid back against a payment (only its unapplied part; nothing is sent)",
+)
+def create_refund(payment_id: int, body: RefundIn, ctx: Ctx = require(P.BILLING_FINALIZE)):
+    return credits.create_refund(ctx, payment_id, body.model_dump())
+
+
+@router.post(
+    "/refunds/{refund_id}/void",
+    response_model=RefundOut,
+    responses=ERR,
+    summary="Void a refund (reason required); the money is available on the payment again",
+)
+def void_refund(refund_id: int, body: ReasonIn, ctx: Ctx = require(P.BILLING_FINALIZE)):
+    return credits.void_refund(ctx, refund_id, body.reason)
 
 
 @router.post(

@@ -1,6 +1,6 @@
 # Phase 3: contract and billing depth: money rules for your approval
 
-Status: **approved by the owner: build slices A, B, C, D; decisions below. Slice A is built. Slice E needs its own written rules and confirmation before code.**
+Status: **approved by the owner: build slices A, B, C, D; decisions below. Slice A is built. Slice B is built (one deliberate simplification: a refund comes only from the *unapplied* part of a payment; to refund applied money you first undo the application, which reopens the invoice). Slice E needs its own written rules and confirmation before code.**
 
 **Decisions recorded:** proration by calendar days with a separate credit line (yes); block-hour unused hours **expire** at month end (no rollover); multiple tax rates: **separate rates for services vs products** (rules to be written and confirmed before building); NinjaOne device counts are suggestions only. Part of [PARITY_ROADMAP.md](PARITY_ROADMAP.md).
 

@@ -137,8 +137,7 @@ def build_statement(ctx: Ctx, org: Organization) -> dict:
     }
     rows, overdue = [], 0
     for inv in invoices:
-        applied, written_off = amounts[inv.id]
-        balance = inv.total_cents - applied - written_off
+        balance = inv.total_cents - sum(amounts[inv.id])
         days = (on - inv.due_date).days
         aging[keys[bucket_for(days)]] += balance
         if days > 0:
@@ -149,7 +148,7 @@ def build_statement(ctx: Ctx, org: Organization) -> dict:
                 invoice_date=inv.invoice_date.isoformat(),
                 due_date=inv.due_date.isoformat(),
                 total_cents=inv.total_cents,
-                settled_cents=applied + written_off,
+                settled_cents=sum(amounts[inv.id]),
                 balance_cents=balance,
                 days_past_due=max(days, 0),
             )
@@ -517,8 +516,7 @@ def create_manual_reminder(ctx: Ctx, org_id: int, invoice_ids: list[int] | None)
 # =========================================================================================
 def _invoice_email_values(ctx: Ctx, inv, org: Organization, name: str) -> dict:
     settings = repo.get_settings_row(ctx.db)
-    applied, written_off = prepo.amounts_for(ctx.db, [inv.id])[inv.id]
-    balance = inv.total_cents - applied - written_off
+    balance = inv.total_cents - sum(prepo.amounts_for(ctx.db, [inv.id])[inv.id])
     return dict(
         client=org.name,
         company=settings.company_name or "",

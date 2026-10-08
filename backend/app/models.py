@@ -731,6 +731,84 @@ class WriteOff(Base):
     void_reason: Mapped[str | None] = mapped_column(Text)
 
 
+class CreditMemo(Base):
+    """A numbered, immutable credit to a client. Voidable (with a reason), never edited."""
+
+    __tablename__ = "credit_memos"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    number: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
+    memo_date: Mapped[date] = mapped_column(Date, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"))  # what it corrects
+    subtotal_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    tax_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    total_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    status: Mapped[str] = mapped_column(String(6), nullable=False, server_default="active")
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    voided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    void_reason: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    organization: Mapped[Organization] = relationship(lazy="joined")
+
+
+class CreditMemoLine(Base):
+    __tablename__ = "credit_memo_lines"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    memo_id: Mapped[int] = mapped_column(ForeignKey("credit_memos.id"), nullable=False)
+    organization_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    unit_price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    tax_rate_bp: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    tax_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class CreditMemoApplication(Base):
+    __tablename__ = "credit_memo_applications"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    memo_id: Mapped[int] = mapped_column(ForeignKey("credit_memos.id"), nullable=False)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), nullable=False)
+    organization_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    voided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    void_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class Refund(Base):
+    """Money paid back to a client against a payment (recorded by hand; nothing is sent)."""
+
+    __tablename__ = "refunds"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    payment_id: Mapped[int] = mapped_column(ForeignKey("payments.id"), nullable=False)
+    organization_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    refunded_on: Mapped[date] = mapped_column(Date, nullable=False)
+    method: Mapped[str] = mapped_column(String(10), nullable=False)
+    reference: Mapped[str | None] = mapped_column(String(200))
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    voided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    void_reason: Mapped[str | None] = mapped_column(Text)
+
+
 # ---------------------------------------------------------------------------------------
 # Statements and payment reminders
 # ---------------------------------------------------------------------------------------

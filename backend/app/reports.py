@@ -363,6 +363,7 @@ def invoice_rows(ctx: Ctx, start: date | None, end: date | None) -> list[dict]:
                 total_cents=inv.total_cents,
                 paid_cents=st["paid_cents"],
                 written_off_cents=st["written_off_cents"],
+                credited_cents=st["credited_cents"],
                 balance_cents=st["balance_cents"],
                 payment_status=st["payment_status"],
                 void_reason=inv.void_reason,

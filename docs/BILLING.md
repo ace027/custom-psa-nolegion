@@ -128,6 +128,17 @@ edit if you like, and approve them on Billing > Reminders. Approved notices go t
 - **Records.** Statements, sent/dismissed notices and the exact PDF bytes that were emailed cannot be changed
   or deleted (database triggers), so you can show what a client was told.
 
+## Credit memos and refunds
+- **Balance** of a finalized invoice = total - payments applied - write-offs - credit memo applications. The invoice itself is never edited.
+- **Credit memo** (`Billing > Credit memos`): numbered `CM-YYYY-NNNN` (gap-free per year, like invoices), with one or more lines of *positive* amounts and tax per line at the client's rate, rounded per line exactly like an invoice. Immutable once issued (enforced by database triggers). Optionally records which invoice it corrects.
+- A memo reduces what the client owes only when **applied** to finalized invoices of the same client (never beyond the invoice balance or the memo's unapplied value). Value not applied is **credit on the client's account**, shown on receivables and statements, and can be applied later.
+- **Void a memo** (reason required): its applications are undone and the invoices owe again. **Undo one application** returns that value to the memo. An invoice with memo value applied cannot be voided until it is removed.
+- Example: invoice total 15,368 c contains an overbilled 14,197 c taxable line (tax 1,171 at 8.25%). A memo for that line + tax is 15,368 c; applied, the invoice balance is 0. The invoice still reads 15,368 c.
+- **Refund** (`Billing > Payments > details`): records money you paid back against a payment (by hand; nothing is sent anywhere). It can only come out of the payment's *unapplied, unrefunded* part. To refund money that was applied to an invoice, undo that application first (which reopens the invoice), then refund. Refunded money cannot be applied again. A payment with live refunds cannot be voided; void the refund first (with a reason).
+- Permissions: issuing/voiding memos, refunds and undoing applications need `billing:finalize`; applying a memo needs `payment:write`; everyone with billing read can list.
+- Every create, apply, unapply and void is in the audit log (`credit_memo.*`, `payment.refund*`).
+- Invoices that are fully cleared by credit show status `paid` and a **Credited** amount; the invoices CSV has a `credited` column.
+
 ## Reports and CSV exports
 Billing > Reports (admin and billing roles only: the `report:read` permission; techs and read-only
 users do not get revenue figures). Every CSV is in dollars and each download is recorded in the audit
@@ -148,5 +159,4 @@ never runs a client-supplied name as a formula.
 ## Not built (by design or deferred)
 No automatic sending (every reminder/statement is approved by a person), no late fees, no accounting/payment-processor integrations (payments
 are *recorded by hand*, nothing is charged or reconciled with a bank), one tax rate per
-client (no per-state/jurisdiction tax), no late fees, no refunds as a separate record (void the
-payment), fixed invoice number format. See `docs/BACKLOG.md`.
+client (no per-state/jurisdiction tax), no late fees, no credit memo PDF or portal view, fixed invoice number format. See `docs/BACKLOG.md`.

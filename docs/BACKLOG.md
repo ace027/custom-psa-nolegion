@@ -50,3 +50,5 @@ Ideas that are not in scope for the current phase. Nothing here gets built witho
 - Show linked tickets (and parent/child roll-ups) on the ticket list; merge-style combined view of a duplicate's notes
 - Expenses: mark expenses "reimbursed" (paid) so a payroll export cannot repay one; removing a wrongly uploaded receipt (receipts are append-only today); per-category GL codes; receipt OCR; a billing user's view of billable expenses
 - Timesheets: an admin's page to view and fix another person's week; reminders for unsubmitted weeks; overtime / pay-period rules (the CSV gives actual hours per day only)
+
+- Credit memo PDF and a client-portal view of credit memos (slice B left these out).

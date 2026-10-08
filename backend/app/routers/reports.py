@@ -160,6 +160,7 @@ def invoices_csv(
         "total",
         "paid",
         "written_off",
+        "credited",
         "balance",
         "payment_status",
         "void_reason",
@@ -175,6 +176,7 @@ def invoices_csv(
         "total_cents",
         "paid_cents",
         "written_off_cents",
+        "credited_cents",
         "balance_cents",
         "payment_status",
         "void_reason",
@@ -182,5 +184,5 @@ def invoices_csv(
     svc.record_export(ctx, "invoices", {"from": lo, "to": hi}, len(rows))
     return _csv(
         f"invoices-{lo}-{hi}.csv",
-        svc.to_csv(header, [[r[k] for k in keys] for r in rows], {5, 6, 7, 8, 9, 10}),
+        svc.to_csv(header, [[r[k] for k in keys] for r in rows], {5, 6, 7, 8, 9, 10, 11}),
     )

@@ -97,8 +97,8 @@ def me(ctx: PortalCtx) -> dict:
 
 
 # ---- invoices and statement (billing contacts) -----------------------------------------
-def _invoice_out(inv: Invoice, applied: int, written_off: int, on) -> dict:
-    st = payment_state(inv, applied, written_off, on)
+def _invoice_out(inv: Invoice, applied: int, written_off: int, credited: int, on) -> dict:
+    st = payment_state(inv, applied, written_off, credited, on)
     return dict(
         id=inv.id,
         number=inv.number,
@@ -137,10 +137,10 @@ def get_final_invoice(ctx: PortalCtx, invoice_id: int) -> Invoice:
 
 def invoice_detail(ctx: PortalCtx, invoice_id: int) -> dict:
     inv = get_final_invoice(ctx, invoice_id)
-    applied, written_off = prepo.amounts_for(ctx.db, [inv.id])[inv.id]
+    applied, written_off, credited = prepo.amounts_for(ctx.db, [inv.id])[inv.id]
     lines = [ln for ln in brepo.invoice_lines(ctx.db, ctx.scope, inv.id) if not ln.voided]
     return {
-        **_invoice_out(inv, applied, written_off, today(ctx)),
+        **_invoice_out(inv, applied, written_off, credited, today(ctx)),
         "subtotal_cents": inv.subtotal_cents,
         "tax_cents": inv.tax_cents,
         "lines": [

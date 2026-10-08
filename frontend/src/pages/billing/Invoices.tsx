@@ -211,6 +211,7 @@ function PaymentSection({ inv, canRecord, canVoid, onDone }: { inv: InvoiceDetai
         <span>Total <b>{money(inv.total_cents)}</b></span>
         <span>Paid <b>{money(inv.paid_cents ?? 0)}</b></span>
         {(inv.written_off_cents ?? 0) > 0 && <span>Written off <b>{money(inv.written_off_cents ?? 0)}</b></span>}
+        {(inv.credited_cents ?? 0) > 0 && <span>Credited <b>{money(inv.credited_cents ?? 0)}</b></span>}
         <span className={balance > 0 ? "text-base font-semibold" : ""}>Balance <b>{money(balance)}</b></span>
         {canRecord && balance > 0 && <Link className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-blue-700" to={`/billing/payments?new=1&org=${inv.organization_id}&invoice=${inv.id}`}>Record payment</Link>}
         {canVoid && balance > 0 && <Button variant="secondary" onClick={() => { const r = window.prompt(`Write off the ${money(balance)} balance as uncollectible. Reason (required):`); if (r) writeOff.mutate(r); }}>Write off balance</Button>}

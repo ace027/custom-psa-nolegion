@@ -34,26 +34,28 @@ def _flush(ctx: Ctx) -> None:
         raise
 
 
-def payment_state(inv: Invoice, applied: int, written_off: int, on: date) -> dict:
+def payment_state(inv: Invoice, applied: int, written_off: int, credited: int, on: date) -> dict:
     """Derived payment fields for an invoice (all None for drafts and voided invoices)."""
     if inv.status != "final":
         return dict(
             paid_cents=None,
             written_off_cents=None,
+            credited_cents=None,
             balance_cents=None,
             payment_status=None,
             is_overdue=False,
             days_past_due=0,
         )
-    balance = inv.total_cents - applied - written_off
+    balance = inv.total_cents - applied - written_off - credited
     if balance > 0:
-        status = "partial" if applied + written_off > 0 else "unpaid"
+        status = "partial" if applied + written_off + credited > 0 else "unpaid"
     else:
         status = "written_off" if written_off > 0 else "paid"
     overdue = balance > 0 and inv.due_date is not None and inv.due_date < on
     return dict(
         paid_cents=applied,
         written_off_cents=written_off,
+        credited_cents=credited,
         balance_cents=balance,
         payment_status=status,
         is_overdue=overdue,
@@ -76,8 +78,7 @@ def _final_invoice(ctx: Ctx, invoice_id: int, org_id: int | None = None) -> Invo
 
 
 def _balance(ctx: Ctx, inv: Invoice) -> int:
-    applied, written_off = prepo.amounts_for(ctx.db, [inv.id])[inv.id]
-    return inv.total_cents - applied - written_off
+    return inv.total_cents - sum(prepo.amounts_for(ctx.db, [inv.id])[inv.id])
 
 
 def _require_reason(reason: str | None) -> str:
@@ -168,7 +169,11 @@ def apply_payment(ctx: Ctx, payment_id: int, invoice_id: int, amount: int) -> Pa
     payment = prepo.get_payment(ctx.db, ctx.scope, payment_id, lock=True)  # ...then payment
     if payment.status != "active":
         raise Conflict("A voided payment cannot be applied")
-    credit = payment.amount_cents - prepo.applied_by_payment(ctx.db, [payment.id])[payment.id]
+    credit = (
+        payment.amount_cents
+        - prepo.applied_by_payment(ctx.db, [payment.id])[payment.id]
+        - prepo.refunded_by_payment(ctx.db, [payment.id])[payment.id]
+    )
     if amount > credit:
         raise Conflict(f"Only {credit} cents of this payment are unapplied")
     if amount > _balance(ctx, inv):
@@ -288,10 +293,9 @@ def void_write_off(ctx: Ctx, write_off_id: int, reason: str | None) -> WriteOff:
 
 
 def ensure_can_void_invoice(ctx: Ctx, inv: Invoice) -> None:
-    applied, written_off = prepo.amounts_for(ctx.db, [inv.id])[inv.id]
-    if applied or written_off:
+    if any(prepo.amounts_for(ctx.db, [inv.id])[inv.id]):
         raise Conflict(
-            "This invoice has payments or write-offs applied; "
+            "This invoice has payments, write-offs or credit memos applied; "
             "void those first, then void the invoice"
         )
 
@@ -335,8 +339,7 @@ def receivables(ctx: Ctx) -> dict:
         )
 
     for inv in invoices:
-        applied, written_off = amounts[inv.id]
-        balance = inv.total_cents - applied - written_off
+        balance = inv.total_cents - sum(amounts[inv.id])
         days = (on - inv.due_date).days
         r = row_for(inv.organization_id, inv.organization.name)
         r[bucket_for(days)] += balance

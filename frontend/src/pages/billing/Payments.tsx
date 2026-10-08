@@ -119,6 +119,16 @@ function PaymentRow({ p }: { p: Payment }) {
   const [target, setTarget] = useState({ invoice_id: "", amount: "" });
   const open = useQuery({ queryKey: ["open-invoices", String(p.organization_id)], enabled: show && p.unapplied_cents > 0, queryFn: () => api<Page<Invoice>>(`/invoices?organization_id=${p.organization_id}&payment_status=open&limit=200`) });
   const refresh = () => qc.invalidateQueries();
+  const [refundForm, setRefundForm] = useState({ amount: "", method: "check" as PaymentMethod, reference: "", reason: "" });
+  const refund = useMutation({
+    mutationFn: () => {
+      const c = parseMoney(refundForm.amount);
+      if (!c) throw new Error("Enter the amount refunded");
+      return api(`/payments/${p.id}/refunds`, { method: "POST", json: { amount_cents: c, method: refundForm.method, reference: refundForm.reference || null, reason: refundForm.reason } });
+    },
+    onSuccess: () => { setRefundForm({ amount: "", method: "check", reference: "", reason: "" }); refresh(); },
+  });
+  const voidRefund = useMutation({ mutationFn: (v: { id: number; reason: string }) => api(`/refunds/${v.id}/void`, { method: "POST", json: { reason: v.reason } }), onSuccess: refresh });
   const voidIt = useMutation({ mutationFn: (reason: string) => api(`/payments/${p.id}/void`, { method: "POST", json: { reason } }), onSuccess: refresh });
   const apply = useMutation({
     mutationFn: () => { const c = parseMoney(target.amount); if (!c) throw new Error("Enter an amount"); return api(`/payments/${p.id}/apply`, { method: "POST", json: { invoice_id: Number(target.invoice_id), amount_cents: c } }); },
@@ -147,7 +157,23 @@ function PaymentRow({ p }: { p: Payment }) {
               <Button disabled={!target.invoice_id} onClick={() => apply.mutate()}>Apply</Button>
             </div>
           )}
-          <ErrorMsg error={apply.error ?? voidIt.error} />
+          {detail.data?.refunds.map((r) => (
+            <div key={r.id} className={r.voided_at ? "text-slate-400 line-through" : ""}>
+              Refunded {money(r.amount_cents)} on {r.refunded_on} ({r.method}{r.reference ? ` ${r.reference}` : ""}): {r.reason}{r.voided_at ? ` (voided: ${r.void_reason})` : ""}
+              {!r.voided_at && can(me, "billing:finalize") && <button className="ml-2 text-red-700 hover:underline" onClick={() => { const why = window.prompt("Reason for voiding this refund:"); if (why) voidRefund.mutate({ id: r.id, reason: why }); }}>void</button>}
+            </div>
+          ))}
+          {p.status === "active" && can(me, "billing:finalize") && p.unapplied_cents > 0 && (
+            <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); refund.mutate(); }}>
+              <div className="w-28"><Field label={`Refund ($, up to ${money(p.unapplied_cents)})`}><input className={inputCls} value={refundForm.amount} onChange={(e) => setRefundForm({ ...refundForm, amount: e.target.value })} /></Field></div>
+              <Field label="Method"><select className={inputCls} value={refundForm.method} onChange={(e) => setRefundForm({ ...refundForm, method: e.target.value as PaymentMethod })}>{METHODS.map((m) => <option key={m}>{m}</option>)}</select></Field>
+              <Field label="Reference"><input className={inputCls} value={refundForm.reference} onChange={(e) => setRefundForm({ ...refundForm, reference: e.target.value })} /></Field>
+              <Field label="Reason"><input className={inputCls} required value={refundForm.reason} onChange={(e) => setRefundForm({ ...refundForm, reason: e.target.value })} /></Field>
+              <Button type="submit" variant="secondary">Record refund</Button>
+            </form>
+          )}
+          {p.status === "active" && p.applied_cents > 0 && <p className="text-xs text-slate-500">Money already applied to an invoice cannot be refunded; undo that application first.</p>}
+          <ErrorMsg error={apply.error ?? voidIt.error ?? refund.error ?? voidRefund.error} />
           {p.status === "active" && can(me, "billing:finalize") && (
             <Button variant="danger" onClick={() => { const r = window.prompt("Reason for voiding this payment (e.g. check bounced):"); if (r) voidIt.mutate(r); }}>Void payment</Button>
           )}

@@ -960,6 +960,7 @@ class InvoiceOut(BaseModel):
     # payment state: only meaningful for finalized invoices (None otherwise)
     paid_cents: int | None = None
     written_off_cents: int | None = None
+    credited_cents: int | None = None
     balance_cents: int | None = None
     payment_status: "PaymentStatus | None" = None
     is_overdue: bool = False
@@ -1060,14 +1061,100 @@ class PaymentOut(BaseModel):
     notes: str | None
     status: Literal["active", "void"]
     applied_cents: int
-    unapplied_cents: int  # credit still available to apply (0 for voided payments)
+    refunded_cents: int = 0
+    unapplied_cents: int  # credit still available to apply or refund (0 for voided payments)
     void_reason: str | None
     voided_at: datetime | None
     created_at: datetime
 
 
+class RefundIn(BaseModel):
+    amount_cents: int = Field(gt=0, le=1_000_000_000_00)
+    refunded_on: date | None = Field(default=None, description="Defaults to today")
+    method: PaymentMethod
+    reference: str | None = Field(default=None, max_length=200)
+    reason: str = Field(min_length=3, max_length=1000)
+
+
+class RefundOut(ORM):
+    id: int
+    payment_id: int
+    organization_id: int
+    amount_cents: int
+    refunded_on: date
+    method: PaymentMethod
+    reference: str | None
+    reason: str
+    created_at: datetime
+    voided_at: datetime | None
+    void_reason: str | None
+
+
 class PaymentDetailOut(PaymentOut):
     applications: list[ApplicationOut]
+    refunds: list[RefundOut] = []
+
+
+class CreditMemoLineIn(BaseModel):
+    description: str = Field(min_length=1, max_length=1000)
+    quantity: Decimal = Field(default=Decimal(1), gt=0, le=Decimal("100000"))
+    unit_price_cents: int = Field(gt=0, le=1_000_000_00)
+    taxable: bool = False
+
+
+class CreditMemoIn(BaseModel):
+    organization_id: int
+    reason: str = Field(min_length=3, max_length=1000)
+    memo_date: date | None = Field(default=None, description="Defaults to today")
+    invoice_id: int | None = Field(default=None, description="The invoice this corrects")
+    lines: list[CreditMemoLineIn] = Field(min_length=1, max_length=100)
+    applications: list[ApplyIn] = Field(
+        default_factory=list, description="Invoices to apply it to right away"
+    )
+
+
+class CreditMemoLineOut(ORM):
+    position: int
+    description: str
+    quantity: Decimal
+    unit_price_cents: int
+    amount_cents: int
+    tax_rate_bp: int
+    tax_cents: int
+
+
+class MemoApplicationOut(ORM):
+    id: int
+    memo_id: int
+    invoice_id: int
+    amount_cents: int
+    created_at: datetime
+    voided_at: datetime | None
+    void_reason: str | None
+
+
+class CreditMemoOut(BaseModel):
+    id: int
+    number: str
+    organization_id: int
+    organization_name: str
+    memo_date: date
+    reason: str
+    invoice_id: int | None
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+    status: Literal["active", "void"]
+    applied_cents: int
+    unapplied_cents: int  # client credit still available (0 for voided memos)
+    void_reason: str | None
+    voided_at: datetime | None
+    created_at: datetime
+
+
+class CreditMemoDetailOut(CreditMemoOut):
+    lines: list[CreditMemoLineOut]
+    applications: list[MemoApplicationOut]
 
 
 class WriteOffIn(BaseModel):

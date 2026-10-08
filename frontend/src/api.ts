@@ -400,6 +400,7 @@ export interface Invoice {
   created_at: string;
   paid_cents: number | null;
   written_off_cents: number | null;
+  credited_cents: number | null;
   balance_cents: number | null;
   payment_status: "unpaid" | "partial" | "paid" | "written_off" | null;
   is_overdue: boolean;
@@ -508,11 +509,45 @@ export interface Payment {
   notes: string | null;
   status: "active" | "void";
   applied_cents: number;
+  refunded_cents: number;
   unapplied_cents: number;
   void_reason: string | null;
   created_at: string;
 }
+export interface Refund {
+  id: number;
+  payment_id: number;
+  amount_cents: number;
+  refunded_on: string;
+  method: PaymentMethod;
+  reference: string | null;
+  reason: string;
+  voided_at: string | null;
+  void_reason: string | null;
+}
 export interface PaymentDetail extends Payment {
+  applications: { id: number; invoice_id: number; amount_cents: number; voided_at: string | null; void_reason: string | null }[];
+  refunds: Refund[];
+}
+export interface CreditMemo {
+  id: number;
+  number: string;
+  organization_id: number;
+  organization_name: string;
+  memo_date: string;
+  reason: string;
+  invoice_id: number | null;
+  subtotal_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  status: "active" | "void";
+  applied_cents: number;
+  unapplied_cents: number;
+  void_reason: string | null;
+  created_at: string;
+}
+export interface CreditMemoDetail extends CreditMemo {
+  lines: { position: number; description: string; quantity: string; unit_price_cents: number; amount_cents: number; tax_cents: number }[];
   applications: { id: number; invoice_id: number; amount_cents: number; voided_at: string | null; void_reason: string | null }[];
 }
 export interface AgingRow {
