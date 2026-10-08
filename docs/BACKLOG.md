@@ -2,6 +2,7 @@
 
 Ideas that are not in scope for the current phase. Nothing here gets built without approval.
 
+- Parity roadmap to replace Autotask/Halo/ConnectWise (proposal, not approved): docs/PARITY_ROADMAP.md
 - vCISO platform: Phase 1 (NinjaOne/Hudu warranty inventory) is built; Phases 2 to 5 are in docs/VCISO_PLAN.md
 - Warranty follow-ups: warranty-expiry alert emails, Hudu *Expiration* entries as a warranty source, per-device notes, bulk override, a refresh-planning summary for the portal, NinjaOne custom-field mapping, retire-after-days setting in the UI
 - Quoting follow-ups: survey photos, offline mode, e-signature / portal acceptance, visit as a ticket/calendar entry, custom uplift factors, import survey from NinjaOne/Hudu, quote pipeline reporting, survey fields beyond notes (email platform, printers, phone system, compliance needs)
