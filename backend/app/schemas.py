@@ -657,6 +657,7 @@ class SettingsOut(ORM):
     escalation_email: str | None
     escalation_bump_priority: bool
     csat_enabled: bool
+    mileage_rate_cents: int
     portal_enabled: bool
     notify_staff: bool
     statement_subject: str
@@ -686,6 +687,7 @@ class SettingsPatch(BaseModel):
     escalation_email: str | None = Field(default=None, max_length=320)
     escalation_bump_priority: bool | None = None
     csat_enabled: bool | None = None
+    mileage_rate_cents: int | None = Field(default=None, ge=0, le=10_000)
     portal_enabled: bool | None = None
     notify_staff: bool | None = None
     statement_subject: str | None = Field(default=None, min_length=1, max_length=500)
@@ -1253,6 +1255,8 @@ class UnbilledRow(BaseModel):
     oldest_work_date: date | None
     charges: int
     charges_cents: int
+    expenses: int
+    expenses_cents: int
     total_cents: int
 
 
@@ -1263,6 +1267,8 @@ class UnbilledTotals(BaseModel):
     unpriced_minutes: int
     charges: int
     charges_cents: int
+    expenses: int
+    expenses_cents: int
     total_cents: int
 
 
@@ -1413,3 +1419,68 @@ class TimesheetQueueRow(BaseModel):
     approved_at: datetime | None
     return_reason: str | None
     total_minutes: int
+
+
+# ---- expenses ----
+class ExpenseIn(BaseModel):
+    kind: Literal["expense", "mileage"] = "expense"
+    expense_date: date | None = None
+    category_id: int | None = None  # required for kind=expense
+    description: str = Field(min_length=1, max_length=2000)
+    amount_cents: int | None = Field(default=None, gt=0, le=100_000_000)  # expense only
+    miles: Decimal | None = Field(default=None, gt=0, le=10_000, decimal_places=2)  # mileage only
+    reimbursable: bool = False
+    billable: bool = False
+    taxable: bool = False
+    markup_bp: int = Field(default=0, ge=0, le=100_000)
+    organization_id: int | None = None
+    ticket_id: int | None = None
+    user_id: int | None = None  # admin only; defaults to the caller
+
+
+class ExpensePatch(BaseModel):
+    expense_date: date | None = None
+    category_id: int | None = None
+    description: str | None = Field(default=None, min_length=1, max_length=2000)
+    amount_cents: int | None = Field(default=None, gt=0, le=100_000_000)
+    miles: Decimal | None = Field(default=None, gt=0, le=10_000, decimal_places=2)
+    reimbursable: bool | None = None
+    billable: bool | None = None
+    taxable: bool | None = None
+    markup_bp: int | None = Field(default=None, ge=0, le=100_000)
+    organization_id: int | None = None
+    ticket_id: int | None = None
+    clear_client: bool = False  # explicitly remove the client (and ticket)
+
+
+class ReceiptOut(ORM):
+    id: int
+    filename: str
+    content_type: str
+    size_bytes: int
+    created_at: datetime
+
+
+class ExpenseOut(BaseModel):
+    id: int
+    user_id: int
+    user_name: str
+    expense_date: date
+    kind: Literal["expense", "mileage"]
+    category_id: int | None
+    category_name: str | None
+    description: str
+    miles: Decimal | None
+    mileage_rate_cents: int | None
+    amount_cents: int
+    reimbursable: bool
+    billable: bool
+    taxable: bool
+    markup_bp: int
+    client_price_cents: int
+    organization_id: int | None
+    organization_name: str | None
+    ticket_id: int | None
+    invoiced: bool
+    voided_at: datetime | None
+    receipts: list[ReceiptOut]

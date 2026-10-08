@@ -247,6 +247,36 @@ export interface Timesheet {
   days: { date: string; minutes: number; billable_minutes: number }[];
   entries: TimesheetEntry[];
 }
+export interface Receipt {
+  id: number;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+}
+export interface Expense {
+  id: number;
+  user_id: number;
+  user_name: string;
+  expense_date: string;
+  kind: "expense" | "mileage";
+  category_id: number | null;
+  category_name: string | null;
+  description: string;
+  miles: string | null;
+  mileage_rate_cents: number | null;
+  amount_cents: number;
+  reimbursable: boolean;
+  billable: boolean;
+  taxable: boolean;
+  markup_bp: number;
+  client_price_cents: number;
+  organization_id: number | null;
+  organization_name: string | null;
+  ticket_id: number | null;
+  invoiced: boolean;
+  voided_at: string | null;
+  receipts: Receipt[];
+}
 export interface TimesheetQueueRow {
   id: number;
   user_id: number;
@@ -305,6 +335,7 @@ export interface AppSettings {
   escalation_email: string | null;
   escalation_bump_priority: boolean;
   csat_enabled: boolean;
+  mileage_rate_cents: number;
   company_name: string | null;
   company_address: string | null;
   invoice_footer: string | null;
@@ -590,9 +621,11 @@ export interface UnbilledReport {
     oldest_work_date: string | null;
     charges: number;
     charges_cents: number;
+    expenses: number;
+    expenses_cents: number;
     total_cents: number;
   }[];
-  totals: { time_entries: number; billable_minutes: number; time_value_cents: number; unpriced_minutes: number; charges: number; charges_cents: number; total_cents: number };
+  totals: { time_entries: number; billable_minutes: number; time_value_cents: number; unpriced_minutes: number; charges: number; charges_cents: number; expenses: number; expenses_cents: number; total_cents: number };
 }
 export interface RecurringReport {
   months: { month: string; contracted_cents: number; agreements: number; clients: number; invoiced_cents: number }[];

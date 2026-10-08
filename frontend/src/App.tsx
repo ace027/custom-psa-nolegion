@@ -28,6 +28,7 @@ import Login from "./pages/Login";
 import OrganizationDetail from "./pages/OrganizationDetail";
 import Organizations from "./pages/Organizations";
 import Settings from "./pages/Settings";
+import Expenses from "./pages/Expenses";
 import Timesheet from "./pages/Timesheet";
 import TimerBar from "./pages/TimerBar";
 import TicketDetail from "./pages/TicketDetail";
@@ -82,6 +83,7 @@ function Layout() {
           <NavLink to="/tickets" className={link}>Tickets</NavLink>
           <NavLink to="/organizations" className={link}>Organizations</NavLink>
           {can(me, "time:write") && <NavLink to="/timesheet" className={link}>My timesheet</NavLink>}
+          {can(me, "time:write") && <NavLink to="/expenses" className={link}>My expenses</NavLink>}
           {can(me, "billing:read") && <NavLink to="/billing" className={link}>Billing</NavLink>}
           {can(me, "quote:read") && <NavLink to="/quotes" className={link}>Quotes</NavLink>}
           {can(me, "report:read") && <NavLink to="/warranty" className={link}>Warranty</NavLink>}
@@ -127,6 +129,7 @@ function StaffApp() {
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/tickets/:id" element={<TicketDetail />} />
         <Route path="/timesheet" element={can(me, "time:write") ? <Timesheet /> : <Navigate to="/" replace />} />
+        <Route path="/expenses" element={can(me, "time:write") ? <Expenses /> : <Navigate to="/" replace />} />
         <Route path="/settings" element={can(me, "config:manage") ? <Settings /> : <Navigate to="/" replace />} />
         <Route path="/organizations" element={<Organizations />} />
         <Route path="/organizations/:id" element={<OrganizationDetail />} />

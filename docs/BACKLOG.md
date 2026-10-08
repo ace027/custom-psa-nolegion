@@ -48,3 +48,5 @@ Ideas that are not in scope for the current phase. Nothing here gets built witho
 - Add custom fields to the new-ticket form and to the portal's new-ticket form (today set on the ticket page)
 - CSAT: editable survey email wording; notify staff on a low rating; per-technician and per-client satisfaction reports; resend a survey on request
 - Show linked tickets (and parent/child roll-ups) on the ticket list; merge-style combined view of a duplicate's notes
+- Expenses: mark expenses "reimbursed" (paid) so a payroll export cannot repay one; removing a wrongly uploaded receipt (receipts are append-only today); per-category GL codes; receipt OCR; a billing user's view of billable expenses
+- Timesheets: an admin's page to view and fix another person's week; reminders for unsubmitted weeks; overtime / pay-period rules (the CSV gives actual hours per day only)

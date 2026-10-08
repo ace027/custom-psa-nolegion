@@ -34,6 +34,12 @@ def line_amounts(quantity: Decimal, unit_price_cents: int, tax_rate_bp: int) -> 
     return amount, tax
 
 
+def marked_up(cost_cents: int, markup_bp: int) -> int:
+    """What a client is charged for something that cost `cost_cents`: cost + markup, the markup
+    rounded half up to a whole cent. 12,345 c at 1,500 bp -> 12,345 + 1,852 = 14,197 c."""
+    return cost_cents + round_cents(Decimal(cost_cents) * markup_bp / BP)
+
+
 def format_money(cents: int) -> str:
     sign = "-" if cents < 0 else ""
     dollars, rem = divmod(abs(cents), 100)

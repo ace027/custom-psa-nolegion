@@ -15,6 +15,7 @@ from app.deps import Ctx
 from app.errors import Conflict
 from app.models import (
     Agreement,
+    Expense,
     Invoice,
     InvoiceLine,
     OrgWorkTypeRate,
@@ -22,7 +23,7 @@ from app.models import (
     TimeEntry,
     WorkType,
 )
-from app.money import hours, line_amounts
+from app.money import hours, line_amounts, marked_up
 from app.payments import payment_state
 
 KINDS = ("time", "product", "agreement", "manual")
@@ -191,6 +192,8 @@ def unbilled(ctx: Ctx, through: date | None) -> dict:
                 oldest_work_date=None,
                 charges=0,
                 charges_cents=0,
+                expenses=0,
+                expenses_cents=0,
             ),
         )
 
@@ -219,13 +222,28 @@ def unbilled(ctx: Ctx, through: date | None) -> dict:
         r["charges"] += 1
         r["charges_cents"] += line_amounts(c.quantity, c.unit_price_cents, 0)[0]
         r["oldest_work_date"] = min(filter(None, [r["oldest_work_date"], c.charged_on]))
+    for x in ctx.db.execute(
+        ctx.scope.apply(
+            select(Expense).where(
+                Expense.billable.is_(True),
+                Expense.invoice_line_id.is_(None),
+                Expense.voided_at.is_(None),
+                Expense.expense_date <= through,
+            ),
+            Expense.organization_id,
+        )
+    ).scalars():
+        r = row(x.organization_id)
+        r["expenses"] += 1
+        r["expenses_cents"] += marked_up(x.amount_cents, x.markup_bp)
+        r["oldest_work_date"] = min(filter(None, [r["oldest_work_date"], x.expense_date]))
     names = {o.id: o.name for o in _orgs(ctx, list(rows))}
     out = sorted(
         (
             {
                 **v,
                 "organization_name": names.get(i, f"#{i}"),
-                "total_cents": v["time_value_cents"] + v["charges_cents"],
+                "total_cents": v["time_value_cents"] + v["charges_cents"] + v["expenses_cents"],
             }
             for i, v in rows.items()
         ),
@@ -238,6 +256,8 @@ def unbilled(ctx: Ctx, through: date | None) -> dict:
         "unpriced_minutes",
         "charges",
         "charges_cents",
+        "expenses",
+        "expenses_cents",
         "total_cents",
     )
     return dict(through=through, rows=out, totals={k: sum(r[k] for r in out) for k in keys})

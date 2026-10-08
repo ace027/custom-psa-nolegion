@@ -262,6 +262,7 @@ class Settings(Base):
     escalation_email: Mapped[str | None] = mapped_column(String(320))
     escalation_bump_priority: Mapped[bool] = mapped_column(Boolean, nullable=False)
     csat_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    mileage_rate_cents: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
@@ -453,6 +454,53 @@ class Timesheet(TimestampMixin, Base):
     returned_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     return_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class ExpenseCategory(_Lookup, Base):
+    __tablename__ = "expense_categories"
+
+
+class Expense(TimestampMixin, Base):
+    """Money a person spent (or a trip they drove). Reimbursable to them and/or billable to a
+    client. Amounts are integer cents; `amount_cents` is the COST, the client price adds markup."""
+
+    __tablename__ = "expenses"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    expense_date: Mapped[date] = mapped_column(Date, nullable=False)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)  # expense | mileage
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("expense_categories.id"))
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    miles: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    mileage_rate_cents: Mapped[int | None] = mapped_column(Integer)
+    amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    reimbursable: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    billable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    markup_bp: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"))
+    ticket_id: Mapped[int | None] = mapped_column(ForeignKey("tickets.id"))
+    invoice_line_id: Mapped[int | None] = mapped_column(ForeignKey("invoice_lines.id"))
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    category: Mapped["ExpenseCategory | None"] = relationship()  # not joined: rows get FOR UPDATE
+
+
+class ExpenseReceipt(Base):
+    __tablename__ = "expense_receipts"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    expense_id: Mapped[int] = mapped_column(ForeignKey("expenses.id"), nullable=False)
+    organization_id: Mapped[int | None] = mapped_column(BigInteger)
+    filename: Mapped[str] = mapped_column(String(300), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(300), nullable=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class Attachment(Base):

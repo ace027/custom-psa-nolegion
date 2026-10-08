@@ -87,16 +87,16 @@ function UnbilledCard() {
       <ErrorMsg error={q.error} />
       {d && (
         <>
-          <p className="mb-2 text-xs text-slate-500">Billable time and one-off charges not yet on an invoice, up to {d.through}. Time is priced at today's rates before tax; time with no rate is shown as hours, not dollars.</p>
+          <p className="mb-2 text-xs text-slate-500">Billable time, one-off charges and client expenses not yet on an invoice, up to {d.through}. Time is priced at today's rates before tax; time with no rate is shown as hours, not dollars.</p>
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-1">Client</th><th className={num}>Hours</th><th className={num}>Time</th><th className={num}>Charges</th><th className={num}>Total</th><th>Oldest</th></tr></thead>
+            <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-1">Client</th><th className={num}>Hours</th><th className={num}>Time</th><th className={num}>Charges</th><th className={num}>Expenses</th><th className={num}>Total</th><th>Oldest</th></tr></thead>
             <tbody>
               {d.rows.map((r) => (
-                <tr key={r.organization_id} className="border-b border-slate-100"><td className="p-1">{r.organization_name}</td><td className={num}>{(r.billable_minutes / 60).toFixed(2)}{r.unpriced_minutes > 0 && <span className="ml-1 text-amber-700" title="Hours with no hourly rate set">({(r.unpriced_minutes / 60).toFixed(2)} unpriced)</span>}</td><td className={num}>{money(r.time_value_cents)}</td><td className={num}>{money(r.charges_cents)}</td><td className={num + " font-medium"}>{money(r.total_cents)}</td><td className="pl-3 text-slate-500">{r.oldest_work_date}</td></tr>
+                <tr key={r.organization_id} className="border-b border-slate-100"><td className="p-1">{r.organization_name}</td><td className={num}>{(r.billable_minutes / 60).toFixed(2)}{r.unpriced_minutes > 0 && <span className="ml-1 text-amber-700" title="Hours with no hourly rate set">({(r.unpriced_minutes / 60).toFixed(2)} unpriced)</span>}</td><td className={num}>{money(r.time_value_cents)}</td><td className={num}>{money(r.charges_cents)}</td><td className={num}>{money(r.expenses_cents)}</td><td className={num + " font-medium"}>{money(r.total_cents)}</td><td className="pl-3 text-slate-500">{r.oldest_work_date}</td></tr>
               ))}
               {d.rows.length === 0 && <tr><td colSpan={6} className="p-2 text-slate-500">Nothing unbilled.</td></tr>}
             </tbody>
-            {d.rows.length > 0 && <tfoot className="font-semibold"><tr><td className="p-1">Total</td><td className={num}>{(d.totals.billable_minutes / 60).toFixed(2)}</td><td className={num}>{money(d.totals.time_value_cents)}</td><td className={num}>{money(d.totals.charges_cents)}</td><td className={num}>{money(d.totals.total_cents)}</td><td /></tr></tfoot>}
+            {d.rows.length > 0 && <tfoot className="font-semibold"><tr><td className="p-1">Total</td><td className={num}>{(d.totals.billable_minutes / 60).toFixed(2)}</td><td className={num}>{money(d.totals.time_value_cents)}</td><td className={num}>{money(d.totals.charges_cents)}</td><td className={num}>{money(d.totals.expenses_cents)}</td><td className={num}>{money(d.totals.total_cents)}</td><td /></tr></tfoot>}
           </table>
         </>
       )}

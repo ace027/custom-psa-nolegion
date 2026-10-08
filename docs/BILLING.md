@@ -17,8 +17,16 @@ For each client, one **draft** invoice containing:
 - **Agreements** in force at any point in the month: `unit price x quantity`, **as the quantity is on the day you start the run**. **No proration**: an agreement that starts or ends mid-month is billed for the full month; adjust the draft in review (edit the quantity/price, or add a credit line).
 - **Billable time** logged up to the end of the month, grouped by ticket and work type, at the client's hourly rate override or the work type's default rate.
 - **One-off product charges** dated up to the end of the month.
+- **Billable expenses and mileage** dated up to the end of the month (see below).
 
 **Never billed silently at $0:** a work type with no hourly rate leaves its time **unbilled** and adds a warning to the run. Fix the rate (Billing > Rates), then use *Add unbilled time and charges* on the draft.
+
+### Billable expenses and mileage (phase 2C)
+A billable expense becomes an ordinary **product** line (quantity 1) the same way a one-off charge does, so freezing, tax and voiding behave identically.
+- Line price = cost + markup, the markup rounded half up to a cent: cost 12,345 c at 1,500 bp = 12,345 + 1,852 = **14,197 c**.
+- Tax is per line on that rounded price at the client's rate when the expense is marked taxable: 14,197 c at 825 bp = **1,171 c**, line total 15,368 c.
+- Mileage = miles x the rate copied from Settings when entered (67 c/mile: 37.5 mi = 2,513 c; 12.35 mi = 827 c; 0.5 mi = 34 c), billed at cost unless a markup is set.
+- Pulled by the same generation as time and charges (dated on or before the run end, not voided, not already invoiced). Timesheet approval does **not** gate it. Voiding the invoice or deleting the draft line releases the expense. The person is reimbursed the cost, never the marked-up price.
 
 ## The monthly procedure
 Billing > Monthly runs

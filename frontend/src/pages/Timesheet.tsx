@@ -164,6 +164,7 @@ function Approvals() {
         <Field label="Payroll export from"><input className={inputCls} type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></Field>
         <Field label="to"><input className={inputCls} type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></Field>
         <a className="pb-2 text-blue-700 hover:underline" href={`/api/timesheets/export.csv?from=${range.from}&to=${range.to}`}>Download hours CSV (approved weeks)</a>
+        <a className="pb-2 text-blue-700 hover:underline" href={`/api/timesheets/expenses.csv?from=${range.from}&to=${range.to}`}>Download reimbursable expenses CSV</a>
       </div>
     </Card>
   );

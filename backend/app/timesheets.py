@@ -11,7 +11,7 @@ from app import audit
 from app import repositories as repo
 from app.deps import Ctx
 from app.errors import Conflict, NotFound
-from app.models import InternalTimeEntry, TimeCategory, TimeEntry, Timer, Timesheet, User
+from app.models import Expense, InternalTimeEntry, TimeCategory, TimeEntry, Timer, Timesheet, User
 
 LOCKED = ("submitted", "approved")
 
@@ -75,7 +75,15 @@ def submit(ctx: Ctx, week_start: date) -> Timesheet:
     sheet = get(ctx, ctx.user.id, week_start)
     if sheet is not None and sheet.status != "returned":
         raise Conflict(f"This week is already {sheet.status}")
-    if _minutes(ctx, ctx.user.id, week_start) == 0:
+    end = week_start + timedelta(days=6)
+    has_expense = ctx.db.execute(
+        select(func.count()).where(
+            Expense.user_id == ctx.user.id,
+            Expense.expense_date.between(week_start, end),
+            Expense.voided_at.is_(None),
+        )
+    ).scalar_one()
+    if _minutes(ctx, ctx.user.id, week_start) == 0 and not has_expense:
         raise Conflict("Nothing is logged this week")
     before = audit.snapshot(sheet) if sheet else None
     if sheet is None:

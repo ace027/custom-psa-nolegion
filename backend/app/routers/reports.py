@@ -93,6 +93,8 @@ def unbilled_csv(through: date | None = Query(None), ctx: Ctx = require(P.REPORT
         "oldest",
         "charges",
         "charges_value",
+        "expenses",
+        "expenses_value",
         "total",
     ]
     rows = [
@@ -105,12 +107,14 @@ def unbilled_csv(through: date | None = Query(None), ctx: Ctx = require(P.REPORT
             r["oldest_work_date"],
             r["charges"],
             r["charges_cents"],
+            r["expenses"],
+            r["expenses_cents"],
             r["total_cents"],
         ]
         for r in d["rows"]
     ]
     svc.record_export(ctx, "unbilled", {"through": d["through"]}, len(rows))
-    return _csv(f"unbilled-{d['through']}.csv", svc.to_csv(header, rows, {3, 7, 8}))
+    return _csv(f"unbilled-{d['through']}.csv", svc.to_csv(header, rows, {3, 7, 9, 10}))
 
 
 @router.get(

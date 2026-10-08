@@ -11,6 +11,7 @@ from app.models import (
     CannedResponse,
     Category,
     EmailMessage,
+    ExpenseCategory,
     Priority,
     Queue,
     Ticket,
@@ -47,6 +48,7 @@ LOOKUPS = [
     ("priorities", Priority, "priority", PriorityIn, PriorityPatch, PriorityOut),
     ("work-types", WorkType, "work_type", NameIn, NamePatch, LookupOut),
     ("time-categories", TimeCategory, "time_category", NameIn, NamePatch, LookupOut),
+    ("expense-categories", ExpenseCategory, "expense_category", NameIn, NamePatch, LookupOut),
     ("ticket-types", TicketType, "ticket_type", NameIn, NamePatch, LookupOut),
     ("canned-responses", CannedResponse, "canned_response", CannedIn, CannedPatch, CannedOut),
 ]

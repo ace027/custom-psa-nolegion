@@ -9,6 +9,7 @@ from app.models import (
     Agreement,
     AgreementQuantityLog,
     BillingRun,
+    Expense,
     Invoice,
     InvoiceLine,
     Organization,
@@ -128,6 +129,21 @@ def unbilled_charges(db: Session, scope: Scope, org_id: int, through: date):
     return list(db.execute(stmt.order_by(ProductCharge.charged_on, ProductCharge.id)).scalars())
 
 
+def unbilled_expenses(db: Session, scope: Scope, org_id: int, through: date):
+    """Billable expenses and mileage not yet invoiced. Timesheet approval does not matter here."""
+    stmt = scope.apply(
+        select(Expense).where(
+            Expense.organization_id == org_id,
+            Expense.billable.is_(True),
+            Expense.invoice_line_id.is_(None),
+            Expense.voided_at.is_(None),
+            Expense.expense_date <= through,
+        ),
+        Expense.organization_id,
+    ).with_for_update()
+    return list(db.execute(stmt.order_by(Expense.expense_date, Expense.id)).scalars())
+
+
 # ---- time ----
 def unbilled_time(db: Session, scope: Scope, org_id: int, through: date):
     """Billable, non-voided, not-yet-invoiced entries. FOR UPDATE: two people generating
@@ -185,6 +201,16 @@ def orgs_with_billables(db: Session, scope: Scope, start: date, end: date) -> li
         ProductCharge.organization_id,
     ).distinct()
     ids |= {r[0] for r in db.execute(c)}
+    e = scope.apply(
+        select(Expense.organization_id).where(
+            Expense.billable.is_(True),
+            Expense.invoice_line_id.is_(None),
+            Expense.voided_at.is_(None),
+            Expense.expense_date <= end,
+        ),
+        Expense.organization_id,
+    ).distinct()
+    ids |= {r[0] for r in db.execute(e)}
     if not ids:
         return []
     stmt = select(Organization).where(Organization.id.in_(ids))

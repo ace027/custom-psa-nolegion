@@ -32,6 +32,7 @@ from app.billing_repo import (
     run_invoices,
     tickets_by_id,
     unbilled_charges,
+    unbilled_expenses,
     unbilled_time,
 )
 from app.deps import Ctx
@@ -40,6 +41,7 @@ from app.models import (
     Agreement,
     AgreementQuantityLog,
     BillingRun,
+    Expense,
     Invoice,
     InvoiceLine,
     Organization,
@@ -49,7 +51,7 @@ from app.models import (
     TimeEntry,
     WorkType,
 )
-from app.money import format_money, hours, line_amounts, to_qty
+from app.money import format_money, hours, line_amounts, marked_up, to_qty
 from app.ticket_services import calendar as business_calendar
 from app.ticket_services import now
 
@@ -494,6 +496,26 @@ def _pull_charges(ctx: Ctx, invoice: Invoice, org: Organization, through: date) 
         charge.invoice_line_id = line.id
 
 
+def _pull_expenses(ctx: Ctx, invoice: Invoice, org: Organization, through: date) -> None:
+    """Billable expenses become ordinary 'product' lines (quantity 1, unit price = cost plus
+    markup), so freezing, tax and voiding behave exactly as for one-off charges."""
+    for e in unbilled_expenses(ctx.db, ctx.scope, org.id, through):
+        label = "Mileage" if e.kind == "mileage" else (e.category.name if e.category else "Expense")
+        text = f"{label}: {e.description} ({e.expense_date.isoformat()})"
+        if e.kind == "mileage":
+            text += f", {e.miles} mi"
+        line = _add_line(
+            ctx,
+            invoice,
+            "product",
+            text,
+            Decimal(1),
+            marked_up(e.amount_cents, e.markup_bp),
+            org.tax_rate_bp if e.taxable else 0,
+        )
+        e.invoice_line_id = line.id
+
+
 def _agreement_description(a: Agreement, period_start: date) -> str:
     month = f"{MONTHS[period_start.month - 1]} {period_start.year}"
     if a.type == "flat":
@@ -532,6 +554,7 @@ def create_invoice(ctx: Ctx, org_id: int, memo: str | None, include_unbilled: bo
         through = today(ctx)
         warnings += _pull_time(ctx, invoice, org, through)
         _pull_charges(ctx, invoice, org, through)
+        _pull_expenses(ctx, invoice, org, through)
     invoice.warnings = warnings
     recalc(ctx, invoice)
     audit.record(
@@ -553,6 +576,7 @@ def add_unbilled(ctx: Ctx, invoice_id: int) -> Invoice:
     org, through = invoice.organization, today(ctx)
     warnings = _pull_time(ctx, invoice, org, through)
     _pull_charges(ctx, invoice, org, through)
+    _pull_expenses(ctx, invoice, org, through)
     invoice.warnings = sorted(set(invoice.warnings) | set(warnings))
     recalc(ctx, invoice)
     _touch_run(ctx, invoice)
@@ -668,6 +692,9 @@ def _release(ctx: Ctx, line_ids: list[int]) -> None:
         update(ProductCharge)
         .where(ProductCharge.invoice_line_id.in_(line_ids))
         .values(invoice_line_id=None)
+    )
+    ctx.db.execute(
+        update(Expense).where(Expense.invoice_line_id.in_(line_ids)).values(invoice_line_id=None)
     )
 
 
@@ -835,6 +862,7 @@ def create_run(ctx: Ctx, period: str) -> BillingRun:
         warnings = _pull_agreements(ctx, invoice, org, start, end)
         warnings += _pull_time(ctx, invoice, org, end)
         _pull_charges(ctx, invoice, org, end)
+        _pull_expenses(ctx, invoice, org, end)
         if not invoice_lines(ctx.db, ctx.scope, invoice.id):
             # nothing billable after all (e.g. only rate-less time): keep it visible for review
             invoice.warnings = warnings + ["Nothing could be billed for this organization"]

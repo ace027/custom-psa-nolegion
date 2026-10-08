@@ -149,3 +149,67 @@ describe("timesheet approval", () => {
     expect(screen.queryByText("Timesheet approvals")).toBeNull();
   });
 });
+
+describe("expenses", () => {
+  const expense = {
+    id: 3, user_id: 1, user_name: "Una User", expense_date: "2026-10-05", kind: "expense", category_id: 1, category_name: "Travel",
+    description: "Parking", miles: null, mileage_rate_cents: null, amount_cents: 12345, reimbursable: true, billable: true, taxable: false,
+    markup_bp: 1500, client_price_cents: 14197, organization_id: 1, organization_name: "Acme", ticket_id: null, invoiced: false,
+    voided_at: null, receipts: [{ id: 8, filename: "p.png", content_type: "image/png", size_bytes: 3 }],
+  };
+
+  it("lists expenses with cost, billed price, markup and receipts", async () => {
+    mount("/expenses", { "/api/auth/me": json(me), "/api/expenses": json([expense]), "/api/expense-categories": json([]), "/api/organizations": json([]) });
+    expect(await screen.findByText("$123.45")).toBeInTheDocument();
+    expect(screen.getByText(/\$141\.97/)).toBeInTheDocument();
+    expect(screen.getByText(/\+15%/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "p.png" })).toHaveAttribute("href", "/api/expense-receipts/8/download");
+  });
+
+  it("sends the amount in cents and the markup in basis points", async () => {
+    const posts: string[] = [];
+    mount("/expenses", {
+      "/api/auth/me": json(me),
+      "/api/expenses": (init) => {
+        if (init?.method === "POST") { posts.push(String(init.body)); return new Response(JSON.stringify(expense), { status: 201 }); }
+        return new Response("[]");
+      },
+      "/api/expense-categories": json([{ id: 1, name: "Travel", archived_at: null, is_default: false }]),
+      "/api/organizations": json([{ id: 1, name: "Acme" }]),
+    });
+    await screen.findByRole("option", { name: "Acme" });
+    await screen.findByRole("option", { name: "Travel" });
+    fireEvent.change(screen.getByLabelText("Amount ($)"), { target: { value: "123.45" } });
+    fireEvent.change(screen.getByLabelText("Category"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Parking" } });
+    fireEvent.change(screen.getByLabelText("Client (optional)"), { target: { value: "1" } });
+    fireEvent.click(screen.getByLabelText("Bill to client"));
+    fireEvent.change(await screen.findByLabelText("Markup %"), { target: { value: "15" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add expense" }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(JSON.parse(posts[0])).toMatchObject({ kind: "expense", amount_cents: 12345, markup_bp: 1500, billable: true, organization_id: 1, category_id: 1 });
+  });
+
+  it("refuses a bad amount before calling the API", async () => {
+    const posts: string[] = [];
+    mount("/expenses", {
+      "/api/auth/me": json(me),
+      "/api/expenses": (init) => { if (init?.method === "POST") posts.push("x"); return new Response("[]"); },
+      "/api/expense-categories": json([{ id: 1, name: "Travel", archived_at: null, is_default: false }]),
+      "/api/organizations": json([]),
+    });
+    await screen.findByRole("option", { name: "Travel" });
+    fireEvent.change(screen.getByLabelText("Amount ($)"), { target: { value: "abc" } });
+    fireEvent.change(screen.getByLabelText("Category"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add expense" }));
+    expect(await screen.findByText("Enter the amount, like 24.99")).toBeInTheDocument();
+    expect(posts).toHaveLength(0);
+  });
+
+  it("hides the page from people who cannot log time", async () => {
+    mount("/dashboard", { "/api/auth/me": json({ ...me, permissions: ["org:read", "ticket:read"] }) });
+    await screen.findByRole("link", { name: "Dashboard" });
+    expect(screen.queryByText("My expenses")).toBeNull();
+  });
+});
