@@ -81,11 +81,12 @@ describe("integrations", () => {
 describe("warranty", () => {
   it("lists devices with a status badge and a CSV link that carries the filters", async () => {
     go("/warranty", "admin", ADMIN, {
-      "/api/organizations": json([{ id: 3, name: "Acme", status: "active" }]),
+      "/api/organizations?limit=200": json({ items: [{ id: 3, name: "Acme", status: "active" }], total: 1 }),
       "/api/reports/warranty": json({ as_of: "2026-10-08", total: 1, counts: { expired: 1, expiring_30: 0, expiring_60: 0, expiring_90: 0, in_warranty: 0, unknown: 0 }, rows: [asset()] }),
       "/api/reports/warranty?within_days=30": json({ as_of: "2026-10-08", total: 0, counts: {}, rows: [] }),
     });
     const row = (await screen.findByText("PC-1")).closest("tr")!;
+    expect(await screen.findByRole("option", { name: "Acme" })).toBeInTheDocument(); // client filter is populated
     expect(within(row).getByText("Expired")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Download CSV" })).toHaveAttribute("href", "/api/reports/warranty.csv");
     fireEvent.change(screen.getByLabelText("Expiring within"), { target: { value: "30" } });

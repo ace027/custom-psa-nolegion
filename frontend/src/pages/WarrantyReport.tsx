@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Organization, WARRANTY_LABEL, WarrantyReport as Report, WarrantyState, api } from "../api";
+import { Organization, Page, WARRANTY_LABEL, WarrantyReport as Report, WarrantyState, api } from "../api";
 import { Card, ErrorMsg, Field, WarrantyBadge, inputCls } from "../ui";
 
 export default function WarrantyReport() {
@@ -10,7 +10,7 @@ export default function WarrantyReport() {
   const [status, setStatus] = useState("");
   const qs = new URLSearchParams({ ...(org ? { organization_id: org } : {}), ...(window ? { within_days: window } : {}), ...(status ? { status } : {}) }).toString();
   const suffix = qs ? `?${qs}` : "";
-  const orgs = useQuery({ queryKey: ["orgs-all"], queryFn: () => api<Organization[]>("/organizations") });
+  const orgs = useQuery({ queryKey: ["orgs-all"], queryFn: () => api<Page<Organization>>("/organizations?limit=200") });
   const q = useQuery({ queryKey: ["warranty", qs], queryFn: () => api<Report>(`/reports/warranty${suffix}`) });
   return (
     <div className="space-y-4">
@@ -20,7 +20,7 @@ export default function WarrantyReport() {
           <Field label="Client">
             <select className={inputCls} value={org} onChange={(e) => setOrg(e.target.value)}>
               <option value="">All clients</option>
-              {orgs.data?.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              {orgs.data?.items.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
           </Field>
           <Field label="Expiring within">
