@@ -757,7 +757,9 @@ class NamePatch(BaseModel):
 # ---------------------------------------------------------------------------------------
 from decimal import Decimal  # noqa: E402
 
-AgreementType = Literal["per_user", "per_device", "flat"]
+AgreementType = Literal["per_user", "per_device", "flat", "block"]
+# Included minutes on a block agreement: at most a month of round-the-clock hours (31 x 24 h)
+BLOCK_MINUTES_MAX = 44_640
 InvoiceStatus = Literal["draft", "final", "void"]
 RunStatus = Literal["draft", "reviewed", "finalized", "cancelled"]
 LineKind = Literal["time", "product", "agreement", "manual", "proration"]
@@ -769,12 +771,14 @@ class WorkTypeBillingOut(ORM):
     name: str
     rate_cents: int | None
     taxable: bool
+    block_covered: bool  # false = "Not covered by blocks"
     archived_at: datetime | None
 
 
 class WorkTypeBillingPatch(BaseModel):
     rate_cents: int | None = Field(default=None, ge=0, le=100_000_00)
     taxable: bool | None = None
+    block_covered: bool | None = None
 
 
 class OrgRateIn(BaseModel):
@@ -886,6 +890,10 @@ class AgreementIn(BaseModel):
     start_date: date
     end_date: date | None = None
     notes: str | None = None
+    block_minutes: int | None = Field(
+        default=None, le=BLOCK_MINUTES_MAX,
+        description="Included minutes per month; required for (and only for) type block",
+    )
 
 
 class AgreementPatch(BaseModel):
@@ -897,6 +905,10 @@ class AgreementPatch(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     notes: str | None = None
+    block_minutes: int | None = Field(
+        default=None, le=BLOCK_MINUTES_MAX,
+        description="Included minutes per month (block only); cleared when the type changes",
+    )
     reason: str | None = Field(default=None, max_length=500, description="Why the quantity changed")
 
 
@@ -912,7 +924,8 @@ class AgreementOut(ORM):
     start_date: date
     end_date: date | None
     notes: str | None
-    monthly_amount_cents: int  # unit price x quantity, before tax
+    block_minutes: int | None
+    monthly_amount_cents: int  # unit price x quantity (block: the price), before tax
 
 
 class QuantityLogOut(ORM):

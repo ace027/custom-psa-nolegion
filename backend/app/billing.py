@@ -12,7 +12,7 @@ import calendar
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import text, update
+from sqlalchemy import select, text, update
 from sqlalchemy.exc import IntegrityError
 
 from app import audit
@@ -94,6 +94,8 @@ def update_work_type_billing(ctx: Ctx, work_type_id: int, data: dict) -> WorkTyp
         wt.rate_cents = data["rate_cents"]
     if data.get("taxable") is not None:
         wt.taxable = data["taxable"]
+    if data.get("block_covered") is not None:
+        wt.block_covered = data["block_covered"]
     ctx.db.flush()
     ctx.db.refresh(wt)
     audit.record(
@@ -221,16 +223,61 @@ def set_product_archived(ctx: Ctx, product_id: int, archived: bool) -> Product:
     return product
 
 
-def _validate_agreement(data: dict) -> None:
+class InvalidAgreement(ValueError):
+    """An agreement's fields contradict each other (the API answers 422)."""
+
+
+def _validate_agreement(ctx: Ctx, data: dict) -> None:
+    """`data` is the agreement's full resulting state (type, block_minutes, dates)."""
     if data.get("end_date") and data["end_date"] < data["start_date"]:
         raise Conflict("End date cannot be before the start date")
+    block_minutes = data.get("block_minutes")
+    if data["type"] != "block":
+        if block_minutes is not None:
+            raise InvalidAgreement("Included hours apply only to block agreements")
+        return
+    if block_minutes is None or block_minutes <= 0:
+        raise InvalidAgreement("A block agreement needs a positive number of included minutes")
+    inc = repo.get_settings_row(ctx.db).billing_increment_minutes
+    if block_minutes % inc:
+        raise InvalidAgreement(
+            f"Included minutes must be a multiple of the billing increment ({inc} minutes)"
+        )
+
+
+def _check_block_overlap(ctx: Ctx, data: dict, agreement_id: int | None = None) -> None:
+    """At most one block agreement per client for any date (end_date NULL = open-ended)."""
+    if data["type"] != "block":
+        return
+    org_id = data["organization_id"]
+    # Serialize block edits per client so two simultaneous requests cannot both pass the check.
+    ctx.db.execute(select(Organization.id).where(Organization.id == org_id).with_for_update())
+    clash = [
+        a
+        for a in agreements_overlapping(
+            ctx.db, ctx.scope, org_id, data["start_date"], data.get("end_date") or date.max
+        )
+        if a.type == "block" and a.id != agreement_id
+    ]
+    if clash:
+        raise Conflict(
+            f"This client already has a block agreement for these dates: {clash[0].name}"
+        )
+
+
+def monthly_amount_cents(a: Agreement) -> int:
+    """Recurring monthly price before tax and proration. A block's price includes its hours."""
+    if a.type == "block":
+        return a.unit_price_cents
+    return a.unit_price_cents * a.quantity
 
 
 def create_agreement(ctx: Ctx, data: dict) -> Agreement:
     _org(ctx, data["organization_id"])
-    _validate_agreement(data)
-    if data["type"] == "flat":
+    _validate_agreement(ctx, data)
+    if data["type"] in ("flat", "block"):
         data = {**data, "quantity": 1}
+    _check_block_overlap(ctx, data)
     agreement = Agreement(**data)
     ctx.db.add(agreement)
     ctx.db.flush()
@@ -262,13 +309,27 @@ def update_agreement(ctx: Ctx, agreement_id: int, data: dict) -> Agreement:
         raise NotFound("Agreement not found")
     before = audit.snapshot(agreement)
     reason = data.pop("reason", None)
+    if data.get("type") not in (None, "block") and "block_minutes" not in data:
+        data["block_minutes"] = None  # leaving the block type drops its included hours
+    state = {
+        "organization_id": agreement.organization_id,
+        "type": agreement.type,
+        "block_minutes": agreement.block_minutes,
+        "start_date": agreement.start_date,
+        "end_date": agreement.end_date,
+    }
     for key, value in data.items():
-        if value is not None or key == "end_date":  # end_date may be cleared explicitly
+        # end_date and block_minutes may be cleared explicitly
+        if value is not None or key in ("end_date", "block_minutes"):
+            state[key] = value
+    # Validate before touching the row: a query below would autoflush it into a DB constraint.
+    _validate_agreement(ctx, state)
+    _check_block_overlap(ctx, state, agreement.id)
+    for key, value in data.items():
+        if value is not None or key in ("end_date", "block_minutes"):
             setattr(agreement, key, value)
-    if agreement.type == "flat":
+    if agreement.type in ("flat", "block"):
         agreement.quantity = 1
-    if agreement.end_date and agreement.end_date < agreement.start_date:
-        raise Conflict("End date cannot be before the start date")
     ctx.db.flush()
     if agreement.quantity != before["quantity"]:
         ctx.db.add(
@@ -520,6 +581,9 @@ def _agreement_description(a: Agreement, period_start: date) -> str:
     month = f"{MONTHS[period_start.month - 1]} {period_start.year}"
     if a.type == "flat":
         return f"{a.name} ({month})"
+    if a.type == "block":
+        included = format(hours(a.block_minutes or 0).normalize(), "f")
+        return f"{a.name} (block, {included} h included)"
     unit = "users" if a.type == "per_user" else "devices"
     return f"{a.name}: {a.quantity} {unit} x {format_money(a.unit_price_cents)} ({month})"
 

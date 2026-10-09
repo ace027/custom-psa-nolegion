@@ -231,6 +231,9 @@ class WorkType(_Lookup, Base):
     __tablename__ = "work_types"
     rate_cents: Mapped[int | None] = mapped_column(BigInteger)  # hourly; NULL = cannot be billed
     taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    # false = time of this type is never drawn from a block agreement ("Not covered by blocks")
+    block_covered: Mapped[bool] = mapped_column(Boolean, nullable=False,
+                                                server_default=text("true"))
 
 
 class Settings(Base):
@@ -412,6 +415,8 @@ class TimeEntry(TimestampMixin, Base):
     note: Mapped[str | None] = mapped_column(Text)
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     invoice_line_id: Mapped[int | None] = mapped_column(ForeignKey("invoice_lines.id"))
+    # Part of minutes_billable drawn from a block agreement by a billing run (0 = none)
+    block_minutes_covered: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
 
 class TimeCategory(_Lookup, Base):
@@ -559,13 +564,15 @@ class Agreement(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    type: Mapped[str] = mapped_column(String(10), nullable=False)  # per_user|per_device|flat
+    type: Mapped[str] = mapped_column(String(10), nullable=False)  # per_user|per_device|flat|block
     unit_price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date | None] = mapped_column(Date)
     notes: Mapped[str | None] = mapped_column(Text)
+    # Included minutes per month; set only (and always) for type 'block'
+    block_minutes: Mapped[int | None] = mapped_column(Integer)
     organization: Mapped[Organization] = relationship(lazy="joined")
 
 

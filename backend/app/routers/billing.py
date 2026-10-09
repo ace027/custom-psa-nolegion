@@ -32,6 +32,7 @@ from app.schemas import (
 
 router = APIRouter(tags=["billing"])
 ERR = {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
+AGREEMENT_ERR = {**ERR, 422: {"model": ErrorOut}}
 
 
 # ---- work type rates ----
@@ -48,7 +49,7 @@ def list_work_type_rates(ctx: Ctx = require(P.BILLING_READ)):
     "/billing/work-types/{work_type_id}",
     response_model=WorkTypeBillingOut,
     responses=ERR,
-    summary="Set a work type's hourly rate / taxability",
+    summary="Set a work type's hourly rate / taxability / block coverage",
 )
 def patch_work_type_rate(
     work_type_id: int, body: WorkTypeBillingPatch, ctx: Ctx = require(P.BILLING_WRITE)
@@ -184,7 +185,8 @@ def _agreement_out(a) -> AgreementOut:
         start_date=a.start_date,
         end_date=a.end_date,
         notes=a.notes,
-        monthly_amount_cents=a.unit_price_cents * a.quantity,
+        block_minutes=a.block_minutes,
+        monthly_amount_cents=svc.monthly_amount_cents(a),
     )
 
 
@@ -208,11 +210,14 @@ def list_agreements(
     "/agreements",
     response_model=AgreementOut,
     status_code=201,
-    responses=ERR,
-    summary="Create a recurring agreement (per user, per device, or flat fee)",
+    responses=AGREEMENT_ERR,
+    summary="Create a recurring agreement (per user, per device, flat fee, or block hours)",
 )
 def create_agreement(body: AgreementIn, ctx: Ctx = require(P.BILLING_WRITE)):
-    return _agreement_out(svc.create_agreement(ctx, body.model_dump()))
+    try:
+        return _agreement_out(svc.create_agreement(ctx, body.model_dump()))
+    except svc.InvalidAgreement as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.get(
@@ -231,13 +236,16 @@ def get_agreement(agreement_id: int, ctx: Ctx = require(P.BILLING_READ)):
 @router.patch(
     "/agreements/{agreement_id}",
     response_model=AgreementOut,
-    responses=ERR,
+    responses=AGREEMENT_ERR,
     summary="Edit an agreement; quantity changes are logged with an optional reason",
 )
 def update_agreement(agreement_id: int, body: AgreementPatch, ctx: Ctx = require(P.BILLING_WRITE)):
-    return _agreement_out(
-        svc.update_agreement(ctx, agreement_id, body.model_dump(exclude_unset=True))
-    )
+    try:
+        return _agreement_out(
+            svc.update_agreement(ctx, agreement_id, body.model_dump(exclude_unset=True))
+        )
+    except svc.InvalidAgreement as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.get(

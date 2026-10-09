@@ -11,6 +11,14 @@
 8. **A month can be run once.** Only one non-cancelled billing run per month can exist, so an agreement period cannot be billed twice. (A database rule also forbids two live invoice lines for the same agreement and month.)
 9. **Time and product charges are locked onto an invoice line** the moment they are invoiced (time entries can no longer be edited or voided). Removing the line, or voiding the invoice, releases them to be billed again.
 10. **Snapshots**: at finalize, the client name/address, your company details and payment terms are copied onto the invoice, so editing them later never rewrites history.
+11. **Block hours** (agreement type `block`): a fixed monthly price (quantity always 1) that includes a number of hours, stored as minutes and a positive multiple of the billing increment. The price bills every month whatever the use.
+    - **What it covers**: the client's billable time with a work date inside the run month, except work types marked **Not covered by blocks** (Billing > Rates), which always bill normally. Unbilled time from earlier months bills normally.
+    - **Order**: time is drawn in work-date order, then by time entry number. An entry that crosses the end of the block is **split by minutes**: the covered part goes on the block, the rest bills as overage.
+    - **Overage** bills as ordinary time lines (ticket + work type, the client's rate override or the work type rate, work type taxability).
+    - **Unused hours expire** at month end. Nothing rolls over.
+    - **Mid-month start or end**: the price gets the usual proration credit line, and the included minutes are prorated by the same calendar days, `block_minutes x covered_days / days_in_month`, **rounded down** to the billing increment.
+    - **One block per client at a time**: a block agreement whose dates overlap another block of the same client is refused.
+    - **Only the monthly run uses blocks**: a one-off invoice leaves covered time from a block month for the run. Voiding the run's invoice releases the time and what it drew from the block.
 
 ## What goes on a monthly run
 For each client, one **draft** invoice containing:
@@ -49,7 +57,8 @@ Billing > Invoices > *New one-off invoice for*: a draft that pulls in the client
 | Business time zone, billing increment | Settings | admin |
 | Hourly rate and taxability per work type | Billing > Rates | admin, billing |
 | Client payment terms, tax rate, rate overrides | Organization page > Billing | admin, billing |
-| Agreements (per user / per device / flat) | Billing > Agreements | admin, billing |
+| Agreements (per user / per device / flat / block hours with included hours) | Billing > Agreements | admin, billing |
+| Work types *Not covered by blocks* | Billing > Rates | admin, billing |
 | Product catalog (price, cost) | Billing > Products | admin, billing (cost is hidden from other roles) |
 | Sell a product on a ticket | Ticket page > Parts and products | admin, tech, billing |
 | Review / finalize runs, finalize or void invoices | Billing | admin, billing |
@@ -63,6 +72,19 @@ Client tax rate 8.25%; agreement "Managed Services" 12 users x $12.00 (taxable);
 | Ticket #10001 (After hours), 0.5 h x $225.00 | $112.50 | - |
 | Goodwill credit | -$10.00 | - |
 | **Subtotal $246.50, tax $11.88, total $258.38** | | |
+
+### Worked example: block hours
+"Retainer" block at $1,000.00/month including 10 h (600 minutes); the client's labor rate is $150.00/h; no tax. 12.5 h of covered time is logged in October:
+
+| Line | Amount |
+|---|---|
+| Retainer (block, 10 h included) | 100,000 c ($1,000.00) |
+| Overage time, 2.5 h x $150.00 | 37,500 c ($375.00) |
+| **Total** | **137,500 c ($1,375.00)** |
+
+- **Straddling entry**: 9.0 h of the block is already used when a 1.5 h entry comes next (by work date). It is split: **1.0 h covered** by the block, **0.5 h overage** = 0.5 x 15,000 = 7,500 c. The entry records 60 covered minutes.
+- **Not covered by blocks**: an entry of a work type with that flag never draws on the block; it bills at its normal rate even when block hours are left.
+- **Mid-month start**: the block starts 15 Oct (17 of 31 days covered). Included minutes = 600 x 17/31 = 329.03 -> rounded **down** to the 15-minute increment = **315 min = 5.25 h**. The price follows the usual proration: 100,000 c - round_half_up(100,000 x 14/31 = 45,161.29) = 100,000 - 45,161 = **54,839 c**.
 
 ## Payments and receivables
 **An invoice's balance is never stored on the invoice** (finalized invoices are frozen). It is always
