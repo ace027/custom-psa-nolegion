@@ -19,6 +19,8 @@ from app import audit
 from app import repositories as repo
 from app.billing_repo import (
     agreements_overlapping,
+    block_agreement_for,
+    block_candidates,
     get_agreement,
     get_charge,
     get_invoice,
@@ -506,12 +508,49 @@ def _new_draft(ctx: Ctx, org: Organization, *, run=None, period=None, memo=None)
     return invoice
 
 
-def _pull_time(ctx: Ctx, invoice: Invoice, org: Organization, through: date) -> list[str]:
+def _month_bounds(day: date) -> tuple[date, date]:
+    return day.replace(day=1), day.replace(day=calendar.monthrange(day.year, day.month)[1])
+
+
+def _in_block_month(day: date, blocks: list[Agreement]) -> bool:
+    """True when the calendar month of `day` overlaps any of the block agreements."""
+    first, last = _month_bounds(day)
+    return any(a.start_date <= last and (a.end_date is None or a.end_date >= first) for a in blocks)
+
+
+def _pull_time(
+    ctx: Ctx, invoice: Invoice, org: Organization, through: date, *, skip_block_months=False
+) -> list[str]:
+    """Bill unbilled time as one line per ticket + work type. Each entry counts only the minutes
+    a block did not cover (minutes_billable - block_minutes_covered); fully covered entries are
+    skipped. skip_block_months (ad-hoc invoices): covered-type time in a month overlapping one of
+    the client's block agreements is left for the monthly run, which alone consumes blocks."""
     warnings: list[str] = []
     entries = unbilled_time(ctx.db, ctx.scope, org.id, through)
+    entries = [e for e in entries if e.minutes_billable - e.block_minutes_covered > 0]
     if not entries:
         return warnings
     work_types = {wt.id: wt for wt in list_work_types(ctx.db)}
+    if skip_block_months:
+        blocks = [
+            a
+            for a in agreements_overlapping(ctx.db, ctx.scope, org.id, date.min, date.max)
+            if a.type == "block"
+        ]
+        held = [
+            e
+            for e in entries
+            if work_types[e.work_type_id].block_covered and _in_block_month(e.work_date, blocks)
+        ]
+        if held:
+            warnings.append(
+                f"{len(held)} time entr{'y' if len(held) == 1 else 'ies'} in block-agreement "
+                "months left for the monthly billing run"
+            )
+            held_ids = {e.id for e in held}
+            entries = [e for e in entries if e.id not in held_ids]
+        if not entries:
+            return warnings
     tickets = tickets_by_id(ctx.db, ctx.scope, {e.ticket_id for e in entries})
     groups: dict[tuple[int, int], list[TimeEntry]] = {}
     for e in entries:
@@ -519,7 +558,7 @@ def _pull_time(ctx: Ctx, invoice: Invoice, org: Organization, through: date) -> 
     for (ticket_id, wt_id), items in groups.items():
         wt = work_types[wt_id]
         rate = hourly_rate(ctx, org.id, wt)
-        minutes = sum(e.minutes_billable for e in items)
+        minutes = sum(e.minutes_billable - e.block_minutes_covered for e in items)
         if rate is None:
             warnings.append(
                 f"No hourly rate for work type '{wt.name}': {len(items)} time "
@@ -602,16 +641,63 @@ def proration_cents(a: Agreement, not_covered: int, days: int) -> int:
     return round_cents(Decimal(a.quantity) * a.unit_price_cents * not_covered / days)
 
 
+def block_included_minutes(a: Agreement, start: date, end: date, increment: int) -> int:
+    """Included minutes of a block for the run month [start, end]: block_minutes prorated by
+    the agreement's calendar days in the month, rounded DOWN to the billing increment. Integer
+    arithmetic only; a full month gives block_minutes exactly."""
+    not_covered, days = proration_days(a, start, end)
+    covered_days = days - not_covered
+    return (a.block_minutes * covered_days // days) // increment * increment
+
+
+def allocate_block(entries: list[tuple[int, int]], included: int) -> dict[int, int]:
+    """entries: (entry_id, minutes_billable) already in consumption order (work_date, id).
+    -> entry_id: minutes covered by the block (0 once it is used up). An entry crossing the end
+    of the block is split by minutes."""
+    remaining = included
+    covered: dict[int, int] = {}
+    for entry_id, minutes in entries:
+        take = min(remaining, minutes)
+        covered[entry_id] = take
+        remaining -= take
+    return covered
+
+
+def _pull_block(
+    ctx: Ctx, invoice: Invoice, org: Organization, start: date, end: date, block_line: InvoiceLine
+) -> None:
+    """Draw the run month's covered time down against the block. Every candidate gets its
+    covered minutes recorded (overwriting any stale value); fully covered entries are linked to
+    the block line, and the rest is left for _pull_time, which bills only uncovered minutes."""
+    a = block_agreement_for(ctx.db, ctx.scope, org.id, start, end)  # the line's agreement
+    increment = repo.get_settings_row(ctx.db).billing_increment_minutes
+    included = block_included_minutes(a, start, end, increment)
+    candidates = block_candidates(ctx.db, ctx.scope, org.id, start, end)
+    covered = allocate_block([(e.id, e.minutes_billable) for e in candidates], included)
+    for e in candidates:
+        e.block_minutes_covered = covered[e.id]
+        if covered[e.id] == e.minutes_billable:
+            e.invoice_line_id = block_line.id
+    used = sum(covered.values())
+    block_line.description = (
+        f"{a.name}: {format(hours(included).normalize(), 'f')} h included, "
+        f"{format(hours(used).normalize(), 'f')} h used"
+    )
+    ctx.db.flush()
+
+
 def _pull_agreements(
     ctx: Ctx, invoice: Invoice, org: Organization, start: date, end: date
-) -> list[str]:
+) -> tuple[list[str], InvoiceLine | None]:
+    """-> (warnings, the block agreement's 'agreement' line or None)."""
     warnings = []
+    block_line = None
     for a in agreements_overlapping(ctx.db, ctx.scope, org.id, start, end):
         if a.quantity == 0:
             warnings.append(f"Agreement '{a.name}' has quantity 0 and was not billed")
             continue
         rate = org.tax_rate_bp if a.taxable else 0
-        _add_line(
+        line = _add_line(
             ctx,
             invoice,
             "agreement",
@@ -622,6 +708,8 @@ def _pull_agreements(
             agreement_id=a.id,
             period_start=start,
         )
+        if a.type == "block" and block_line is None:
+            block_line = line
         not_covered, days = proration_days(a, start, end)
         credit = proration_cents(a, not_covered, days) if not_covered else 0
         if credit:
@@ -638,7 +726,7 @@ def _pull_agreements(
                 rate,
                 agreement_id=a.id,  # period_start stays NULL: the agreement line owns the period
             )
-    return warnings
+    return warnings, block_line
 
 
 def create_invoice(ctx: Ctx, org_id: int, memo: str | None, include_unbilled: bool) -> Invoice:
@@ -647,7 +735,7 @@ def create_invoice(ctx: Ctx, org_id: int, memo: str | None, include_unbilled: bo
     warnings: list[str] = []
     if include_unbilled:
         through = today(ctx)
-        warnings += _pull_time(ctx, invoice, org, through)
+        warnings += _pull_time(ctx, invoice, org, through, skip_block_months=True)
         _pull_charges(ctx, invoice, org, through)
         _pull_expenses(ctx, invoice, org, through)
     invoice.warnings = warnings
@@ -880,6 +968,30 @@ def finalize_invoice_by_id(ctx: Ctx, invoice_id: int, invoice_date: date | None)
     return finalize_invoice(ctx, invoice, invoice_date)
 
 
+def _reset_block_consumption(ctx: Ctx, invoice: Invoice, line_ids: list[int]) -> None:
+    """Voiding gives back what the invoice drew from a block: block_minutes_covered goes to 0
+    for (a) entries linked to its lines and (b) unlinked entries of the client in its billing
+    period that still record covered minutes (a split entry whose overage could not be billed)."""
+    if line_ids:
+        ctx.db.execute(
+            update(TimeEntry)
+            .where(TimeEntry.invoice_line_id.in_(line_ids), TimeEntry.block_minutes_covered > 0)
+            .values(block_minutes_covered=0)
+        )
+    if invoice.period_start is not None and invoice.period_end is not None:
+        ctx.db.execute(
+            update(TimeEntry)
+            .where(
+                TimeEntry.organization_id == invoice.organization_id,
+                TimeEntry.invoice_line_id.is_(None),
+                TimeEntry.block_minutes_covered > 0,
+                TimeEntry.work_date >= invoice.period_start,
+                TimeEntry.work_date <= invoice.period_end,
+            )
+            .values(block_minutes_covered=0)
+        )
+
+
 def void_invoice(ctx: Ctx, invoice_id: int, reason: str | None) -> Invoice:
     invoice = get_invoice(ctx.db, ctx.scope, invoice_id, lock=True)
     if invoice is None:
@@ -899,6 +1011,7 @@ def void_invoice(ctx: Ctx, invoice_id: int, reason: str | None) -> Invoice:
     invoice.voided_by = ctx.user.id if ctx.user else None
     ctx.db.flush()
     line_ids = [line.id for line in lines]
+    _reset_block_consumption(ctx, invoice, line_ids)
     _release(ctx, line_ids)  # time and charges can be billed again
     for line in lines:
         line.voided = True  # frees the agreement period
@@ -954,7 +1067,9 @@ def create_run(ctx: Ctx, period: str) -> BillingRun:
             run_level.append(note)
             continue
         invoice = _new_draft(ctx, org, run=run, period=(start, end))
-        warnings = _pull_agreements(ctx, invoice, org, start, end)
+        warnings, block_line = _pull_agreements(ctx, invoice, org, start, end)
+        if block_line is not None:
+            _pull_block(ctx, invoice, org, start, end, block_line)
         warnings += _pull_time(ctx, invoice, org, end)
         _pull_charges(ctx, invoice, org, end)
         _pull_expenses(ctx, invoice, org, end)

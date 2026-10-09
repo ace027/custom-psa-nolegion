@@ -90,6 +90,23 @@ def agreements_overlapping(db: Session, scope: Scope, org_id: int, start: date, 
     return list(db.execute(stmt.order_by(Agreement.id)).unique().scalars())
 
 
+def block_agreement_for(
+    db: Session, scope: Scope, org_id: int, start: date, end: date
+) -> Agreement | None:
+    """The client's block agreement in force at any point in [start, end]. At most one exists
+    (overlapping blocks are refused when saved); the lowest id wins if that ever breaks."""
+    stmt = scope.apply(
+        select(Agreement).where(
+            Agreement.organization_id == org_id,
+            Agreement.type == "block",
+            Agreement.start_date <= end,
+            or_(Agreement.end_date.is_(None), Agreement.end_date >= start),
+        ),
+        Agreement.organization_id,
+    )
+    return db.execute(stmt.order_by(Agreement.id).limit(1)).unique().scalars().first()
+
+
 def quantity_log(db: Session, scope: Scope, agreement_id: int):
     stmt = scope.apply(
         select(AgreementQuantityLog).where(AgreementQuantityLog.agreement_id == agreement_id),
@@ -167,6 +184,30 @@ def unbilled_time(db: Session, scope: Scope, org_id: int, through: date):
             stmt.order_by(TimeEntry.ticket_id, TimeEntry.work_type_id, TimeEntry.id)
         ).scalars()
     )
+
+
+def block_candidates(
+    db: Session, scope: Scope, org_id: int, start: date, end: date
+) -> list[TimeEntry]:
+    """Unbilled time a block can draw on: billable, not voided, not invoiced, work date inside
+    [start, end], work type covered by blocks. In consumption order (work date, then id).
+    FOR UPDATE (time entries only), like unbilled_time."""
+    stmt = scope.apply(
+        select(TimeEntry)
+        .join(WorkType, WorkType.id == TimeEntry.work_type_id)
+        .where(
+            TimeEntry.organization_id == org_id,
+            TimeEntry.billable.is_(True),
+            TimeEntry.voided_at.is_(None),
+            TimeEntry.invoice_line_id.is_(None),
+            TimeEntry.minutes_billable > 0,
+            TimeEntry.work_date >= start,
+            TimeEntry.work_date <= end,
+            WorkType.block_covered.is_(True),
+        ),
+        TimeEntry.organization_id,
+    ).with_for_update(of=TimeEntry)
+    return list(db.execute(stmt.order_by(TimeEntry.work_date, TimeEntry.id)).scalars())
 
 
 def tickets_by_id(db: Session, scope: Scope, ids: set[int]) -> dict[int, Ticket]:
