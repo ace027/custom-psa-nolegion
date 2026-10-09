@@ -194,6 +194,21 @@ def seed_billing(db) -> None:
                 "notes": None,
             },
         )
+    billing.create_agreement(
+        ctx,
+        {
+            "organization_id": orgs["Northwind Legal"].id,
+            "name": "Support block",
+            "type": "block",
+            "unit_price_cents": 100000,
+            "quantity": 1,
+            "block_minutes": 600,
+            "taxable": False,
+            "start_date": date.today().replace(day=1),
+            "end_date": None,
+            "notes": None,
+        },
+    )
     laptop = billing.create_product(
         ctx,
         {

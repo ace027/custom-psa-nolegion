@@ -454,7 +454,8 @@ export interface Agreement {
   organization_id: number;
   organization_name: string;
   name: string;
-  type: "per_user" | "per_device" | "flat";
+  type: "per_user" | "per_device" | "flat" | "block";
+  block_minutes: number | null;
   unit_price_cents: number;
   quantity: number;
   taxable: boolean;
@@ -490,6 +491,7 @@ export interface WorkTypeBilling {
   name: string;
   rate_cents: number | null;
   taxable: boolean;
+  block_covered: boolean;
   archived_at: string | null;
 }
 export interface OrgBilling {

@@ -22,7 +22,7 @@ export default function Rates() {
         </p>
         <ErrorMsg error={list.error ?? save.error} />
         <table className="w-full text-left text-sm">
-          <thead className="text-slate-500"><tr><th>Work type</th><th>Hourly rate ($)</th><th>Taxable</th></tr></thead>
+          <thead className="text-slate-500"><tr><th>Work type</th><th>Hourly rate ($)</th><th>Taxable</th><th>Not covered by blocks</th></tr></thead>
           <tbody>
             {list.data?.filter((w) => !w.archived_at).map((w) => <RateRow key={w.id} w={w} canWrite={canWrite} onSave={(json) => save.mutate({ id: w.id, json })} />)}
           </tbody>
@@ -41,6 +41,7 @@ function RateRow({ w, canWrite, onSave }: { w: WorkTypeBilling; canWrite: boolea
       <td><input aria-label={`${w.name} hourly rate`} className={inputCls + " w-28"} disabled={!canWrite} placeholder="not set" value={text} onChange={(e) => setText(e.target.value)}
         onBlur={() => { const c = text.trim() === "" ? null : parseMoney(text); if (text.trim() !== "" && c === null) return; if (c !== w.rate_cents) onSave({ rate_cents: c }); }} /></td>
       <td><input aria-label={`${w.name} taxable`} type="checkbox" disabled={!canWrite} checked={w.taxable} onChange={(e) => onSave({ taxable: e.target.checked })} /></td>
+      <td><input aria-label={`${w.name} not covered by blocks`} type="checkbox" disabled={!canWrite} checked={!w.block_covered} onChange={(e) => onSave({ block_covered: !e.target.checked })} /></td>
     </tr>
   );
 }
