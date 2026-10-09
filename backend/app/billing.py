@@ -12,7 +12,7 @@ import calendar
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.exc import IntegrityError
 
 from app import audit
@@ -519,12 +519,20 @@ def _in_block_month(day: date, blocks: list[Agreement]) -> bool:
 
 
 def _pull_time(
-    ctx: Ctx, invoice: Invoice, org: Organization, through: date, *, skip_block_months=False
+    ctx: Ctx,
+    invoice: Invoice,
+    org: Organization,
+    through: date,
+    *,
+    skip_block_months=False,
+    handled: tuple[date, date] | None = None,
 ) -> list[str]:
     """Bill unbilled time as one line per ticket + work type. Each entry counts only the minutes
     a block did not cover (minutes_billable - block_minutes_covered); fully covered entries are
     skipped. skip_block_months (ad-hoc invoices): covered-type time in a month overlapping one of
-    the client's block agreements is left for the monthly run, which alone consumes blocks."""
+    the client's block agreements is left for the monthly run, which alone consumes blocks.
+    handled: a (start, end) window whose block draw-down _pull_block has just done on this
+    invoice; covered-type time inside it is billed (only its uncovered minutes), not held."""
     warnings: list[str] = []
     entries = unbilled_time(ctx.db, ctx.scope, org.id, through)
     entries = [e for e in entries if e.minutes_billable - e.block_minutes_covered > 0]
@@ -540,7 +548,9 @@ def _pull_time(
         held = [
             e
             for e in entries
-            if work_types[e.work_type_id].block_covered and _in_block_month(e.work_date, blocks)
+            if work_types[e.work_type_id].block_covered
+            and _in_block_month(e.work_date, blocks)
+            and not (handled and handled[0] <= e.work_date <= handled[1])
         ]
         if held:
             warnings.append(
@@ -672,13 +682,24 @@ def _pull_block(
     a = block_agreement_for(ctx.db, ctx.scope, org.id, start, end)  # the line's agreement
     increment = repo.get_settings_row(ctx.db).billing_increment_minutes
     included = block_included_minutes(a, start, end, increment)
+    # minutes this invoice's lines already drew from the block (non-zero when re-run on a draft)
+    line_ids = [ln.id for ln in invoice_lines(ctx.db, ctx.scope, invoice.id)]
+    already = 0
+    if line_ids:
+        already = ctx.db.execute(
+            select(func.coalesce(func.sum(TimeEntry.block_minutes_covered), 0)).where(
+                TimeEntry.invoice_line_id.in_(line_ids)
+            )
+        ).scalar_one()
     candidates = block_candidates(ctx.db, ctx.scope, org.id, start, end)
-    covered = allocate_block([(e.id, e.minutes_billable) for e in candidates], included)
+    covered = allocate_block(
+        [(e.id, e.minutes_billable) for e in candidates], max(included - already, 0)
+    )
     for e in candidates:
         e.block_minutes_covered = covered[e.id]
         if covered[e.id] == e.minutes_billable:
             e.invoice_line_id = block_line.id
-    used = sum(covered.values())
+    used = already + sum(covered.values())
     block_line.description = (
         f"{a.name}: {format(hours(included).normalize(), 'f')} h included, "
         f"{format(hours(used).normalize(), 'f')} h used"
@@ -757,7 +778,26 @@ def add_unbilled(ctx: Ctx, invoice_id: int) -> Invoice:
         raise NotFound("Invoice not found")
     _require_draft(invoice)
     org, through = invoice.organization, today(ctx)
-    warnings = _pull_time(ctx, invoice, org, through)
+    handled = None
+    block_line = next(
+        (
+            ln
+            for ln in invoice_lines(ctx.db, ctx.scope, invoice.id)
+            if ln.kind == "agreement"
+            and ln.agreement_id
+            and ln.period_start
+            and (ag := ctx.db.get(Agreement, ln.agreement_id)) is not None
+            and ag.type == "block"
+        ),
+        None,
+    )
+    if block_line is not None and invoice.period_start and invoice.period_end:
+        # run invoice with a block: late-logged covered time draws down what is left of the
+        # block before any overage bills
+        handled = (invoice.period_start, invoice.period_end)
+        _pull_block(ctx, invoice, org, handled[0], handled[1], block_line)
+    # everything else in a block month is left for the run, which alone consumes blocks
+    warnings = _pull_time(ctx, invoice, org, through, skip_block_months=True, handled=handled)
     _pull_charges(ctx, invoice, org, through)
     _pull_expenses(ctx, invoice, org, through)
     invoice.warnings = sorted(set(invoice.warnings) | set(warnings))
@@ -892,7 +932,13 @@ def delete_line(ctx: Ctx, line_id: int) -> None:
         organization_id=invoice.organization_id,
         detail={"invoice_id": invoice.id},
     )
-    _release(ctx, [line.id])  # the time/charges become billable again
+    # the time/charges become billable again, with any block draw-down given back
+    ctx.db.execute(
+        update(TimeEntry)
+        .where(TimeEntry.invoice_line_id == line.id, TimeEntry.block_minutes_covered > 0)
+        .values(block_minutes_covered=0)
+    )
+    _release(ctx, [line.id])
     ctx.db.delete(line)
     ctx.db.flush()
     recalc(ctx, invoice)

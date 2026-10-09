@@ -352,3 +352,76 @@ def test_two_clients_only_one_with_a_block(biller, acme, make_org_with_ticket, w
     beta_inv = biller.get(f"/api/invoices/{beta_inv['id']}").json()
     assert lines(beta_inv) == [("time", "2.0000", 30000)]
     assert entries(owner, [b])[b] == (0, line_id(beta_inv, "time"))
+
+
+# ---- late-logged time on a draft run invoice ("Add unbilled time and charges") ----
+def test_add_unbilled_late_time_draws_the_remaining_block(biller, acme, wt, log, owner):
+    block(biller, acme["org"])
+    first = log(acme["ticket"], wt["Remote"], 240, work_date=day(2))["id"]  # 4 h of 10 h
+    inv = run(biller)
+    assert lines(inv) == [("agreement", "1.0000", 100000)]
+    late = log(acme["ticket"], wt["Remote"], 300, work_date=day(5))["id"]  # 5 h: 1 h left over
+    r = biller.post(f"/api/invoices/{inv['id']}/add-unbilled")
+    assert r.status_code == 200, r.text
+    inv = biller.get(f"/api/invoices/{inv['id']}").json()
+    assert lines(inv) == [("agreement", "1.0000", 100000)]  # all 9 h covered: no overage
+    assert inv["total_cents"] == 100000
+    assert inv["lines"][0]["description"] == "Retainer: 10 h included, 9 h used"
+    block_id = line_id(inv, "agreement")
+    assert entries(owner, [first, late]) == {first: (240, block_id), late: (300, block_id)}
+
+
+def test_add_unbilled_late_time_bills_only_overage_when_block_runs_out(
+    biller, acme, wt, log, owner
+):
+    block(biller, acme["org"])
+    log(acme["ticket"], wt["Remote"], 480, work_date=day(2))  # 8 h of 10 h
+    inv = run(biller)
+    late = log(acme["ticket"], wt["Remote"], 240, work_date=day(5))["id"]  # 2 h left, 2 h over
+    assert biller.post(f"/api/invoices/{inv['id']}/add-unbilled").status_code == 200
+    inv = biller.get(f"/api/invoices/{inv['id']}").json()
+    assert lines(inv) == [("agreement", "1.0000", 100000), ("time", "2.0000", 30000)]
+    assert inv["total_cents"] == 130000
+    assert inv["lines"][0]["description"] == "Retainer: 10 h included, 10 h used"
+    assert entries(owner, [late])[late] == (120, line_id(inv, "time"))
+    # a second click is a no-op
+    assert biller.post(f"/api/invoices/{inv['id']}/add-unbilled").status_code == 200
+    again = biller.get(f"/api/invoices/{inv['id']}").json()
+    assert lines(again) == lines(inv)
+
+
+def test_add_unbilled_late_time_with_block_exhausted_bills_in_full(biller, acme, wt, log, owner):
+    block(biller, acme["org"])
+    log(acme["ticket"], wt["Remote"], 660, work_date=day(2))  # 11 h: 1 h overage already
+    inv = run(biller)
+    assert lines(inv) == [("agreement", "1.0000", 100000), ("time", "1.0000", 15000)]
+    late = log(acme["ticket"], wt["Remote"], 90, work_date=day(5))["id"]
+    assert biller.post(f"/api/invoices/{inv['id']}/add-unbilled").status_code == 200
+    inv = biller.get(f"/api/invoices/{inv['id']}").json()
+    assert inv["total_cents"] == 100000 + 15000 + 22500
+    assert sorted(ln["amount_cents"] for ln in inv["lines"]) == [15000, 22500, 100000]
+    assert entries(owner, [late])[late][0] == 0
+
+
+def test_add_unbilled_on_ad_hoc_draft_still_leaves_block_month_time(biller, acme, wt, log, owner):
+    block(biller, acme["org"])
+    r = biller.post("/api/invoices", json={"organization_id": acme["org"]})
+    assert r.status_code == 201, r.text
+    held = log(acme["ticket"], wt["Remote"], 60, work_date=day(2))["id"]
+    assert biller.post(f"/api/invoices/{r.json()['id']}/add-unbilled").status_code == 200
+    inv = biller.get(f"/api/invoices/{r.json()['id']}").json()
+    assert inv["lines"] == []
+    assert entries(owner, [held])[held] == (0, None)
+
+
+def test_deleting_a_draft_line_gives_back_block_minutes(biller, acme, wt, log, owner):
+    block(biller, acme["org"])
+    full = log(acme["ticket"], wt["Remote"], 240, work_date=day(2))["id"]  # covered in full
+    split = log(acme["ticket"], wt["Remote"], 420, work_date=day(3))["id"]  # 6 h covered, 1 h over
+    inv = run(biller)
+    block_id, time_id = line_id(inv, "agreement"), line_id(inv, "time")
+    assert entries(owner, [full, split]) == {full: (240, block_id), split: (360, time_id)}
+    assert biller.delete(f"/api/invoice-lines/{block_id}").status_code == 204
+    assert entries(owner, [full])[full] == (0, None)  # billable again, not lost
+    assert biller.delete(f"/api/invoice-lines/{time_id}").status_code == 204
+    assert entries(owner, [split])[split] == (0, None)
