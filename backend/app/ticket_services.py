@@ -411,6 +411,9 @@ def update_time(ctx: Ctx, entry_id: int, data: dict) -> TimeEntry:
         raise Conflict("Voided time entries cannot be edited")
     if entry.invoice_line_id is not None:
         raise Conflict("This time is on an invoice and is locked")
+    if entry.block_minutes_covered:
+        # part of it was drawn from a block on an invoice; the rest is waiting on an hourly rate
+        raise Conflict("This time is partly covered by a block on an invoice and is locked")
     timesheets.assert_open(ctx, entry.user_id, entry.work_date)
     if data.get("work_date"):
         timesheets.assert_open(ctx, entry.user_id, data["work_date"])

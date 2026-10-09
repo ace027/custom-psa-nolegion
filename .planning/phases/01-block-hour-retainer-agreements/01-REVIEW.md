@@ -50,3 +50,8 @@
 
 ## Coverage
 No coverage data found (looked for coverage/coverage-summary.json, coverage-summary.json, coverage/lcov.info, lcov.info, coverage.xml, coverage/cobertura-coverage.xml, coverage/coverage.xml, coverage.txt, coverage/coverage.txt). Advisory only: run the test suite with coverage to check review.coverage_thresholds.
+
+## Post-review fixes (main model, money paths)
+Two deferred findings were judged real money bugs and fixed after the review:
+- `_pull_block` now uses the block line's own agreement instead of re-resolving it by date, and raises 409 if that agreement is no longer a block. Before this, ending the agreement before the run month made "add unbilled" on the draft return a 500. Test: `test_add_unbilled_after_the_block_agreement_ended_earlier`.
+- `update_time` refuses to edit an unlinked entry that has `block_minutes_covered > 0` (a straddle entry whose overage had no hourly rate). Before this, an edit could either violate the database check (500) or leave stale covered minutes that never bill. It can be edited again once the invoice is voided. Covered by `test_straddle_without_overage_rate_stays_unbilled_and_resets_on_void`.

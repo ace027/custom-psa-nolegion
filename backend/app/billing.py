@@ -19,7 +19,6 @@ from app import audit
 from app import repositories as repo
 from app.billing_repo import (
     agreements_overlapping,
-    block_agreement_for,
     block_candidates,
     get_agreement,
     get_charge,
@@ -679,7 +678,9 @@ def _pull_block(
     """Draw the run month's covered time down against the block. Every candidate gets its
     covered minutes recorded (overwriting any stale value); fully covered entries are linked to
     the block line, and the rest is left for _pull_time, which bills only uncovered minutes."""
-    a = block_agreement_for(ctx.db, ctx.scope, org.id, start, end)  # the line's agreement
+    a = ctx.db.get(Agreement, block_line.agreement_id)
+    if a is None or a.type != "block" or a.block_minutes is None:
+        raise Conflict("The block agreement on this invoice has changed; cancel and redo the run")
     increment = repo.get_settings_row(ctx.db).billing_increment_minutes
     included = block_included_minutes(a, start, end, increment)
     # minutes this invoice's lines already drew from the block (non-zero when re-run on a draft)

@@ -301,8 +301,26 @@ def test_straddle_without_overage_rate_stays_unbilled_and_resets_on_void(
         straddle: (60, None),
     }
     assert any("No hourly rate" in w and "30 min" in w for w in inv["warnings"])
+    # the block already counted part of it, so it cannot be edited while that stands
+    r = admin.patch(f"/api/time-entries/{straddle}", json={"minutes": 30})
+    assert r.status_code == 409, r.text
     assert biller.post(f"/api/invoices/{inv['id']}/void", json={}).status_code == 200
     assert entries(owner, [first, straddle]) == {first: (0, None), straddle: (0, None)}
+    assert admin.patch(f"/api/time-entries/{straddle}", json={"minutes": 30}).status_code == 200
+
+
+def test_add_unbilled_after_the_block_agreement_ended_earlier(biller, acme, wt, log, owner):
+    agreement = block(biller, acme["org"])
+    inv = run(biller)
+    # the agreement is ended before the run month after the draft exists
+    r = biller.patch(f"/api/agreements/{agreement['id']}", json={"end_date": "2026-06-30"})
+    assert r.status_code == 200, r.text
+    late = log(acme["ticket"], wt["Remote"], 60, work_date=day(5))["id"]
+    r = biller.post(f"/api/invoices/{inv['id']}/add-unbilled")
+    assert r.status_code == 200, r.text
+    inv = biller.get(f"/api/invoices/{inv['id']}").json()
+    assert lines(inv) == [("agreement", "1.0000", 100000), ("time", "1.0000", 15000)]
+    assert entries(owner, [late])[late] == (0, line_id(inv, "time"))
 
 
 def test_ad_hoc_invoice_leaves_block_month_time_for_the_run(admin, biller, acme, wt, log, owner):
