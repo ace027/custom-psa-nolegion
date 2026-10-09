@@ -228,10 +228,11 @@ def test_time_entry_block_minutes_covered_guard(owner, make_ticket, wt, log):
 
 def test_downgrade_refuses_while_block_agreements_exist(owner, biller, org_ctx):
     block(biller, org_ctx["org"])
+    version = text("SELECT version_num FROM alembic_version")
+    before = owner.execute(version).scalar_one()
     with pytest.raises(RuntimeError, match="block agreement"):
         command.downgrade(Config("alembic.ini"), "0022")
-    head = owner.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-    assert head == "0023"
+    assert owner.execute(version).scalar_one() == before  # the whole downgrade rolled back
     assert (
         owner.execute(text("SELECT count(*) FROM agreements WHERE type = 'block'")).scalar_one()
         == 1
