@@ -27,6 +27,7 @@ from app.routers import (
     portal,
     quotes,
     reports,
+    scheduling,
     search,
     ticket_config,
     ticket_links,
@@ -111,6 +112,7 @@ def create_app() -> FastAPI:
         ticket_links.router,
         csat.router,
         timekeeping.router,
+        scheduling.router,
         expenses.router,
         portal.router,
     ):
