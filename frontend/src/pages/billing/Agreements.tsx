@@ -91,7 +91,7 @@ function Row({ a, canWrite }: { a: Agreement; canWrite: boolean }) {
   const log = useQuery({ queryKey: ["qlog", a.id], enabled: showLog, queryFn: () => api<{ id: number; old_quantity: number | null; new_quantity: number; reason: string | null; changed_at: string }[]>(`/agreements/${a.id}/quantity-log`) });
   return (
     <>
-      <tr className={`border-b border-slate-100 ${a.end_date ? "text-slate-400" : ""}`}>
+      <tr className={`border-b border-slate-100 ${a.end_date ? "text-slate-600" : ""}`}>
         <td className="p-2">{a.organization_name}</td><td>{a.name}</td><td>{TYPE_LABEL[a.type]}{a.type === "block" && a.block_minutes != null && <span className="text-slate-500"> ({a.block_minutes / 60} h included)</span>}</td>
         <td className="text-right">{money(a.unit_price_cents)}</td>
         <td>{canWrite && a.type !== "flat" && a.type !== "block" ? (
