@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 1 of 13 (complete)
-- **Status**: Phase 1 complete — review passed (1 cycle(s))
-- **Last Activity**: Phase 1 review (2026-10-09)
+- **Phase**: 2 of 13 (planned)
+- **Status**: Phase 2 planned -- 3 plans across 2 waves
+- **Last Activity**: Phase 2 planning (2026-10-09)
 
 ## Progress
 ```
@@ -21,8 +21,12 @@
 - Appointments link to tickets only (no SLA or billing effect)
 
 ## Next Action
-Run `/triad:plan 2` to plan Phase 2: Scheduling: availability & appointments
+Run `/triad:build` to execute Phase 2: Scheduling: availability & appointments
 
 ## Phase 1 Results
 (build started 2026-10-09)
 - Plan 01-01 (Wave 1): Block agreement schema, validation and money rules — Complete
+
+## GitHub
+- Phase 1 issue: #2 (closed)
+- Phase 2 issue: #3 https://github.com/ace027/custom-psa-nolegion/issues/3 (created via the GitHub connector; gh is not authenticated here)
