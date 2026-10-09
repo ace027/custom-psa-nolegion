@@ -35,11 +35,14 @@ export default function Rates() {
 
 function RateRow({ w, canWrite, onSave }: { w: WorkTypeBilling; canWrite: boolean; onSave: (json: object) => void }) {
   const [text, setText] = useState(w.rate_cents === null ? "" : money(w.rate_cents).replace("$", ""));
+  const [invalid, setInvalid] = useState(false);
+  const errId = `rate-err-${w.id}`;
   return (
     <tr className="border-t border-slate-100">
       <td className="py-1">{w.name}</td>
-      <td><input aria-label={`${w.name} hourly rate`} className={inputCls + " w-28"} disabled={!canWrite} placeholder="not set" value={text} onChange={(e) => setText(e.target.value)}
-        onBlur={() => { const c = text.trim() === "" ? null : parseMoney(text); if (text.trim() !== "" && c === null) return; if (c !== w.rate_cents) onSave({ rate_cents: c }); }} /></td>
+      <td><input aria-label={`${w.name} hourly rate`} aria-invalid={invalid} aria-describedby={invalid ? errId : undefined} className={inputCls + " w-28"} disabled={!canWrite} placeholder="not set" value={text} onChange={(e) => { setText(e.target.value); setInvalid(false); }}
+        onBlur={() => { const c = text.trim() === "" ? null : parseMoney(text); if (text.trim() !== "" && c === null) { setInvalid(true); return; } setInvalid(false); if (c !== w.rate_cents) onSave({ rate_cents: c }); }} />
+        {invalid && <div id={errId} role="alert" className="text-xs text-red-600">Enter a valid rate, e.g. 150.00</div>}</td>
       <td><input aria-label={`${w.name} taxable`} type="checkbox" disabled={!canWrite} checked={w.taxable} onChange={(e) => onSave({ taxable: e.target.checked })} /></td>
       <td><input aria-label={`${w.name} not covered by blocks`} type="checkbox" disabled={!canWrite} checked={!w.block_covered} onChange={(e) => onSave({ block_covered: !e.target.checked })} /></td>
     </tr>

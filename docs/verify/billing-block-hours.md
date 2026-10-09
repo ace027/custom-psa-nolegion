@@ -8,5 +8,5 @@
 6. Void the run and run again. The same block line and overage appear; nothing is billed twice.
 7. Try to create a second block for the same client overlapping the first. It is refused and the API message shows inline under the form.
 8. Edit the block's included hours on the Agreements row and Save; the new figure shows. Set 0 or blank: an inline error appears.
-9. Create an ad-hoc invoice for the client from time in the block month. Rerun the monthly billing: time in the block month that the ad-hoc invoice took is left out of the run.
+9. Create an ad-hoc invoice for the client with "include unbilled". Confirm it leaves the block-month covered-type time out and shows the warning "N time entries in block-agreement months left for the monthly billing run". Run the monthly billing: that time is drawn down against the block.
 10. The seed data includes "Support block" ($1,000.00, 10 h) for Northwind Legal.
