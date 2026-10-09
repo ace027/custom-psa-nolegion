@@ -15,3 +15,4 @@ frontend/playwright-report/
 frontend/test-results/
 frontend/playwright-report/
 docker-compose.sandbox.yml
+*.egg-info/
