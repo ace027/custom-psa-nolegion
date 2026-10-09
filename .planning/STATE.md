@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 1 of 13 (executed, pending review)
-- **Status**: Phase 1 under review — cycle 1/3, 0 blocker(s) remaining
-- **Last Activity**: Phase 1 review cycle 1 (2026-10-09)
+- **Phase**: 1 of 13 (complete)
+- **Status**: Phase 1 complete — review passed (1 cycle(s))
+- **Last Activity**: Phase 1 review (2026-10-09)
 
 ## Progress
 ```
@@ -21,7 +21,7 @@
 - Appointments link to tickets only (no SLA or billing effect)
 
 ## Next Action
-Run `/triad:review` to verify Phase 1: Block-hour / retainer agreements
+Run `/triad:plan 2` to plan Phase 2: Scheduling: availability & appointments
 
 ## Phase 1 Results
 (build started 2026-10-09)

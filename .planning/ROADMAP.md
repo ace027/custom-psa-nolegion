@@ -2,7 +2,7 @@
 
 ## Phases
 
-- [ ] Phase 1: Block-hour / retainer agreements (3 plans)
+- [x] Phase 1: Block-hour / retainer agreements (3 plans)
 - [ ] Phase 2: Scheduling: availability & appointments (3 plans)
 - [ ] Phase 3: Dispatch board (3 plans)
 - [ ] Phase 4: Outlook push + free/busy (3 plans)
@@ -155,7 +155,7 @@
 
 | Phase | Plans | Completed | Status |
 |-------|-------|-----------|--------|
-| 1 | 3 | 3 | Executed |
+| 1 | 3 | 3 | Complete |
 | 2 | 3 | 0 | Pending |
 | 3 | 3 | 0 | Pending |
 | 4 | 3 | 0 | Pending |
