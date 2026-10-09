@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 2 of 13 (executed, pending review)
-- **Status**: Phase 2 complete — all plans executed successfully
-- **Last Activity**: Phase 2 build (2026-10-09)
+- **Phase**: 2 of 13 (complete)
+- **Status**: Phase 2 complete — review passed (1 cycle(s))
+- **Last Activity**: Phase 2 review (2026-10-09)
 
 ## Progress
 ```
@@ -21,7 +21,7 @@
 - Appointments link to tickets only (no SLA or billing effect)
 
 ## Next Action
-Run `/triad:review` to verify Phase 2: Scheduling: availability & appointments
+Run `/triad:plan 3` to plan Phase 3: Dispatch board
 
 ## Phase 1 Results
 (build started 2026-10-09)
