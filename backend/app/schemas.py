@@ -891,7 +891,8 @@ class AgreementIn(BaseModel):
     end_date: date | None = None
     notes: str | None = None
     block_minutes: int | None = Field(
-        default=None, le=BLOCK_MINUTES_MAX,
+        default=None,
+        le=BLOCK_MINUTES_MAX,
         description="Included minutes per month; required for (and only for) type block",
     )
 
@@ -906,7 +907,8 @@ class AgreementPatch(BaseModel):
     end_date: date | None = None
     notes: str | None = None
     block_minutes: int | None = Field(
-        default=None, le=BLOCK_MINUTES_MAX,
+        default=None,
+        le=BLOCK_MINUTES_MAX,
         description="Included minutes per month (block only); cleared when the type changes",
     )
     reason: str | None = Field(default=None, max_length=500, description="Why the quantity changed")

@@ -1,4 +1,5 @@
 """Block-hour / retainer agreements: schema, validation and API (docs/BILLING.md)."""
+
 import pytest
 from alembic.config import Config
 from sqlalchemy import text
@@ -34,8 +35,13 @@ def test_create_block_round_trips_fields(biller, org_ctx):
     # other types report no included minutes
     flat = biller.post(
         "/api/agreements",
-        json={"organization_id": org_ctx["org"], "name": "Flat", "type": "flat",
-              "unit_price_cents": 500, "start_date": "2026-01-01"},
+        json={
+            "organization_id": org_ctx["org"],
+            "name": "Flat",
+            "type": "flat",
+            "unit_price_cents": 500,
+            "start_date": "2026-01-01",
+        },
     ).json()
     assert flat["block_minutes"] is None
 
@@ -83,7 +89,9 @@ def test_type_change_flat_to_block_and_back(biller, org_ctx):
         biller.patch(f"/api/agreements/{flat['id']}", json={"block_minutes": None}).status_code
         == 422
     )
-    assert biller.patch(f"/api/agreements/{flat['id']}", json={"block_minutes": 0}).status_code == 422
+    assert (
+        biller.patch(f"/api/agreements/{flat['id']}", json={"block_minutes": 0}).status_code == 422
+    )
     # explicit minutes on a non-block type are refused
     r = biller.patch(f"/api/agreements/{flat['id']}", json={"type": "flat", "block_minutes": 300})
     assert r.status_code == 422
@@ -92,8 +100,14 @@ def test_type_change_flat_to_block_and_back(biller, org_ctx):
     assert r.status_code == 200 and r.json()["block_minutes"] is None
     assert biller.get(f"/api/agreements/{flat['id']}").json()["type"] == "flat"
     # per_user -> block forces quantity 1 and logs it
-    pu = block(biller, org_ctx["org"], type="per_user", quantity=5, block_minutes=None,
-               start_date="2030-01-01").json()
+    pu = block(
+        biller,
+        org_ctx["org"],
+        type="per_user",
+        quantity=5,
+        block_minutes=None,
+        start_date="2030-01-01",
+    ).json()
     r = biller.patch(f"/api/agreements/{pu['id']}", json={"type": "block", "block_minutes": 60})
     assert r.status_code == 200 and r.json()["quantity"] == 1
     log = biller.get(f"/api/agreements/{pu['id']}/quantity-log").json()
@@ -153,11 +167,10 @@ def test_work_type_block_covered_round_trip_and_audit(admin, biller):
     assert r.json()["block_covered"] is False and r.json()["rate_cents"] == 15000
     rows = {w["name"]: w for w in biller.get("/api/billing/work-types").json()}
     assert rows["Remote"]["block_covered"] is False and rows["Onsite"]["block_covered"] is True
-    items = admin.get(
-        "/api/audit", params={"action": "work_type.billing_update"}
-    ).json()["items"]
+    items = admin.get("/api/audit", params={"action": "work_type.billing_update"}).json()["items"]
     changed = [
-        x for x in items
+        x
+        for x in items
         if (x.get("before") or {}).get("block_covered") is True
         and (x.get("after") or {}).get("block_covered") is False
     ]
@@ -176,20 +189,22 @@ def test_permissions(login, org_ctx):
             == 403
         )
     a = block(login("admin"), org_ctx["org"]).json()
-    assert login("tech").patch(f"/api/agreements/{a['id']}", json={"block_minutes": 300}
-                               ).status_code == 403
+    assert (
+        login("tech").patch(f"/api/agreements/{a['id']}", json={"block_minutes": 300}).status_code
+        == 403
+    )
 
 
 def test_database_guards(owner, biller, org_ctx):
     a = block(biller, org_ctx["org"]).json()
     with pytest.raises(IntegrityError):
-        owner.execute(text("UPDATE agreements SET block_minutes = NULL WHERE id = :i"),
-                      {"i": a["id"]})
+        owner.execute(
+            text("UPDATE agreements SET block_minutes = NULL WHERE id = :i"), {"i": a["id"]}
+        )
     with pytest.raises(IntegrityError):
         owner.execute(text("UPDATE agreements SET type = 'flat' WHERE id = :i"), {"i": a["id"]})
     with pytest.raises(IntegrityError):
-        owner.execute(text("UPDATE agreements SET block_minutes = 0 WHERE id = :i"),
-                      {"i": a["id"]})
+        owner.execute(text("UPDATE agreements SET block_minutes = 0 WHERE id = :i"), {"i": a["id"]})
 
 
 def test_time_entry_block_minutes_covered_guard(owner, make_ticket, wt, log):
@@ -200,8 +215,9 @@ def test_time_entry_block_minutes_covered_guard(owner, make_ticket, wt, log):
         {"i": e["id"]},
     ).one()
     assert tuple(row) == (60, 0)
-    owner.execute(text("UPDATE time_entries SET block_minutes_covered = 60 WHERE id = :i"),
-                  {"i": e["id"]})
+    owner.execute(
+        text("UPDATE time_entries SET block_minutes_covered = 60 WHERE id = :i"), {"i": e["id"]}
+    )
     for bad in (61, -1):
         with pytest.raises(IntegrityError):
             owner.execute(
@@ -216,5 +232,7 @@ def test_downgrade_refuses_while_block_agreements_exist(owner, biller, org_ctx):
         command.downgrade(Config("alembic.ini"), "0022")
     head = owner.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
     assert head == "0023"
-    assert owner.execute(text("SELECT count(*) FROM agreements WHERE type = 'block'")
-                         ).scalar_one() == 1
+    assert (
+        owner.execute(text("SELECT count(*) FROM agreements WHERE type = 'block'")).scalar_one()
+        == 1
+    )

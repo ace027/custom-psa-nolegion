@@ -232,8 +232,9 @@ class WorkType(_Lookup, Base):
     rate_cents: Mapped[int | None] = mapped_column(BigInteger)  # hourly; NULL = cannot be billed
     taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     # false = time of this type is never drawn from a block agreement ("Not covered by blocks")
-    block_covered: Mapped[bool] = mapped_column(Boolean, nullable=False,
-                                                server_default=text("true"))
+    block_covered: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
 
 
 class Settings(Base):
