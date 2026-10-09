@@ -4,9 +4,11 @@ from decimal import Decimal
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Identity,
     Index,
     Integer,
@@ -121,6 +123,7 @@ class User(TimestampMixin, Base):
     )
     notify_sla: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     notify_reply: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    timezone: Mapped[str | None] = mapped_column(String(64))  # None = the Settings timezone
 
 
 class Session(Base):
@@ -296,6 +299,106 @@ class Holiday(Base):
     )
 
 
+# ---- scheduling ----
+APPOINTMENT_STATUSES = ("scheduled", "cancelled")
+TIME_OFF_STATUSES = ("pending", "approved", "rejected", "cancelled")
+
+
+class UserWorkHours(Base):
+    """One working window per weekday (0 = Monday), minutes from local midnight in the user's
+    timezone. A user with no rows works the default business hours from Settings."""
+
+    __tablename__ = "user_work_hours"
+    __table_args__ = (
+        CheckConstraint("weekday BETWEEN 0 AND 6", name="ck_user_work_hours_weekday"),
+        CheckConstraint(
+            "0 <= start_minute AND start_minute < end_minute AND end_minute <= 1440",
+            name="ck_user_work_hours_range",
+        ),
+        UniqueConstraint("user_id", "weekday", name="uq_user_work_hours_day"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    weekday: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    start_minute: Mapped[int] = mapped_column(Integer, nullable=False)
+    end_minute: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class UserTimeOff(TimestampMixin, Base):
+    """A time-off request. Never deleted: cancelled or rejected instead."""
+
+    __tablename__ = "user_time_off"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','approved','rejected','cancelled')",
+            name="ck_user_time_off_status",
+        ),
+        CheckConstraint(
+            "ends_at > starts_at AND ends_at - starts_at <= interval '366 days'",
+            name="ck_user_time_off_range",
+        ),
+        CheckConstraint(
+            "status NOT IN ('approved','rejected') "
+            "OR (decided_by IS NOT NULL AND decided_at IS NOT NULL)",
+            name="ck_user_time_off_decided",
+        ),
+        Index("ix_user_time_off_user_start", "user_id", "starts_at"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
+    requested_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_note: Mapped[str | None] = mapped_column(Text)
+
+
+class Appointment(TimestampMixin, Base):
+    """A tech booked against a ticket. Client-owned (RLS); organization_id follows the ticket via
+    the composite FK. Never deleted: cancelled instead."""
+
+    __tablename__ = "appointments"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["ticket_id", "organization_id"],
+            ["tickets.id", "tickets.organization_id"],
+            name="fk_appointments_ticket_org",
+            onupdate="CASCADE",
+        ),
+        CheckConstraint("status IN ('scheduled','cancelled')", name="ck_appointments_status"),
+        CheckConstraint(
+            "ends_at > starts_at AND ends_at - starts_at <= interval '24 hours'",
+            name="ck_appointments_range",
+        ),
+        CheckConstraint(
+            "(status = 'cancelled') = (cancelled_at IS NOT NULL)",
+            name="ck_appointments_cancelled",
+        ),
+        Index("ix_appointments_tech_start", "tech_id", "starts_at"),
+        Index("ix_appointments_ticket", "ticket_id"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", name="fk_appointments_org"), nullable=False, index=True
+    )
+    ticket_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    tech_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="scheduled")
+    notes: Mapped[str | None] = mapped_column(Text)
+    client_visible: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    cancel_reason: Mapped[str | None] = mapped_column(Text)
+
+
 class MailboxStatus(Base):
     __tablename__ = "mailbox_status"
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
@@ -310,6 +413,8 @@ class MailboxStatus(Base):
 
 class Ticket(TimestampMixin, Base):
     __tablename__ = "tickets"
+    # composite target for appointments' (ticket_id, organization_id) FK
+    __table_args__ = (UniqueConstraint("id", "organization_id", name="uq_tickets_id_org"),)
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     number: Mapped[int] = mapped_column(

@@ -23,10 +23,14 @@ QUOTE_WRITE = "quote:write"  # run surveys, build / adjust / send quotes (techs)
 QUOTE_MANAGE = "quote:manage"  # approve adjusted prices, record accept/decline, edit the rate card
 INTEGRATION_MANAGE = "integration:manage"  # vendor connections, credentials, client mapping
 CONFIG_MANAGE = "config:manage"  # queues, categories, priorities, work types, settings, mail status
+SCHEDULE_READ = "schedule:read"  # schedules, appointments, availability, time off
+# book/move/cancel any tech's appointments; own working hours and time-off requests
+SCHEDULE_WRITE = "schedule:write"
+TIMEOFF_APPROVE = "timeoff:approve"  # approve/reject time off, manage anyone's hours and time off
 
 ROLES = ("admin", "tech", "billing", "read_only")
 
-_READ = {ORG_READ, USER_READ, TICKET_READ, BILLING_READ, QUOTE_READ}
+_READ = {ORG_READ, USER_READ, TICKET_READ, BILLING_READ, QUOTE_READ, SCHEDULE_READ}
 
 MATRIX: dict[str, frozenset[str]] = {
     "admin": frozenset(
@@ -43,10 +47,14 @@ MATRIX: dict[str, frozenset[str]] = {
             QUOTE_WRITE,
             QUOTE_MANAGE,
             INTEGRATION_MANAGE,
+            SCHEDULE_WRITE,
+            TIMEOFF_APPROVE,
         }
         | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE, PAYMENT_WRITE, REPORT_READ}
     ),
-    "tech": frozenset(_READ | {ORG_WRITE, TICKET_WRITE, TIME_WRITE, CHARGE_WRITE, QUOTE_WRITE}),
+    "tech": frozenset(
+        _READ | {ORG_WRITE, TICKET_WRITE, TIME_WRITE, CHARGE_WRITE, QUOTE_WRITE, SCHEDULE_WRITE}
+    ),
     "billing": frozenset(
         _READ | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE, PAYMENT_WRITE, REPORT_READ}
     ),

@@ -12,3 +12,4 @@ Managed by memory-manager skill. Do not edit manually unless pruning old records
 | O-003 | 2026-10-09 | dev | 1 | 01-00 | engineering-senior-developer | quality-review | success | 4 | review, engineering | Phase 1 review PASSED in 1 cycle(s), 0 finding(s) |
 | O-004 | 2026-10-09 | dev | 1 | 01-00 | engineering-backend-architect | quality-review | success | 4 | review, engineering | Phase 1 review PASSED in 1 cycle(s), 0 finding(s) |
 | O-005 | 2026-10-09 | dev | 1 | 01-00 | design-ux-researcher | quality-review | success | 4 | review, design | Phase 1 review PASSED in 1 cycle(s), 0 finding(s) |
+| O-006 | 2026-10-09 | dev | 2 | 02-01 | engineering-backend-architect | implementation | success | 3 | scheduling-availability-appointments, engineering | Scheduling schema, RLS and permissions: Complete |
