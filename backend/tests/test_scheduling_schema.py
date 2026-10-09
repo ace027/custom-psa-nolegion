@@ -74,7 +74,7 @@ def test_work_hours_constraints(owner, tech):
 
 
 def test_a_user_without_work_hours_is_valid(owner, tech):
-    """No rows = the organisation's default business hours."""
+    """No rows = the organization's default business hours."""
     n = owner.execute(text("SELECT count(*) FROM user_work_hours WHERE user_id = :u"), {"u": tech})
     assert n.scalar_one() == 0
     assert (

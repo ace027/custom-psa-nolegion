@@ -3,7 +3,7 @@
 Revision ID: 0024
 Revises: 0023
 
-A user with no user_work_hours rows works the organisation's default business hours.
+A user with no user_work_hours rows works the organization's default business hours.
 Appointments carry their ticket's organization_id through a composite FK (ON UPDATE CASCADE),
 so moving a ticket to another client moves its appointments with it and RLS stays correct.
 """

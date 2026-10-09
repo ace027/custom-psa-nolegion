@@ -9,12 +9,13 @@ from collections.abc import Iterable, Mapping
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from app.models import Settings
 from app.sla import _at
 
 Interval = tuple[datetime, datetime]
 
 
-def default_weekly(settings) -> dict[int, tuple[int, int]]:
+def default_weekly(settings: Settings) -> dict[int, tuple[int, int]]:
     """Org business hours as a weekly map: weekday (0 = Monday) -> (start_minute, end_minute)."""
     return {
         d: (settings.business_start_minute, settings.business_end_minute)
@@ -35,8 +36,7 @@ def merge(intervals: Iterable[Interval]) -> list[Interval]:
     out: list[Interval] = []
     for s, e in sorted(i for i in intervals if i[0] < i[1]):
         if out and s <= out[-1][1]:
-            if e > out[-1][1]:
-                out[-1] = (out[-1][0], e)
+            out[-1] = (out[-1][0], max(e, out[-1][1]))
         else:
             out.append((s, e))
     return out

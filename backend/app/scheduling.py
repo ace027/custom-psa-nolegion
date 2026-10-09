@@ -10,7 +10,7 @@ Every write is audited in the same transaction."""
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 
 from app import audit, availability
 from app import permissions as P
@@ -22,6 +22,7 @@ from app.models import (
     Appointment,
     Holiday,
     Organization,
+    Settings,
     Ticket,
     User,
     UserTimeOff,
@@ -61,7 +62,7 @@ def _zone(name: str) -> ZoneInfo:
         raise InvalidSchedule(f"Unknown timezone: {name}") from exc
 
 
-def _tz(user: User, settings) -> ZoneInfo:
+def _tz(user: User, settings: Settings) -> ZoneInfo:
     return ZoneInfo(user.timezone or settings.timezone)
 
 
@@ -124,7 +125,9 @@ def _local_dates(start: datetime, end: datetime, tz: ZoneInfo) -> tuple[date, da
     )
 
 
-def _working(ctx: Ctx, user: User, start: datetime, end: datetime):
+def _working(
+    ctx: Ctx, user: User, start: datetime, end: datetime
+) -> tuple[ZoneInfo, list[availability.Interval]]:
     settings = repo.get_settings_row(ctx.db)
     tz = _tz(user, settings)
     lo, hi = _local_dates(start, end, tz)
@@ -337,7 +340,7 @@ def list_time_off(
 
 
 # ---- appointments -----------------------------------------------------------------------------
-def _scoped(ctx: Ctx):
+def _scoped(ctx: Ctx) -> Select[tuple[Appointment]]:
     return ctx.scope.apply(select(Appointment), Appointment.organization_id)
 
 
@@ -497,7 +500,9 @@ def list_appointments(
     )
 
 
-def _busy_time_off(ctx: Ctx, user_id: int, start, end, statuses) -> list[UserTimeOff]:
+def _busy_time_off(
+    ctx: Ctx, user_id: int, start: datetime, end: datetime, statuses: tuple[str, ...]
+) -> list[UserTimeOff]:
     return list(
         ctx.db.execute(
             select(UserTimeOff)
@@ -512,7 +517,7 @@ def _busy_time_off(ctx: Ctx, user_id: int, start, end, statuses) -> list[UserTim
     )
 
 
-def _busy_appointments(ctx: Ctx, tech_id: int, start, end) -> list[Appointment]:
+def _busy_appointments(ctx: Ctx, tech_id: int, start: datetime, end: datetime) -> list[Appointment]:
     return list(
         ctx.db.execute(
             _scoped(ctx)

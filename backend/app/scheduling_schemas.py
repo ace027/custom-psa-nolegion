@@ -1,7 +1,7 @@
 """API shapes for working hours, time off, appointments and availability."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -21,7 +21,7 @@ class WorkHoursDay(ORM):
     end_minute: int = Field(ge=1, le=1440, description="Minutes from local midnight; 1440 = 24:00")
 
     @model_validator(mode="after")
-    def _ordered(self):
+    def _ordered(self) -> Self:
         if self.start_minute >= self.end_minute:
             raise ValueError("start_minute must be before end_minute")
         return self
@@ -43,7 +43,7 @@ class SchedulePut(BaseModel):
 
     @field_validator("work_hours")
     @classmethod
-    def _days(cls, v: list[WorkHoursDay] | None):
+    def _days(cls, v: list[WorkHoursDay] | None) -> list[WorkHoursDay] | None:
         if v is None:
             return v
         if not v:

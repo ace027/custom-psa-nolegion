@@ -52,9 +52,7 @@ def test_every_day_of_2026_has_one_8h_window_starting_at_nine_local(zone):
     day = date(2026, 1, 1)
     while day < date(2027, 1, 1):
         start = datetime(day.year, day.month, day.day, tzinfo=tz).astimezone(UTC)
-        end = datetime(day.year, day.month, day.day, tzinfo=tz).astimezone(UTC) + timedelta(
-            hours=26
-        )
+        end = start + timedelta(hours=26)
         # restrict to the local day by taking the window that starts on `day`
         ws = [
             w
