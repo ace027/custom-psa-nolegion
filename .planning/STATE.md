@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 0 of 13 (not started)
-- **Status**: Initialized — ready for `/triad:plan 1`
-- **Last Activity**: Project initialization (2026-10-09)
+- **Phase**: 1 of 13 (planned)
+- **Status**: Phase 1 planned -- 3 plans across 2 waves
+- **Last Activity**: Phase 1 planning (2026-10-09)
 
 ## Progress
 ```
@@ -21,4 +21,4 @@
 - Appointments link to tickets only (no SLA or billing effect)
 
 ## Next Action
-Run `/triad:plan 1` to begin Phase 1: Block-hour / retainer agreements
+Run `/triad:build` to execute Phase 1: Block-hour / retainer agreements
