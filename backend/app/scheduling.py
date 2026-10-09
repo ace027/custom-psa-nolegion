@@ -7,7 +7,7 @@ reported as a `time_off_pending` conflict. Appointments are client-owned: querie
 Scope and RLS backs them up. Nothing here is deleted: time off and appointments are cancelled.
 Every write is audited in the same transaction."""
 
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select
@@ -34,6 +34,8 @@ MAX_TIME_OFF = timedelta(days=366)
 MAX_APPOINTMENT_RANGE = timedelta(days=62)
 MAX_AVAILABILITY_RANGE = timedelta(days=31)
 MAX_AVAILABILITY_USERS = 50
+EARLIEST = datetime(1970, 1, 1, tzinfo=UTC)
+LATEST = datetime(2200, 1, 1, tzinfo=UTC)
 
 
 class InvalidSchedule(ValueError):
@@ -94,8 +96,12 @@ def _weekly(ctx: Ctx, user: User) -> dict[int, tuple[int, int]]:
 
 def _aware(*values: datetime | None) -> None:
     for v in values:
-        if v is not None and v.tzinfo is None:
+        if v is None:
+            continue
+        if v.tzinfo is None:
             raise InvalidSchedule("Times must include a timezone offset (for example Z)")
+        if not EARLIEST <= v < LATEST:  # keeps the day padding in _local_dates from overflowing
+            raise InvalidSchedule(f"Times must fall between {EARLIEST.year} and {LATEST.year}")
 
 
 def _range(start: datetime, end: datetime, longest: timedelta, what: str) -> None:
@@ -226,7 +232,7 @@ def time_off_view(ctx: Ctx, t: UserTimeOff) -> dict:
         requested_by=t.requested_by,
         decided_by=t.decided_by,
         decided_at=t.decided_at,
-        decision_note=t.decision_note,
+        decision_note=t.decision_note if can_see_reason else None,
         created_at=t.created_at,
     )
 
@@ -335,8 +341,11 @@ def _scoped(ctx: Ctx):
     return ctx.scope.apply(select(Appointment), Appointment.organization_id)
 
 
-def get_appointment(ctx: Ctx, appointment_id: int) -> Appointment:
-    a = ctx.db.execute(_scoped(ctx).where(Appointment.id == appointment_id)).scalar_one_or_none()
+def get_appointment(ctx: Ctx, appointment_id: int, *, lock: bool = False) -> Appointment:
+    q = _scoped(ctx).where(Appointment.id == appointment_id)
+    if lock:  # writers serialize, so a move and a cancel cannot interleave
+        q = q.with_for_update()
+    a = ctx.db.execute(q).scalar_one_or_none()
     if a is None:
         raise NotFound("Appointment not found")
     return a
@@ -404,7 +413,7 @@ def create_appointment(ctx: Ctx, data: dict) -> Appointment:
 
 def update_appointment(ctx: Ctx, appointment_id: int, data: dict) -> Appointment:
     """Move, reassign or annotate a scheduled appointment. `data` holds only the sent fields."""
-    a = get_appointment(ctx, appointment_id)
+    a = get_appointment(ctx, appointment_id, lock=True)
     if a.status != "scheduled":
         raise Conflict("Only scheduled appointments can be changed")
     for f in ("tech_id", "starts_at", "ends_at", "client_visible"):
@@ -435,7 +444,7 @@ def update_appointment(ctx: Ctx, appointment_id: int, data: dict) -> Appointment
 
 
 def cancel_appointment(ctx: Ctx, appointment_id: int, reason: str | None) -> Appointment:
-    a = get_appointment(ctx, appointment_id)
+    a = get_appointment(ctx, appointment_id, lock=True)
     if a.status != "scheduled":
         raise Conflict("This appointment is already cancelled")
     before = audit.snapshot(a)

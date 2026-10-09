@@ -66,3 +66,7 @@ Not fixed:
 - **Composite FK cascading to NULL if a ticket's client is cleared.** This cannot happen: `ticket_services.update_ticket` only sets a ticket's organization while it has none, and refuses any change after that with a 409.
 - **`conflicts_for` with a missing tech.** `appointments.tech_id` is a foreign key to users, and users are deactivated rather than deleted.
 - **Kept as is:** pagination, N+1 lookups in the view, 404 vs 409 for an unknown user, and randomized DST tests. These are low impact and left for later.
+
+## Security Review
+
+**Verdict**: PASS — 0 unresolved CRITICAL/HIGH finding(s). Details: `SECURITY-REVIEW.md`.

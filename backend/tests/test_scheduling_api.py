@@ -149,6 +149,15 @@ def test_time_off_request_approve_reject(admin, tech, tech2, owner):
     assert reasons(tech) == ["Dentist", None]
     assert reasons(admin) == ["Dentist", None]
     assert reasons(tech2) == [None, None]
+    # so are the approver's notes, which often restate the reason
+    notes = {
+        c: [
+            x["decision_note"]
+            for x in c.get("/api/time-off", params={"user_id": tech.user["id"]}).json()
+        ]
+        for c in (tech, tech2)
+    }
+    assert notes[tech] == ["Enjoy", "Busy week"] and notes[tech2] == [None, None]
     assert [
         x["status"] for x in tech2.get("/api/time-off", params={"status": "approved"}).json()
     ] == ["approved"]
@@ -447,6 +456,9 @@ def test_availability_validation(admin, tech, login):
     assert admin.get("/api/availability", params=params).status_code == 422
     params = {"from": "2030-01-07T00:00:00", "to": "2030-01-08T00:00:00"}
     assert admin.get("/api/availability", params=params).status_code == 422
+    for edge in ("9999-12-30T00:00:00Z", "0001-01-02T00:00:00Z"):
+        params = {"from": edge, "to": edge.replace("T00", "T12")}
+        assert admin.get("/api/availability", params=params).status_code == 422
     params = {"from": at(0), "to": at(0, day=1), "user_ids": ",".join(map(str, range(1, 52)))}
     r = admin.get("/api/availability", params=params)
     assert r.status_code == 422 and "50" in r.json()["detail"]
