@@ -32,7 +32,7 @@ export default function Agreements() {
       <p className="text-sm text-slate-600">Recurring monthly charges. Per-user and per-device quantities are entered by hand here (and later can be filled by integrations). The monthly run bills the quantity <b>as it is on the day you start the run</b>. An agreement that starts or ends mid-month is billed in full plus a separate negative <b>proration</b> line for the calendar days not covered.</p>
       <ErrorMsg error={list.error} />
       <table className="w-full rounded-lg border border-slate-200 bg-surface text-left text-sm">
-        <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Client</th><th>Agreement</th><th>Type</th><th className="text-right">Unit</th><th>Qty</th><th className="text-right">Monthly</th><th>Dates</th>{canWrite && <th />}</tr></thead>
+        <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Client</th><th>Agreement</th><th>Type</th><th className="text-right">Unit</th><th>Qty</th><th className="text-right">Monthly</th><th>Dates</th>{canWrite && <th><span className="sr-only">Actions</span></th>}</tr></thead>
         <tbody>
           {list.data?.map((a) => <Row key={a.id} a={a} canWrite={canWrite} />)}
           {list.data?.length === 0 && <tr><td colSpan={8} className="p-3 text-slate-500">No agreements.</td></tr>}
@@ -96,16 +96,16 @@ function Row({ a, canWrite }: { a: Agreement; canWrite: boolean }) {
         <td className="text-right">{money(a.unit_price_cents)}</td>
         <td>{canWrite && a.type !== "flat" && a.type !== "block" ? (
           <span className="flex items-center gap-1"><input aria-label={`${a.name} quantity`} className={inputCls + " w-20"} type="number" min={0} value={qtyText} onChange={(e) => setQty(e.target.value)} />
-            {Number(qtyText) !== a.quantity && <><input aria-label="Reason" placeholder="why?" className={inputCls + " w-32"} value={reason} onChange={(e) => setReason(e.target.value)} /><Button onClick={() => save.mutate()}>Save</Button></>}</span>
+            {Number(qtyText) !== a.quantity && <><input aria-label={`${a.name} reason`} placeholder="why?" className={inputCls + " w-32"} value={reason} onChange={(e) => setReason(e.target.value)} /><Button aria-label={`Save ${a.name} quantity`} onClick={() => save.mutate()}>Save</Button></>}</span>
         ) : a.type === "block" && canWrite ? (
           <span className="flex items-center gap-1"><input aria-label={`${a.name} included hours`} className={inputCls + " w-20"} type="number" min={0} step={0.25} value={hoursText} onChange={(e) => setHours(e.target.value)} />h
-            {Math.round(Number(hoursText) * 60) !== a.block_minutes && <Button onClick={() => saveHours.mutate()}>Save</Button>}</span>
+            {Math.round(Number(hoursText) * 60) !== a.block_minutes && <Button aria-label={`Save ${a.name} included hours`} onClick={() => saveHours.mutate()}>Save</Button>}</span>
         ) : a.quantity}</td>
         <td className="text-right">{money(a.monthly_amount_cents)}</td>
         <td className="whitespace-nowrap">{a.start_date} → {a.end_date ?? "ongoing"}</td>
         <td className="whitespace-nowrap">
-          <button className="text-blue-700 hover:underline" onClick={() => setShowLog(!showLog)}>history</button>
-          {canWrite && (a.end_date ? <button className="ml-2 text-blue-700 hover:underline" onClick={() => end.mutate(null)}>resume</button> : <button className="ml-2 text-red-700 hover:underline" onClick={() => { const d = window.prompt("Last day of service (YYYY-MM-DD):", new Date().toISOString().slice(0, 10)); if (d) end.mutate(d); }}>end</button>)}
+          <button aria-expanded={showLog} aria-label={`History ${a.name}`} className="text-blue-700 hover:underline" onClick={() => setShowLog(!showLog)}>history</button>
+          {canWrite && (a.end_date ? <button aria-label={`Resume ${a.name}`} className="ml-2 text-blue-700 hover:underline" onClick={() => end.mutate(null)}>resume</button> : <button aria-label={`End ${a.name}`} className="ml-2 text-red-700 hover:underline" onClick={() => { const d = window.prompt("Last day of service (YYYY-MM-DD):", new Date().toISOString().slice(0, 10)); if (d) end.mutate(d); }}>end</button>)}
         </td>
       </tr>
       {suggest.data?.differs && (
