@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 1 of 13 (planned)
-- **Status**: Phase 1 planned -- 3 plans across 2 waves
-- **Last Activity**: Phase 1 planning (2026-10-09)
+- **Phase**: 1 of 13 (executing)
+- **Status**: Phase 1 executing — Plan 01-01 complete
+- **Last Activity**: Plan 01-01 execution (2026-10-09)
 
 ## Progress
 ```
-[....................] 0% — 0/40 plans complete
+[....................] 2% — 1/40 plans complete
 ```
 
 ## Recent Decisions
@@ -22,3 +22,7 @@
 
 ## Next Action
 Run `/triad:build` to execute Phase 1: Block-hour / retainer agreements
+
+## Phase 1 Results
+(build started 2026-10-09)
+- Plan 01-01 (Wave 1): Block agreement schema, validation and money rules — Complete
