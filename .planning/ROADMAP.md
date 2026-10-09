@@ -156,7 +156,7 @@
 | Phase | Plans | Completed | Status |
 |-------|-------|-----------|--------|
 | 1 | 3 | 3 | Complete |
-| 2 | 3 | 0 | Planned |
+| 2 | 3 | 2 | In Progress |
 | 3 | 3 | 0 | Pending |
 | 4 | 3 | 0 | Pending |
 | 5 | 3 | 0 | Pending |

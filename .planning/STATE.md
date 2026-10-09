@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 2 of 13 (planned)
-- **Status**: Phase 2 planned -- 3 plans across 2 waves
-- **Last Activity**: Phase 2 planning (2026-10-09)
+- **Phase**: 2 of 13 (executing)
+- **Status**: Phase 2 executing — Plan 02-02 complete
+- **Last Activity**: Plan 02-02 execution (2026-10-09)
 
 ## Progress
 ```
-[#...................] 7% — 3/40 plans complete
+[##..................] 12% — 5/40 plans complete
 ```
 
 ## Recent Decisions
@@ -30,3 +30,8 @@ Run `/triad:build` to execute Phase 2: Scheduling: availability & appointments
 ## GitHub
 - Phase 1 issue: #2 (closed)
 - Phase 2 issue: #3 https://github.com/ace027/custom-psa-nolegion/issues/3 (created via the GitHub connector; gh is not authenticated here)
+
+## Phase 2 Results
+(build started 2026-10-09)
+- Plan 02-01 (Wave 1): Scheduling schema, RLS and permissions — Complete
+- Plan 02-02 (Wave 1): Pure availability math — Complete
