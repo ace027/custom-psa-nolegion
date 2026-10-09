@@ -319,6 +319,18 @@ def test_patch_reassigns_and_recomputes(admin, tech, tech2, ticket, owner):
     )
     r = tech.patch(f"/api/appointments/{a['id']}", json={"tech_id": admin.user["id"] + 999})
     assert r.status_code == 409
+    for field in ("starts_at", "ends_at", "tech_id", "client_visible"):
+        r = tech.patch(f"/api/appointments/{a['id']}", json={field: None})
+        assert r.status_code == 422, (field, r.text)
+    # a bad time range leaves the tech untouched
+    r = tech.patch(
+        f"/api/appointments/{a['id']}", json={"tech_id": tech.user["id"], "ends_at": at(16)}
+    )
+    assert r.status_code == 422
+    got = tech.get(f"/api/appointments/{a['id']}").json()
+    assert got["tech_id"] == tech2.user["id"] and datetime.fromisoformat(
+        got["ends_at"]
+    ) == datetime.fromisoformat(at(18))
 
     r = tech.post(f"/api/appointments/{a['id']}/cancel", json={"reason": "Client rescheduled"})
     assert r.status_code == 200
@@ -435,6 +447,9 @@ def test_availability_validation(admin, tech, login):
     assert admin.get("/api/availability", params=params).status_code == 422
     params = {"from": "2030-01-07T00:00:00", "to": "2030-01-08T00:00:00"}
     assert admin.get("/api/availability", params=params).status_code == 422
+    params = {"from": at(0), "to": at(0, day=1), "user_ids": ",".join(map(str, range(1, 52)))}
+    r = admin.get("/api/availability", params=params)
+    assert r.status_code == 422 and "50" in r.json()["detail"]
     biller = login("billing")
     params = {"from": at(0), "to": at(0, day=1), "user_ids": str(biller.user["id"])}
     assert admin.get("/api/availability", params=params).status_code == 409

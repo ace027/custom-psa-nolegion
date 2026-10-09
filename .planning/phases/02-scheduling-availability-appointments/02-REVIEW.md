@@ -51,3 +51,18 @@
 
 ## Coverage
 No coverage data found (looked for coverage/coverage-summary.json, coverage-summary.json, coverage/lcov.info, lcov.info, coverage.xml, coverage/cobertura-coverage.xml, coverage/coverage.xml, coverage.txt, coverage/coverage.txt). Advisory only: run the test suite with coverage to check review.coverage_thresholds.
+
+## Post-review fixes
+
+Deferred findings checked by the orchestrator. The real ones are fixed, each with a test in backend/tests/test_scheduling_api.py:
+
+- **Time off approve/cancel race.** `_get_time_off` now loads the request with `SELECT ... FOR UPDATE`. A concurrent approve and cancel now run one after the other: the second sees the new status and returns a 409.
+- **PATCH with a null field.** An explicit `null` for `starts_at`, `ends_at`, `tech_id` or `client_visible` is now a 422. Before, it was silently ignored or failed later.
+- **PATCH mutated before validating.** `tech_id` was set before the time range was checked. All inputs are now validated before the row changes.
+- **Unbounded `user_ids` on `/api/availability`.** More than 50 distinct ids is now a 422 (`MAX_AVAILABILITY_USERS`).
+
+Not fixed:
+
+- **Composite FK cascading to NULL if a ticket's client is cleared.** This cannot happen: `ticket_services.update_ticket` only sets a ticket's organization while it has none, and refuses any change after that with a 409.
+- **`conflicts_for` with a missing tech.** `appointments.tech_id` is a foreign key to users, and users are deactivated rather than deleted.
+- **Kept as is:** pagination, N+1 lookups in the view, 404 vs 409 for an unknown user, and randomized DST tests. These are low impact and left for later.

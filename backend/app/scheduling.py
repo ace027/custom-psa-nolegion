@@ -33,6 +33,7 @@ MAX_APPOINTMENT = timedelta(hours=24)
 MAX_TIME_OFF = timedelta(days=366)
 MAX_APPOINTMENT_RANGE = timedelta(days=62)
 MAX_AVAILABILITY_RANGE = timedelta(days=31)
+MAX_AVAILABILITY_USERS = 50
 
 
 class InvalidSchedule(ValueError):
@@ -231,7 +232,10 @@ def time_off_view(ctx: Ctx, t: UserTimeOff) -> dict:
 
 
 def _get_time_off(ctx: Ctx, time_off_id: int) -> UserTimeOff:
-    t = ctx.db.get(UserTimeOff, time_off_id)
+    """Load and lock the request, so concurrent decisions and cancels serialize."""
+    t = ctx.db.execute(
+        select(UserTimeOff).where(UserTimeOff.id == time_off_id).with_for_update()
+    ).scalar_one_or_none()
     if t is None:
         raise NotFound("Time off not found")
     return t
@@ -403,16 +407,18 @@ def update_appointment(ctx: Ctx, appointment_id: int, data: dict) -> Appointment
     a = get_appointment(ctx, appointment_id)
     if a.status != "scheduled":
         raise Conflict("Only scheduled appointments can be changed")
-    before = audit.snapshot(a)
-    if data.get("tech_id") is not None:
-        a.tech_id = _bookable(ctx, data["tech_id"]).id
-    starts = data.get("starts_at") or a.starts_at
-    ends = data.get("ends_at") or a.ends_at
+    for f in ("tech_id", "starts_at", "ends_at", "client_visible"):
+        if f in data and data[f] is None:
+            raise InvalidSchedule(f"{f} cannot be cleared")
+    tech_id = _bookable(ctx, data["tech_id"]).id if "tech_id" in data else a.tech_id
+    starts = data.get("starts_at", a.starts_at)
+    ends = data.get("ends_at", a.ends_at)
     _range(starts, ends, MAX_APPOINTMENT, "An appointment")
-    a.starts_at, a.ends_at = starts, ends
+    before = audit.snapshot(a)
+    a.tech_id, a.starts_at, a.ends_at = tech_id, starts, ends
     if "notes" in data:
         a.notes = data["notes"]
-    if data.get("client_visible") is not None:
+    if "client_visible" in data:
         a.client_visible = data["client_visible"]
     ctx.db.flush()
     ctx.db.refresh(a)
@@ -541,6 +547,8 @@ def availability_for(
     """Working, approved time off, scheduled appointments and free windows per user.
     No user_ids = every active admin and tech."""
     _range(start, end, MAX_AVAILABILITY_RANGE, "Availability")
+    if user_ids and len(set(user_ids)) > MAX_AVAILABILITY_USERS:
+        raise InvalidSchedule(f"Ask for at most {MAX_AVAILABILITY_USERS} users at a time")
     if user_ids:
         users = [_bookable(ctx, uid) for uid in dict.fromkeys(user_ids)]
     else:
