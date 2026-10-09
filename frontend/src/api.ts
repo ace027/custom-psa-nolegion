@@ -1,0 +1,904 @@
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export async function api<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
+  const { json, headers, ...rest } = init;
+  const res = await fetch(`/api${path}`, {
+    credentials: "same-origin",
+    ...rest,
+    headers: {
+      // Required by the API on every state-changing request (CSRF defense in depth).
+      "X-Requested-With": "psa",
+      ...(json !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...headers,
+    },
+    body: json !== undefined ? JSON.stringify(json) : rest.body,
+  });
+  if (!res.ok) {
+    let message = res.statusText;
+    try {
+      const body = await res.json();
+      message = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+    } catch {
+      /* not JSON */
+    }
+    throw new ApiError(res.status, message);
+  }
+  return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
+}
+
+export type Role = "admin" | "tech" | "billing" | "read_only";
+export const ROLES: Role[] = ["admin", "tech", "billing", "read_only"];
+
+export interface Me {
+  id: number;
+  email: string;
+  display_name: string;
+  role: Role;
+  permissions: string[];
+  notify_assigned: boolean;
+  notify_sla: boolean;
+  notify_reply: boolean;
+}
+export interface User extends Omit<Me, "permissions" | "notify_assigned" | "notify_sla" | "notify_reply"> {
+  is_active: boolean;
+  last_login_at: string | null;
+}
+export interface Organization {
+  id: number;
+  name: string;
+  status: "active" | "inactive" | "prospect";
+  billing_address: string | null;
+  notes: string | null;
+  assets_published: boolean;
+  archived_at: string | null;
+}
+export interface Site {
+  id: number;
+  organization_id: number;
+  name: string;
+  address_line1: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  archived_at: string | null;
+}
+export interface Contact {
+  portal_access: boolean;
+  portal_org_tickets: boolean;
+  portal_assets: boolean;
+  id: number;
+  organization_id: number;
+  site_id: number | null;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  title: string | null;
+  is_primary: boolean;
+  is_billing_contact: boolean;
+  archived_at: string | null;
+}
+export interface Page<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+export interface AuditEntry {
+  id: number;
+  occurred_at: string;
+  actor_type: string;
+  actor_id: number | null;
+  action: string;
+  entity_type: string | null;
+  entity_id: number | null;
+  organization_id: number | null;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  detail: Record<string, unknown> | null;
+}
+
+// ---- Phase 2 ----
+export type TicketStatus = "new" | "open" | "waiting_on_customer" | "resolved" | "closed";
+export const STATUSES: TicketStatus[] = ["new", "open", "waiting_on_customer", "resolved", "closed"];
+export const STATUS_LABEL: Record<TicketStatus, string> = {
+  new: "New",
+  open: "Open",
+  waiting_on_customer: "Waiting on customer",
+  resolved: "Resolved",
+  closed: "Closed",
+};
+export interface TicketStatusRow extends Lookup {
+  behavior: TicketStatus;
+  position: number;
+}
+export type FieldType = "text" | "number" | "date" | "dropdown" | "checkbox";
+export interface CustomFieldDef extends Lookup {
+  ticket_type_id: number;
+  field_type: FieldType;
+  options: string[] | null;
+  required: boolean;
+  client_visible: boolean;
+  position: number;
+}
+export type LinkRelation = "related" | "duplicate_of" | "has_duplicate" | "parent" | "child";
+export interface TicketLink {
+  id: number;
+  relation: LinkRelation;
+  ticket_id: number;
+  number: number;
+  subject: string;
+  status: TicketStatus;
+  status_name: string;
+}
+export interface Csat {
+  sent_to: string;
+  requested_at: string;
+  rating: number | null;
+  comment: string | null;
+  responded_at: string | null;
+}
+export interface CsatSummary {
+  days: number;
+  requested: number;
+  responses: number;
+  average: number | null;
+  distribution: Record<string, number>;
+}
+export type SlaState = "none" | "ok" | "at_risk" | "breached" | "paused" | "done";
+
+export interface Ticket {
+  id: number;
+  number: number;
+  organization_id: number | null;
+  organization_name: string | null;
+  contact_id: number | null;
+  contact_name: string | null;
+  site_id: number | null;
+  queue_id: number;
+  queue_name: string;
+  category_id: number | null;
+  category_name: string | null;
+  priority_id: number;
+  priority_name: string;
+  priority_rank: number;
+  status: TicketStatus;
+  status_id?: number;
+  status_name?: string;
+  type_id?: number | null;
+  type_name?: string | null;
+  custom_values?: Record<string, unknown>;
+  assignee_id: number | null;
+  assignee_name: string | null;
+  subject: string;
+  description: string | null;
+  source: string;
+  requester_email: string | null;
+  needs_triage: boolean;
+  sla_state: SlaState;
+  sla_first_response_due: string | null;
+  sla_resolution_due: string | null;
+  first_responded_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface Note {
+  id: number;
+  author_name: string | null;
+  author_email: string | null;
+  visibility: "internal" | "customer";
+  source: string;
+  body: string;
+  created_at: string;
+  email_status: string | null;
+}
+export interface TimeEntry {
+  id: number;
+  user_id: number;
+  work_type_id: number;
+  work_date: string;
+  minutes_actual: number;
+  minutes_billable: number;
+  billable: boolean;
+  note: string | null;
+  voided_at: string | null;
+}
+export interface Timer {
+  ticket_id: number | null;
+  ticket_number: number | null;
+  ticket_subject: string | null;
+  work_type_id: number | null;
+  category_id: number | null;
+  category_name: string | null;
+  billable: boolean;
+  note: string | null;
+  started_at: string;
+  elapsed_seconds: number;
+}
+export interface TimesheetEntry {
+  kind: "ticket" | "internal";
+  id: number;
+  work_date: string;
+  label: string;
+  detail: string | null;
+  ticket_id: number | null;
+  minutes_actual: number;
+  minutes_billable: number;
+  billable: boolean;
+  note: string | null;
+  invoiced: boolean;
+}
+export interface Timesheet {
+  status: "open" | "submitted" | "approved" | "returned";
+  return_reason: string | null;
+  user_id: number;
+  user_name: string;
+  week_start: string;
+  week_end: string;
+  total_minutes: number;
+  billable_minutes: number;
+  internal_minutes: number;
+  days: { date: string; minutes: number; billable_minutes: number }[];
+  entries: TimesheetEntry[];
+}
+export interface Receipt {
+  id: number;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+}
+export interface Expense {
+  id: number;
+  user_id: number;
+  user_name: string;
+  expense_date: string;
+  kind: "expense" | "mileage";
+  category_id: number | null;
+  category_name: string | null;
+  description: string;
+  miles: string | null;
+  mileage_rate_cents: number | null;
+  amount_cents: number;
+  reimbursable: boolean;
+  billable: boolean;
+  taxable: boolean;
+  markup_bp: number;
+  client_price_cents: number;
+  organization_id: number | null;
+  organization_name: string | null;
+  ticket_id: number | null;
+  invoiced: boolean;
+  voided_at: string | null;
+  receipts: Receipt[];
+}
+export interface TimesheetQueueRow {
+  id: number;
+  user_id: number;
+  user_name: string;
+  week_start: string;
+  status: "submitted" | "approved" | "returned";
+  submitted_at: string | null;
+  approved_at: string | null;
+  return_reason: string | null;
+  total_minutes: number;
+}
+export interface Attachment {
+  id: number;
+  filename: string;
+  size_bytes: number;
+}
+export interface Lookup {
+  id: number;
+  name: string;
+  archived_at: string | null;
+}
+export interface Queue extends Lookup {
+  is_default: boolean;
+}
+export interface Priority extends Lookup {
+  rank: number;
+  first_response_minutes: number | null;
+  resolution_minutes: number | null;
+  is_default: boolean;
+}
+export interface CannedResponse extends Lookup {
+  body: string;
+}
+export interface BulkResult {
+  updated: number;
+  failed: { id: number; error: string }[];
+}
+export interface SearchHit {
+  kind: "ticket" | "organization" | "contact" | "asset";
+  id: number;
+  title: string;
+  subtitle: string | null;
+  organization_id: number | null;
+}
+export interface Holiday {
+  id: number;
+  on_date: string;
+  name: string;
+  open_minute: number | null;
+  close_minute: number | null;
+}
+export interface AppSettings {
+  auto_ack_enabled: boolean;
+  auto_ack_subject: string;
+  auto_ack_body: string;
+  escalation_email: string | null;
+  escalation_bump_priority: boolean;
+  csat_enabled: boolean;
+  mileage_rate_cents: number;
+  company_name: string | null;
+  company_address: string | null;
+  invoice_footer: string | null;
+  timezone: string;
+  business_days: number[];
+  business_start_minute: number;
+  business_end_minute: number;
+  billing_increment_minutes: number;
+  sla_at_risk_percent: number;
+  statement_subject: string;
+  statement_body: string;
+  notify_staff: boolean;
+  portal_enabled: boolean;
+  invoice_email_subject: string;
+  invoice_email_body: string;
+  auto_prepare_invoice_emails: boolean;
+  auto_prepare_reminders: boolean;
+  auto_prepare_statements: boolean;
+  reminder_min_gap_days: number;
+  late_fee_percent_bp: number;
+  late_fee_flat_cents: number;
+  late_fee_grace_days: number;
+  late_fee_max_per_invoice: number;
+}
+export interface Dashboard {
+  my_open: Ticket[];
+  unassigned: Ticket[];
+  sla_at_risk: Ticket[];
+  counts: Record<string, number>;
+}
+export interface MailStatus {
+  configured: boolean;
+  mailbox: string | null;
+  worker_seen_at: string | null;
+  last_poll_at: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+  last_error_at: string | null;
+  messages_ingested: number;
+  outbound_pending: number;
+  outbound_failed: number;
+  tickets_needing_triage: number;
+}
+
+// ---- Phase 3: contracts and invoicing (money = integer cents) ----
+export type InvoiceStatus = "draft" | "final" | "void";
+export type RunStatus = "draft" | "reviewed" | "finalized" | "cancelled";
+export interface Invoice {
+  id: number;
+  number: string | null;
+  organization_id: number;
+  organization_name: string;
+  status: InvoiceStatus;
+  billing_run_id: number | null;
+  period_start: string | null;
+  period_end: string | null;
+  invoice_date: string | null;
+  due_date: string | null;
+  terms_days: number | null;
+  subtotal_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  memo: string | null;
+  warnings: string[];
+  void_reason: string | null;
+  created_at: string;
+  paid_cents: number | null;
+  written_off_cents: number | null;
+  credited_cents: number | null;
+  balance_cents: number | null;
+  payment_status: "unpaid" | "partial" | "paid" | "written_off" | null;
+  is_overdue: boolean;
+  days_past_due: number;
+}
+export interface InvoiceLine {
+  id: number;
+  kind: "time" | "product" | "agreement" | "manual" | "proration";
+  description: string;
+  quantity: string;
+  unit_price_cents: number;
+  amount_cents: number;
+  tax_rate_bp: number;
+  tax_cents: number;
+}
+export interface InvoiceDetail extends Invoice {
+  lines: InvoiceLine[];
+  payments: {
+    application_id: number;
+    payment_id: number;
+    amount_cents: number;
+    received_on: string;
+    method: string;
+    reference: string | null;
+    voided_at: string | null;
+    void_reason: string | null;
+  }[];
+  write_offs: { id: number; amount_cents: number; reason: string; created_at: string; voided_at: string | null; void_reason: string | null }[];
+}
+export interface Run {
+  id: number;
+  period_start: string;
+  period_end: string;
+  status: RunStatus;
+  created_at: string;
+  reviewed_at: string | null;
+  finalized_at: string | null;
+  invoice_count: number;
+  total_cents: number;
+  warnings: string[];
+}
+export interface RunDetail extends Run {
+  invoices: Invoice[];
+}
+export interface Agreement {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  name: string;
+  type: "per_user" | "per_device" | "flat";
+  unit_price_cents: number;
+  quantity: number;
+  taxable: boolean;
+  start_date: string;
+  end_date: string | null;
+  notes: string | null;
+  monthly_amount_cents: number;
+}
+export interface Product {
+  id: number;
+  sku: string | null;
+  name: string;
+  description: string | null;
+  unit_price_cents: number;
+  cost_cents: number | null;
+  taxable: boolean;
+  archived_at: string | null;
+}
+export interface Charge {
+  id: number;
+  organization_id: number;
+  ticket_id: number | null;
+  description: string;
+  quantity: string;
+  unit_price_cents: number;
+  taxable: boolean;
+  charged_on: string;
+  invoice_line_id: number | null;
+  voided_at: string | null;
+}
+export interface WorkTypeBilling {
+  id: number;
+  name: string;
+  rate_cents: number | null;
+  taxable: boolean;
+  archived_at: string | null;
+}
+export interface OrgBilling {
+  payment_terms_days: number;
+  tax_rate_bp: number;
+  do_not_remind: boolean;
+  late_fees_enabled: boolean;
+  rates: { work_type_id: number; rate_cents: number }[];
+}
+
+// ---- payments ----
+export type PaymentMethod = "check" | "ach" | "card" | "cash" | "other";
+export const METHODS: PaymentMethod[] = ["check", "ach", "card", "cash", "other"];
+export interface Payment {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  amount_cents: number;
+  received_on: string;
+  method: PaymentMethod;
+  reference: string | null;
+  notes: string | null;
+  status: "active" | "void";
+  applied_cents: number;
+  refunded_cents: number;
+  unapplied_cents: number;
+  void_reason: string | null;
+  created_at: string;
+}
+export interface Refund {
+  id: number;
+  payment_id: number;
+  amount_cents: number;
+  refunded_on: string;
+  method: PaymentMethod;
+  reference: string | null;
+  reason: string;
+  voided_at: string | null;
+  void_reason: string | null;
+}
+export interface PaymentDetail extends Payment {
+  applications: { id: number; invoice_id: number; amount_cents: number; voided_at: string | null; void_reason: string | null }[];
+  refunds: Refund[];
+}
+export interface CreditMemo {
+  id: number;
+  number: string;
+  organization_id: number;
+  organization_name: string;
+  memo_date: string;
+  reason: string;
+  invoice_id: number | null;
+  subtotal_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  status: "active" | "void";
+  applied_cents: number;
+  unapplied_cents: number;
+  void_reason: string | null;
+  created_at: string;
+}
+export interface CreditMemoDetail extends CreditMemo {
+  lines: { position: number; description: string; quantity: string; unit_price_cents: number; amount_cents: number; tax_cents: number }[];
+  applications: { id: number; invoice_id: number; amount_cents: number; voided_at: string | null; void_reason: string | null }[];
+}
+export interface AgingRow {
+  organization_id: number;
+  organization_name: string;
+  current_cents: number;
+  d1_30_cents: number;
+  d31_60_cents: number;
+  d61_90_cents: number;
+  d90_plus_cents: number;
+  total_open_cents: number;
+  credit_cents: number;
+  open_invoice_count: number;
+  overdue_invoice_count: number;
+  oldest_days_past_due: number;
+}
+export interface Receivables {
+  as_of: string;
+  rows: AgingRow[];
+  totals: AgingRow;
+}
+
+// ---- statements and reminders ----
+export interface ReminderStage {
+  id: number;
+  position: number;
+  name: string;
+  days_past_due: number;
+  subject: string;
+  body: string;
+  enabled: boolean;
+}
+export interface NoticeInvoice {
+  invoice_id: number;
+  number: string | null;
+  due_date: string | null;
+  balance_cents: number;
+  days_past_due: number;
+  new_stage: boolean;
+}
+export type NoticeStatus = "pending" | "sent" | "dismissed" | "expired";
+export interface Notice {
+  id: number;
+  kind: "reminder" | "statement" | "invoice";
+  organization_id: number;
+  organization_name: string;
+  status: NoticeStatus;
+  manual: boolean;
+  stage_name: string | null;
+  subject: string;
+  body_text: string;
+  to_emails: string[];
+  blocked_reason: string | null;
+  statement_id: number | null;
+  stale: boolean;
+  total_due_cents: number;
+  created_at: string;
+  decided_at: string | null;
+  dismiss_reason: string | null;
+  email_status: string | null;
+  invoices: NoticeInvoice[];
+}
+export interface SendResult {
+  id: number;
+  ok: boolean;
+  error: string | null;
+}
+export interface Statement {
+  id: number;
+  organization_id: number;
+  as_of: string;
+  created_at: string;
+  total_due_cents: number;
+  overdue_cents: number;
+  credit_cents: number;
+  invoice_count: number;
+}
+
+// ---- reports ----
+export interface RevenueRow {
+  invoices: number;
+  time_cents: number;
+  product_cents: number;
+  agreement_cents: number;
+  manual_cents: number;
+  subtotal_cents: number;
+  tax_cents: number;
+  total_cents: number;
+}
+export interface RevenueReport {
+  start: string;
+  end: string;
+  clients: (RevenueRow & { organization_id: number; organization_name: string })[];
+  months: (RevenueRow & { month: string })[];
+  totals: RevenueRow;
+}
+export interface UnbilledReport {
+  through: string;
+  rows: {
+    organization_id: number;
+    organization_name: string;
+    time_entries: number;
+    billable_minutes: number;
+    time_value_cents: number;
+    unpriced_minutes: number;
+    oldest_work_date: string | null;
+    charges: number;
+    charges_cents: number;
+    expenses: number;
+    expenses_cents: number;
+    total_cents: number;
+  }[];
+  totals: { time_entries: number; billable_minutes: number; time_value_cents: number; unpriced_minutes: number; charges: number; charges_cents: number; expenses: number; expenses_cents: number; total_cents: number };
+}
+export interface RecurringReport {
+  months: { month: string; contracted_cents: number; agreements: number; clients: number; invoiced_cents: number }[];
+}
+
+// ---- client portal ----
+export interface PortalMe {
+  contact_name: string;
+  email: string | null;
+  organization_name: string;
+  company_name: string | null;
+  can_see_billing: boolean;
+  can_see_all_tickets: boolean;
+  can_see_devices: boolean;
+}
+export interface PortalInvoice {
+  id: number;
+  number: string;
+  invoice_date: string;
+  due_date: string;
+  total_cents: number;
+  paid_cents: number;
+  balance_cents: number;
+  status: "paid" | "partial" | "unpaid" | "written_off";
+  is_overdue: boolean;
+  days_past_due: number;
+}
+export interface PortalInvoiceDetail extends PortalInvoice {
+  subtotal_cents: number;
+  tax_cents: number;
+  lines: { description: string; quantity: string; unit_price_cents: number; amount_cents: number; tax_cents: number }[];
+}
+export interface PortalTicket {
+  id: number;
+  number: number;
+  subject: string;
+  status: string;
+  status_name?: string;
+  created_at: string;
+  updated_at: string;
+  mine: boolean;
+}
+export interface PortalTicketDetail extends PortalTicket {
+  description: string | null;
+  custom_fields?: { name: string; value: unknown }[];
+  notes: { id: number; author: string; from_you: boolean; from_support: boolean; body: string; created_at: string }[];
+}
+
+// ---- quoting ----
+export interface QuoteSettings {
+  per_user_rate_cents: number;
+  workstation_rate_cents: number;
+  server_rate_cents: number;
+  network_rate_cents: number;
+  other_rate_cents: number;
+  hardware_uplift_bp: number;
+  server_uplift_bp: number;
+  legacy_app_uplift_bp: number;
+  term_months: number;
+  valid_days: number;
+  agreement_taxable: boolean;
+  intro_text: string | null;
+}
+export type DeviceClass = "workstation" | "server" | "network" | "other";
+export type WarrantyStatus = "in_warranty" | "out_of_warranty" | "unknown";
+export interface SurveyDevice {
+  id?: number;
+  device_class: DeviceClass;
+  label: string | null;
+  make_model: string | null;
+  serial: string | null;
+  warranty_end: string | null;
+  warranty_status: WarrantyStatus;
+  priced: boolean;
+  notes: string | null;
+}
+export interface SurveyApp {
+  id?: number;
+  name: string;
+  vendor: string | null;
+  legacy: boolean;
+  notes: string | null;
+}
+export interface Survey {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  status: "scheduled" | "in_progress" | "completed";
+  scheduled_for: string | null;
+  tech_id: number | null;
+  user_count: number;
+  site_count: number;
+  notes: string | null;
+  completed_at: string | null;
+  devices: SurveyDevice[];
+  apps: SurveyApp[];
+}
+export interface QuoteFactor {
+  key: string;
+  label: string;
+  applies: boolean;
+  bp: number;
+  reason: string;
+}
+export type QuoteStatus = "draft" | "needs_approval" | "approved" | "sent" | "accepted" | "declined" | "cancelled";
+export interface Quote {
+  id: number;
+  number: string;
+  organization_id: number;
+  organization_name: string;
+  survey_id: number;
+  kind: "new" | "reprice";
+  agreement_id: number | null;
+  version: number;
+  status: QuoteStatus;
+  is_expired: boolean;
+  snapshot: {
+    base_lines: { description: string; quantity: number; unit_cents: number; amount_cents: number }[];
+    factors: QuoteFactor[];
+    devices: { priced: number; out: number; unknown: number };
+    users: number;
+  };
+  base_cents: number;
+  uplift_bp: number;
+  computed_price_cents: number;
+  final_price_cents: number;
+  adjustment_reason: string | null;
+  adjusted_by: number | null;
+  term_months: number;
+  valid_until: string | null;
+  effective_date: string | null;
+  notes: string | null;
+  decision_note: string | null;
+  sent_to: string | null;
+  resulting_agreement_id: number | null;
+}
+
+
+// ---- integrations, assets, warranty ----
+export type WarrantyState = "expired" | "expiring_30" | "expiring_60" | "expiring_90" | "in_warranty" | "unknown";
+export const WARRANTY_LABEL: Record<WarrantyState, string> = {
+  expired: "Expired",
+  expiring_30: "Expires within 30 days",
+  expiring_60: "Expires within 60 days",
+  expiring_90: "Expires within 90 days",
+  in_warranty: "In warranty",
+  unknown: "Unknown",
+};
+export interface Integration {
+  id: number;
+  kind: "ninjaone" | "hudu";
+  name: string;
+  base_url: string;
+  config: Record<string, unknown>;
+  credentials_set: boolean;
+  credentials_set_at: string | null;
+  enabled: boolean;
+  status: "unknown" | "ok" | "error";
+  last_error: string | null;
+  last_sync_at: string | null;
+  sync_requested: boolean;
+}
+export interface SyncRun {
+  id: number;
+  status: "running" | "ok" | "partial" | "failed";
+  started_at: string;
+  finished_at: string | null;
+  added: number;
+  changed: number;
+  retired: number;
+  clients_synced: number;
+  clients_failed: number;
+  error: string | null;
+}
+export interface ClientMap {
+  id: number;
+  external_id: string;
+  external_name: string;
+  organization_id: number | null;
+  ignored: boolean;
+  needs_mapping: boolean;
+  suggested_organization_id: number | null;
+}
+export interface Asset {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  kind: "computer" | "server" | "network" | "other";
+  name: string;
+  manufacturer: string | null;
+  model: string | null;
+  serial: string | null;
+  warranty_start: string | null;
+  warranty_end: string | null;
+  warranty_status: WarrantyState;
+  warranty_overridden: boolean;
+  conflict: boolean;
+  retired_at: string | null;
+}
+export interface WarrantyReport {
+  as_of: string;
+  total: number;
+  counts: Record<WarrantyState, number>;
+  rows: Asset[];
+}
+export interface PortalAssets {
+  as_of: string;
+  total: number;
+  counts: Record<WarrantyState, number>;
+  devices: { name: string; kind: string; manufacturer: string | null; model: string | null; warranty_end: string | null; warranty_status: WarrantyState }[];
+}
+
+// ---- late fees ----
+export interface LateFeeRow {
+  invoice_id: number;
+  invoice_number: string;
+  organization_id: number;
+  organization_name: string;
+  due_date: string;
+  days_overdue: number;
+  balance_cents: number;
+  base_cents: number;
+  percent_bp: number;
+  percent_fee_cents: number;
+  flat_fee_cents: number;
+  fee_cents: number;
+  fees_so_far: number;
+}
+export interface LateFeePreview {
+  configured: boolean;
+  percent_bp: number;
+  flat_cents: number;
+  grace_days: number;
+  max_per_invoice: number;
+  rows: LateFeeRow[];
+}

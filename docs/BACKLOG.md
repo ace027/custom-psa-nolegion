@@ -1,0 +1,56 @@
+# Backlog
+
+Ideas that are not in scope for the current phase. Nothing here gets built without approval.
+
+- Parity roadmap to replace Autotask/Halo/ConnectWise (proposal, not approved): docs/PARITY_ROADMAP.md
+- vCISO platform: Phase 1 (NinjaOne/Hudu warranty inventory) is built; Phases 2 to 5 are in docs/VCISO_PLAN.md
+- Warranty follow-ups: warranty-expiry alert emails, Hudu *Expiration* entries as a warranty source, per-device notes, bulk override, a refresh-planning summary for the portal, NinjaOne custom-field mapping, retire-after-days setting in the UI
+- Quoting follow-ups: survey photos, offline mode, e-signature / portal acceptance, visit as a ticket/calendar entry, custom uplift factors, import survey from NinjaOne/Hudu, quote pipeline reporting, survey fields beyond notes (email platform, printers, phone system, compliance needs)
+- Microsoft Entra SSO sign-in for client portal users (staff already use Entra; portal currently uses emailed one-time links)
+- Portal follow-ups: file attachments, online card/ACH payment, contact self-service, SSO for portal users, alert staff on new portal tickets
+- Project/task boards
+- Reporting
+- Integrations: NinjaOne, Hudu, Microsoft 365 sync, n8n webhooks
+- Security features: compliance evidence tracking, vCISO reporting
+- Attachment malware scanning
+- Entra group to role mapping
+- Proration of mid-period quantity changes
+- Automatic "we got your ticket" acknowledgement email (needs careful loop protection)
+- Holiday calendar for SLA business hours
+- Multiple business-hours calendars (per client or per priority)
+- Editable ticket status labels / custom workflows
+- Ticket merge, split, and linking related tickets
+- Ticket templates and canned responses
+- Rendering (sanitized) HTML email bodies and inline images
+- Poison-message quarantine for unreadable inbound mail (currently retried every cycle)
+- Multiple inbound mailboxes mapped to queues
+- Time entry start/stop timers
+- Delta-query mail sync (current design: poll unread in Inbox)
+- Notifications: Teams webhook, alert for new/unassigned tickets, escalation to a manager on breach, daily digest
+- Send reminders/statements from a separate billing mailbox (they currently use the support mailbox)
+- Auto-send after a set delay with a per-client opt-in (currently every notice needs approval)
+- Statement and reminder history per client on the client page
+- Bank/CSV import to speed up recording payments; batch deposits
+- Refunds as a first-class record (currently: void the payment)
+- "Paid" stamp / running balance on a re-issued copy of the invoice PDF
+- Payment terms exceptions (per-invoice due date override)
+- Credit memos as a first-class document (currently: negative manual lines)
+- Proration of mid-month agreement start/end and quantity changes
+- Sales tax by jurisdiction / multiple tax rates per client
+- Late fees
+- Configurable invoice number format; invoice PDF branding/logo
+- Per-user / per-device quantities populated from Microsoft 365 / NinjaOne (the Phase 3 quantity field is the hook)
+- Report follow-ups: margin on products, revenue by cash received, replaying past agreement quantity changes, invoice line-item CSV, charts
+- Minimum billable time per entry; retainer / block-hours agreements
+- Outbound email threading by real headers (`In-Reply-To`/`References`): Graph `sendMail` only allows `x-` headers, so this needs the createReply flow and a live tenant to test. Today replies thread by the `[#number]` subject tag.
+- One-off "recalculate open tickets" button after adding holidays (existing due dates are intentionally left alone).
+- Filter/sort the ticket list by custom field values (today only by ticket type)
+- Add custom fields to the new-ticket form and to the portal's new-ticket form (today set on the ticket page)
+- CSAT: editable survey email wording; notify staff on a low rating; per-technician and per-client satisfaction reports; resend a survey on request
+- Show linked tickets (and parent/child roll-ups) on the ticket list; merge-style combined view of a duplicate's notes
+- Expenses: mark expenses "reimbursed" (paid) so a payroll export cannot repay one; removing a wrongly uploaded receipt (receipts are append-only today); per-category GL codes; receipt OCR; a billing user's view of billable expenses
+- Timesheets: an admin's page to view and fix another person's week; reminders for unsubmitted weeks; overtime / pay-period rules (the CSV gives actual hours per day only)
+
+- Credit memo PDF and a client-portal view of credit memos (slice B left these out).
+
+- Late fees: no automatic apply, no fee on a schedule other than the per-invoice cap, no per-client override of the rule, no late-fee tax option (fees are non-taxable). Add only if asked.
