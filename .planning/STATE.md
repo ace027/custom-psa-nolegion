@@ -2,12 +2,12 @@
 
 ## Current Position
 - **Phase**: 4 of 13 (executing)
-- **Status**: Phase 4 executing — Plan 04-01 complete
-- **Last Activity**: Plan 04-01 execution (2026-10-10)
+- **Status**: Phase 4 executing — Plan 04-02 complete
+- **Last Activity**: Plan 04-02 execution (2026-10-10)
 
 ## Progress
 ```
-[####................] 24% — 10/41 plans complete
+[#####...............] 26% — 11/41 plans complete
 ```
 
 ## Recent Decisions
@@ -53,3 +53,4 @@ Run `/triad:build` to execute Phase 4: Outlook push + free/busy
 ## Phase 4 Results
 (build started 2026-10-10)
 - Plan 04-01 (Wave 1): Graph calendar client, fake Graph calendar endpoints and the tenant spike script — Complete
+- Plan 04-02 (Wave 2): Sync schema, outbox enqueue and the worker push job — Complete
