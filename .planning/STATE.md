@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Phase**: 3 of 13 (partial — 1 plan(s) failed)
-- **Status**: Phase 3 partial — 03-03 failed, stopped after wave 3, review needed
+- **Phase**: 3 of 13 (executing)
+- **Status**: Phase 3 executing — Plan 03-03 failed
 - **Last Activity**: Plan 03-03 execution (2026-10-10)
 
 ## Progress
@@ -43,3 +43,4 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 - Plan 03-02 (Wave 2): Dispatch board page — Complete with Warnings
 - Plan 03-03 (Wave 3): Appointments on the ticket, timer start, and the Playwright booking flow — FAILED: Verification failed: service postgresql start >/dev/null 2>&1; bash scripts/e2e.sh e2e/dispatch.spec.ts; service postgresql start >/dev/null 2>&1; bash scripts/e2e.sh e2e/dispatch.spec.ts --repeat-eac
 - Plan 03-03 (Wave 3): Appointments on the ticket, timer start, and the Playwright booking flow — PARTIAL: All three tasks are on disk and every verification command passes. One caveat: `frontend/src/pages/Dispatch.tsx` is modified, and it is on the forbidden list. The edit was already in the tree when I s
+- Plan 03-03 (Wave 3): Appointments on the ticket, timer start, and the Playwright booking flow — PARTIAL: All three tasks are in place and the verification commands pass. One problem: `frontend/src/pages/Dispatch.tsx` has an edit in the working tree, and that file is on the must-not-touch list.
