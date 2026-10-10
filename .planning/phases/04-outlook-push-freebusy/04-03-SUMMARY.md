@@ -52,7 +52,7 @@
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | warning | out-of-scope file | Accept the `GRANT SELECT, INSERT, UPDATE, DELETE ON busy_blocks` edit in `backend/alembic/versions/0025_outlook_sync.py`, or move the DELETE grant into a new migration. | pending | INVALID: type "out-of-scope file" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
+| 1 | warning | out-of-scope file | Accept the `GRANT SELECT, INSERT, UPDATE, DELETE ON busy_blocks` edit in `backend/alembic/versions/0025_outlook_sync.py`, or move the DELETE grant into a new migration. | approved | Owner-approved edit: 0025 grants DELETE on busy_blocks in place (0025 not yet deployed anywhere). |
 
 - #1 context: `refresh_busy` deletes `busy_blocks` rows, so the DELETE grant is required. The migration is in the forbidden list. If 0025 was already applied anywhere, editing it will not change those databases.
 
