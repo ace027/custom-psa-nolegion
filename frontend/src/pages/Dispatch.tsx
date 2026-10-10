@@ -3,7 +3,7 @@ import { format, getDay, parse, startOfWeek } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, dateFnsLocalizer, type EventProps, type Formats, type SlotInfo, type View } from "react-big-calendar";
-import withDragAndDrop, { type EventInteractionArgs } from "react-big-calendar/lib/addons/dragAndDrop";
+import dndModule, { type EventInteractionArgs } from "react-big-calendar/lib/addons/dragAndDrop";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import { useSearchParams } from "react-router-dom";
@@ -58,6 +58,9 @@ interface ShadeItem extends BackgroundBlock {
 type CalItem = BoardEvent | ShadeItem;
 const isShade = (e: CalItem): e is ShadeItem => "shade" in e;
 
+// The Vite dev server hands this CJS module over as its whole exports object; the build and vitest unwrap it.
+const withDragAndDrop =
+  (dndModule as unknown as { default?: typeof dndModule }).default ?? dndModule;
 const DnDCalendar = withDragAndDrop<CalItem, BoardResource>(Calendar);
 
 const SHADE_CLASS: Record<BackgroundBlock["kind"], string> = { off_hours: "shade-off", time_off: "shade-timeoff", time_off_pending: "shade-pending" };
