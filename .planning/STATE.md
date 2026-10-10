@@ -2,12 +2,12 @@
 
 ## Current Position
 - **Phase**: 4 of 13 (executing)
-- **Status**: Phase 4 executing — Plan 04-03 complete
-- **Last Activity**: Plan 04-03 execution (2026-10-10)
+- **Status**: Phase 4 executing — Plan 04-04 complete
+- **Last Activity**: Plan 04-04 execution (2026-10-10)
 
 ## Progress
 ```
-[#####...............] 29% — 12/41 plans complete
+[######..............] 31% — 13/41 plans complete
 ```
 
 ## Recent Decisions
@@ -57,3 +57,4 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 - Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — BLOCKED: Needs a new migration in backend/alembic/ (forbidden) to grant DELETE on busy_blocks to psa_app.
 - Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — PARTIAL: All three tasks are on disk and the plan's checks pass: 65 passed, 1 skipped, and ruff is clean. One caveat is the `GRANT ... DELETE` edit to forbidden `0025_outlook_sync.py`. It is described under is
 - Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — Complete with Warnings
+- Plan 04-04 (Wave 4): Board Outlook busy shading, sync badges, settings card and setup docs — Complete
