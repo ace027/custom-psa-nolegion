@@ -2,19 +2,20 @@
 
 import csv
 import io
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import text
 
 from app.db import new_session, set_org_scope
+from tests.conftest import biz_today
 from tests.test_timekeeping import audit_actions
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 32
 
 
 def monday(back=0):
-    d = date.today() - timedelta(days=date.today().weekday())
+    d = biz_today() - timedelta(days=biz_today().weekday())
     return d - timedelta(weeks=back)
 
 
@@ -59,7 +60,7 @@ def test_expense_basics_and_validation(admin, tech, travel, org_ctx):
     r = exp(tech, category_id=travel, reimbursable=True)
     assert r.status_code == 201, r.text
     e = r.json()
-    assert e["user_id"] == tech.user["id"] and e["expense_date"] == date.today().isoformat()
+    assert e["user_id"] == tech.user["id"] and e["expense_date"] == biz_today().isoformat()
     assert (
         e["amount_cents"] == 1000
         and e["client_price_cents"] == 0
@@ -410,7 +411,7 @@ def test_unapproved_expenses_are_still_billed_and_non_billable_never(
     tech.post(f"/api/expenses/{gone['id']}/void")
     inv = biller.post("/api/invoices", json={"organization_id": org_ctx["org"]}).json()
     assert [x["description"] for x in lines_of(biller, inv["id"])] == [
-        f"Travel: Billed ({date.today().isoformat()})"
+        f"Travel: Billed ({biz_today().isoformat()})"
     ]
 
 
@@ -420,7 +421,7 @@ def test_future_dated_expense_waits_for_its_date(tech, biller, travel, org_ctx, 
         category_id=travel,
         billable=True,
         organization_id=org_ctx["org"],
-        expense_date=(date.today() + timedelta(days=30)).isoformat(),
+        expense_date=(biz_today() + timedelta(days=30)).isoformat(),
     )
     inv = biller.post("/api/invoices", json={"organization_id": org_ctx["org"]}).json()
     assert lines_of(biller, inv["id"]) == []
@@ -445,7 +446,7 @@ def test_unbilled_report_counts_expenses_at_billed_price(tech, biller, travel, o
 
 def test_billing_run_includes_expenses(tech, biller, travel, org_ctx, company):
     exp(tech, category_id=travel, billable=True, amount_cents=5000, organization_id=org_ctx["org"])
-    period = date.today().strftime("%Y-%m")
+    period = biz_today().strftime("%Y-%m")
     run = biller.post("/api/billing-runs", json={"period": period})
     assert run.status_code == 201, run.text
     invs = biller.get("/api/invoices", params={"billing_run_id": run.json()["id"]}).json()

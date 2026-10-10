@@ -1,13 +1,15 @@
 """Parity phase 2A: timers, internal time and the weekly timesheet."""
 
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import text
 
+from tests.conftest import biz_today
+
 
 def _today():
-    return date.today()
+    return biz_today()
 
 
 def _monday(d=None):
