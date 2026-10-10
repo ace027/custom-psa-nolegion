@@ -63,8 +63,8 @@
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | blocker | schema | Add migration 0026 granting DELETE on busy_blocks to the app role (psa_app). | pending |  |
-| 2 | blocker | api | Resolve: $ service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_calendar_busy.py tests/test_calendar_sync_api.py tests/test_calendar_sync.py tests/test_scheduling_api.py tests | pending |  |
+| 1 | blocker | schema | Add migration 0026 granting DELETE on busy_blocks to the app role (psa_app). | approved | Owner approved granting DELETE on busy_blocks to psa_app by editing 0025 in place (not yet deployed) rather than adding 0026. |
+| 2 | blocker | api | Resolve: $ service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_calendar_busy.py tests/test_calendar_sync_api.py tests/test_calendar_sync.py tests/test_scheduling_api.py tests | approved | Same root cause as #1 (missing DELETE grant). After the 0025 edit the verification suite passes: 73 passed, 1 skipped. |
 
 - #1 context: The plan says to delete a user's busy_blocks and insert the new ones. Migration 0025 granted only SELECT, INSERT, UPDATE on busy_blocks, so every refresh that finds existing blocks fails with permission denied. The alternative is a workaround that reuses rows and parks leftover rows as dummy blocks, which I do not recommend. Once the grant exists, no code change is needed. A different replacement approach (such as a stale marker column) would also need a migration.
 - #2 context: Verification failed (service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_calendar_busy.py tests/test_calendar_sync_api.py tests/test_calendar_sync.py tests/test_scheduling_api.py tests/test_zz_api_contract.py; service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_calendar_busy.py); a BLOCKER is not auto-fixed.
