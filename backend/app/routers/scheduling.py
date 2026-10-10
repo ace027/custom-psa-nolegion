@@ -15,6 +15,7 @@ from app.scheduling_schemas import (
     AvailabilityOut,
     ScheduleOut,
     SchedulePut,
+    SyncStatusOut,
     TimeOffDecision,
     TimeOffIn,
     TimeOffOut,
@@ -150,7 +151,7 @@ def list_appointments(
         )
     except svc.InvalidSchedule as exc:
         raise _invalid(exc) from exc
-    return [svc.appointment_view(ctx, a, with_conflicts=with_conflicts) for a in rows]
+    return svc.appointment_views(ctx, rows, with_conflicts=with_conflicts)
 
 
 @router.post(
@@ -204,6 +205,26 @@ def cancel_appointment(
     appointment_id: int, body: AppointmentCancel, ctx: Ctx = require(P.SCHEDULE_WRITE)
 ):
     return svc.appointment_view(ctx, svc.cancel_appointment(ctx, appointment_id, body.reason))
+
+
+@router.post(
+    "/appointments/{appointment_id}/sync/retry",
+    response_model=AppointmentOut,
+    responses=ERR,
+    summary="Retry a failed Outlook push (409 when the sync is not failed)",
+)
+def retry_sync(appointment_id: int, ctx: Ctx = require(P.SCHEDULE_WRITE)):
+    return svc.appointment_view(ctx, svc.retry_sync(ctx, appointment_id))
+
+
+@router.get(
+    "/calendar-sync/status",
+    response_model=SyncStatusOut,
+    responses=ERR,
+    summary="Outlook sync health: pending and failed pushes, newest failures, busy-cache age",
+)
+def calendar_sync_status(ctx: Ctx = require(P.SCHEDULE_READ)):
+    return svc.sync_status(ctx)
 
 
 # ---- availability ----

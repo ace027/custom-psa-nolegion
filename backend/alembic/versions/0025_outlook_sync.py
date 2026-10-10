@@ -61,7 +61,7 @@ def upgrade() -> None:
         sa.CheckConstraint("ends_at > starts_at", name="ck_busy_blocks_range"),
     )
     op.create_index("ix_busy_blocks_user_start", "busy_blocks", ["user_id", "starts_at"])
-    op.execute(f"GRANT SELECT, INSERT, UPDATE ON busy_blocks TO {APP_ROLE}")
+    op.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON busy_blocks TO {APP_ROLE}")
 
     op.create_table(
         "calendar_busy_status",

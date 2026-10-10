@@ -11,14 +11,22 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app import permissions as P
 from app.config import get_settings
 from app.db import set_org_scope
 from app.mail.graph import GraphError, event_payload
-from app.models import Appointment, AppointmentSync, Settings, User
+from app.models import (
+    Appointment,
+    AppointmentSync,
+    BusyBlock,
+    CalendarBusyStatus,
+    Settings,
+    User,
+)
 
 log = logging.getLogger("psa.calendar")
 
@@ -146,6 +154,175 @@ def _finish(
         log.warning("outlook push failed for appointment %s: %s", appointment_id, row.last_error)
     else:
         log.info("outlook push %s for appointment %s (v%s)", row.state, appointment_id, version)
+
+
+BUSY_BATCH = 20
+BUSY_PAST = timedelta(days=1)
+BUSY_AHEAD = timedelta(days=14)
+
+
+def sync_roles() -> list[str]:
+    """Roles that can be booked and so have a calendar worth polling (schedule:write)."""
+    return [r for r in P.ROLES if P.has_permission(r, P.SCHEDULE_WRITE)]
+
+
+def eligible_users():
+    """Active users who can write the schedule and have an email (the polled set)."""
+    return (
+        User.is_active.is_(True),
+        User.role.in_(sync_roles()),
+        func.coalesce(func.trim(User.email), "") != "",
+    )
+
+
+def _record_busy_error(db: Session, user_ids: list[int], message: str) -> None:
+    t = CalendarBusyStatus.__table__.c
+    for uid in user_ids:
+        stmt = insert(CalendarBusyStatus).values(user_id=uid, last_error=message)
+        db.execute(
+            stmt.on_conflict_do_update(index_elements=[t.user_id], set_={"last_error": message})
+        )
+
+
+def refresh_busy(db: Session, client, *, now: datetime) -> int:
+    """Poll getSchedule for every polled tech and replace their cached busy blocks.
+    Returns how many users were refreshed. A failed batch (or a user missing from the answer)
+    keeps the old blocks and records the error."""
+    set_org_scope(db, "all")
+    settings = db.get(Settings, 1)
+    if settings is None or not settings.outlook_sync_enabled:
+        db.rollback()
+        return 0
+    users = [
+        (u.id, u.email.strip())
+        for u in db.execute(select(User).where(*eligible_users()).order_by(User.id)).scalars()
+    ]
+    db.rollback()  # end the read transaction before talking to Graph
+    refreshed = 0
+    for i in range(0, len(users), BUSY_BATCH):
+        batch = users[i : i + BUSY_BATCH]
+        emails = [e for _, e in batch]
+        try:
+            result = client.get_schedule(
+                caller=emails[0],
+                schedules=emails,
+                start=now - BUSY_PAST,
+                end=now + BUSY_AHEAD,
+                interval_minutes=15,
+            )
+        except GraphError as e:
+            log.warning("getSchedule failed for %d user(s): %s", len(batch), e)
+            _record_busy_error(db, [uid for uid, _ in batch], str(e)[:500] or "getSchedule failed")
+            db.commit()
+            continue
+        by_email = {k.lower(): v for k, v in result.items()}
+        missing = []
+        for uid, email in batch:
+            items = by_email.get(email.lower())
+            if items is None:
+                missing.append(uid)
+                continue
+            db.execute(delete(BusyBlock).where(BusyBlock.user_id == uid))
+            for it in items:
+                if it.ends_at > it.starts_at:
+                    db.add(
+                        BusyBlock(
+                            user_id=uid,
+                            starts_at=it.starts_at,
+                            ends_at=it.ends_at,
+                            status=it.status,
+                        )
+                    )
+            t = CalendarBusyStatus.__table__.c
+            stmt = insert(CalendarBusyStatus).values(user_id=uid, fetched_at=now, last_error=None)
+            db.execute(
+                stmt.on_conflict_do_update(
+                    index_elements=[t.user_id], set_={"fetched_at": now, "last_error": None}
+                )
+            )
+            refreshed += 1
+        if missing:
+            _record_busy_error(db, missing, "No schedule returned for this user")
+        db.commit()
+    return refreshed
+
+
+def retry(ctx, appointment_id: int) -> None:
+    """Put a failed sync row back in the queue. 404 if the appointment is not visible, 409 if
+    the row is not failed."""
+    from app import audit
+    from app.errors import Conflict, NotFound
+
+    visible = ctx.db.execute(
+        ctx.scope.apply(select(Appointment.id), Appointment.organization_id).where(
+            Appointment.id == appointment_id
+        )
+    ).scalar_one_or_none()
+    if visible is None:
+        raise NotFound("Appointment not found")
+    row = ctx.db.execute(
+        select(AppointmentSync)
+        .where(AppointmentSync.appointment_id == appointment_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).scalar_one_or_none()
+    if row is None or row.state != "failed":
+        raise Conflict("Only a failed sync can be retried")
+    before = {"state": row.state, "attempts": row.attempts, "last_error": row.last_error}
+    row.state = "pending"
+    row.attempts = 0
+    row.next_attempt_at = func.now()
+    row.last_error = None
+    row.updated_at = func.now()
+    ctx.db.flush()
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "appointment.sync_retry",
+        ctx.db.get(Appointment, appointment_id),
+        before=before,
+        after={"state": "pending", "attempts": 0, "last_error": None},
+        organization_id=row.organization_id,
+    )
+
+
+def status_summary(ctx) -> dict:
+    """Counts, newest failures and cache health for the settings page."""
+    s = AppointmentSync
+    scoped = lambda q: ctx.scope.apply(q, s.organization_id)  # noqa: E731
+    enabled = bool(ctx.db.get(Settings, 1).outlook_sync_enabled)
+    counts = dict(ctx.db.execute(scoped(select(s.state, func.count()).group_by(s.state))).all())
+    failures = ctx.db.execute(
+        scoped(
+            select(s, Appointment.ticket_id, Appointment.tech_id)
+            .join(Appointment, Appointment.id == s.appointment_id)
+            .where(s.state == "failed")
+        )
+        .order_by(s.updated_at.desc(), s.appointment_id.desc())
+        .limit(20)
+    ).all()
+    oldest, errors = ctx.db.execute(
+        select(func.min(CalendarBusyStatus.fetched_at), func.count(CalendarBusyStatus.last_error))
+        .join(User, User.id == CalendarBusyStatus.user_id)
+        .where(*eligible_users())
+    ).one()
+    return dict(
+        enabled=enabled,
+        pending=counts.get("pending", 0),
+        failed=counts.get("failed", 0),
+        failures=[
+            dict(
+                appointment_id=r.appointment_id,
+                ticket_id=ticket_id,
+                tech_id=tech_id,
+                last_error=r.last_error,
+                updated_at=r.updated_at,
+            )
+            for r, ticket_id, tech_id in failures
+        ],
+        busy_fetched_at=oldest,
+        busy_errors=errors,
+    )
 
 
 def push_pending(db: Session, client, *, now: datetime, batch: int = 20) -> int:

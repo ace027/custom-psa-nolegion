@@ -672,6 +672,7 @@ class SettingsOut(ORM):
     late_fee_flat_cents: int
     late_fee_grace_days: int
     late_fee_max_per_invoice: int
+    outlook_sync_enabled: bool
     company_name: str | None
     company_address: str | None
     invoice_footer: str | None
@@ -706,6 +707,7 @@ class SettingsPatch(BaseModel):
     late_fee_flat_cents: int | None = Field(default=None, ge=0, le=1_000_000_00)
     late_fee_grace_days: int | None = Field(default=None, ge=0, le=365)
     late_fee_max_per_invoice: int | None = Field(default=None, ge=1, le=12)
+    outlook_sync_enabled: bool | None = None
     company_name: str | None = Field(default=None, max_length=200)
     company_address: str | None = Field(default=None, max_length=1000)
     invoice_footer: str | None = Field(default=None, max_length=2000)

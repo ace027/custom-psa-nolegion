@@ -20,6 +20,9 @@ from app.deps import Ctx
 from app.errors import Conflict, Forbidden, NotFound
 from app.models import (
     Appointment,
+    AppointmentSync,
+    BusyBlock,
+    CalendarBusyStatus,
     Holiday,
     Organization,
     Settings,
@@ -362,7 +365,48 @@ def get_appointment(ctx: Ctx, appointment_id: int, *, lock: bool = False) -> App
     return a
 
 
-def appointment_view(ctx: Ctx, a: Appointment, *, with_conflicts: bool = False) -> dict:
+def sync_states(ctx: Ctx, ids: list[int]) -> dict[int, dict]:
+    """Outlook sync state per appointment id: one settings read plus one query for all ids."""
+    if not repo.get_settings_row(ctx.db).outlook_sync_enabled:
+        return {i: dict(state="off", last_error=None) for i in ids}
+    rows = {}
+    if ids:
+        q = ctx.scope.apply(
+            select(AppointmentSync).where(AppointmentSync.appointment_id.in_(ids)),
+            AppointmentSync.organization_id,
+        )
+        rows = {r.appointment_id: r for r in ctx.db.execute(q).scalars()}
+    # an appointment older than the sync feature has no row: nothing will ever be pushed
+    return {
+        i: dict(state=rows[i].state, last_error=rows[i].last_error)
+        if i in rows
+        else dict(state="skipped", last_error=None)
+        for i in ids
+    }
+
+
+def appointment_views(
+    ctx: Ctx, rows: list[Appointment], *, with_conflicts: bool = False
+) -> list[dict]:
+    """appointment_view for a list, with the lookups batched (a bounded number of queries)."""
+    keep: list = []  # the identity map is weak: hold the preloaded rows until the views are built
+    if rows:
+        for model, key in ((Organization, "organization_id"), (Ticket, "ticket_id")):
+            ids = {getattr(a, key) for a in rows}
+            keep += ctx.db.execute(select(model).where(model.id.in_(ids))).scalars().all()
+        tech_ids = {a.tech_id for a in rows}
+        keep += ctx.db.execute(select(User).where(User.id.in_(tech_ids))).scalars().all()
+    states = sync_states(ctx, [a.id for a in rows])
+    return [
+        appointment_view(ctx, a, with_conflicts=with_conflicts, sync=states[a.id]) for a in rows
+    ]
+
+
+def appointment_view(
+    ctx: Ctx, a: Appointment, *, with_conflicts: bool = False, sync: dict | None = None
+) -> dict:
+    if sync is None:
+        sync = sync_states(ctx, [a.id])[a.id]
     org = ctx.db.get(Organization, a.organization_id)
     ticket = ctx.db.get(Ticket, a.ticket_id)
     tech = repo.get_user(ctx.db, a.tech_id)
@@ -384,6 +428,7 @@ def appointment_view(ctx: Ctx, a: Appointment, *, with_conflicts: bool = False) 
         cancelled_at=a.cancelled_at,
         cancel_reason=a.cancel_reason,
         conflicts=conflicts_for(ctx, a) if with_conflicts else [],
+        sync=sync,
     )
 
 
@@ -484,6 +529,16 @@ def cancel_appointment(ctx: Ctx, appointment_id: int, reason: str | None) -> App
         organization_id=a.organization_id,
     )
     return a
+
+
+def retry_sync(ctx: Ctx, appointment_id: int) -> Appointment:
+    """Requeue a failed Outlook push (409 unless failed, 404 if not visible)."""
+    calendar_sync.retry(ctx, appointment_id)
+    return get_appointment(ctx, appointment_id)
+
+
+def sync_status(ctx: Ctx) -> dict:
+    return calendar_sync.status_summary(ctx)
 
 
 def list_appointments(
@@ -596,6 +651,37 @@ def availability_for(
                 .order_by(User.id)
             ).scalars()
         )
+    uids = [u.id for u in users]
+    blocks: dict[int, list[BusyBlock]] = {}
+    fetched: dict[int, datetime | None] = {}
+    appts_by_user = {u.id: _busy_appointments(ctx, u.id, start, end) for u in users}
+    synced: set[int] = set()
+    if uids:
+        for b in ctx.db.execute(
+            select(BusyBlock)
+            .where(
+                BusyBlock.user_id.in_(uids), BusyBlock.starts_at < end, BusyBlock.ends_at > start
+            )
+            .order_by(BusyBlock.starts_at, BusyBlock.id)
+        ).scalars():
+            blocks.setdefault(b.user_id, []).append(b)
+        fetched = dict(
+            ctx.db.execute(
+                select(CalendarBusyStatus.user_id, CalendarBusyStatus.fetched_at).where(
+                    CalendarBusyStatus.user_id.in_(uids)
+                )
+            ).all()
+        )
+        appt_ids = [a.id for rows in appts_by_user.values() for a in rows]
+        if appt_ids:
+            synced = set(
+                ctx.db.execute(
+                    select(AppointmentSync.appointment_id).where(
+                        AppointmentSync.appointment_id.in_(appt_ids),
+                        AppointmentSync.state == "synced",
+                    )
+                ).scalars()
+            )
     out = []
     for user in users:
         tz, working = _working(ctx, user, start, end)
@@ -606,7 +692,10 @@ def availability_for(
         pending = [
             (t.starts_at, t.ends_at) for t in _busy_time_off(ctx, user.id, start, end, ("pending",))
         ]
-        appts = _busy_appointments(ctx, user.id, start, end)
+        appts = appts_by_user[user.id]
+        # our own pushed appointments come back from Outlook as busy: hide only exact matches
+        pushed = {(a.starts_at, a.ends_at) for a in appts if a.id in synced}
+        busy = [b for b in blocks.get(user.id, []) if (b.starts_at, b.ends_at) not in pushed]
         free = availability.subtract(working, off + [(a.starts_at, a.ends_at) for a in appts])
         out.append(
             dict(
@@ -619,6 +708,10 @@ def availability_for(
                     dict(id=a.id, starts_at=a.starts_at, ends_at=a.ends_at) for a in appts
                 ],
                 free=[dict(starts_at=s, ends_at=e) for s, e in free],
+                outlook_busy=[
+                    dict(starts_at=b.starts_at, ends_at=b.ends_at, status=b.status) for b in busy
+                ],
+                outlook_fetched_at=fetched.get(user.id),
             )
         )
     return out
