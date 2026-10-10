@@ -61,6 +61,12 @@
   outline: 3px solid #f59e0b;
   outline-offset: -1px;
 }
+/* Must follow the conflict rule and out-rank it so keyboard focus stays visible on conflicted events. */
+.dispatch-board .rbc-event.has-conflict:focus-visible {
+  outline: 3px solid #1e3a8a;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff;
+}
 
 /* Shading. Background events sit under the appointments and are never draggable. */
 .dispatch-board .rbc-background-event {

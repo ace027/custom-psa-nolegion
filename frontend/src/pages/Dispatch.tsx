@@ -185,11 +185,14 @@ export default function Dispatch() {
   const [toast, setToast] = useState<Toast | null>(null);
   const toastSeq = useRef(0);
   const showToast = (text: string, undo?: () => void) => setToast({ id: ++toastSeq.current, text, undo });
+  // The toast holds the only Undo, so it stays while hovered or focused and can be dismissed.
+  const [toastHeld, setToastHeld] = useState(false);
   useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 8000);
+    if (!toast) { setToastHeld(false); return; }
+    if (toastHeld) return;
+    const t = setTimeout(() => setToast(null), 15000);
     return () => clearTimeout(t);
-  }, [toast]);
+  }, [toast, toastHeld]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["scheduling", "appointments"] });
@@ -385,9 +388,17 @@ export default function Dispatch() {
       )}
       <div role="status" aria-live="polite" className="dispatch-toast-region">
         {toast && (
-          <div className="dispatch-toast">
+          <div
+            className="dispatch-toast"
+            onMouseEnter={() => setToastHeld(true)}
+            onMouseLeave={() => setToastHeld(false)}
+            onFocus={() => setToastHeld(true)}
+            onBlur={() => setToastHeld(false)}
+            onKeyDown={(e) => { if (e.key === "Escape") setToast(null); }}
+          >
             <span>{toast.text}</span>
             {toast.undo && <button type="button" className="font-semibold underline" onClick={toast.undo}>Undo</button>}
+            <button type="button" aria-label="Dismiss notification" onClick={() => setToast(null)}>×</button>
           </div>
         )}
       </div>
