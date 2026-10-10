@@ -158,7 +158,7 @@
 | 1 | 3 | 3 | Complete |
 | 2 | 3 | 3 | Shipped |
 | 3 | 3 | 3 | Shipped |
-| 4 | 4 | 0 | Planned |
+| 4 | 4 | 1 | In Progress |
 | 5 | 3 | 0 | Pending |
 | 6 | 3 | 0 | Pending |
 | 7 | 4 | 0 | Pending |
