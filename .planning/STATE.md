@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 2 of 13 (complete)
-- **Status**: Phase 2 shipped (2026-10-10)
-- **Last Activity**: Phase 2 shipped (2026-10-10)
+- **Phase**: 3 of 13 (planned)
+- **Status**: Phase 3 planned -- 3 plans across 3 waves
+- **Last Activity**: Phase 3 planning (2026-10-10)
 
 ## Progress
 ```
@@ -21,7 +21,7 @@
 - Appointments link to tickets only (no SLA or billing effect)
 
 ## Next Action
-Run `/triad:plan 3` to plan Phase 3: Dispatch board
+Run `/triad:build` to execute Phase 3: Dispatch board
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -29,7 +29,8 @@ Run `/triad:plan 3` to plan Phase 3: Dispatch board
 
 ## GitHub
 - Phase 1 issue: #2 (closed)
-- Phase 2 issue: #3 https://github.com/ace027/custom-psa-nolegion/issues/3 (created via the GitHub connector; gh is not authenticated here)
+- Phase 2 issue: #3 (closed); shipped in PR #4
+- Phase 3 issue: #5 https://github.com/ace027/custom-psa-nolegion/issues/5 (created via the GitHub connector)
 
 ## Phase 2 Results
 (build started 2026-10-09)
