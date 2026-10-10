@@ -26,3 +26,7 @@ pr: N/A
 verification: 7/7 passed
 | O-011 | 2026-10-10 | dev | 3 | 03-01 | engineering-senior-developer | implementation | success | 2 | dispatch-board, engineering | Library spike, scheduling API additions and pure board logic: Complete |
 | O-012 | 2026-10-10 | dev | 3 | 03-02 | engineering-frontend-developer | implementation | partial | 4 | dispatch-board, engineering | Dispatch board page: Complete with Warnings |
+| O-013 | 2026-10-10 | dev | 3 | 03-03 | engineering-senior-developer | implementation | failed | 5 | dispatch-board, engineering | Appointments on the ticket, timer start, and the Playwright booking flow: Failed — Verification failed: service postgresql start >/dev/null 2>&1; bash scripts/e2e.sh e2e/dispatch.spec.ts; service postgre |
+| O-014 | 2026-10-10 | dev | 3 | 03-03 | engineering-senior-developer | implementation | failed | 5 | dispatch-board, engineering | Appointments on the ticket, timer start, and the Playwright booking flow: Partial |
+| O-015 | 2026-10-10 | dev | 3 | 03-03 | engineering-senior-developer | implementation | failed | 5 | dispatch-board, engineering | Appointments on the ticket, timer start, and the Playwright booking flow: Partial |
+| O-016 | 2026-10-10 | dev | 3 | 03-03 | engineering-senior-developer | implementation | success | 2 | dispatch-board, engineering | Appointments on the ticket, timer start, and the Playwright booking flow: Complete |

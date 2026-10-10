@@ -1,7 +1,7 @@
 # Plan 03-03 Summary: Appointments on the ticket, timer start, and the Playwright booking flow
 
 ## Result
-**Status**: Partial
+**Status**: Complete
 **Wave**: 3
 **Agent**: engineering-senior-developer
 **Completed**: 2026-10-10
@@ -10,12 +10,12 @@
 
 | Candidate | Semantic | Heuristic | Memory | Total | Source |
 |-----------|----------|-----------|--------|-------|--------|
-| engineering-senior-developer | — | 23 | 3.75 | 26.75 | heuristic |
+| engineering-senior-developer | — | 23 | 3.57 | 26.57 | mandatory |
 | engineering-backend-architect | — | 22 | 4.67 | 26.67 | heuristic |
 | testing-qa-verification-specialist | — | 18 | 4.25 | 22.25 | heuristic |
 
 - **Task type detected**: implementation
-- **Confidence**: MEDIUM
+- **Confidence**: LOW
 - **Adapter**: claude-code
 - **Model tier**: sonnet
 
@@ -41,27 +41,27 @@
 | `service postgresql start >/dev/null 2>&1; bash scripts/e2e.sh e2e/dispatch.spec.ts --repeat-each=3` | 0 | PASS |
 
 ## Key Decisions
-- The drag test uses Playwright mouse steps and passes reliably, so it stays active.
+- The runner falls back to `$PLAYWRIGHT_BROWSERS_PATH/chromium` when Playwright's own browser build is missing and `CHROMIUM_PATH` is unset.
+- Each spec cancels the appointments it booked, so repeated runs start from the same board.
+- The card fetches conflicts with `getAppointment` for upcoming rows only, at most 10.
+- The spec reads the org zone from `/api/settings` instead of assuming Chicago.
 
 ## Issues Encountered
-- `frontend/src/pages/Dispatch.tsx` is modified: the import is now `dndModule`, and `withDragAndDrop` unwraps `.default`. This is a forbidden file. I found it in the tree when I picked this plan up and did not check who made the edit. The comment in the file says the Vite dev server returns the CJS module as its whole exports object, so the e2e dev stack likely needs it. I did not revert it or test whether the e2e run passes without it. Please approve or revert it.
-- `.planning/STATE.md` and `.planning/memory/OUTCOMES.md` also show as modified in the working tree. I did not make those edits.
+- I did not run the single-run `scripts/e2e.sh e2e/dispatch.spec.ts` that the plan's verification lists. The `--repeat-each=3` run covers the same three tests.
+- Old `/tmp/psa-e2e.*` log dirs remain from earlier failed runs. The script keeps logs on failure on purpose. The e2e databases are dropped.
+- Not run or checked: the Start-timer 409 path against the live API (only the mocked test covers it), and the card's behavior for a closed ticket or one with no organization (the `canBook` guard is in the code).
 
 ## Escalations
-| # | Severity | Type | Decision | Status | Resolution |
-|---|----------|------|----------|--------|------------|
-| 1 | warning | out-of-scope file | Keep or revert the edit to `frontend/src/pages/Dispatch.tsx` (the `withDragAndDrop` default-export unwrap). | approved | Keep it. The owner approved the fix, and it is now committed separately as a 03-02 follow-up (4012615), so it is no longer part of 03-03's changes. |
-
-- #1 context: The file is in files_forbidden. The comment in the code says the Vite dev server needs the unwrap. I have not tested the e2e run with the edit reverted.
+(none)
 
 ## Handoff Context
 - **Key outputs**: (none)
-- **Decisions made**: The drag test uses Playwright mouse steps and passes reliably, so it stays active.
+- **Decisions made**: The runner falls back to `$PLAYWRIGHT_BROWSERS_PATH/chromium` when Playwright's own browser build is missing and `CHROMIUM_PATH` is unset.; Each spec cancels the appointments it booked, so repeated runs start from the same board.; The card fetches conflicts with `getAppointment` for upcoming rows only, at most 10.; The spec reads the org zone from `/api/settings` instead of assuming Chicago.
 - **Open questions**: (none)
-- **Conventions established**: Run e2e with `scripts/e2e.sh <spec> [playwright args]`. Set `CHROMIUM_PATH` if the browser is not found; here it is `/opt/pw-browsers/chromium-*/chrome-linux/chrome`.
+- **Conventions established**: `scripts/e2e.sh <spec> [flags]` runs any Playwright spec on a fresh DB and free ports.; Use `CHROMIUM_PATH` to override the browser.; The ticket page's Appointments card links to `/dispatch?view=day&date=YYYY-MM-DD`.
 
 ## Requirements Covered
 - REQ-03
 
 ## Token Usage
-6 requests, 232789 input tokens (192903 cached), 2922 output tokens, $0.1675
+6 requests, 263732 input tokens (224645 cached), 3194 output tokens, $0.1746
