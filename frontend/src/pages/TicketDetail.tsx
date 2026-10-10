@@ -8,6 +8,7 @@ import { can, useMe } from "../auth";
 import { useLookups } from "../lookups";
 import { money } from "../money";
 import { Button, Card, ErrorMsg, Field, SlaBadge, fmt, inputCls } from "../ui";
+import TicketAppointmentsCard from "./TicketAppointmentsCard";
 
 export default function TicketDetail() {
   const id = Number(useParams().id);
@@ -49,6 +50,7 @@ export default function TicketDetail() {
       )}
       <NotesCard ticket={t} notes={notes.data ?? []} canWrite={canWrite} onDone={refresh} />
       <TimeCard ticket={t} entries={time.data ?? []} canWrite={can(me, "time:write")} meId={me?.id ?? 0} isAdmin={me?.role === "admin"} onDone={refresh} />
+      {can(me, "schedule:read") && <TicketAppointmentsCard ticket={t} />}
       {can(me, "billing:read") && !t.needs_triage && <ChargesCard ticket={t} canWrite={can(me, "charge:write")} onDone={refresh} />}
       {(files.data?.length ?? 0) > 0 && (
         <Card title="Attachments">

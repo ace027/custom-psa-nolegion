@@ -65,6 +65,19 @@ and is refused when `ENVIRONMENT=production`). Sign in as `admin@example.com`, `
 With the API and `npm run dev` running and a **freshly seeded** database (the billing spec starts and finalizes the current month's run, which can only happen once per month; reset with `alembic downgrade base && alembic upgrade head && python -m app.seed`):
 `cd frontend && npx playwright test` (set `CHROMIUM_PATH` if the bundled browser is not installed).
 
+### Isolated e2e run
+`scripts/e2e.sh [playwright args...]` runs Playwright against a throwaway stack, so it needs no running servers and no fresh seed:
+- a new database `psa_e2e_<pid>` (roles `psa_owner` / `psa_app` are created if missing), migrated and seeded, and dropped on exit;
+- the API (`DEV_LOGIN_ENABLED=true`) and the Vite dev server on free ports, with Vite proxying `/api` to that API (`E2E_API_PORT`);
+- both processes are stopped on exit, even on failure or Ctrl-C. Logs are kept in a temp dir whose path is printed on failure.
+
+```sh
+service postgresql start                                  # if Postgres is not running
+scripts/e2e.sh e2e/dispatch.spec.ts                        # one spec
+scripts/e2e.sh e2e/dispatch.spec.ts --repeat-each=3        # any Playwright flag works
+```
+It runs as a Postgres superuser through `runuser -u postgres -- psql` (as root) or `sudo -u postgres psql`; set `E2E_PSQL` to override that command. Set `CHROMIUM_PATH` if the bundled browser is not installed.
+
 ## Conventions
 - Schema changes = new Alembic migration in `backend/alembic/versions/`. Never edit an applied one.
 - Every route: `ctx: Ctx = require(P.SOME_PERMISSION)`. Add new permissions in `app/permissions.py`.
