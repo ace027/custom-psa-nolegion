@@ -309,12 +309,12 @@ export default function Dispatch() {
         <Button variant="secondary" disabled={!date} onClick={() => date && update({ date: shiftDay(date, step) })}>Next</Button>
         <label className="text-sm">
           <span className="sr-only">Go to date</span>
-          <input type="date" className="rounded-lg border border-slate-300 bg-surface px-2.5 py-1.5 text-sm" value={date ?? ""} onChange={(e) => DAY.test(e.target.value) && update({ date: e.target.value })} />
+          <input type="date" className="rounded-lg border border-slate-300 bg-surface px-2.5 py-1.5 text-sm [@media(pointer:coarse)]:min-h-[44px]" value={date ?? ""} onChange={(e) => DAY.test(e.target.value) && update({ date: e.target.value })} />
         </label>
         <div className="inline-flex overflow-hidden rounded-lg border border-slate-300" role="group" aria-label="View">
           {(["day", "week"] as const).map((v) => (
             <button key={v} type="button" aria-pressed={view === v} onClick={() => update({ view: v === "day" ? null : v })}
-              className={`px-3 py-1.5 text-sm ${view === v ? "bg-blue-600 text-on-accent" : "bg-surface hover:bg-slate-100"}`}>
+              className={`px-3 py-1.5 text-sm [@media(pointer:coarse)]:min-h-[44px] ${view === v ? "bg-blue-600 text-on-accent" : "bg-surface hover:bg-slate-100"}`}>
               {v === "day" ? "Day" : "Week"}
             </button>
           ))}
@@ -322,7 +322,7 @@ export default function Dispatch() {
         {week && (
           <label className="text-sm">
             <span className="mr-1 font-medium text-slate-700">Tech</span>
-            <select className="rounded-lg border border-slate-300 bg-surface px-2.5 py-1.5 text-sm" value={tech ?? ""} onChange={(e) => update({ tech: e.target.value })}>
+            <select className="rounded-lg border border-slate-300 bg-surface px-2.5 py-1.5 text-sm [@media(pointer:coarse)]:min-h-[44px]" value={tech ?? ""} onChange={(e) => update({ tech: e.target.value })}>
               {staffList.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}
             </select>
           </label>

@@ -6,7 +6,12 @@
   border-radius: 0.75rem;
   border: 1px solid var(--color-slate-200, #e3e6f0);
   background: var(--color-surface, #fff);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+/* Keep tech columns readable on narrow screens: scroll sideways instead of squeezing. */
+.dispatch-board .rbc-time-view {
+  min-width: 48rem;
 }
 .dispatch-board .rbc-time-view,
 .dispatch-board .rbc-time-header-content,

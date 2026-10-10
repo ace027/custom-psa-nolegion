@@ -64,7 +64,14 @@ def _zone(name: str) -> ZoneInfo:
 
 
 def _tz(user: User, settings: Settings) -> ZoneInfo:
-    return ZoneInfo(user.timezone or settings.timezone)
+    for name in (user.timezone, settings.timezone):
+        if not name:
+            continue
+        try:
+            return ZoneInfo(name)
+        except (ZoneInfoNotFoundError, ValueError, KeyError):
+            continue  # a bad stored zone must not take the whole board down
+    return ZoneInfo("UTC")
 
 
 def _holidays(ctx: Ctx, start: date, end: date) -> dict[date, tuple[int, int] | None]:
@@ -423,6 +430,10 @@ def update_appointment(ctx: Ctx, appointment_id: int, data: dict) -> Appointment
     for f in ("tech_id", "starts_at", "ends_at", "client_visible"):
         if f in data and data[f] is None:
             raise InvalidSchedule(f"{f} cannot be cleared")
+    if any(f in data for f in ("tech_id", "starts_at", "ends_at")):
+        ticket = ctx.db.get(Ticket, a.ticket_id)
+        if ticket is not None and ticket.status == "closed":
+            raise Conflict("Reopen the ticket first")
     tech_id = _bookable(ctx, data["tech_id"]).id if "tech_id" in data else a.tech_id
     starts = data.get("starts_at", a.starts_at)
     ends = data.get("ends_at", a.ends_at)
@@ -542,6 +553,8 @@ def conflicts_for(ctx: Ctx, a: Appointment) -> list[dict]:
     if a.status != "scheduled":
         return []
     tech = repo.get_user(ctx.db, a.tech_id)
+    if tech is None:
+        return []
     slot = (a.starts_at, a.ends_at)
     _, working = _working(ctx, tech, a.starts_at - timedelta(days=1), a.ends_at + timedelta(days=1))
     time_off = [
