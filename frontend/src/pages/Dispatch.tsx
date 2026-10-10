@@ -66,7 +66,7 @@ const DnDCalendar = withDragAndDrop<CalItem, BoardResource>(Calendar);
 const SHADE_CLASS: Record<BackgroundBlock["kind"], string> = { off_hours: "shade-off", time_off: "shade-timeoff", time_off_pending: "shade-pending" };
 const SHADE_LABEL: Record<BackgroundBlock["kind"], string> = { off_hours: "Off hours", time_off: "Time off", time_off_pending: "Pending" };
 
-const hhmm = (d: Date) => format(d, "HH:mm");
+const hhmm = (d: Date): string => format(d, "HH:mm");
 const formats: Formats = {
   timeGutterFormat: "HH:mm",
   dayFormat: "EEE d MMM",
@@ -99,7 +99,7 @@ function boardDay(day: string): Date {
   const [y, m, d] = day.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
-const todayIn = (zone: string) => formatInZone(new Date().toISOString(), zone, "yyyy-MM-dd");
+const todayIn = (zone: string): string => formatInZone(new Date().toISOString(), zone, "yyyy-MM-dd");
 
 interface Toast {
   id: number;
@@ -112,7 +112,7 @@ interface MoveVars {
   undo?: boolean;
 }
 
-const uniqueLabels = (a: Appointment) => [...new Set(a.conflicts.map((c) => conflictLabel(c.kind)))];
+const uniqueLabels = (a: Appointment): string[] => [...new Set(a.conflicts.map((c) => conflictLabel(c.kind)))];
 
 export default function Dispatch() {
   const { data: me } = useMe();
@@ -133,7 +133,7 @@ export default function Dispatch() {
     ? staff.data?.find((s) => s.id === techParam)?.id ?? staff.data?.[0]?.id ?? null
     : null;
 
-  const update = (changes: Record<string, string | null>) => {
+  const updateParams = (changes: Record<string, string | null>) => {
     const next = new URLSearchParams(params);
     for (const [k, v] of Object.entries(changes)) {
       if (v === null) next.delete(k);
@@ -304,16 +304,16 @@ export default function Dispatch() {
     <div className="space-y-4">
       {header}
       <div className="flex flex-wrap items-end gap-2" role="toolbar" aria-label="Board controls">
-        <Button variant="secondary" disabled={!zone} onClick={() => zone && update({ date: todayIn(zone) })}>Today</Button>
-        <Button variant="secondary" disabled={!date} onClick={() => date && update({ date: shiftDay(date, -step) })}>Prev</Button>
-        <Button variant="secondary" disabled={!date} onClick={() => date && update({ date: shiftDay(date, step) })}>Next</Button>
+        <Button variant="secondary" disabled={!zone} onClick={() => zone && updateParams({ date: todayIn(zone) })}>Today</Button>
+        <Button variant="secondary" disabled={!date} onClick={() => date && updateParams({ date: shiftDay(date, -step) })}>Prev</Button>
+        <Button variant="secondary" disabled={!date} onClick={() => date && updateParams({ date: shiftDay(date, step) })}>Next</Button>
         <label className="text-sm">
           <span className="sr-only">Go to date</span>
-          <input type="date" className="rounded-lg border border-slate-300 bg-surface px-2.5 py-1.5 text-sm [@media(pointer:coarse)]:min-h-[44px]" value={date ?? ""} onChange={(e) => DAY.test(e.target.value) && update({ date: e.target.value })} />
+          <input type="date" className="rounded-lg border border-slate-300 bg-surface px-2.5 py-1.5 text-sm [@media(pointer:coarse)]:min-h-[44px]" value={date ?? ""} onChange={(e) => DAY.test(e.target.value) && updateParams({ date: e.target.value })} />
         </label>
         <div className="inline-flex overflow-hidden rounded-lg border border-slate-300" role="group" aria-label="View">
           {(["day", "week"] as const).map((v) => (
-            <button key={v} type="button" aria-pressed={view === v} onClick={() => update({ view: v === "day" ? null : v })}
+            <button key={v} type="button" aria-pressed={view === v} onClick={() => updateParams({ view: v === "day" ? null : v })}
               className={`px-3 py-1.5 text-sm [@media(pointer:coarse)]:min-h-[44px] ${view === v ? "bg-blue-600 text-on-accent" : "bg-surface hover:bg-slate-100"}`}>
               {v === "day" ? "Day" : "Week"}
             </button>
@@ -322,7 +322,7 @@ export default function Dispatch() {
         {week && (
           <label className="text-sm">
             <span className="mr-1 font-medium text-slate-700">Tech</span>
-            <select className="rounded-lg border border-slate-300 bg-surface px-2.5 py-1.5 text-sm [@media(pointer:coarse)]:min-h-[44px]" value={tech ?? ""} onChange={(e) => update({ tech: e.target.value })}>
+            <select className="rounded-lg border border-slate-300 bg-surface px-2.5 py-1.5 text-sm [@media(pointer:coarse)]:min-h-[44px]" value={tech ?? ""} onChange={(e) => updateParams({ tech: e.target.value })}>
               {staffList.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}
             </select>
           </label>
@@ -357,9 +357,9 @@ export default function Dispatch() {
             toolbar={false}
             view={view as View}
             views={["day", "week"]}
-            onView={(v) => update({ view: v === "week" ? "week" : null })}
+            onView={(v) => updateParams({ view: v === "week" ? "week" : null })}
             date={boardDay(date)}
-            onNavigate={(d) => update({ date: format(d, "yyyy-MM-dd") })}
+            onNavigate={(d) => updateParams({ date: format(d, "yyyy-MM-dd") })}
             events={events}
             backgroundEvents={shades}
             resources={week ? undefined : resources}

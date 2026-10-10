@@ -28,7 +28,7 @@ function zoned(day: string, hm: string, zone: string): string {
   return new Date(ts).toISOString();
 }
 
-async function login(page: Page, email: string) {
+async function login(page: Page, email: string): Promise<void> {
   await page.clock.setFixedTime(NOW);
   await page.goto("/");
   await page.getByLabel("Email").fill(email);
@@ -66,7 +66,7 @@ async function setup(page: Page) {
 }
 
 /** Cancel what a test booked, so repeated runs on the same database start from the same board. */
-async function cancelAll(request: APIRequestContext, ids: number[]) {
+async function cancelAll(request: APIRequestContext, ids: number[]): Promise<void> {
   for (const id of ids) await request.post(`/api/appointments/${id}/cancel`, { data: { reason: "e2e cleanup" }, headers: HEADERS });
 }
 

@@ -110,19 +110,19 @@ export function listAppointments(p: AppointmentListParams): Promise<Appointment[
     })}`,
   );
 }
-export const getAppointment = (id: number) => api<Appointment>(`/appointments/${id}`);
-export const createAppointment = (body: AppointmentCreate) =>
+export const getAppointment = (id: number): Promise<Appointment> => api<Appointment>(`/appointments/${id}`);
+export const createAppointment = (body: AppointmentCreate): Promise<Appointment> =>
   api<Appointment>("/appointments", { method: "POST", json: body });
-export const updateAppointment = (id: number, patch: AppointmentPatch) =>
+export const updateAppointment = (id: number, patch: AppointmentPatch): Promise<Appointment> =>
   api<Appointment>(`/appointments/${id}`, { method: "PATCH", json: patch });
-export const cancelAppointment = (id: number, reason?: string) =>
+export const cancelAppointment = (id: number, reason?: string): Promise<Appointment> =>
   api<Appointment>(`/appointments/${id}/cancel`, { method: "POST", json: { reason: reason ?? null } });
 export function getAvailability(p: AvailabilityParams): Promise<AvailabilityRow[]> {
   return api<AvailabilityRow[]>(
     `/availability${query({ from: p.from, to: p.to, user_ids: p.userIds?.length ? p.userIds.join(",") : undefined })}`,
   );
 }
-export const getSchedule = (userId: number) => api<Schedule>(`/users/${userId}/schedule`);
+export const getSchedule = (userId: number): Promise<Schedule> => api<Schedule>(`/users/${userId}/schedule`);
 
 /** Active admins and techs, by display name: the people who can be booked. */
 export async function listStaff(): Promise<StaffUser[]> {

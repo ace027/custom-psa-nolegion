@@ -123,7 +123,7 @@ function defaultSlot(initial: BookingDialogProps["initial"], zone: string): Slot
   return { date: format(start, "yyyy-MM-dd"), start: format(start, "HH:mm"), end: format(end, "HH:mm") };
 }
 
-const ticketLabel = (t: Ticket) => `#${t.number} ${t.subject}${t.organization_name ? ` (${t.organization_name})` : ""}`;
+const ticketLabel = (t: Ticket): string => `#${t.number} ${t.subject}${t.organization_name ? ` (${t.organization_name})` : ""}`;
 
 function BookingForm({ onClose, initial, zone, onBooked }: BookingDialogProps) {
   const qc = useQueryClient();

@@ -22,8 +22,8 @@ const MAX_CONFLICT_LOOKUPS = 10;
 function localWhen(a: Appointment): string {
   const day = new Intl.DateTimeFormat(undefined, { weekday: "short", year: "numeric", month: "short", day: "numeric" });
   const time = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
-  const zone = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(new Date(a.starts_at)).find((p) => p.type === "timeZoneName")?.value ?? "";
   const [s, e] = [new Date(a.starts_at), new Date(a.ends_at)];
+  const zone = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(s).find((p) => p.type === "timeZoneName")?.value ?? "";
   return `${day.format(s)} ${time.format(s)}–${time.format(e)} ${zone}`.trim();
 }
 
@@ -42,7 +42,7 @@ export default function TicketAppointmentsCard({ ticket: t }: { ticket: Ticket }
   const list = useQuery({ queryKey: schedulingKeys.appointments(params), queryFn: () => listAppointments(params) });
   const zone = useQuery({ queryKey: schedulingKeys.orgTimezone(), queryFn: getOrgTimezone });
 
-  const rows = [...(Array.isArray(list.data) ? list.data : [])]
+  const rows = (Array.isArray(list.data) ? list.data : [])
     .filter((a) => a.status !== "cancelled")
     .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
   const now = Date.now();

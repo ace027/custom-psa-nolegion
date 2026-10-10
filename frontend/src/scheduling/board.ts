@@ -38,7 +38,7 @@ export function toResources(staff: StaffUser[]): BoardResource[] {
   return staff.map((s) => ({ id: s.id, title: s.display_name }));
 }
 
-const ms = (iso: string) => new Date(iso).getTime();
+const ms = (iso: string): number => new Date(iso).getTime();
 
 /** Parts of [from, to) not covered by `windows`. */
 function complement(windows: Window[], from: number, to: number): [number, number][] {
