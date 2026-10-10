@@ -45,3 +45,6 @@ Run `/triad:plan 4` to plan Phase 4: Outlook push + free/busy
 - Plan 03-03 (Wave 3): Appointments on the ticket, timer start, and the Playwright booking flow — PARTIAL: All three tasks are on disk and every verification command passes. One caveat: `frontend/src/pages/Dispatch.tsx` is modified, and it is on the forbidden list. The edit was already in the tree when I s
 - Plan 03-03 (Wave 3): Appointments on the ticket, timer start, and the Playwright booking flow — PARTIAL: All three tasks are in place and the verification commands pass. One problem: `frontend/src/pages/Dispatch.tsx` has an edit in the working tree, and that file is on the must-not-touch list.
 - Plan 03-03 (Wave 3): Appointments on the ticket, timer start, and the Playwright booking flow — Complete
+
+## Quick Tasks
+- 2026-10-10: date tests use the business timezone (fixes PR #4 CI failing between 00:00 and 05:00 UTC), f69cd2f
