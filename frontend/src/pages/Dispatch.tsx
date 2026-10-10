@@ -6,17 +6,20 @@ import { Calendar, dateFnsLocalizer, type EventProps, type Formats, type SlotInf
 import dndModule, { type EventInteractionArgs } from "react-big-calendar/lib/addons/dragAndDrop";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { can, useMe } from "../auth";
 import {
   cancelAppointment,
   getAvailability,
+  getCalendarSyncStatus,
   getOrgTimezone,
   getSchedule,
   listAppointments,
   listStaff,
   schedulingKeys,
+  retryErrorText,
   updateAppointment,
+  useRetrySync,
   type Appointment,
   type AppointmentListParams,
   type AppointmentPatch,
@@ -25,8 +28,11 @@ import {
 import {
   backgroundBlocks,
   conflictLabel,
+  ageMinutes,
   dropPatch,
+  isStale,
   moveSummary,
+  oldestFetch,
   toEvents,
   toResources,
   undoPatch,
@@ -63,8 +69,10 @@ const withDragAndDrop =
   (dndModule as unknown as { default?: typeof dndModule }).default ?? dndModule;
 const DnDCalendar = withDragAndDrop<CalItem, BoardResource>(Calendar);
 
-const SHADE_CLASS: Record<BackgroundBlock["kind"], string> = { off_hours: "shade-off", time_off: "shade-timeoff", time_off_pending: "shade-pending" };
-const SHADE_LABEL: Record<BackgroundBlock["kind"], string> = { off_hours: "Off hours", time_off: "Time off", time_off_pending: "Pending" };
+const SHADE_CLASS: Record<BackgroundBlock["kind"], string> = { off_hours: "shade-off", time_off: "shade-timeoff", time_off_pending: "shade-pending", outlook: "shade-outlook" };
+const SHADE_LABEL: Record<BackgroundBlock["kind"], string> = { off_hours: "Off hours", time_off: "Time off", time_off_pending: "Pending", outlook: "Outlook: busy" };
+const OUTLOOK_LABEL: Record<string, string> = { busy: "Outlook: busy", tentative: "Outlook: tentative", oof: "Outlook: out of office", workingElsewhere: "Outlook: working elsewhere" };
+const shadeTitle = (b: BackgroundBlock): string => (b.kind === "outlook" ? OUTLOOK_LABEL[b.status ?? "busy"] ?? "Outlook: busy" : SHADE_LABEL[b.kind]);
 
 const hhmm = (d: Date): string => format(d, "HH:mm");
 const formats: Formats = {
@@ -81,6 +89,9 @@ function EventBlock({ event }: EventProps<CalItem>) {
     <span className="dispatch-event">
       <span className="dispatch-event-title">
         {event.conflicts.length > 0 && <span role="img" aria-label="Has conflicts" className="dispatch-warn">⚠</span>}
+        {event.appointment.sync?.state === "failed" && (
+          <span className="dispatch-syncfail"><span aria-hidden>✖</span><span className="sr-only">Outlook sync failed</span></span>
+        )}
         <span>{event.title}</span>
       </span>
       <span className="dispatch-event-time">{hhmm(event.start)}–{hhmm(event.end)}</span>
@@ -173,6 +184,13 @@ export default function Dispatch() {
     queryFn: () => listAppointments(apptParams!),
     enabled: !!apptParams && (!week || tech != null),
   });
+  const syncStatus = useQuery({ queryKey: schedulingKeys.syncStatus(), queryFn: getCalendarSyncStatus, retry: false, refetchInterval: 60_000 });
+  const syncOn = syncStatus.data?.enabled === true;
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
   const availParams = range ? { from: range.from, to: range.to, userIds: week && tech != null ? [tech] : undefined } : null;
   const avail = useQuery({
     queryKey: availParams ? schedulingKeys.availability(availParams) : schedulingKeys.all,
@@ -194,9 +212,13 @@ export default function Dispatch() {
     return () => clearTimeout(t);
   }, [toast, toastHeld]);
 
+  const [failuresOpen, setFailuresOpen] = useState(false);
+  const retry = useRetrySync({ onError: (e) => setAlert(retryErrorText(e)) });
+
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["scheduling", "appointments"] });
     qc.invalidateQueries({ queryKey: ["scheduling", "availability"] });
+    qc.invalidateQueries({ queryKey: schedulingKeys.syncStatus() });
   };
 
   const move = useMutation({
@@ -250,8 +272,21 @@ export default function Dispatch() {
   const shades: ShadeItem[] = useMemo(() => {
     if (!zone || !range || !avail.data) return [];
     const rows = week ? avail.data.filter((r) => r.user_id === tech) : avail.data;
-    return backgroundBlocks(rows, zone, range).map((b, i) => ({ ...b, id: `shade-${i}`, title: SHADE_LABEL[b.kind], shade: true as const }));
+    return backgroundBlocks(rows, zone, range).map((b, i) => ({ ...b, id: `shade-${i}`, title: shadeTitle(b), shade: true as const }));
   }, [avail.data, zone, range?.from, range?.to, week, tech]);
+  const outlookFetched = useMemo(() => {
+    const rows = avail.data ? (week ? avail.data.filter((r) => r.user_id === tech) : avail.data) : [];
+    return oldestFetch(rows);
+  }, [avail.data, week, tech]);
+  const caption: { text: string; warn: boolean } | null = !syncOn || !avail.data
+    ? null
+    : outlookFetched === null
+      ? { text: "Outlook busy not loaded yet", warn: true }
+      : isStale(outlookFetched, now)
+        ? { text: `Outlook busy may be out of date (updated ${ageMinutes(outlookFetched, now)} min ago)`, warn: true }
+        : { text: `Outlook busy updated ${ageMinutes(outlookFetched, now)} min ago`, warn: false };
+  const failures = syncOn ? syncStatus.data?.failures ?? [] : [];
+  const failedCount = syncOn ? syncStatus.data?.failed ?? 0 : 0;
   const techZones = useMemo(() => new Map((avail.data ?? []).map((r) => [r.user_id, r.timezone])), [avail.data]);
 
   const tooltip = (e: CalItem): string => {
@@ -328,14 +363,46 @@ export default function Dispatch() {
           </label>
         )}
         {zone && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">Times in {zone}</span>}
+        {failedCount > 0 && (
+          <button type="button" aria-expanded={failuresOpen} aria-controls="sync-failures" onClick={() => setFailuresOpen((o) => !o)}
+            className="rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 ring-1 ring-red-300 [@media(pointer:coarse)]:min-h-[44px]">
+            {failedCount} Outlook sync {failedCount === 1 ? "failure" : "failures"}
+          </button>
+        )}
         {canWrite && <Button className="ml-auto" disabled={!zone} onClick={() => setBooking({ techId: tech ?? undefined })}>New booking</Button>}
       </div>
       <ul className="dispatch-legend" aria-label="Legend">
         <li><span aria-hidden className="swatch shade-off" />Off hours</li>
         <li><span aria-hidden className="swatch shade-timeoff" />Time off</li>
         <li><span aria-hidden className="swatch shade-pending" />Pending time off</li>
+        <li><span aria-hidden className="swatch shade-outlook" />Outlook busy</li>
         <li><span aria-hidden className="swatch swatch-conflict">⚠</span>Conflict</li>
       </ul>
+      {caption && (
+        <p data-testid="outlook-caption" className={caption.warn ? "text-sm font-medium text-amber-800" : "text-sm text-slate-600"}>
+          {caption.warn && <span aria-hidden>⚠ </span>}{caption.text}
+        </p>
+      )}
+      {failedCount > 0 && failuresOpen && (
+        <div id="sync-failures" className="rounded-lg border border-red-200 bg-surface p-3 text-sm">
+          <p className="mb-1 font-medium">Outlook sync failures</p>
+          <ul className="divide-y divide-slate-100">
+            {failures.map((f) => (
+              <li key={f.appointment_id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                <span>
+                  <Link className="font-medium text-blue-700 hover:underline" to={`/tickets/${f.ticket_id}`}>Ticket #{f.ticket_id}</Link>
+                  {" · "}{staffList.find((s) => s.id === f.tech_id)?.display_name ?? `User ${f.tech_id}`}
+                  {" · "}<span className="text-red-700">{f.last_error ?? "Unknown error"}</span>
+                </span>
+                {canWrite && (
+                  <Button variant="secondary" className="[@media(pointer:coarse)]:min-h-[44px]" disabled={retry.isPending} aria-label={`Retry Outlook sync for ticket #${f.ticket_id}`} onClick={() => { setAlert(null); retry.mutate(f.appointment_id); }}>Retry</Button>
+                )}
+              </li>
+            ))}
+          </ul>
+          {failedCount > failures.length && <p className="mt-1 text-xs text-slate-500">Showing the newest {failures.length} of {failedCount}.</p>}
+        </div>
+      )}
       {!week && hours !== 24 && (
         <p className="text-sm text-amber-800">Clocks change today: this day has {hours} hours.</p>
       )}

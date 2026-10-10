@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button, ErrorMsg, Field, inputCls } from "../ui";
-import { cancelAppointment, schedulingKeys, type Appointment, type AppointmentPatch, type StaffUser } from "./api";
+import { cancelAppointment, getAppointment, retryErrorText, schedulingKeys, useRetrySync, type Appointment, type AppointmentPatch, type AppointmentSync, type StaffUser } from "./api";
 import { conflictLabel, dropPatch } from "./board";
 import { Modal, SlotInputs, slotDates, slotFields, type SlotFields } from "./BookingDialog";
 
@@ -36,6 +36,23 @@ export function EditDialog({ appointment: a, zone, staff, canWrite, onClose, onS
     },
   });
 
+  const [sync, setSync] = useState<AppointmentSync | undefined>(a.sync);
+  const [retryError, setRetryError] = useState("");
+  const retry = useRetrySync({
+    onSuccess: (updated) => { setRetryError(""); setSync(updated.sync); },
+    onError: (e) => {
+      setRetryError(retryErrorText(e));
+      // Someone else already retried it: show where it stands now.
+      getAppointment(a.id).then((fresh) => setSync(fresh.sync)).catch(() => undefined);
+    },
+  });
+  const syncLine: string | null =
+    !sync || sync.state === "off" ? null
+    : sync.state === "synced" ? "In Outlook"
+    : sync.state === "pending" ? "Waiting to sync"
+    : sync.state === "failed" ? `Outlook sync failed: ${sync.last_error ?? "unknown error"}`
+    : "Not synced: past appointment";
+
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
@@ -59,6 +76,17 @@ export function EditDialog({ appointment: a, zone, staff, canWrite, onClose, onS
           Ticket <Link className="font-medium text-blue-700 hover:underline" to={`/tickets/${a.ticket_id}`}>{ticketText}</Link>
           {a.organization_name && <span className="text-slate-500"> ({a.organization_name})</span>}
         </p>
+        {syncLine && (
+          <div className="text-sm" data-testid="sync-line">
+            <p className={sync?.state === "failed" ? "text-red-700" : "text-slate-600"}>
+              {sync?.state === "failed" && <span aria-hidden>✖ </span>}{syncLine}
+            </p>
+            {sync?.state === "failed" && canWrite && (
+              <Button type="button" variant="secondary" className="mt-1 [@media(pointer:coarse)]:min-h-[44px]" disabled={retry.isPending} onClick={() => { setRetryError(""); retry.mutate(a.id); }}>Retry Outlook sync</Button>
+            )}
+            {retryError && <p role="alert" className="mt-1 text-red-700">{retryError}</p>}
+          </div>
+        )}
         {a.conflicts.length > 0 && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <p className="font-medium">Conflicts</p>

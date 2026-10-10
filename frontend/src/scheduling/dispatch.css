@@ -102,6 +102,42 @@
   outline-offset: -2px;
   color: #92400e;
 }
+/* Outlook busy: a teal diagonal hatch with a solid left rule, so it reads differently from the grey
+   off-hours hatch and from time off. The rule (#0e7490 on white 5.4:1, #22d3ee on the dark column 8:1)
+   carries the 3:1 contrast; the stripes add the pattern. */
+.shade-outlook {
+  background: repeating-linear-gradient(
+    45deg,
+    rgb(14 116 144 / 0.34) 0 5px,
+    rgb(14 116 144 / 0.1) 5px 10px
+  ) !important;
+  border-left: 3px solid #0e7490 !important;
+  color: #155e75;
+}
+:root.dark .shade-outlook {
+  background: repeating-linear-gradient(
+    45deg,
+    rgb(34 211 238 / 0.38) 0 5px,
+    rgb(34 211 238 / 0.12) 5px 10px
+  ) !important;
+  border-left-color: #22d3ee !important;
+  color: #a5f3fc;
+}
+.dispatch-legend .swatch.shade-outlook {
+  border-left-width: 3px !important;
+}
+.dispatch-syncfail {
+  display: inline-grid;
+  place-items: center;
+  margin-right: 0.25rem;
+  min-width: 1rem;
+  border-radius: 9999px;
+  background: #fff;
+  color: #b91c1c;
+  font-size: 0.65rem;
+  line-height: 1rem;
+  font-weight: 700;
+}
 .shade-label {
   font-weight: 600;
 }

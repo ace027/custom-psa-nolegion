@@ -1,5 +1,5 @@
 import type { Appointment, AvailabilityRow, ConflictKind, StaffUser } from "./api";
-import { backgroundBlocks, conflictLabel, dropPatch, moveSummary, toEvents, toResources, undoPatch } from "./board";
+import { ageMinutes, backgroundBlocks, conflictLabel, dropPatch, isStale, moveSummary, oldestFetch, toEvents, toResources, undoPatch } from "./board";
 import { toBoardDate } from "./zone";
 
 const CHI = "America/Chicago";
@@ -22,6 +22,7 @@ const appt = (over: Partial<Appointment> = {}): Appointment => ({
   cancelled_at: null,
   cancel_reason: null,
   conflicts: [],
+  sync: { state: "off", last_error: null },
   ...over,
 });
 const staff: StaffUser[] = [
@@ -103,6 +104,8 @@ describe("backgroundBlocks", () => {
     time_off_pending: [{ starts_at: "2030-01-07T20:00:00Z", ends_at: "2030-01-07T21:00:00Z" }],
     appointments: [],
     free: [],
+    outlook_busy: [],
+    outlook_fetched_at: null,
   };
   const hm = (b: { start: Date; end: Date }) => [b.start.getHours(), b.end.getHours()];
 
@@ -131,6 +134,26 @@ describe("backgroundBlocks", () => {
     const [off] = backgroundBlocks([wide], CHI, range).filter((b) => b.kind === "time_off");
     expect(off.start).toEqual(board(range.from));
     expect(off.end).toEqual(board(range.to));
+  });
+  it("adds Outlook busy time as its own kind with the status", () => {
+    const withBusy = { ...row, outlook_busy: [{ starts_at: "2030-01-07T17:00:00Z", ends_at: "2030-01-07T18:00:00Z", status: "tentative" }] };
+    const blocks = backgroundBlocks([withBusy], CHI, range).filter((b) => b.kind === "outlook");
+    expect(blocks.map(hm)).toEqual([[11, 12]]);
+    expect(blocks[0].status).toBe("tentative");
+  });
+  it("converts an Outlook block across the spring DST change", () => {
+    // Chicago clocks jump 02:00 -> 03:00 on 2030-03-10 (08:00Z). 07:00Z-10:00Z is 01:00 CST to 05:00 CDT.
+    const day = { from: "2030-03-10T06:00:00.000Z", to: "2030-03-11T05:00:00.000Z" };
+    const dst = { ...row, working: [{ starts_at: "2030-03-10T14:00:00Z", ends_at: "2030-03-10T22:00:00Z" }], time_off: [], time_off_pending: [], outlook_busy: [{ starts_at: "2030-03-10T07:00:00Z", ends_at: "2030-03-10T10:00:00Z", status: "busy" }] };
+    const [b] = backgroundBlocks([dst], CHI, day).filter((x) => x.kind === "outlook");
+    expect(hm(b)).toEqual([1, 5]);
+    expect(b.start.getDate()).toBe(10);
+  });
+  it("clips Outlook blocks to the range", () => {
+    const wide = { ...row, outlook_busy: [{ starts_at: "2030-01-06T00:00:00Z", ends_at: "2030-01-09T00:00:00Z", status: "busy" }] };
+    const [b] = backgroundBlocks([wide], CHI, range).filter((x) => x.kind === "outlook");
+    expect(b.start).toEqual(board(range.from));
+    expect(b.end).toEqual(board(range.to));
   });
   it("keeps techs apart", () => {
     const blocks = backgroundBlocks([row, { ...row, user_id: 11 }], CHI, range);
@@ -172,4 +195,23 @@ describe("moveSummary", () => {
     expect(sum(appt({ tech_id: 99, tech_name: null }))).toBe("Moved to user 99");
   });
   it("says so when nothing changed", () => expect(sum(appt())).toBe("No change"));
+});
+
+describe("isStale / ageMinutes / oldestFetch", () => {
+  const now = new Date("2030-01-07T15:00:00Z");
+  const ago = (min: number) => new Date(now.getTime() - min * 60_000).toISOString();
+  it("treats null as stale", () => expect(isStale(null, now)).toBe(true));
+  it("is fresh at 14 minutes", () => expect(isStale(ago(14), now)).toBe(false));
+  it("is fresh at exactly 15 minutes", () => expect(isStale(ago(15), now)).toBe(false));
+  it("is stale at 16 minutes", () => expect(isStale(ago(16), now)).toBe(true));
+  it("counts whole minutes and never goes negative", () => {
+    expect(ageMinutes(ago(14), now)).toBe(14);
+    expect(ageMinutes(ago(-5), now)).toBe(0);
+  });
+  it("takes the oldest fetch, and null when any tech was never fetched", () => {
+    const r = (f: string | null): AvailabilityRow => ({ user_id: 1, timezone: CHI, working: [], time_off: [], time_off_pending: [], appointments: [], free: [], outlook_busy: [], outlook_fetched_at: f });
+    expect(oldestFetch([r(ago(3)), r(ago(9))])).toBe(ago(9));
+    expect(oldestFetch([r(ago(3)), r(null)])).toBeNull();
+    expect(oldestFetch([])).toBeNull();
+  });
 });

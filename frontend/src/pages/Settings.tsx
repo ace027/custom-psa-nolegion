@@ -3,6 +3,9 @@ import { useState } from "react";
 import { AppSettings, CannedResponse, CustomFieldDef, FieldType, Holiday, Lookup, TicketStatusRow, MailStatus, Priority, Queue, api } from "../api";
 import LateFeesCard from "./LateFeesCard";
 import RemindersCard from "./RemindersCard";
+import { can, useMe } from "../auth";
+import { getCalendarSyncStatus, schedulingKeys } from "../scheduling/api";
+import { ageMinutes, isStale } from "../scheduling/board";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../ui";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -12,6 +15,7 @@ export default function Settings() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
       <MailCard />
+      <OutlookSyncCard />
       <InvoicingCard />
       <RemindersCard />
       <LateFeesCard />
@@ -57,6 +61,51 @@ function MailCard() {
       )}
       {s?.last_error && <p className="mt-2 rounded bg-red-50 p-2 text-sm text-red-700">{fmt(s.last_error_at)}: {s.last_error}</p>}
       {s && !s.configured && <p className="mt-2 text-sm text-slate-600">Email-to-ticket is off until the mailbox is configured. See docs/MAIL_SETUP.md.</p>}
+    </Card>
+  );
+}
+
+export function OutlookSyncCard() {
+  const qc = useQueryClient();
+  const { data: me } = useMe();
+  const isAdmin = me?.role === "admin";
+  const q = useQuery({ queryKey: schedulingKeys.syncStatus(), queryFn: getCalendarSyncStatus, enabled: can(me, "schedule:read"), retry: false });
+  const save = useMutation({
+    mutationFn: (outlook_sync_enabled: boolean) => api("/settings", { method: "PATCH", json: { outlook_sync_enabled } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: schedulingKeys.all });
+      qc.invalidateQueries({ queryKey: ["lookup"] });
+    },
+  });
+  if (!can(me, "schedule:read")) return null;
+  const s = q.data;
+  const now = new Date();
+  return (
+    <Card title="Outlook calendar sync">
+      <ErrorMsg error={q.error} />
+      {s && (
+        <div className="space-y-2 text-sm">
+          {isAdmin ? (
+            <label className="flex min-h-[44px] items-center gap-2">
+              <input type="checkbox" className="h-5 w-5" checked={s.enabled} disabled={save.isPending} onChange={(e) => save.mutate(e.target.checked)} />
+              Push appointments to techs' Outlook calendars and show their Outlook busy time on the dispatch board
+            </label>
+          ) : (
+            <p>Outlook sync is <b>{s.enabled ? "on" : "off"}</b>. Only an admin can change this.</p>
+          )}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
+            <dt className="text-slate-500">Waiting to sync</dt><dd>{s.pending}</dd>
+            <dt className="text-slate-500">Failed</dt><dd className={s.failed > 0 ? "font-semibold text-red-700" : ""}>{s.failed}</dd>
+            <dt className="text-slate-500">Busy time updated</dt>
+            <dd className={s.enabled && isStale(s.busy_fetched_at, now) ? "text-amber-800" : ""}>
+              {s.busy_fetched_at ? `${ageMinutes(s.busy_fetched_at, now)} min ago` : "never"}
+            </dd>
+            <dt className="text-slate-500">Busy fetch errors</dt><dd>{s.busy_errors}</dd>
+          </dl>
+          <p className="text-xs text-slate-500">One way, PSA to Outlook. Needs the Exchange permission steps in docs/CALENDAR_SETUP.md before it is switched on.</p>
+        </div>
+      )}
+      <ErrorMsg error={save.error} />
     </Card>
   );
 }

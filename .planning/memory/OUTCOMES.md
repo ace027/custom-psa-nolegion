@@ -46,3 +46,4 @@ verification: 6/6 passed
 | O-023 | 2026-10-10 | dev | 4 | 04-03 | engineering-backend-architect | implementation | failed | 5 | outlook-push-freebusy, engineering | Free/busy cache job and the sync status, retry and availability API: BLOCKED |
 | O-024 | 2026-10-10 | dev | 4 | 04-03 | engineering-backend-architect | implementation | failed | 5 | outlook-push-freebusy, engineering | Free/busy cache job and the sync status, retry and availability API: Partial |
 | O-025 | 2026-10-10 | dev | 4 | 04-03 | engineering-backend-architect | implementation | partial | 3 | outlook-push-freebusy, engineering | Free/busy cache job and the sync status, retry and availability API: Complete with Warnings |
+| O-026 | 2026-10-10 | dev | 4 | 04-04 | engineering-frontend-developer | implementation | success | 2 | outlook-push-freebusy, engineering | Board Outlook busy shading, sync badges, settings card and setup docs: Complete |

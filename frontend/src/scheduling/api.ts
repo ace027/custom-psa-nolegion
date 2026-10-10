@@ -1,4 +1,5 @@
-import { api, type AppSettings, type User } from "../api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api, ApiError, type AppSettings, type User } from "../api";
 
 // Mirrors backend/app/scheduling_schemas.py. Times are ISO 8601 UTC strings.
 export type ConflictKind = "outside_hours" | "time_off" | "time_off_pending" | "overlap";
@@ -8,6 +9,11 @@ export interface Conflict {
   appointment_id: number | null;
 }
 export type AppointmentStatus = "scheduled" | "cancelled";
+export type SyncState = "pending" | "synced" | "failed" | "skipped" | "off";
+export interface AppointmentSync {
+  state: SyncState;
+  last_error: string | null;
+}
 export interface Appointment {
   id: number;
   organization_id: number;
@@ -26,6 +32,7 @@ export interface Appointment {
   cancelled_at: string | null;
   cancel_reason: string | null;
   conflicts: Conflict[];
+  sync: AppointmentSync;
 }
 export interface AppointmentCreate {
   ticket_id: number;
@@ -54,6 +61,23 @@ export interface AvailabilityRow {
   time_off_pending: Window[];
   appointments: (Window & { id: number })[];
   free: Window[];
+  outlook_busy: (Window & { status: string })[]; // cached Outlook busy time; informational
+  outlook_fetched_at: string | null; // null: never fetched
+}
+export interface SyncFailure {
+  appointment_id: number;
+  ticket_id: number;
+  tech_id: number;
+  last_error: string | null;
+  updated_at: string;
+}
+export interface CalendarSyncStatus {
+  enabled: boolean;
+  pending: number;
+  failed: number;
+  failures: SyncFailure[];
+  busy_fetched_at: string | null;
+  busy_errors: number;
 }
 export interface WorkHoursDay {
   weekday: number; // 0 = Monday
@@ -90,6 +114,7 @@ export const schedulingKeys = {
   schedule: (userId: number) => ["scheduling", "schedule", userId] as const,
   staff: () => ["scheduling", "staff"] as const,
   orgTimezone: () => ["scheduling", "orgTimezone"] as const,
+  syncStatus: () => ["scheduling", "syncStatus"] as const,
 };
 
 function query(params: Record<string, string | number | boolean | undefined>): string {
@@ -122,6 +147,9 @@ export function getAvailability(p: AvailabilityParams): Promise<AvailabilityRow[
     `/availability${query({ from: p.from, to: p.to, user_ids: p.userIds?.length ? p.userIds.join(",") : undefined })}`,
   );
 }
+export const getCalendarSyncStatus = (): Promise<CalendarSyncStatus> => api<CalendarSyncStatus>("/calendar-sync/status");
+export const retryAppointmentSync = (id: number): Promise<Appointment> =>
+  api<Appointment>(`/appointments/${id}/sync/retry`, { method: "POST" });
 export const getSchedule = (userId: number): Promise<Schedule> => api<Schedule>(`/users/${userId}/schedule`);
 
 /** Active admins and techs, by display name: the people who can be booked. */
@@ -134,4 +162,23 @@ export async function listStaff(): Promise<StaffUser[]> {
 }
 export async function getOrgTimezone(): Promise<string> {
   return (await api<AppSettings>("/settings")).timezone;
+}
+
+/** Why a retry failed, in words for the person who clicked: 409 means someone already retried it. */
+export const retryErrorText = (e: unknown): string =>
+  e instanceof ApiError && e.status === 409
+    ? "This sync was already retried; it is no longer failed."
+    : e instanceof Error
+      ? e.message
+      : "Retry failed";
+
+/** Retry a failed Outlook push, then refresh every scheduling query (board, appointment, status). */
+export function useRetrySync(handlers: { onSuccess?(a: Appointment): void; onError?(e: unknown): void } = {}) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => retryAppointmentSync(id),
+    onSuccess: (a) => handlers.onSuccess?.(a),
+    onError: (e) => handlers.onError?.(e),
+    onSettled: () => qc.invalidateQueries({ queryKey: schedulingKeys.all }),
+  });
 }
