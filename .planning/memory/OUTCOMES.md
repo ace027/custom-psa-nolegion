@@ -41,3 +41,4 @@ agent: ship-pipeline
 result: success
 pr: N/A
 verification: 6/6 passed
+| O-021 | 2026-10-10 | dev | 4 | 04-01 | engineering-backend-architect | implementation | success | 2 | outlook-push-freebusy, engineering | Graph calendar client, fake Graph calendar endpoints and the tenant spike script: Complete |
