@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { api } from "./api";
 import { can, useMe } from "./auth";
@@ -38,6 +38,9 @@ import Search from "./pages/Search";
 import Tickets from "./pages/Tickets";
 import Users from "./pages/Users";
 import { ThemeToggle } from "./ui";
+
+// The dispatch board pulls in react-big-calendar, so it is split into its own chunk.
+const Dispatch = lazy(() => import("./pages/Dispatch"));
 
 function Layout() {
   const { data: me } = useMe();
@@ -83,6 +86,7 @@ function Layout() {
         <nav className="space-y-0.5" onClick={close}>
           <NavLink to="/dashboard" className={link}>Dashboard</NavLink>
           <NavLink to="/tickets" className={link}>Tickets</NavLink>
+          {can(me, "schedule:read") && <NavLink to="/dispatch" className={link}>Dispatch</NavLink>}
           <NavLink to="/organizations" className={link}>Organizations</NavLink>
           {can(me, "time:write") && <NavLink to="/timesheet" className={link}>My timesheet</NavLink>}
           {can(me, "time:write") && <NavLink to="/expenses" className={link}>My expenses</NavLink>}
@@ -130,6 +134,10 @@ function StaffApp() {
         <Route path="/search" element={<Search />} />
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/tickets/:id" element={<TicketDetail />} />
+        <Route
+          path="/dispatch"
+          element={can(me, "schedule:read") ? <Suspense fallback={<p>Loading…</p>}><Dispatch /></Suspense> : <Navigate to="/" replace />}
+        />
         <Route path="/timesheet" element={can(me, "time:write") ? <Timesheet /> : <Navigate to="/" replace />} />
         <Route path="/expenses" element={can(me, "time:write") ? <Expenses /> : <Navigate to="/" replace />} />
         <Route path="/settings" element={can(me, "config:manage") ? <Settings /> : <Navigate to="/" replace />} />

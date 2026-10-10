@@ -16,6 +16,18 @@ Checks:
 - `src/scheduling/Spike.test.tsx` renders `withDragAndDrop(Calendar)` in jsdom with a day view and
   two resources and two events: both headers and titles render, `rbc-addons-dnd` is present, and
   console.error logged no Warning or Error.
-- gzip size of the lazy-loaded calendar chunk (`npx vite build`): measured in 03-02
+- gzip size of the lazy-loaded calendar chunk (`npm run build`, vite 8.3.1, measured in 03-02):
+
+  | Asset | Raw | gzip |
+  |---|---|---|
+  | `Dispatch-*.js` (lazy: page, dialogs, react-big-calendar, DnD addon, date-fns, @date-fns/tz) | 303.50 kB | 84.15 kB |
+  | `Dispatch-*.css` (lazy: react-big-calendar and DnD CSS, dispatch.css) | 14.48 kB | 3.30 kB |
+  | `index-*.js` (main) | 560.33 kB | 145.63 kB |
+  | `index-*.css` (main) | 25.51 kB | 6.04 kB |
+
+  `App.tsx` loads the page with `lazy(() => import("./pages/Dispatch"))`. `grep -c 'rbc-'` returns 0
+  for the main JS and CSS assets and a nonzero count for both Dispatch assets, so react-big-calendar
+  ships only in the lazy chunk. Vite's ">500 kB" warning refers to the main chunk, which this
+  library does not contribute to.
 
 Result: GO
