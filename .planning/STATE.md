@@ -2,8 +2,8 @@
 
 ## Current Position
 - **Phase**: 4 of 13 (executing)
-- **Status**: Phase 4 executing — Plan 04-02 complete
-- **Last Activity**: Plan 04-02 execution (2026-10-10)
+- **Status**: Phase 4 executing — Plan 04-03 failed
+- **Last Activity**: Plan 04-03 execution (2026-10-10)
 
 ## Progress
 ```
@@ -54,3 +54,4 @@ Run `/triad:build` to execute Phase 4: Outlook push + free/busy
 (build started 2026-10-10)
 - Plan 04-01 (Wave 1): Graph calendar client, fake Graph calendar endpoints and the tenant spike script — Complete
 - Plan 04-02 (Wave 2): Sync schema, outbox enqueue and the worker push job — Complete
+- Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — BLOCKED: Needs a new migration in backend/alembic/ (forbidden) to grant DELETE on busy_blocks to psa_app.
