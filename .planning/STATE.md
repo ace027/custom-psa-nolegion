@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 3 of 13 (complete)
-- **Status**: Phase 3 shipped (2026-10-10)
-- **Last Activity**: Phase 3 shipped (2026-10-10)
+- **Phase**: 4 of 13 (planned)
+- **Status**: Phase 4 planned -- 4 plans across 4 waves
+- **Last Activity**: Phase 4 planning (2026-10-10)
 
 ## Progress
 ```
@@ -21,7 +21,7 @@
 - Appointments link to tickets only (no SLA or billing effect)
 
 ## Next Action
-Run `/triad:plan 4` to plan Phase 4: Outlook push + free/busy
+Run `/triad:build` to execute Phase 4: Outlook push + free/busy
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -30,7 +30,8 @@ Run `/triad:plan 4` to plan Phase 4: Outlook push + free/busy
 ## GitHub
 - Phase 1 issue: #2 (closed)
 - Phase 2 issue: #3 (closed); shipped in PR #4
-- Phase 3 issue: #5 https://github.com/ace027/custom-psa-nolegion/issues/5 (created via the GitHub connector)
+- Phase 3 issue: #5 (closed); merged to main in PR #4
+- Phase 4 issue: #6 https://github.com/ace027/custom-psa-nolegion/issues/6 (created via the GitHub connector)
 
 ## Phase 2 Results
 (build started 2026-10-09)
