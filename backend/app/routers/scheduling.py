@@ -126,7 +126,8 @@ def cancel_time_off(time_off_id: int, ctx: Ctx = require(P.SCHEDULE_WRITE)):
     "/appointments",
     response_model=list[AppointmentOut],
     responses=ERR,
-    summary="Appointments overlapping from/to (required unless ticket_id is given)",
+    summary="Appointments overlapping from/to (required unless ticket_id is given); "
+    "with_conflicts=true adds conflicts per item and needs from/to of at most 8 days",
 )
 def list_appointments(
     tech_id: int | None = None,
@@ -134,6 +135,7 @@ def list_appointments(
     start: datetime | None = Query(None, alias="from"),
     end: datetime | None = Query(None, alias="to"),
     include_cancelled: bool = False,
+    with_conflicts: bool = False,
     ctx: Ctx = require(P.SCHEDULE_READ),
 ):
     try:
@@ -144,10 +146,11 @@ def list_appointments(
             start=start,
             end=end,
             include_cancelled=include_cancelled,
+            with_conflicts=with_conflicts,
         )
     except svc.InvalidSchedule as exc:
         raise _invalid(exc) from exc
-    return [svc.appointment_view(ctx, a) for a in rows]
+    return [svc.appointment_view(ctx, a, with_conflicts=with_conflicts) for a in rows]
 
 
 @router.post(

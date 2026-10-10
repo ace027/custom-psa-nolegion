@@ -465,3 +465,76 @@ def test_availability_validation(admin, tech, login):
     biller = login("billing")
     params = {"from": at(0), "to": at(0, day=1), "user_ids": str(biller.user["id"])}
     assert admin.get("/api/availability", params=params).status_code == 409
+
+
+# ---- board additions: list conflicts and pending time off ---------------------------------------
+def test_list_with_conflicts(admin, tech, ticket, login):
+    tid, uid = ticket["id"], tech.user["id"]
+    first = book(admin, tid, uid, at(15, day=3), at(17, day=3)).json()
+    second = book(admin, tid, uid, at(16, day=3), at(18, day=3)).json()
+    early = book(admin, tid, uid, at(12), at(13)).json()  # 06:00 Chicago
+    cancelled = book(admin, tid, uid, at(15, day=4), at(16, day=4)).json()
+    admin.post(f"/api/appointments/{cancelled['id']}/cancel", json={})
+    params = {"from": at(0), "to": at(0, day=8)}
+
+    rows = {x["id"]: x for x in admin.get("/api/appointments", params=params).json()}
+    assert all(x["conflicts"] == [] for x in rows.values())  # default: no conflicts
+
+    rows = {
+        x["id"]: x
+        for x in admin.get(
+            "/api/appointments",
+            params={**params, "with_conflicts": True, "include_cancelled": True},
+        ).json()
+    }
+    assert rows[first["id"]]["conflicts"] == [
+        {"kind": "overlap", "time_off_id": None, "appointment_id": second["id"]}
+    ]
+    assert rows[second["id"]]["conflicts"] == [
+        {"kind": "overlap", "time_off_id": None, "appointment_id": first["id"]}
+    ]
+    assert [c["kind"] for c in rows[early["id"]]["conflicts"]] == ["outside_hours"]
+    assert rows[cancelled["id"]]["status"] == "cancelled"
+    assert rows[cancelled["id"]]["conflicts"] == []
+
+    assert (
+        login("read_only")
+        .get("/api/appointments", params={**params, "with_conflicts": True})
+        .status_code
+        == 200
+    )
+
+
+def test_list_with_conflicts_needs_a_short_range(admin, tech, ticket):
+    flag = {"with_conflicts": True}
+    assert admin.get("/api/appointments", params=flag).status_code == 422
+    r = admin.get("/api/appointments", params={**flag, "from": at(0)})
+    assert r.status_code == 422
+    r = admin.get("/api/appointments", params={**flag, "ticket_id": ticket["id"]})
+    assert r.status_code == 422
+    r = admin.get("/api/appointments", params={**flag, "from": at(0), "to": at(0, day=9)})
+    assert r.status_code == 422 and "8 days" in r.json()["detail"]
+    r = admin.get("/api/appointments", params={**flag, "from": at(0), "to": at(0, day=8)})
+    assert r.status_code == 200
+
+
+def test_availability_reports_pending_time_off(admin, tech):
+    uid = tech.user["id"]
+    pending = request_off(tech, at(18), at(19)).json()
+    params = {"user_ids": str(uid), "from": at(0), "to": at(0, day=1)}
+
+    def row():
+        return admin.get("/api/availability", params=params).json()[0]
+
+    def spans(items):
+        return [(i["starts_at"][11:16], i["ends_at"][11:16]) for i in items]
+
+    r = row()
+    assert spans(r["time_off_pending"]) == [("18:00", "19:00")] and r["time_off"] == []
+    assert spans(r["free"]) == [("14:00", "23:00")]  # pending does not reduce free time
+
+    assert admin.post(f"/api/time-off/{pending['id']}/approve", json={}).status_code == 200
+    r = row()
+    assert r["time_off_pending"] == []
+    assert spans(r["time_off"]) == [("18:00", "19:00")]
+    assert spans(r["free"]) == [("14:00", "18:00"), ("19:00", "23:00")]

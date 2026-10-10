@@ -144,5 +144,6 @@ class AvailabilityOut(BaseModel):
     timezone: str
     working: list[Window]
     time_off: list[Window]  # approved only
+    time_off_pending: list[Window]  # pending requests; they do not reduce free time
     appointments: list[AppointmentWindow]  # scheduled only
     free: list[Window]

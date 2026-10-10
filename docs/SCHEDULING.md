@@ -100,6 +100,8 @@ Intervals are half-open, so back-to-back slots (10:00-11:00 and 11:00-12:00) do 
 
 - Appointment list: `from` and `to` are required unless `ticket_id` is given, and the range is
   at most 62 days.
+- Appointment list with `with_conflicts=true`: `from` and `to` are both required and the range is
+  at most 8 days.
 - Availability: the range is at most 31 days.
 - Time off: at most 366 days.
 - `end` must be after `start` in every range.
@@ -117,9 +119,9 @@ All routes are under `/api`, tagged `scheduling`. Errors use `{detail}` with 403
 | `POST /time-off/{id}/approve` | timeoff:approve | `{note?}` |
 | `POST /time-off/{id}/reject` | timeoff:approve | `{note?}` |
 | `POST /time-off/{id}/cancel` | schedule:write | Owner or approver |
-| `GET /appointments` | schedule:read | Query `tech_id`, `ticket_id`, `from`, `to`, `include_cancelled` |
+| `GET /appointments` | schedule:read | Query `tech_id`, `ticket_id`, `from`, `to`, `include_cancelled`, `with_conflicts` (default false). With `with_conflicts=true` every item carries its server-computed `conflicts` (cancelled ones keep `[]`); `from` and `to` are required and at most 8 days apart, else 422 |
 | `POST /appointments` | schedule:write | `{ticket_id, tech_id, starts_at, ends_at, notes?, client_visible?}`, 201, with conflicts |
 | `GET /appointments/{id}` | schedule:read | With conflicts |
 | `PATCH /appointments/{id}` | schedule:write | Any of `tech_id`, `starts_at`, `ends_at`, `notes`, `client_visible`; returns conflicts |
 | `POST /appointments/{id}/cancel` | schedule:write | `{reason?}` |
-| `GET /availability` | schedule:read | Query `user_ids` (comma-separated; omit for all active admins and techs), `from`, `to`. Per user: `timezone`, `working`, approved `time_off`, scheduled `appointments` (with `id`), and `free` = working minus time off minus appointments |
+| `GET /availability` | schedule:read | Query `user_ids` (comma-separated; omit for all active admins and techs), `from`, `to`. Per user: `timezone`, `working`, approved `time_off`, `time_off_pending` (pending requests overlapping the range; they do not reduce `free`, and move to `time_off` once approved), scheduled `appointments` (with `id`), and `free` = working minus time off minus appointments |

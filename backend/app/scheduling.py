@@ -33,6 +33,7 @@ BOOKABLE_ROLES = ("admin", "tech")
 MAX_APPOINTMENT = timedelta(hours=24)
 MAX_TIME_OFF = timedelta(days=366)
 MAX_APPOINTMENT_RANGE = timedelta(days=62)
+MAX_CONFLICT_RANGE = timedelta(days=8)
 MAX_AVAILABILITY_RANGE = timedelta(days=31)
 MAX_AVAILABILITY_USERS = 50
 EARLIEST = datetime(1970, 1, 1, tzinfo=UTC)
@@ -477,9 +478,13 @@ def list_appointments(
     start: datetime | None,
     end: datetime | None,
     include_cancelled: bool,
+    with_conflicts: bool = False,
 ) -> list[Appointment]:
-    """Appointments overlapping [start, end). The range is required unless ticket_id is given."""
+    """Appointments overlapping [start, end). The range is required unless ticket_id is given.
+    with_conflicts (the caller then computes conflicts per item) needs a range of at most 8 days."""
     _aware(start, end)
+    if with_conflicts and (start is None or end is None or end - start > MAX_CONFLICT_RANGE):
+        raise InvalidSchedule("with_conflicts needs a from/to range of at most 8 days")
     if ticket_id is None and (start is None or end is None):
         raise InvalidSchedule("Give from and to (or a ticket_id)")
     if start is not None and end is not None:
@@ -580,6 +585,9 @@ def availability_for(
             (t.starts_at, t.ends_at)
             for t in _busy_time_off(ctx, user.id, start, end, ("approved",))
         ]
+        pending = [
+            (t.starts_at, t.ends_at) for t in _busy_time_off(ctx, user.id, start, end, ("pending",))
+        ]
         appts = _busy_appointments(ctx, user.id, start, end)
         free = availability.subtract(working, off + [(a.starts_at, a.ends_at) for a in appts])
         out.append(
@@ -588,6 +596,7 @@ def availability_for(
                 timezone=tz.key,
                 working=[dict(starts_at=s, ends_at=e) for s, e in working],
                 time_off=[dict(starts_at=s, ends_at=e) for s, e in off],
+                time_off_pending=[dict(starts_at=s, ends_at=e) for s, e in pending],
                 appointments=[
                     dict(id=a.id, starts_at=a.starts_at, ends_at=a.ends_at) for a in appts
                 ],
