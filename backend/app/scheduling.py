@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import Select, select
 
-from app import audit, availability
+from app import audit, availability, calendar_sync
 from app import permissions as P
 from app import repositories as repo
 from app import ticket_services as tsvc
@@ -411,6 +411,7 @@ def create_appointment(ctx: Ctx, data: dict) -> Appointment:
     ctx.db.add(a)
     ctx.db.flush()
     ctx.db.refresh(a)
+    calendar_sync.enqueue(ctx.db, a)
     audit.record(
         ctx.db,
         ctx.user,
@@ -439,6 +440,7 @@ def update_appointment(ctx: Ctx, appointment_id: int, data: dict) -> Appointment
     ends = data.get("ends_at", a.ends_at)
     _range(starts, ends, MAX_APPOINTMENT, "An appointment")
     before = audit.snapshot(a)
+    moved = (a.tech_id, a.starts_at, a.ends_at) != (tech_id, starts, ends)
     a.tech_id, a.starts_at, a.ends_at = tech_id, starts, ends
     if "notes" in data:
         a.notes = data["notes"]
@@ -446,6 +448,8 @@ def update_appointment(ctx: Ctx, appointment_id: int, data: dict) -> Appointment
         a.client_visible = data["client_visible"]
     ctx.db.flush()
     ctx.db.refresh(a)
+    if moved:
+        calendar_sync.enqueue(ctx.db, a)
     audit.record(
         ctx.db,
         ctx.user,
@@ -469,6 +473,7 @@ def cancel_appointment(ctx: Ctx, appointment_id: int, reason: str | None) -> App
     a.cancel_reason = (reason or "").strip() or None
     ctx.db.flush()
     ctx.db.refresh(a)
+    calendar_sync.enqueue(ctx.db, a)
     audit.record(
         ctx.db,
         ctx.user,

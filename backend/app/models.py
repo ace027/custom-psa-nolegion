@@ -270,6 +270,9 @@ class Settings(Base):
     late_fee_max_per_invoice: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="1"
     )
+    outlook_sync_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     reminders_prepared_on: Mapped[date | None] = mapped_column(Date)
     statements_prepared_month: Mapped[date | None] = mapped_column(Date)
     auto_ack_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -397,6 +400,60 @@ class Appointment(TimestampMixin, Base):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     cancel_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class AppointmentSync(Base):
+    """Outbox row per appointment for the Outlook push. Client-owned (RLS)."""
+
+    __tablename__ = "appointment_sync"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('pending','synced','failed','skipped')", name="ck_appointment_sync_state"
+        ),
+        Index("ix_appointment_sync_due", "state", "next_attempt_at"),
+    )
+    appointment_id: Mapped[int] = mapped_column(
+        ForeignKey("appointments.id", ondelete="CASCADE"), primary_key=True
+    )
+    organization_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    generation: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    desired_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    synced_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    synced_tech_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    graph_event_id: Mapped[str | None] = mapped_column(String(512))
+    state: Mapped[str] = mapped_column(String(16), nullable=False, server_default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    next_attempt_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    last_error: Mapped[str | None] = mapped_column(String(500))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
+class BusyBlock(Base):
+    """Cached Outlook busy time for a staff user (no client data, no RLS)."""
+
+    __tablename__ = "busy_blocks"
+    __table_args__ = (
+        CheckConstraint("ends_at > starts_at", name="ck_busy_blocks_range"),
+        Index("ix_busy_blocks_user_start", "user_id", "starts_at"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+
+
+class CalendarBusyStatus(Base):
+    __tablename__ = "calendar_busy_status"
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(500))
 
 
 class MailboxStatus(Base):

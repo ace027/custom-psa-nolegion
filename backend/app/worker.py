@@ -86,6 +86,23 @@ def integration_jobs() -> None:
         log.exception("integration jobs failed")
 
 
+def calendar_jobs(client) -> None:
+    """Push pending appointment changes to Outlook (idempotent; a failure never raises)."""
+    from datetime import UTC, datetime
+
+    from app import db as dbmod
+    from app.calendar_sync import push_pending
+
+    try:
+        with dbmod.new_session() as db:
+            dbmod.set_org_scope(db, "all")
+            n = push_pending(db, client, now=datetime.now(UTC))
+        if n:
+            log.info("processed %d calendar sync row(s)", n)
+    except Exception:
+        log.exception("calendar jobs failed")
+
+
 def build_client() -> GraphClient:
     s = get_settings()
     return GraphClient(
@@ -125,6 +142,7 @@ def main(argv: list[str]) -> int:
     log.info("mail worker started for %s (every %ss)", s.mail_mailbox, s.mail_poll_seconds)
     while not _stop:
         run_cycle(client, s.mail_mailbox)
+        calendar_jobs(client)
         billing_jobs()
         notify_jobs()
         integration_jobs()
