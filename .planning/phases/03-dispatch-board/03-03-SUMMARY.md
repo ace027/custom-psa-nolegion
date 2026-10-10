@@ -50,7 +50,7 @@
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | warning | out-of-scope file | Keep or revert the edit to `frontend/src/pages/Dispatch.tsx` (the `withDragAndDrop` default-export unwrap). | pending | INVALID: type "out-of-scope file" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
+| 1 | warning | out-of-scope file | Keep or revert the edit to `frontend/src/pages/Dispatch.tsx` (the `withDragAndDrop` default-export unwrap). | approved | Keep it. The owner approved the fix, and it is now committed separately as a 03-02 follow-up (4012615), so it is no longer part of 03-03's changes. |
 
 - #1 context: The file is in files_forbidden. The comment in the code says the Vite dev server needs the unwrap. I have not tested the e2e run with the edit reverted.
 
