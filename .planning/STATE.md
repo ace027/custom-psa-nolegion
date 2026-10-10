@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Phase**: 4 of 13 (executing)
-- **Status**: Phase 4 executing — Plan 04-04 complete
+- **Phase**: 4 of 13 (executed, pending review)
+- **Status**: Phase 4 complete — all plans executed successfully
 - **Last Activity**: Plan 04-04 execution (2026-10-10)
 
 ## Progress
@@ -21,7 +21,7 @@
 - Appointments link to tickets only (no SLA or billing effect)
 
 ## Next Action
-Fix the failed plans and run `/triad:build` again (completed plans are kept), or run `/triad:review`
+Run `/triad:review` to verify Phase 4: Outlook push + free/busy
 
 ## Phase 1 Results
 (build started 2026-10-09)
