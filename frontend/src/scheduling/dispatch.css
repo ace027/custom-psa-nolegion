@@ -38,8 +38,9 @@
   font-size: 0.75rem;
 }
 .dispatch-board .rbc-event:focus-visible {
-  outline: 3px solid var(--color-blue-200, #c7cdfd);
-  outline-offset: 1px;
+  outline: 3px solid #1e3a8a;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff;
 }
 .dispatch-event {
   display: flex;
