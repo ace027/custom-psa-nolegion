@@ -1,0 +1,21 @@
+# SITE_ADDRESS: e.g. psa.example.com (automatic HTTPS) or ":80" behind your own proxy/TLS terminator.
+{$SITE_ADDRESS::80} {
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+	}
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

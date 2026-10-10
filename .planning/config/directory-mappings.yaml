@@ -1,0 +1,39 @@
+generated: "2026-10-09"
+source: CODEBASE.md
+version: "1.0"
+mappings:
+  tests:
+    paths:
+      - backend/tests
+    priority: 10
+    pattern: "backend/tests/**"
+    description: tests files
+  pages:
+    paths:
+      - backend/app
+      - frontend/src/pages
+    priority: 10
+    pattern: "backend/app/**"
+    description: pages files
+  docs:
+    paths:
+      - docs
+    priority: 5
+    pattern: "docs/**"
+    description: docs files
+packages:
+
+enforcement:
+  strictness: warn
+  exceptions:
+    - ".planning/**"
+autoUpdate:
+  enabled: true
+  mode: prompt
+  threshold:
+    newDirectoryFiles: 3
+    newCategoryFiles: 10
+    categoryChangePercent: 20
+  backup:
+    enabled: true
+    keepCount: 5

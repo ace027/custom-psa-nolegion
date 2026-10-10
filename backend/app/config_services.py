@@ -1,0 +1,334 @@
+"""Editable configuration: queues, categories, priorities, work types, and global settings."""
+
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from sqlalchemy import update
+
+from app import audit
+from app import repositories as repo
+from app.deps import Ctx
+from app.errors import Conflict, NotFound
+from app.models import Priority, Queue
+from app.sla import Calendar
+
+HAS_DEFAULT = (Queue, Priority)
+
+
+def _unset_other_defaults(ctx: Ctx, model, keep_id: int | None) -> None:
+    stmt = update(model).where(model.is_default.is_(True))
+    if keep_id is not None:
+        stmt = stmt.where(model.id != keep_id)
+    ctx.db.execute(stmt.values(is_default=False))
+
+
+def _flush(ctx: Ctx, label: str) -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        ctx.db.flush()
+    except IntegrityError as exc:
+        ctx.db.rollback()
+        raise Conflict(f"An active {label} with that name already exists") from exc
+
+
+def create_lookup(ctx: Ctx, model, label: str, data: dict):
+    if model in HAS_DEFAULT and data.get("is_default"):
+        _unset_other_defaults(ctx, model, None)
+    obj = model(**data)
+    ctx.db.add(obj)
+    _flush(ctx, label)
+    audit.record(ctx.db, ctx.user, f"{label}.create", obj, after=audit.snapshot(obj))
+    return obj
+
+
+def update_lookup(ctx: Ctx, model, label: str, obj_id: int, data: dict):
+    obj = repo.get_lookup(ctx.db, model, obj_id)
+    if obj is None:
+        raise NotFound(f"{label} not found")
+    before = audit.snapshot(obj)
+    if model in HAS_DEFAULT and "is_default" in data:
+        if data["is_default"]:
+            _unset_other_defaults(ctx, model, obj.id)
+        elif obj.is_default:
+            raise Conflict(f"Choose another {label} as the default instead")
+    for key, value in data.items():
+        if key in ("name", "body") and value is None:
+            continue
+        setattr(obj, key, value)
+    _flush(ctx, label)
+    ctx.db.refresh(obj)
+    audit.record(ctx.db, ctx.user, f"{label}.update", obj, before=before, after=audit.snapshot(obj))
+    return obj
+
+
+def set_lookup_archived(ctx: Ctx, model, label: str, obj_id: int, archived: bool):
+    from datetime import UTC, datetime
+
+    obj = repo.get_lookup(ctx.db, model, obj_id)
+    if obj is None:
+        raise NotFound(f"{label} not found")
+    if archived and getattr(obj, "is_default", False):
+        raise Conflict(f"The default {label} cannot be archived; choose another default first")
+    before = audit.snapshot(obj)
+    obj.archived_at = datetime.now(UTC) if archived else None
+    _flush(ctx, label)
+    ctx.db.refresh(obj)
+    audit.record(
+        ctx.db,
+        ctx.user,
+        f"{label}.{'archive' if archived else 'unarchive'}",
+        obj,
+        before=before,
+        after=audit.snapshot(obj),
+    )
+    return obj
+
+
+def update_settings(ctx: Ctx, data: dict):
+    from app.notices import INVOICE_PLACEHOLDERS, validate_template
+
+    for key in ("statement_subject", "statement_body"):
+        if data.get(key) is not None:
+            validate_template(data[key])
+    for key in ("invoice_email_subject", "invoice_email_body"):
+        if data.get(key) is not None:
+            validate_template(data[key], INVOICE_PLACEHOLDERS)
+    from app.autoreply import ACK_PLACEHOLDERS
+
+    for key in ("auto_ack_subject", "auto_ack_body"):
+        if data.get(key) is not None:
+            validate_template(data[key], ACK_PLACEHOLDERS)
+    row = repo.get_settings_row(ctx.db)
+    before = audit.snapshot(row)
+    for key, value in data.items():
+        if value is not None:
+            setattr(row, key, value)
+    if data.get("escalation_email") == "":
+        row.escalation_email = None
+    try:
+        ZoneInfo(row.timezone)
+        Calendar.from_settings(row).validate()  # no query here: it would autoflush a bad row
+    except (ZoneInfoNotFoundError, ValueError, KeyError) as exc:
+        ctx.db.rollback()
+        raise Conflict(f"Invalid settings: {exc}") from exc
+    row.business_days = sorted(set(row.business_days))
+    ctx.db.flush()
+    ctx.db.refresh(row)
+    audit.record(ctx.db, ctx.user, "settings.update", row, before=before, after=audit.snapshot(row))
+    return row
+
+
+# ---- holidays ----
+def _holiday_flush(ctx: Ctx) -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        ctx.db.flush()
+    except IntegrityError as exc:
+        ctx.db.rollback()
+        raise Conflict("That date already has a holiday entry") from exc
+
+
+def create_holiday(ctx: Ctx, data: dict):
+    from app.models import Holiday
+
+    obj = Holiday(**data)
+    ctx.db.add(obj)
+    _holiday_flush(ctx)
+    audit.record(ctx.db, ctx.user, "holiday.create", obj, after=audit.snapshot(obj))
+    return obj
+
+
+def update_holiday(ctx: Ctx, holiday_id: int, data: dict):
+    from app.models import Holiday
+
+    obj = ctx.db.get(Holiday, holiday_id)
+    if obj is None:
+        raise NotFound("Holiday not found")
+    before = audit.snapshot(obj)
+    for key, value in data.items():
+        setattr(obj, key, value)
+    _holiday_flush(ctx)
+    ctx.db.refresh(obj)
+    audit.record(ctx.db, ctx.user, "holiday.update", obj, before=before, after=audit.snapshot(obj))
+    return obj
+
+
+def delete_holiday(ctx: Ctx, holiday_id: int) -> None:
+    from app.models import Holiday
+
+    obj = ctx.db.get(Holiday, holiday_id)
+    if obj is None:
+        raise NotFound("Holiday not found")
+    audit.record(ctx.db, ctx.user, "holiday.delete", obj, before=audit.snapshot(obj))
+    ctx.db.delete(obj)
+    ctx.db.flush()
+
+
+# ---- ticket statuses ----
+def _status_flush(ctx: Ctx) -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        ctx.db.flush()
+    except IntegrityError as exc:
+        ctx.db.rollback()
+        raise Conflict("An active status with that name already exists") from exc
+
+
+def create_ticket_status(ctx: Ctx, data: dict):
+    from sqlalchemy import func, select
+
+    from app.models import TicketStatus
+
+    if data.get("position") is None:
+        data["position"] = (
+            ctx.db.execute(select(func.coalesce(func.max(TicketStatus.position), 0))).scalar_one()
+            + 10
+        )
+    obj = TicketStatus(**data)
+    ctx.db.add(obj)
+    _status_flush(ctx)
+    audit.record(ctx.db, ctx.user, "ticket_status.create", obj, after=audit.snapshot(obj))
+    return obj
+
+
+def update_ticket_status(ctx: Ctx, status_id: int, data: dict):
+    obj = repo.get_ticket_status(ctx.db, status_id)
+    if obj is None:
+        raise NotFound("Status not found")
+    before = audit.snapshot(obj)
+    for key, value in data.items():
+        if value is not None:
+            setattr(obj, key, value)
+    _status_flush(ctx)
+    ctx.db.refresh(obj)
+    audit.record(
+        ctx.db, ctx.user, "ticket_status.update", obj, before=before, after=audit.snapshot(obj)
+    )
+    return obj
+
+
+def set_ticket_status_archived(ctx: Ctx, status_id: int, archived: bool):
+    from datetime import UTC, datetime
+
+    obj = repo.get_ticket_status(ctx.db, status_id)
+    if obj is None:
+        raise NotFound("Status not found")
+    if archived:
+        others = [
+            s
+            for s in repo.list_ticket_statuses(ctx.db, False)
+            if s.behavior == obj.behavior and s.id != obj.id
+        ]
+        if not others and obj.archived_at is None:
+            raise Conflict(
+                "Every behaviour needs at least one active status; add another "
+                f"'{obj.behavior.replace('_', ' ')}' status first"
+            )
+    before = audit.snapshot(obj)
+    obj.archived_at = datetime.now(UTC) if archived else None
+    _status_flush(ctx)
+    ctx.db.refresh(obj)
+    audit.record(
+        ctx.db,
+        ctx.user,
+        f"ticket_status.{'archive' if archived else 'unarchive'}",
+        obj,
+        before=before,
+        after=audit.snapshot(obj),
+    )
+    return obj
+
+
+# ---- custom fields ----
+def _field_flush(ctx: Ctx) -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        ctx.db.flush()
+    except IntegrityError as exc:
+        ctx.db.rollback()
+        raise Conflict("An active field with that name already exists on this type") from exc
+
+
+def _get_type(ctx: Ctx, type_id: int):
+    from app.models import TicketType
+
+    obj = ctx.db.get(TicketType, type_id)
+    if obj is None:
+        raise NotFound("Ticket type not found")
+    return obj
+
+
+def _get_field(ctx: Ctx, field_id: int):
+    from app.models import CustomField
+
+    obj = ctx.db.get(CustomField, field_id)
+    if obj is None:
+        raise NotFound("Custom field not found")
+    return obj
+
+
+def create_custom_field(ctx: Ctx, type_id: int, data: dict):
+    from sqlalchemy import func, select
+
+    from app import custom_fields
+    from app.models import CustomField
+
+    ttype = _get_type(ctx, type_id)
+    if ttype.archived_at is not None:
+        raise Conflict("That ticket type is archived")
+    data["options"] = custom_fields.validate_options(data["field_type"], data.get("options"))
+    if data.get("position") is None:
+        data["position"] = (
+            ctx.db.execute(
+                select(func.coalesce(func.max(CustomField.position), 0)).where(
+                    CustomField.ticket_type_id == type_id
+                )
+            ).scalar_one()
+            + 10
+        )
+    obj = CustomField(ticket_type_id=type_id, **data)
+    ctx.db.add(obj)
+    _field_flush(ctx)
+    audit.record(ctx.db, ctx.user, "custom_field.create", obj, after=audit.snapshot(obj))
+    return obj
+
+
+def update_custom_field(ctx: Ctx, field_id: int, data: dict):
+    from app import custom_fields
+
+    obj = _get_field(ctx, field_id)
+    before = audit.snapshot(obj)
+    if "options" in data and data["options"] is not None:
+        data["options"] = custom_fields.validate_options(obj.field_type, data["options"])
+    for key, value in data.items():
+        if value is not None:
+            setattr(obj, key, value)
+    _field_flush(ctx)
+    ctx.db.refresh(obj)
+    audit.record(
+        ctx.db, ctx.user, "custom_field.update", obj, before=before, after=audit.snapshot(obj)
+    )
+    return obj
+
+
+def set_custom_field_archived(ctx: Ctx, field_id: int, archived: bool):
+    from datetime import UTC, datetime
+
+    obj = _get_field(ctx, field_id)
+    if not archived and _get_type(ctx, obj.ticket_type_id).archived_at is not None:
+        raise Conflict("Restore the ticket type first")
+    before = audit.snapshot(obj)
+    obj.archived_at = datetime.now(UTC) if archived else None
+    _field_flush(ctx)
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "custom_field.archive" if archived else "custom_field.unarchive",
+        obj,
+        before=before,
+        after=audit.snapshot(obj),
+    )
+    return obj

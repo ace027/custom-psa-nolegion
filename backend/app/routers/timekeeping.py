@@ -1,0 +1,178 @@
+"""Timers, internal time and the weekly timesheet."""
+
+from datetime import date
+
+from fastapi import APIRouter, Query, Response
+
+from app import permissions as P
+from app import reports as rpt
+from app import timekeeping as svc
+from app import timesheets as tsh
+from app.deps import Ctx, require
+from app.schemas import (
+    ErrorOut,
+    InternalTimeIn,
+    InternalTimeOut,
+    InternalTimePatch,
+    TimerOut,
+    TimerStartIn,
+    TimerStopOut,
+    TimesheetOut,
+    TimesheetQueueRow,
+    TimesheetStatusOut,
+    WeekIn,
+    WeekReturnIn,
+    WeekUserIn,
+)
+
+router = APIRouter(tags=["time"])
+ERR = {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
+
+
+@router.post(
+    "/internal-time",
+    response_model=InternalTimeOut,
+    status_code=201,
+    responses=ERR,
+    summary="Log internal time (no client): administration, training, paid time off...",
+)
+def add_internal(body: InternalTimeIn, ctx: Ctx = require(P.TIME_WRITE)):
+    return svc.add_internal(ctx, body.model_dump())
+
+
+@router.patch(
+    "/internal-time/{entry_id}",
+    response_model=InternalTimeOut,
+    responses=ERR,
+    summary="Edit an internal time entry",
+)
+def update_internal(entry_id: int, body: InternalTimePatch, ctx: Ctx = require(P.TIME_WRITE)):
+    return svc.update_internal(ctx, entry_id, body.model_dump(exclude_unset=True))
+
+
+@router.post(
+    "/internal-time/{entry_id}/void",
+    response_model=InternalTimeOut,
+    responses=ERR,
+    summary="Void an internal time entry (kept for the audit trail)",
+)
+def void_internal(entry_id: int, ctx: Ctx = require(P.TIME_WRITE)):
+    return svc.void_internal(ctx, entry_id)
+
+
+@router.get(
+    "/timer",
+    response_model=TimerOut | None,
+    summary="My running timer, if any",
+)
+def get_timer(ctx: Ctx = require(P.TIME_WRITE)):
+    timer = svc.current_timer(ctx)
+    return svc.timer_view(ctx, timer) if timer else None
+
+
+@router.post(
+    "/timer/start",
+    response_model=TimerOut,
+    status_code=201,
+    responses=ERR,
+    summary="Start a timer on a ticket (with a work type) or on an internal category",
+)
+def start_timer(body: TimerStartIn, ctx: Ctx = require(P.TIME_WRITE)):
+    return svc.timer_view(ctx, svc.start_timer(ctx, body.model_dump()))
+
+
+@router.post(
+    "/timer/stop",
+    response_model=TimerStopOut,
+    responses=ERR,
+    summary="Stop my timer and save the time (rounded up to the minute, then as usual)",
+)
+def stop_timer(ctx: Ctx = require(P.TIME_WRITE)):
+    return svc.stop_timer(ctx)
+
+
+@router.delete(
+    "/timer",
+    status_code=204,
+    responses=ERR,
+    summary="Discard my running timer without saving any time",
+)
+def discard_timer(ctx: Ctx = require(P.TIME_WRITE)):
+    svc.discard_timer(ctx)
+    return Response(status_code=204)
+
+
+@router.get(
+    "/timesheet",
+    response_model=TimesheetOut,
+    responses=ERR,
+    summary="One week (Monday to Sunday) of ticket and internal time for a person",
+)
+def timesheet(
+    week_start: date = Query(description="The Monday of the week"),
+    user_id: int | None = Query(None, description="Admins only; defaults to you"),
+    ctx: Ctx = require(P.TIME_WRITE),
+):
+    return svc.timesheet(ctx, week_start, user_id)
+
+
+@router.post(
+    "/timesheet/submit",
+    response_model=TimesheetStatusOut,
+    responses=ERR,
+    summary="Submit my week for approval; it is locked against edits until approved or returned",
+)
+def submit_week(body: WeekIn, ctx: Ctx = require(P.TIME_WRITE)):
+    return tsh.submit(ctx, body.week_start)
+
+
+@router.post(
+    "/timesheet/approve",
+    response_model=TimesheetStatusOut,
+    responses=ERR,
+    summary="Approve a submitted week (payroll and records only; billing is not affected)",
+)
+def approve_week(body: WeekUserIn, ctx: Ctx = require(P.TIMESHEET_APPROVE)):
+    return tsh.approve(ctx, body.user_id, body.week_start)
+
+
+@router.post(
+    "/timesheet/return",
+    response_model=TimesheetStatusOut,
+    responses=ERR,
+    summary="Send a submitted or approved week back to its owner with a reason",
+)
+def return_week(body: WeekReturnIn, ctx: Ctx = require(P.TIMESHEET_APPROVE)):
+    return tsh.return_sheet(ctx, body.user_id, body.week_start, body.reason)
+
+
+@router.get(
+    "/timesheets",
+    response_model=list[TimesheetQueueRow],
+    summary="Submitted timesheets, newest week first (filter by status)",
+)
+def timesheet_queue(
+    status: str | None = Query(None, pattern="^(submitted|approved|returned)$"),
+    ctx: Ctx = require(P.TIMESHEET_APPROVE),
+):
+    return tsh.queue(ctx, status)
+
+
+@router.get(
+    "/timesheets/export.csv",
+    responses=ERR,
+    summary="Payroll CSV: actual hours per person, day and category, approved weeks only",
+)
+def export_hours(
+    start: date = Query(alias="from"),
+    end: date = Query(alias="to"),
+    ctx: Ctx = require(P.TIMESHEET_APPROVE),
+):
+    rows = tsh.export_rows(ctx, start, end)
+    rpt.record_export(ctx, "payroll-hours", {"from": start, "to": end}, len(rows))
+    body = rpt.to_csv(["Employee", "Email", "Date", "Category", "Hours"], rows)
+    return Response(
+        body,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="hours-{start}-{end}.csv"'},
+    )
