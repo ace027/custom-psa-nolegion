@@ -52,7 +52,7 @@
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | warning | scope | Keep or revert the `Dispatch.tsx` interop change. The file is forbidden for this plan, but the change was already in the working tree and the e2e specs rely on it. | pending |  |
+| 1 | warning | scope | Keep or revert the `Dispatch.tsx` interop change. The file is forbidden for this plan, but the change was already in the working tree and the e2e specs rely on it. | approved | Keep it. The owner approved fixing the drag-and-drop import interop in Dispatch.tsx and removing the vite.config.ts shim. The orchestrator made the edit as a 03-02 follow-up. |
 
 - #1 context: The Vite dev server hands `react-big-calendar/lib/addons/dragAndDrop` over as its whole exports object. Without the `.default ??` unwrap, the board crashes under `vite dev`. vitest and the build unwrap it themselves, so the unit tests and build pass either way. Reverting it would break the three e2e tests. Please approve it as a 03-02 follow-up or tell me to revert it.
 

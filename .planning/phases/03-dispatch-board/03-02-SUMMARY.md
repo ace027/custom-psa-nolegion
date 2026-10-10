@@ -54,8 +54,8 @@
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | info | api-contract | Week-view zone falls back to the availability row's timezone when GET /users/{id}/schedule returns 403 | pending | INVALID: type "api-contract" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
-| 2 | warning | scope | frontend/src/Dispatch.test.tsx (tests) is outside the directory mappings for tests (backend/tests); suggested location: backend/tests/Dispatch.test.tsx | pending |  |
+| 1 | info | api-contract | Week-view zone falls back to the availability row's timezone when GET /users/{id}/schedule returns 403 | approved | The owner accepted it. Week view takes the tech's timezone from /availability, because techs cannot read other techs' schedules. There is no API change. |
+| 2 | warning | scope | frontend/src/Dispatch.test.tsx (tests) is outside the directory mappings for tests (backend/tests); suggested location: backend/tests/Dispatch.test.tsx | approved | This is a false positive from the directory mapping. Frontend vitest files live in frontend/src, the same as every existing *.test.tsx, and the frontend cannot import from backend/tests. |
 
 - #1 context: docs/SCHEDULING.md says the schedule endpoint is "Self or approver only", so a tech can't read another tech's schedule. The plan's getSchedule-only approach would fail for them, so the fallback uses /availability, which already returns `timezone`. I made no API change.
 
