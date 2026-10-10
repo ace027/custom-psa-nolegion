@@ -43,3 +43,6 @@ pr: N/A
 verification: 6/6 passed
 | O-021 | 2026-10-10 | dev | 4 | 04-01 | engineering-backend-architect | implementation | success | 2 | outlook-push-freebusy, engineering | Graph calendar client, fake Graph calendar endpoints and the tenant spike script: Complete |
 | O-022 | 2026-10-10 | dev | 4 | 04-02 | engineering-backend-architect | implementation | success | 2 | outlook-push-freebusy, engineering | Sync schema, outbox enqueue and the worker push job: Complete |
+| O-023 | 2026-10-10 | dev | 4 | 04-03 | engineering-backend-architect | implementation | failed | 5 | outlook-push-freebusy, engineering | Free/busy cache job and the sync status, retry and availability API: BLOCKED |
+| O-024 | 2026-10-10 | dev | 4 | 04-03 | engineering-backend-architect | implementation | failed | 5 | outlook-push-freebusy, engineering | Free/busy cache job and the sync status, retry and availability API: Partial |
+| O-025 | 2026-10-10 | dev | 4 | 04-03 | engineering-backend-architect | implementation | partial | 3 | outlook-push-freebusy, engineering | Free/busy cache job and the sync status, retry and availability API: Complete with Warnings |

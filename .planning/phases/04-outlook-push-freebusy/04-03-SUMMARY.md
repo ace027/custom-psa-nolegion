@@ -1,7 +1,7 @@
 # Plan 04-03 Summary: Free/busy cache job and the sync status, retry and availability API
 
 ## Result
-**Status**: Partial
+**Status**: Complete with Warnings
 **Wave**: 3
 **Agent**: engineering-backend-architect
 **Completed**: 2026-10-10
@@ -10,7 +10,7 @@
 
 | Candidate | Semantic | Heuristic | Memory | Total | Source |
 |-----------|----------|-----------|--------|-------|--------|
-| engineering-backend-architect | — | 17 | 4.08 | 21.08 | mandatory |
+| engineering-backend-architect | — | 17 | 3.86 | 20.86 | mandatory |
 | engineering-senior-developer | — | 23 | 3.78 | 26.78 | heuristic |
 | testing-qa-verification-specialist | — | 13 | 4.33 | 17.33 | heuristic |
 
@@ -41,29 +41,27 @@
 | `service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_calendar_sync_api.py tests/test_zz_api_contract.py tests/test_scheduling_api.py` | 0 | PASS |
 
 ## Key Decisions
-- `refresh_busy` records a missing user or a failed batch in `calendar_busy_status.last_error` and keeps the old blocks.
-- `status.busy_errors` counts only polled users (active, schedule:write, has an email).
-- An appointment with no sync row shows `skipped` when the setting is on.
+- `routers/config.py` and `test_zz_api_contract.py` are unchanged. `PATCH /settings` forwards every sent field through `update_settings`, so `outlook_sync_enabled` needed no router change and is audited like the other settings. The contract test passes as is (its one skip is its own "whole suite only" guard).
+- An appointment with no sync row shows `skipped` when sync is enabled.
 
 ## Issues Encountered
-- `backend/alembic/versions/0025_outlook_sync.py` is modified in the working tree: the `busy_blocks` grant now includes DELETE. This is a forbidden file. I did not make the edit; it was already on disk when I started. `refresh_busy` needs the DELETE grant, so it was most likely a deliberate fix for the open question in the 04-02 handoff.
-- `backend/tests/test_zz_api_contract.py` and `backend/app/routers/config.py` have no diff. The contract test passed without changes, and the settings routes already pass the new field through the schemas. I did not check how the contract test builds its route list.
+- The working tree has an uncommitted change to the alembic migration `0025_outlook_sync.py`. It adds DELETE to the `busy_blocks` grant, which `refresh_busy` needs. I did not make this edit and did not touch the file. The tests only pass with it, so the owner has to approve it or rule on it.
 
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | warning | out-of-scope file | Accept the `GRANT SELECT, INSERT, UPDATE, DELETE ON busy_blocks` edit in `backend/alembic/versions/0025_outlook_sync.py`, or move the DELETE grant into a new migration. | approved | Owner-approved edit: 0025 grants DELETE on busy_blocks in place (0025 not yet deployed anywhere). |
+| 1 | warning | out-of-scope file | Accept or revert the uncommitted edit to backend/alembic/versions/0025_outlook_sync.py, which adds DELETE to the busy_blocks grant for the app role. | pending | INVALID: type "out-of-scope file" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
 
-- #1 context: `refresh_busy` deletes `busy_blocks` rows, so the DELETE grant is required. The migration is in the forbidden list. If 0025 was already applied anywhere, editing it will not change those databases.
+- #1 context: backend/alembic/ is forbidden for this plan, but `refresh_busy` deletes old busy blocks and fails without the DELETE grant (plan 04-02 flagged this). Alternatively, a new migration in a later plan could carry the grant and this edit be reverted.
 
 ## Handoff Context
 - **Key outputs**: (none)
-- **Decisions made**: `refresh_busy` records a missing user or a failed batch in `calendar_busy_status.last_error` and keeps the old blocks.; `status.busy_errors` counts only polled users (active, schedule:write, has an email).; An appointment with no sync row shows `skipped` when the setting is on.
+- **Decisions made**: `routers/config.py` and `test_zz_api_contract.py` are unchanged. `PATCH /settings` forwards every sent field through `update_settings`, so `outlook_sync_enabled` needed no router change and is audited like the other settings. The contract test passes as is (its one skip is its own "whole suite only" guard).; An appointment with no sync row shows `skipped` when sync is enabled.
 - **Open questions**: (none)
-- **Conventions established**: `calendar_sync.refresh_busy`, `retry` and `status_summary` are the service entry points. `busy_job` in `worker.py` holds the throttle in the module-level `_last_busy`.; `scheduling.sync_states(ctx, ids)` is the batched sync-state lookup for any new appointment list view.
+- **Conventions established**: `calendar_sync.eligible_users()` defines the polled set (active, role grants `schedule:write`, email present). Both `refresh_busy` and the status counts use it.; `busy_fetched_at` on the status endpoint is the oldest fetch across the polled users.
 
 ## Requirements Covered
 - REQ-04
 
 ## Token Usage
-5 requests, 173708 input tokens (138086 cached), 2747 output tokens, $0.1441
+6 requests, 218571 input tokens (213077 cached), 2965 output tokens, $0.0860
