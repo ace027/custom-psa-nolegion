@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 5 of 13 (planned)
-- **Status**: Phase 5 planned -- 5 plans across 3 waves
-- **Last Activity**: Phase 5 planning (2026-10-15)
+- **Phase**: 5 of 13 (executing)
+- **Status**: Phase 5 executing — Plan 05-01 failed
+- **Last Activity**: Plan 05-01 execution (2026-10-15)
 
 ## Progress
 ```
-[######..............] 31% — 13/41 plans complete
+[#####...............] 29% — 13/44 plans complete
 ```
 
 ## Recent Decisions
@@ -61,3 +61,7 @@ Run `/triad:build` to execute Phase 5: Client confirmations + on-call
 - Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — Complete with Warnings
 - Plan 04-04 (Wave 4): Board Outlook busy shading, sync badges, settings card and setup docs — Complete
 - 2026-10-15: owner manual testing moved to a final Phase 14: Verify; deferred checks queued in .planning/VERIFY.md
+
+## Phase 5 Results
+(build started 2026-10-15)
+- Plan 05-01 (Wave 1): Schema, models, schemas and on-call math — PARTIAL: Migration 0026, models, schemas, `app/oncall.py` and both test files are on disk. Ruff check, format and the schema import pass. The 21 new tests and the alembic round-trip passed in an earlier run be
