@@ -58,3 +58,5 @@ agent: ship-pipeline
 result: success
 pr: N/A
 verification: 11/11 passed
+| O-031 | 2026-10-15 | dev | 5 | 05-01 | engineering-backend-architect | implementation | failed | 5 | client-confirmations-on-call, engineering | Schema, models, schemas and on-call math: Partial |
+| O-032 | 2026-10-15 | dev | 5 | 05-01 | engineering-backend-architect | implementation | success | 2 | client-confirmations-on-call, engineering | Schema, models, schemas and on-call math: Complete |
