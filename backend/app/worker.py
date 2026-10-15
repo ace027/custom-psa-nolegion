@@ -60,6 +60,22 @@ def notify_jobs() -> None:
         log.exception("notification jobs failed")
 
 
+def client_notice_jobs() -> None:
+    """Turn due appointment notices into outbound client emails (before send_pending runs)."""
+    from datetime import UTC, datetime
+
+    from app import client_notices
+    from app import db as dbmod
+
+    try:
+        with dbmod.new_session() as db:
+            n = client_notices.send_due(db, datetime.now(UTC))
+        if n:
+            log.info("queued %d client appointment email(s)", n)
+    except Exception:
+        log.exception("client notice jobs failed")
+
+
 def integration_jobs() -> None:
     """Sync vendor integrations that are due (or were asked to sync now). Read-only toward vendors;
     a failure is recorded on the run and never raises."""
@@ -165,6 +181,7 @@ def main(argv: list[str]) -> int:
     client = build_client()
     log.info("mail worker started for %s (every %ss)", s.mail_mailbox, s.mail_poll_seconds)
     while not _stop:
+        client_notice_jobs()
         run_cycle(client, s.mail_mailbox)
         calendar_jobs(client)
         billing_jobs()
