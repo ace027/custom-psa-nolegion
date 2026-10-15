@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 5 of 13 (partial — 1 plan(s) failed)
-- **Status**: Phase 5 partial — 05-01 failed, stopped after wave 1, review needed
+- **Phase**: 5 of 13 (executing)
+- **Status**: Phase 5 executing — Plan 05-01 complete
 - **Last Activity**: Plan 05-01 execution (2026-10-15)
 
 ## Progress
 ```
-[#####...............] 29% — 13/44 plans complete
+[######..............] 31% — 14/44 plans complete
 ```
 
 ## Recent Decisions
@@ -65,3 +65,4 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 ## Phase 5 Results
 (build started 2026-10-15)
 - Plan 05-01 (Wave 1): Schema, models, schemas and on-call math — PARTIAL: Migration 0026, models, schemas, `app/oncall.py` and both test files are on disk. Ruff check, format and the schema import pass. The 21 new tests and the alembic round-trip passed in an earlier run be
+- Plan 05-01 (Wave 1): Schema, models, schemas and on-call math — Complete
