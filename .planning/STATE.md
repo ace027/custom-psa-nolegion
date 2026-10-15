@@ -2,12 +2,12 @@
 
 ## Current Position
 - **Phase**: 5 of 13 (executing)
-- **Status**: Phase 5 executing — Plan 05-03 complete
-- **Last Activity**: Plan 05-03 execution (2026-10-15)
+- **Status**: Phase 5 executing — Plan 05-05 failed
+- **Last Activity**: Plan 05-05 execution (2026-10-15)
 
 ## Progress
 ```
-[#######.............] 36% — 16/44 plans complete
+[#######.............] 38% — 17/44 plans complete
 ```
 
 ## Recent Decisions
@@ -69,3 +69,5 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 - Plan 05-02 (Wave 2): Client appointment emails — Complete
 - Plan 05-03 (Wave 2): On-call API and portal appointments — BLOCKED: The plan does not say how a rotation gets its organization_id. I will not guess a source for it, because the choice shapes the RLS behavior and the API contract that plan 05-04 will build on.
 - Plan 05-03 (Wave 2): On-call API and portal appointments — Complete
+- Plan 05-04 (Wave 3): Staff UI: email switch, on-call page, widget and board — Complete
+- Plan 05-05 (Wave 3): Portal appointments page, docs and verify checklist — PARTIAL: Portal Appointments page, tests, docs and the Phase 5 verify checklist are done. The full vitest run has 1 failure in Dispatch.test.tsx, caused by 05-04's in-flight work, not these files. typecheck an
