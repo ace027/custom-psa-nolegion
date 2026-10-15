@@ -64,3 +64,5 @@ verification: 11/11 passed
 | O-034 | 2026-10-15 | dev | 5 | 05-03 | engineering-senior-developer | implementation | failed | 5 | client-confirmations-on-call, engineering | On-call API and portal appointments: BLOCKED |
 | O-035 | 2026-10-15 | dev | 5 | 05-03 | engineering-senior-developer | implementation | success | 2 | client-confirmations-on-call, engineering | On-call API and portal appointments: Complete |
 | O-036 | 2026-10-15 | dev | 5 | 05-04 | engineering-frontend-developer | implementation | success | 2 | client-confirmations-on-call, engineering | Staff UI: email switch, on-call page, widget and board: Complete |
+| O-037 | 2026-10-15 | dev | 5 | 05-05 | engineering-frontend-developer | implementation | failed | 5 | client-confirmations-on-call, engineering | Portal appointments page, docs and verify checklist: Partial |
+| O-038 | 2026-10-15 | dev | 5 | 05-05 | engineering-frontend-developer | implementation | success | 2 | client-confirmations-on-call, engineering | Portal appointments page, docs and verify checklist: Complete |
