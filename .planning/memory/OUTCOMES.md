@@ -66,3 +66,7 @@ verification: 11/11 passed
 | O-036 | 2026-10-15 | dev | 5 | 05-04 | engineering-frontend-developer | implementation | success | 2 | client-confirmations-on-call, engineering | Staff UI: email switch, on-call page, widget and board: Complete |
 | O-037 | 2026-10-15 | dev | 5 | 05-05 | engineering-frontend-developer | implementation | failed | 5 | client-confirmations-on-call, engineering | Portal appointments page, docs and verify checklist: Partial |
 | O-038 | 2026-10-15 | dev | 5 | 05-05 | engineering-frontend-developer | implementation | success | 2 | client-confirmations-on-call, engineering | Portal appointments page, docs and verify checklist: Complete |
+| O-039 | 2026-10-15 | dev | 5 | 05-00 | testing-qa-verification-specialist | quality-review | success | 2 | review, testing | Phase 5 review PASSED in 1 cycle(s), 1 finding(s) |
+| O-040 | 2026-10-15 | dev | 5 | 05-00 | engineering-senior-developer | quality-review | success | 3 | review, engineering | Phase 5 review PASSED in 1 cycle(s), 1 finding(s) |
+| O-041 | 2026-10-15 | dev | 5 | 05-00 | design-ux-researcher | quality-review | success | 3 | review, design | Phase 5 review PASSED in 1 cycle(s), 1 finding(s) |
+| O-042 | 2026-10-15 | dev | 5 | 05-00 | design-ui-designer | quality-review | success | 3 | review, design | Phase 5 review PASSED in 1 cycle(s), 1 finding(s) |
