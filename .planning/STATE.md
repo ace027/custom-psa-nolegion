@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 5 of 13 (partial — 1 plan(s) failed)
-- **Status**: Phase 5 partial — 05-05 failed, stopped after wave 3, review needed
+- **Phase**: 5 of 13 (executing)
+- **Status**: Phase 5 executing — Plan 05-05 complete
 - **Last Activity**: Plan 05-05 execution (2026-10-15)
 
 ## Progress
 ```
-[#######.............] 38% — 17/44 plans complete
+[########............] 40% — 18/44 plans complete
 ```
 
 ## Recent Decisions
@@ -71,3 +71,4 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 - Plan 05-03 (Wave 2): On-call API and portal appointments — Complete
 - Plan 05-04 (Wave 3): Staff UI: email switch, on-call page, widget and board — Complete
 - Plan 05-05 (Wave 3): Portal appointments page, docs and verify checklist — PARTIAL: Portal Appointments page, tests, docs and the Phase 5 verify checklist are done. The full vitest run has 1 failure in Dispatch.test.tsx, caused by 05-04's in-flight work, not these files. typecheck an
+- Plan 05-05 (Wave 3): Portal appointments page, docs and verify checklist — Complete
