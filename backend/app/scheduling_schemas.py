@@ -109,6 +109,14 @@ class Conflict(BaseModel):
     appointment_id: int | None = None
 
 
+SyncState = Literal["pending", "synced", "failed", "skipped", "off"]
+
+
+class SyncOut(BaseModel):
+    state: SyncState  # 'off' when Outlook sync is disabled
+    last_error: str | None = None
+
+
 class AppointmentOut(BaseModel):
     id: int
     organization_id: int
@@ -127,6 +135,7 @@ class AppointmentOut(BaseModel):
     cancelled_at: datetime | None
     cancel_reason: str | None
     conflicts: list[Conflict] = []  # warnings only; the appointment is saved regardless
+    sync: SyncOut = SyncOut(state="off")  # Outlook push state
 
 
 # ---- availability ----
@@ -139,6 +148,10 @@ class AppointmentWindow(Window):
     id: int
 
 
+class BusyWindow(Window):
+    status: str  # busy | tentative | oof | workingElsewhere (never any subject text)
+
+
 class AvailabilityOut(BaseModel):
     user_id: int
     timezone: str
@@ -147,3 +160,23 @@ class AvailabilityOut(BaseModel):
     time_off_pending: list[Window]  # pending requests; they do not reduce free time
     appointments: list[AppointmentWindow]  # scheduled only
     free: list[Window]
+    outlook_busy: list[BusyWindow] = []  # cached Outlook busy time; informational, not in `free`
+    outlook_fetched_at: datetime | None = None  # null: never fetched
+
+
+# ---- Outlook sync ----
+class SyncFailure(BaseModel):
+    appointment_id: int
+    ticket_id: int
+    tech_id: int
+    last_error: str | None
+    updated_at: datetime
+
+
+class SyncStatusOut(BaseModel):
+    enabled: bool
+    pending: int
+    failed: int
+    failures: list[SyncFailure]  # newest 20
+    busy_fetched_at: datetime | None  # oldest fetch across polled users
+    busy_errors: int

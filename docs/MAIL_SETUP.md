@@ -104,6 +104,12 @@ Then `docker compose up -d worker`. Open **Settings → Mailbox connector** in t
 | Mail arrives but nothing is ingested | Message already read (only *unread* mail is polled), or it is in a sub-folder (only the Inbox is polled) |
 | Sends fail with 403 | `Application Mail.Send` role assignment missing |
 
+## Calendar sync
+The same app can also push appointments to technicians' Outlook calendars and read their busy time for the
+dispatch board. That is a separate, optional setup with its own scope (a group of technician mailboxes) and one
+more Exchange role, `Application Calendars.ReadWrite`: see `docs/CALENDAR_SETUP.md`. It adds **no** Entra Graph
+permission, so the mail scoping above stays intact.
+
 ## Reminders and statements
 Payment reminders and statements are sent through the same outbox and mailbox, with PDFs attached
 (Graph `sendMail` file attachments). They are only sent after a person approves them in Billing > Reminders.

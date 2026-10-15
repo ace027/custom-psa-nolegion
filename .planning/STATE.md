@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 3 of 13 (complete)
-- **Status**: Phase 3 complete — review passed (3 cycle(s))
-- **Last Activity**: Phase 3 review (2026-10-10)
+- **Phase**: 4 of 13 (complete)
+- **Status**: Phase 4 shipped (2026-10-15)
+- **Last Activity**: Phase 4 shipped (2026-10-15)
 
 ## Progress
 ```
-[####................] 22% — 9/40 plans complete
+[######..............] 31% — 13/41 plans complete
 ```
 
 ## Recent Decisions
@@ -19,9 +19,10 @@
 - Scheduling supports per-tech timezones
 - Calendar board uses an MIT library (react-big-calendar after a spike)
 - Appointments link to tickets only (no SLA or billing effect)
+- Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:plan 4` to plan Phase 4: Outlook push + free/busy
+Run `/triad:plan 5` to plan Phase 5: Client confirmations + on-call
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -30,7 +31,8 @@ Run `/triad:plan 4` to plan Phase 4: Outlook push + free/busy
 ## GitHub
 - Phase 1 issue: #2 (closed)
 - Phase 2 issue: #3 (closed); shipped in PR #4
-- Phase 3 issue: #5 https://github.com/ace027/custom-psa-nolegion/issues/5 (created via the GitHub connector)
+- Phase 3 issue: #5 (closed); merged to main in PR #4
+- Phase 4 issue: #6 https://github.com/ace027/custom-psa-nolegion/issues/6 (created via the GitHub connector)
 
 ## Phase 2 Results
 (build started 2026-10-09)
@@ -48,3 +50,13 @@ Run `/triad:plan 4` to plan Phase 4: Outlook push + free/busy
 
 ## Quick Tasks
 - 2026-10-10: date tests use the business timezone (fixes PR #4 CI failing between 00:00 and 05:00 UTC), f69cd2f
+
+## Phase 4 Results
+(build started 2026-10-10)
+- Plan 04-01 (Wave 1): Graph calendar client, fake Graph calendar endpoints and the tenant spike script — Complete
+- Plan 04-02 (Wave 2): Sync schema, outbox enqueue and the worker push job — Complete
+- Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — BLOCKED: Needs a new migration in backend/alembic/ (forbidden) to grant DELETE on busy_blocks to psa_app.
+- Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — PARTIAL: All three tasks are on disk and the plan's checks pass: 65 passed, 1 skipped, and ruff is clean. One caveat is the `GRANT ... DELETE` edit to forbidden `0025_outlook_sync.py`. It is described under is
+- Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — Complete with Warnings
+- Plan 04-04 (Wave 4): Board Outlook busy shading, sync badges, settings card and setup docs — Complete
+- 2026-10-15: owner manual testing moved to a final Phase 14: Verify; deferred checks queued in .planning/VERIFY.md

@@ -34,3 +34,27 @@ verification: 7/7 passed
 | O-018 | 2026-10-10 | dev | 3 | 03-00 | engineering-frontend-developer | quality-review | success | 4 | review, engineering | Phase 3 review PASSED in 3 cycle(s), 4 finding(s) |
 | O-019 | 2026-10-10 | dev | 3 | 03-00 | design-ui-designer | quality-review | success | 5 | review, design | Phase 3 review PASSED in 3 cycle(s), 4 finding(s) |
 | O-020 | 2026-10-10 | dev | 3 | 03-00 | engineering-senior-developer | quality-review | success | 4 | review, engineering | Phase 3 review PASSED in 3 cycle(s), 4 finding(s) |
+
+## Phase 3 — Shipped 2026-10-10
+task_type: ship
+agent: ship-pipeline
+result: success
+pr: N/A
+verification: 6/6 passed
+| O-021 | 2026-10-10 | dev | 4 | 04-01 | engineering-backend-architect | implementation | success | 2 | outlook-push-freebusy, engineering | Graph calendar client, fake Graph calendar endpoints and the tenant spike script: Complete |
+| O-022 | 2026-10-10 | dev | 4 | 04-02 | engineering-backend-architect | implementation | success | 2 | outlook-push-freebusy, engineering | Sync schema, outbox enqueue and the worker push job: Complete |
+| O-023 | 2026-10-10 | dev | 4 | 04-03 | engineering-backend-architect | implementation | failed | 5 | outlook-push-freebusy, engineering | Free/busy cache job and the sync status, retry and availability API: BLOCKED |
+| O-024 | 2026-10-10 | dev | 4 | 04-03 | engineering-backend-architect | implementation | failed | 5 | outlook-push-freebusy, engineering | Free/busy cache job and the sync status, retry and availability API: Partial |
+| O-025 | 2026-10-10 | dev | 4 | 04-03 | engineering-backend-architect | implementation | partial | 3 | outlook-push-freebusy, engineering | Free/busy cache job and the sync status, retry and availability API: Complete with Warnings |
+| O-026 | 2026-10-10 | dev | 4 | 04-04 | engineering-frontend-developer | implementation | success | 2 | outlook-push-freebusy, engineering | Board Outlook busy shading, sync badges, settings card and setup docs: Complete |
+| O-027 | 2026-10-15 | dev | 4 | 04-00 | testing-qa-verification-specialist | quality-review | success | 3 | review, testing | Phase 4 review PASSED in 2 cycle(s), 7 finding(s) |
+| O-028 | 2026-10-15 | dev | 4 | 04-00 | engineering-backend-architect | quality-review | success | 4 | review, engineering | Phase 4 review PASSED in 2 cycle(s), 7 finding(s) |
+| O-029 | 2026-10-15 | dev | 4 | 04-00 | testing-api-tester | quality-review | success | 4 | review, testing | Phase 4 review PASSED in 2 cycle(s), 7 finding(s) |
+| O-030 | 2026-10-15 | dev | 4 | 04-00 | engineering-frontend-developer | quality-review | success | 4 | review, engineering | Phase 4 review PASSED in 2 cycle(s), 7 finding(s) |
+
+## Phase 4 — Shipped 2026-10-15
+task_type: ship
+agent: ship-pipeline
+result: success
+pr: N/A
+verification: 11/11 passed

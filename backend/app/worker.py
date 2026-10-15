@@ -15,6 +15,8 @@ from app.mail.ingest import heartbeat, run_cycle
 
 log = logging.getLogger("psa.worker")
 _stop = False
+BUSY_EVERY = 300  # seconds between free/busy refreshes
+_last_busy: float | None = None
 
 
 def _handle(*_):
@@ -86,6 +88,45 @@ def integration_jobs() -> None:
         log.exception("integration jobs failed")
 
 
+def calendar_jobs(client) -> None:
+    """Push pending appointment changes to Outlook (idempotent; a failure never raises)."""
+    from datetime import UTC, datetime
+
+    from app import db as dbmod
+    from app.calendar_sync import push_pending
+
+    try:
+        with dbmod.new_session() as db:
+            dbmod.set_org_scope(db, "all")
+            n = push_pending(db, client, now=datetime.now(UTC))
+        if n:
+            log.info("processed %d calendar sync row(s)", n)
+    except Exception:
+        log.exception("calendar jobs failed")
+    busy_job(client)
+
+
+def busy_job(client) -> None:
+    """Refresh the Outlook free/busy cache, at most once every BUSY_EVERY seconds."""
+    global _last_busy
+    from datetime import UTC, datetime
+
+    from app import db as dbmod
+    from app.calendar_sync import refresh_busy
+
+    mono = time.monotonic()
+    if _last_busy is not None and mono - _last_busy < BUSY_EVERY:
+        return
+    _last_busy = mono
+    try:
+        with dbmod.new_session() as db:
+            n = refresh_busy(db, client, now=datetime.now(UTC))
+        if n:
+            log.info("refreshed Outlook busy time for %d user(s)", n)
+    except Exception:
+        log.exception("busy refresh failed")
+
+
 def build_client() -> GraphClient:
     s = get_settings()
     return GraphClient(
@@ -125,6 +166,7 @@ def main(argv: list[str]) -> int:
     log.info("mail worker started for %s (every %ss)", s.mail_mailbox, s.mail_poll_seconds)
     while not _stop:
         run_cycle(client, s.mail_mailbox)
+        calendar_jobs(client)
         billing_jobs()
         notify_jobs()
         integration_jobs()

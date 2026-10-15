@@ -125,3 +125,28 @@ All routes are under `/api`, tagged `scheduling`. Errors use `{detail}` with 403
 | `PATCH /appointments/{id}` | schedule:write | Any of `tech_id`, `starts_at`, `ends_at`, `notes`, `client_visible`; returns conflicts |
 | `POST /appointments/{id}/cancel` | schedule:write | `{reason?}` |
 | `GET /availability` | schedule:read | Query `user_ids` (comma-separated; omit for all active admins and techs), `from`, `to`. Per user: `timezone`, `working`, approved `time_off`, `time_off_pending` (pending requests overlapping the range; they do not reduce `free`, and move to `time_off` once approved), scheduled `appointments` (with `id`), and `free` = working minus time off minus appointments |
+
+## Outlook sync and free/busy (REQ-04)
+
+Appointments are pushed one way to the assigned tech's Outlook calendar by the worker, and each
+polled tech's Outlook busy time is cached so the board can show it. Both are off until an admin sets
+`outlook_sync_enabled` (readable on `GET /settings`, written by admins through `PATCH /settings`,
+audited like other settings). While it is off, pushes queue as `pending` and the cache is not polled.
+
+- **Busy cache**: the worker calls Graph `getSchedule` at most every 5 minutes for every active user
+  whose role grants `schedule:write` and who has an email (batches of 20, from 1 day back to 14 days
+  ahead). Blocks are replaced per user. A failed batch, or a user missing from the answer, keeps the
+  old blocks and records `last_error` (500 chars). A user who leaves the role is no longer polled.
+  Blocks carry only `starts_at`, `ends_at` and `status` (busy, tentative, oof, workingElsewhere),
+  never subject text.
+- **Availability** gains `outlook_busy` (cached blocks overlapping the range) and
+  `outlook_fetched_at` (null when never fetched). Busy blocks are informational and do not change
+  `free`. A block whose start and end exactly equal a scheduled appointment of the same tech whose
+  push is `synced` is hidden (it is our own event); a block that only overlaps is kept.
+- **Appointments** gain `sync: {state, last_error}`. `state` is `pending`, `synced`, `failed`,
+  `skipped`, or `off` when the setting is disabled. List endpoints look sync state up in one query.
+
+| Method and path | Permission | Notes |
+|---|---|---|
+| `GET /calendar-sync/status` | schedule:read | `{enabled, pending, failed, failures, busy_fetched_at, busy_errors}`. `failures` is the newest 20 (`appointment_id, ticket_id, tech_id, last_error, updated_at`); `busy_fetched_at` is the oldest fetch across polled users; `busy_errors` counts polled users whose last fetch failed |
+| `POST /appointments/{id}/sync/retry` | schedule:write | Requeues a failed push (attempts reset, audited as `appointment.sync_retry`) and returns the appointment. 409 when the sync is not failed, 404 when the appointment is not visible |

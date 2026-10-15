@@ -5,7 +5,7 @@
 - [x] Phase 1: Block-hour / retainer agreements (3 plans)
 - [x] Phase 2: Scheduling: availability & appointments (3 plans)
 - [x] Phase 3: Dispatch board (3 plans)
-- [ ] Phase 4: Outlook push + free/busy (3 plans)
+- [x] Phase 4: Outlook push + free/busy (3 plans)
 - [ ] Phase 5: Client confirmations + on-call (3 plans)
 - [ ] Phase 6: RMM alerts to tickets (3 plans)
 - [ ] Phase 7: Automation & API (4 plans)
@@ -15,6 +15,7 @@
 - [ ] Phase 11: Reporting & dashboards (3 plans)
 - [ ] Phase 12: Knowledge base (2 plans)
 - [ ] Phase 13: Portal polish (3 plans)
+- [ ] Phase 14: Verify (owner manual testing) (1 plan)
 
 ## Phase Details
 
@@ -55,7 +56,7 @@
 **Requirements**: REQ-04
 **Recommended Agents**: engineering-backend-architect, engineering-security-engineer, engineering-infrastructure-devops
 **Success Criteria**:
-- [ ] Owner approves RBAC-scoped Calendars.ReadWrite; spike verified on a real tenant
+- [ ] Owner approves RBAC-scoped Calendars.ReadWrite (real-tenant spike deferred to Phase 14: Verify)
 - [ ] Outbox push is idempotent (create/update/delete/reassign) and tested against fake_graph
 - [ ] getSchedule cache refreshes and renders on the board; failed syncs are visible
 - [ ] MAIL_SETUP/calendar setup docs updated
@@ -151,14 +152,24 @@
 - [ ] Contact self-service and CSV export, isolation tested
 **Plans**: 3
 
+### Phase 14: Verify (owner manual testing)
+**Goal**: The owner runs every manual check deferred from phases 1-13 in one pass: real-tenant and real-vendor checks, and the docs/verify/ checklists. Failures become fix tasks before release.
+**Requirements**: none (verification only)
+**Recommended Agents**: testing-qa-verification-specialist
+**Success Criteria**:
+- [ ] Every item in .planning/VERIFY.md has been run by the owner and marked pass or fail
+- [ ] Each failure has a fix committed and re-checked, or an owner-accepted deferral
+- [ ] Real-tenant Outlook spike (graph_calendar_spike.py, including --write and --outside) passes
+**Plans**: 1
+
 ## Progress
 
 | Phase | Plans | Completed | Status |
 |-------|-------|-----------|--------|
 | 1 | 3 | 3 | Complete |
 | 2 | 3 | 3 | Shipped |
-| 3 | 3 | 3 | Complete |
-| 4 | 3 | 0 | Pending |
+| 3 | 3 | 3 | Shipped |
+| 4 | 4 | 4 | Shipped |
 | 5 | 3 | 0 | Pending |
 | 6 | 3 | 0 | Pending |
 | 7 | 4 | 0 | Pending |
@@ -168,3 +179,4 @@
 | 11 | 3 | 0 | Pending |
 | 12 | 2 | 0 | Pending |
 | 13 | 3 | 0 | Pending |
+| 14 | 1 | 0 | Pending |

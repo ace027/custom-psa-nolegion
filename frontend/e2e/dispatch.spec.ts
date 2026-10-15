@@ -181,3 +181,21 @@ test("drag an event one hour later", async ({ page }) => {
     await cancelAll(s.request, [a.id]);
   }
 });
+
+test("Outlook legend shows with sync off; enabling it shows the not-loaded caption", async ({ page }) => {
+  await login(page, "admin@example.com");
+  const request = page.request;
+  const patch = (on: boolean) => request.patch("/api/settings", { data: { outlook_sync_enabled: on }, headers: HEADERS });
+  try {
+    await page.goto(`/dispatch?view=day&date=${DAY}`);
+    await expect(page.locator(".rbc-time-view")).toBeVisible();
+    await expect(page.getByRole("list", { name: "Legend" }).getByText("Outlook busy")).toBeVisible();
+    await expect(page.getByTestId("outlook-caption")).toHaveCount(0);
+
+    expect((await patch(true)).ok()).toBeTruthy();
+    await page.reload();
+    await expect(page.getByTestId("outlook-caption")).toHaveText(/Outlook busy not loaded yet/);
+  } finally {
+    expect((await patch(false)).ok()).toBeTruthy();
+  }
+});

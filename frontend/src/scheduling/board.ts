@@ -14,12 +14,14 @@ export interface BoardResource {
   id: number;
   title: string;
 }
-export type BlockKind = "off_hours" | "time_off" | "time_off_pending";
+export type BlockKind = "off_hours" | "time_off" | "time_off_pending" | "outlook";
 export interface BackgroundBlock {
   resourceId: number;
   kind: BlockKind;
   start: Date;
   end: Date;
+  /** Outlook blocks only: busy | tentative | oof | workingElsewhere. */
+  status?: string;
 }
 
 export function toEvents(appointments: Appointment[], zone: string): BoardEvent[] {
@@ -55,7 +57,7 @@ function complement(windows: Window[], from: number, to: number): [number, numbe
   return out;
 }
 
-/** Shading per tech inside the visible range: off-hours (outside the working windows), approved time off and pending time off. */
+/** Shading per tech inside the visible range: off-hours (outside the working windows), approved time off, pending time off and cached Outlook busy time. */
 export function backgroundBlocks(
   availability: AvailabilityRow[],
   zone: string,
@@ -66,16 +68,41 @@ export function backgroundBlocks(
   const board = (t: number) => toBoardDate(new Date(t).toISOString(), zone);
   const out: BackgroundBlock[] = [];
   for (const row of availability) {
-    const add = (kind: BlockKind, s: number, e: number) => {
+    const add = (kind: BlockKind, s: number, e: number, status?: string) => {
       const lo = Math.max(s, from);
       const hi = Math.min(e, to);
-      if (hi > lo) out.push({ resourceId: row.user_id, kind, start: board(lo), end: board(hi) });
+      if (hi > lo) out.push({ resourceId: row.user_id, kind, start: board(lo), end: board(hi), ...(status ? { status } : {}) });
     };
     for (const [s, e] of complement(row.working, from, to)) add("off_hours", s, e);
     for (const w of row.time_off) add("time_off", ms(w.starts_at), ms(w.ends_at));
     for (const w of row.time_off_pending) add("time_off_pending", ms(w.starts_at), ms(w.ends_at));
+    for (const w of row.outlook_busy ?? []) add("outlook", ms(w.starts_at), ms(w.ends_at), w.status);
   }
   return out;
+}
+
+export const STALE_MINUTES = 15;
+
+/** True when the Outlook busy cache was never fetched or is older than 15 minutes. */
+export function isStale(fetchedAt: string | null, now: Date): boolean {
+  if (!fetchedAt) return true;
+  return now.getTime() - new Date(fetchedAt).getTime() > STALE_MINUTES * 60_000;
+}
+
+/** Whole minutes since `fetchedAt` (never negative). */
+export function ageMinutes(fetchedAt: string, now: Date): number {
+  return Math.max(0, Math.floor((now.getTime() - new Date(fetchedAt).getTime()) / 60_000));
+}
+
+/** The oldest fetch time among rows (null if any row, or no row, was never fetched). */
+export function oldestFetch(rows: AvailabilityRow[]): string | null {
+  if (rows.length === 0) return null;
+  let oldest: string | null = null;
+  for (const r of rows) {
+    if (!r.outlook_fetched_at) return null;
+    if (oldest === null || ms(r.outlook_fetched_at) < ms(oldest)) oldest = r.outlook_fetched_at;
+  }
+  return oldest;
 }
 
 /** The minimal PATCH for a drop or resize: only the changed fields, or null if nothing changed. */
