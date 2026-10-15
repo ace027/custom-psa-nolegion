@@ -36,9 +36,13 @@ BATCH = 50
 
 def queue(db: Session, appt: Appointment, settings: Settings, now: datetime) -> None:
     """Upsert the appointment's pending notice (debounced). Does nothing when emails are off or
-    the appointment is hidden from, or muted for, the client."""
-    if not (settings.appointment_emails_enabled and appt.client_visible and appt.notify_client):
+    the appointment is hidden from, or muted for, the client -- except that cancelling an
+    appointment the client was already emailed about still queues, so they hear it is off."""
+    if not settings.appointment_emails_enabled:
         return
+    if not (appt.client_visible and appt.notify_client):
+        if appt.status != "cancelled" or _last_sent(db, appt) is None:
+            return
     stmt = insert(AppointmentNotice).values(
         organization_id=appt.organization_id,
         appointment_id=appt.id,
@@ -58,6 +62,15 @@ def queue(db: Session, appt: Appointment, settings: Settings, now: datetime) -> 
             ),
         )
     )
+
+
+def _last_sent(db: Session, appt: Appointment) -> AppointmentNotice | None:
+    return db.execute(
+        select(AppointmentNotice)
+        .where(AppointmentNotice.appointment_id == appt.id, AppointmentNotice.state == "sent")
+        .order_by(AppointmentNotice.id.desc())
+        .limit(1)
+    ).scalar_one_or_none()
 
 
 def latest_for(db: Session, appointment_ids: list[int]) -> dict[int, ClientNoticeOut]:
@@ -121,7 +134,8 @@ def _render(
     previous: tuple[datetime, datetime] | None,
     portal: bool,
 ) -> tuple[str, str]:
-    subject = f"[Ticket #{ticket.number}] Appointment {kind}: {ticket.subject}"[:998]
+    title = " ".join(ticket.subject.split())  # no CR/LF: keeps header and body lines intact
+    subject = f"[Ticket #{ticket.number}] Appointment {kind}: {title}"[:998]
     first = (tech.display_name.split() or [""])[0] if tech and tech.display_name else None
     lines = [
         {
@@ -140,7 +154,7 @@ def _render(
         lines += [f"When: {when(appt.starts_at, appt.ends_at, tz)}"]
     if first and kind != "cancelled":
         lines += [f"Technician: {first}"]
-    lines += [f"Ticket: #{ticket.number} - {ticket.subject}"]
+    lines += [f"Ticket: #{ticket.number} - {title}"]
     if portal:
         lines += ["", f"View your requests: {_public_url()}/portal"]
     lines += ["", "Reply to this email if you have questions."]
@@ -156,17 +170,14 @@ def _decide(db: Session, appt: Appointment | None, settings: Settings):
     """(kind, None, last_sent) to send, or (None, reason, last_sent) to skip."""
     if appt is None:
         return None, "appointment not found", None
-    last = db.execute(
-        select(AppointmentNotice)
-        .where(AppointmentNotice.appointment_id == appt.id, AppointmentNotice.state == "sent")
-        .order_by(AppointmentNotice.id.desc())
-        .limit(1)
-    ).scalar_one_or_none()
+    last = _last_sent(db, appt)
     if not settings.appointment_emails_enabled:
         return None, "appointment emails are turned off", last
-    if not (appt.client_visible and appt.notify_client):
+    cancelled = appt.status == "cancelled"
+    # a cancellation of an appointment the client was already emailed about still goes out
+    if not (appt.client_visible and appt.notify_client) and not (cancelled and last is not None):
         return None, "appointment is hidden from or muted for the client", last
-    if appt.status == "cancelled":
+    if cancelled:
         if last is None:
             return None, "cancelled before any email", last
         return "cancelled", None, last
@@ -200,7 +211,10 @@ def send_due(db: Session, now: datetime) -> int:
         except Exception as exc:
             log.exception("client notice %s failed", n.id)
             with db.begin_nested():
-                n.state, n.reason = "skipped", f"error: {exc}"[:500]
+                n.state, n.reason = (
+                    "skipped",
+                    f"error: internal ({type(exc).__name__}); see worker log",
+                )
                 db.flush()
     db.commit()
     return sent

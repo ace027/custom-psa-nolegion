@@ -355,3 +355,83 @@ def test_notices_are_isolated_by_org(admin, owner, on, make_org, ticket, tech):
     with new_session() as db:
         set_org_scope(db, str(org))
         assert a["id"] in client_notices.latest_for(db, [a["id"]])
+
+
+# ---- cancellation after hide / mute -----------------------------------------------------------
+def test_emailed_then_hidden_then_cancelled_sends_cancelled(admin, owner, on, ticket, tech):
+    a = book(admin, ticket["id"], tech)
+    assert send() == 1
+    patch(admin, a["id"], client_visible=False)
+    cancel(admin, a["id"])
+    assert send() == 1
+    assert [n.kind for n in notices(owner)] == ["booked", "cancelled"]
+    assert "Appointment cancelled" in mails(owner)[1].subject
+
+
+def test_emailed_then_muted_then_cancelled_sends_cancelled(admin, owner, on, ticket, tech):
+    a = book(admin, ticket["id"], tech)
+    assert send() == 1
+    patch(admin, a["id"], notify_client=False)
+    cancel(admin, a["id"])
+    assert send() == 1
+    assert [n.kind for n in notices(owner)] == ["booked", "cancelled"]
+
+
+def test_cancelled_after_hide_still_needs_master_setting(admin, owner, on, ticket, tech):
+    a = book(admin, ticket["id"], tech)
+    send()
+    patch(admin, a["id"], client_visible=False)
+    owner.execute(text("UPDATE settings SET appointment_emails_enabled = false"))
+    cancel(admin, a["id"])
+    assert send() == 0
+    assert len(mails(owner)) == 1
+
+
+def test_never_emailed_hidden_cancelled_sends_nothing(admin, owner, on, ticket, tech):
+    a = book(admin, ticket["id"], tech, client_visible=False)
+    cancel(admin, a["id"])
+    assert send() == 0
+    assert notices(owner) == [] and mails(owner) == []
+
+
+def test_emailed_then_hidden_then_moved_sends_nothing(admin, owner, on, ticket, tech):
+    a = book(admin, ticket["id"], tech)
+    assert send() == 1
+    patch(admin, a["id"], client_visible=False)
+    patch(admin, a["id"], starts_at=at(17), ends_at=at(18))
+    assert send() == 0
+    assert len(mails(owner)) == 1
+    assert [n.state for n in notices(owner)] == ["sent"]
+
+
+# ---- hardening --------------------------------------------------------------------------------
+def test_row_failure_reason_does_not_leak_exception_text(
+    admin, owner, on, ticket, tech, monkeypatch
+):
+    book(admin, ticket["id"], tech)
+
+    def boom(*a, **k):
+        raise RuntimeError("secret connection string host=db password=hunter2")
+
+    monkeypatch.setattr(client_notices, "_process", boom)
+    assert send() == 0
+    n = notices(owner)[0]
+    assert n.state == "skipped"
+    assert n.reason == "error: internal (RuntimeError); see worker log"
+    assert "hunter2" not in n.reason
+
+
+def test_crlf_subject_renders_on_one_line(admin, owner, on, make_ticket, org_ctx, tech):
+    t = make_ticket(contact_id=org_ctx["contact"])
+    owner.execute(
+        text("UPDATE tickets SET subject = :s WHERE id = :i"),
+        {"s": "Printer\r\nBcc: evil@example.org\n  down", "i": t["id"]},
+    )
+    book(admin, t["id"], tech)
+    assert send() == 1
+    m = mails(owner)[0]
+    assert "\r" not in m.subject and "\n" not in m.subject
+    assert m.subject.endswith("Printer Bcc: evil@example.org down")
+    assert (
+        f"Ticket: #{t['number']} - Printer Bcc: evil@example.org down" in m.body_text.splitlines()
+    )

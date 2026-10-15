@@ -218,10 +218,13 @@ def now(ctx: Ctx, at: datetime | None = None) -> list[dict]:
     at = at or tsvc.now()
     tz = _tz(ctx)
     rotations = _active_rotations(ctx)
-    found = {
-        r.id: oncall.who_is_on(r, _members(ctx, r.id), _overrides(ctx, r.id), at, tz)
-        for r in rotations
-    }
+    try:
+        found = {
+            r.id: oncall.who_is_on(r, _members(ctx, r.id), _overrides(ctx, r.id), at, tz)
+            for r in rotations
+        }
+    except OverflowError:
+        raise InvalidOncall("That date is outside the supported range") from None
     names = _names(ctx, {f[0] for f in found.values() if f})
     out = []
     for r in rotations:
@@ -249,11 +252,16 @@ def schedule(ctx: Ctx, start: datetime, end: datetime) -> list[dict]:
         raise InvalidOncall("The window can be at most 31 days")
     tz = _tz(ctx)
     rows = []
-    for r in _active_rotations(ctx):
-        rows += [
-            (r.id, s)
-            for s in oncall.shifts(r, _members(ctx, r.id), _overrides(ctx, r.id), start, end, tz)
-        ]
+    try:
+        for r in _active_rotations(ctx):
+            rows += [
+                (r.id, s)
+                for s in oncall.shifts(
+                    r, _members(ctx, r.id), _overrides(ctx, r.id), start, end, tz
+                )
+            ]
+    except OverflowError:
+        raise InvalidOncall("That date range is outside the supported range") from None
     names = _names(ctx, {s.user_id for _, s in rows})
     rows.sort(key=lambda x: (x[1].starts_at, x[0]))
     return [

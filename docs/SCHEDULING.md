@@ -163,7 +163,7 @@ Clients get a plain-text email when an appointment on their ticket is booked, mo
   `send_after = now + 2 minutes`. The worker decides the kind at send time by comparing the appointment with
   the last snapshot it sent: `booked` (nothing sent before), `moved` (start or end changed), `cancelled`, or
   skip. So book-then-move inside 2 minutes sends one "booked" email with the final time, and
-  book-then-cancel sends nothing. A reassignment with no time change sends nothing.
+  book-then-cancel sends nothing. A reassignment with no time change sends nothing. Hiding or muting an appointment stops booked and moved emails, but if the client was already emailed about it, cancelling it still sends the "cancelled" email (the master switch must be on).
 - **Recipient.** The ticket's contact email, falling back to the ticket's `requester_email`. No recipient
   means the notice is skipped. It is notify-only: no reply handling, no confirm or decline links.
 - **Never included.** Internal notes, cancel reasons, the tech's email address or anything about other

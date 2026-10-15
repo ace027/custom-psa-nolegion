@@ -8,6 +8,12 @@ from pydantic import AwareDatetime, BaseModel, Field, field_validator, model_val
 OnCallSource = Literal["rotation", "override"]
 
 
+def _anchor_range(v: date | None) -> date | None:
+    if v is not None and not 2000 <= v.year <= 2100:
+        raise ValueError("anchor_date must be between the years 2000 and 2100")
+    return v
+
+
 def _unique(v: list[int] | None) -> list[int] | None:
     if v is not None and len(v) != len(set(v)):
         raise ValueError("Each member can be listed only once")
@@ -22,6 +28,7 @@ class RotationCreate(BaseModel):
     member_ids: list[int] = Field(default=[], description="Ordered; first member is on call first")
 
     _members = field_validator("member_ids")(_unique)
+    _anchor = field_validator("anchor_date")(_anchor_range)
 
     @model_validator(mode="after")
     def _anchor_weekday(self) -> Self:
@@ -45,6 +52,7 @@ class RotationPatch(BaseModel):
     )
 
     _members = field_validator("member_ids")(_unique)
+    _anchor = field_validator("anchor_date")(_anchor_range)
 
 
 class MemberOut(BaseModel):
