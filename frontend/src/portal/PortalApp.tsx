@@ -4,6 +4,7 @@ import { Link, NavLink, Navigate, Route, Routes, useNavigate, useParams } from "
 import { WARRANTY_LABEL, ApiError, PortalAssets, PortalInvoice, PortalInvoiceDetail, PortalMe, PortalTicket, PortalTicketDetail, api } from "../api";
 import { money } from "../money";
 import { Button, Card, ErrorMsg, Field, StatTile, ThemeToggle, WarrantyBadge, fmt, inputCls } from "../ui";
+import AppointmentsPage from "./AppointmentsPage";
 
 function usePortalMe() {
   return useQuery({
@@ -110,6 +111,7 @@ function Signed({ me }: { me: PortalMe }) {
     >
       <nav className="mb-5 flex gap-1">
         <NavLink to="/portal/tickets" className={tab}>Tickets</NavLink>
+        <NavLink to="/portal/appointments" className={tab}>Appointments</NavLink>
         {me.can_see_billing && <NavLink to="/portal/invoices" className={tab}>Invoices</NavLink>}
         {me.can_see_devices && <NavLink to="/portal/devices" className={tab}>Devices</NavLink>}
       </nav>
@@ -117,6 +119,7 @@ function Signed({ me }: { me: PortalMe }) {
         <Route index element={<Navigate to="/portal/tickets" replace />} />
         <Route path="tickets" element={<Tickets />} />
         <Route path="tickets/:id" element={<TicketPage />} />
+        <Route path="appointments" element={<AppointmentsPage />} />
         {me.can_see_billing && <Route path="invoices" element={<Invoices />} />}
         {me.can_see_billing && <Route path="invoices/:id" element={<InvoicePage />} />}
         {me.can_see_devices && <Route path="devices" element={<Devices />} />}
