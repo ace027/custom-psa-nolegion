@@ -53,3 +53,46 @@ Didn't work:
 - Ship gates: 6/6
 
 ---
+
+## Phase 4: Outlook push + free/busy — 2026-10-15
+
+### Key Findings
+**Went well**
+- 4/4 plans complete. Review PASSED in 2 cycles, with 6/6 must-fix findings fixed.
+- Review fix commits carried real code and tests (c76fc01, 117d24d), unlike phase 3.
+- Security review PASS. SEC-001 and SEC-002 (LOW) fixed with tests in 52dbadf.
+- Backend 899 and frontend 199 tests pass, e2e dispatch 4/4. Ship gates 6/6. CI green on the first run of PR #7 (merged c383939).
+- The boundary grep held "only the worker calls Graph" in every run.
+
+**Didn't work**
+- Two-wave mode put 04-04 in Wave A ahead of 04-03, which it depends on, so nothing ran. --single-wave fixed it.
+- Migration 0025 (04-02) lacked the DELETE grant that 04-03 needed, so 04-03 was BLOCKED until the owner approved adding it.
+- One bug (a getSchedule error mapped to an empty list, wiping cached blocks) produced 5 of 6 must-fix findings. A 04-01 test asserted the buggy behavior.
+- Recurring from phase 3:
+  - SUMMARY-only build commit (9388478, code committed as 42478af)
+  - SPEND.json breaks the clean-tree gate
+  - orchestrator edits logged as manual-edit preferences
+  - invalid escalation type
+
+### Action Items
+| # | Action | Priority | Evidence |
+|---|---|---|---|
+| 1 | build_phase must honor plan dependencies when assigning waves; use single-wave when plans chain | High | Phase 4 first build, legion.log |
+| 2 | A build commit containing only the SUMMARY fails the plan (recurred from phase 3) | High | 9388478 vs 42478af; 943a1dc vs 590aa90 |
+| 3 | When planning, check that a schema/migration plan grants every privilege later waves need | High | O-023, 0025 busy_blocks DELETE |
+| 4 | Tests and reviews flag errors mapped to empty data that feeds a destructive refresh | Medium | F-001..F-005, 04-01 test, c76fc01 |
+| 5 | List the allowed escalation types in the build prompt; an owner-approved edit to another plan's file is not an escalation (recurred) | Medium | O-024 |
+| 6 | Exclude .planning/SPEND.json from the ship clean-tree gate (recurred) | Medium | Phase 4 ship |
+| 7 | Stop logging orchestrator edits as manual-edit preferences (recurred) | Medium | D-007..D-012, reverted uncommitted |
+| 8 | Explain or fix the review pass rate metric (0/1 shown for a PASSED review) | Low | Phase 4 metrics |
+| 9 | Triage the 23 deferred findings and 4 INFO security items, starting with the hot-spot files | Low | 04-REVIEW.md, SECURITY-REVIEW.md |
+| 10 | Run the real-tenant spike and the other owner checks in Phase 14: Verify | Low | .planning/VERIFY.md, PRF-001 |
+
+### Metrics
+- Plans completed: 4
+- Review pass rate: 0/1 (0%)
+- Escalations: 1 (0 blockers)
+- Agents used: 2 (engineering-backend-architect, engineering-frontend-developer)
+- Files modified: 27
+
+---
