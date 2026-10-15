@@ -100,7 +100,7 @@ def me(ctx: PortalCtx) -> dict:
 def list_appointments(ctx: PortalCtx, now: datetime) -> list[dict]:
     """Scheduled, client-visible appointments on tickets this contact can see. Notes, cancel
     reasons, tech email and ids are never returned."""
-    rows = ctx.db.execute(
+    base = (
         select(Appointment, Ticket, User.display_name)
         .join(
             Ticket,
@@ -111,12 +111,21 @@ def list_appointments(ctx: PortalCtx, now: datetime) -> list[dict]:
         .where(
             Appointment.status == "scheduled",
             Appointment.client_visible.is_(True),
-            Appointment.ends_at >= now - timedelta(days=30),
             _visible(ctx),
         )
+    )
+    # Upcoming and recent-past rows get separate limits so old visits never crowd out new ones.
+    upcoming = ctx.db.execute(
+        base.where(Appointment.ends_at >= now)
         .order_by(Appointment.starts_at, Appointment.id)
         .limit(200)
     ).all()
+    recent = ctx.db.execute(
+        base.where(Appointment.ends_at < now, Appointment.ends_at >= now - timedelta(days=30))
+        .order_by(Appointment.starts_at.desc(), Appointment.id.desc())
+        .limit(200)
+    ).all()
+    rows = list(reversed(recent)) + list(upcoming)
     out = []
     for a, t, tech_name in rows:
         words = (tech_name or "").split()

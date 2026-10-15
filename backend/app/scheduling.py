@@ -407,16 +407,20 @@ def appointment_views(
     ]
 
 
+_UNSET: object = object()  # "notice not supplied": fetch it, as opposed to a known None
+
+
 def appointment_view(
     ctx: Ctx,
     a: Appointment,
     *,
     with_conflicts: bool = False,
     sync: dict | None = None,
-    notice: ClientNoticeOut | None = None,
+    notice: ClientNoticeOut | None | object = _UNSET,
 ) -> dict:
     if sync is None:
         sync = sync_states(ctx, [a.id])[a.id]
+    if notice is _UNSET:
         notice = client_notices.latest_for(ctx.db, [a.id]).get(a.id)
     org = ctx.db.get(Organization, a.organization_id)
     ticket = ctx.db.get(Ticket, a.ticket_id)

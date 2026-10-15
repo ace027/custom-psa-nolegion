@@ -16,6 +16,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app import audit
+from app.config import get_settings
 from app.db import set_org_scope
 from app.models import (
     Appointment,
@@ -120,8 +121,7 @@ def _render(
     previous: tuple[datetime, datetime] | None,
     portal: bool,
 ) -> tuple[str, str]:
-    label = {"booked": "booked", "moved": "moved", "cancelled": "cancelled"}[kind]
-    subject = f"[Ticket #{ticket.number}] Appointment {label}: {ticket.subject}"[:998]
+    subject = f"[Ticket #{ticket.number}] Appointment {kind}: {ticket.subject}"[:998]
     first = (tech.display_name.split() or [""])[0] if tech and tech.display_name else None
     lines = [
         {
@@ -142,19 +142,17 @@ def _render(
         lines += [f"Technician: {first}"]
     lines += [f"Ticket: #{ticket.number} - {ticket.subject}"]
     if portal:
-        lines += ["", f"View your requests: {settings_url()}/portal"]
+        lines += ["", f"View your requests: {_public_url()}/portal"]
     lines += ["", "Reply to this email if you have questions."]
     return subject, "\n".join(lines) + "\n"
 
 
-def settings_url() -> str:
-    from app.config import get_settings
-
+def _public_url() -> str:
     return get_settings().public_url.rstrip("/")
 
 
 # ---- sending ----------------------------------------------------------------------------------
-def _decide(db: Session, n: AppointmentNotice, appt: Appointment | None, settings: Settings):
+def _decide(db: Session, appt: Appointment | None, settings: Settings):
     """(kind, None, last_sent) to send, or (None, reason, last_sent) to skip."""
     if appt is None:
         return None, "appointment not found", None
@@ -196,63 +194,75 @@ def send_due(db: Session, now: datetime) -> int:
     settings = db.get(Settings, 1)
     sent = 0
     for n in due:
-        before = audit.snapshot(n)
-        appt = db.get(Appointment, n.appointment_id)
-        kind, reason, last = _decide(db, n, appt, settings)
-        ticket = db.get(Ticket, appt.ticket_id) if appt else None
-        to = None
-        if kind is not None:
-            if ticket is None:
-                kind, reason = None, "ticket not found"
-            else:
-                contact = ticket.contact
-                to = ((contact.email if contact else None) or "").strip() or (
-                    (ticket.requester_email or "").strip() or None
-                )
-                if to is None:
-                    kind, reason = None, "no recipient"
-        if kind is None:
-            n.state, n.reason = "skipped", reason
-            db.flush()
-            continue
-        tech = db.get(User, appt.tech_id)
-        portal = bool(settings.portal_enabled and contact is not None and contact.portal_access)
-        subject, body = _render(
-            kind,
-            ticket,
-            appt,
-            tech,
-            settings,
-            _zone(settings.timezone),
-            (last.starts_at, last.ends_at) if last else None,
-            portal,
-        )
-        email = EmailMessage(
-            direction="out",
-            ticket_id=ticket.id,
-            organization_id=appt.organization_id,
-            to_emails=[to],
-            subject=subject,
-            body_text=body,
-            send_status="pending",
-            auto_generated=True,
-        )
-        db.add(email)
-        db.flush()
-        n.state, n.kind, n.reason = "sent", kind, None
-        n.email_message_id, n.sent_at = email.id, now
-        n.starts_at, n.ends_at = appt.starts_at, appt.ends_at
-        db.flush()
-        audit.record(
-            db,
-            None,
-            "appointment_notice.send",
-            n,
-            before=before,
-            after=audit.snapshot(n),
-            organization_id=appt.organization_id,
-            detail={"to": [to], "kind": kind, "ticket_id": ticket.id},
-        )
-        sent += 1
+        try:
+            with db.begin_nested():  # a bad row rolls back alone, not the whole batch
+                sent += _process(db, n, settings, now)
+        except Exception as exc:
+            log.exception("client notice %s failed", n.id)
+            with db.begin_nested():
+                n.state, n.reason = "skipped", f"error: {exc}"[:500]
+                db.flush()
     db.commit()
     return sent
+
+
+def _process(db: Session, n: AppointmentNotice, settings: Settings, now: datetime) -> int:
+    """Send or skip one due notice; returns 1 when an email was queued."""
+    before = audit.snapshot(n)
+    appt = db.get(Appointment, n.appointment_id)
+    kind, reason, last = _decide(db, appt, settings)
+    ticket = db.get(Ticket, appt.ticket_id) if appt else None
+    to = None
+    if kind is not None:
+        if ticket is None:
+            kind, reason = None, "ticket not found"
+        else:
+            contact = ticket.contact
+            to = ((contact.email if contact else None) or "").strip() or (
+                (ticket.requester_email or "").strip() or None
+            )
+            if to is None:
+                kind, reason = None, "no recipient"
+    if kind is None:
+        n.state, n.reason = "skipped", reason
+        db.flush()
+        return 0
+    tech = db.get(User, appt.tech_id)
+    portal = bool(settings.portal_enabled and contact is not None and contact.portal_access)
+    subject, body = _render(
+        kind,
+        ticket,
+        appt,
+        tech,
+        settings,
+        _zone(settings.timezone),
+        (last.starts_at, last.ends_at) if last else None,
+        portal,
+    )
+    email = EmailMessage(
+        direction="out",
+        ticket_id=ticket.id,
+        organization_id=appt.organization_id,
+        to_emails=[to],
+        subject=subject,
+        body_text=body,
+        send_status="pending",
+        auto_generated=True,
+    )
+    db.add(email)
+    db.flush()
+    n.state, n.kind, n.reason = "sent", kind, None
+    n.email_message_id, n.sent_at = email.id, now
+    n.starts_at, n.ends_at = appt.starts_at, appt.ends_at
+    db.flush()
+    audit.record(
+        db,
+        None,
+        "appointment_notice.send",
+        n,
+        before=before,
+        after=audit.snapshot(n),
+        organization_id=appt.organization_id,
+        detail={"to": [to], "kind": kind, "ticket_id": ticket.id},
+    )
+    return 1

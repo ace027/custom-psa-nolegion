@@ -167,6 +167,11 @@ describe("on-call page", () => {
     const table = await screen.findByRole("table");
     expect(within(table).getByText("Sam Tech")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Delete override for Alex Admin" }));
+    expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Delete override for Alex Admin" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete override for Alex Admin" }));
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path === "/api/oncall/overrides/9")).toBe(true));
   });
 

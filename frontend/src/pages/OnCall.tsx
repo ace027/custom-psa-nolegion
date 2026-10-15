@@ -8,6 +8,7 @@ import {
   createOverride,
   createRotation,
   deleteOverride,
+  getOnCallNow,
   getOnCallSchedule,
   listOverrides,
   listRotations,
@@ -146,13 +147,17 @@ function RotationCard({ rotation: r, canWrite, zone, staff, onEdit }: { rotation
   const qc = useQueryClient();
   const overrides = useQuery({ queryKey: oncallKeys.overrides(r.id), queryFn: () => listOverrides(r.id) });
   const [f, setF] = useState({ user: "", start: "", end: "", reason: "" });
+  const now = useQuery({ queryKey: oncallKeys.now(), queryFn: getOnCallNow, retry: false });
+  const holder = now.data?.find((n) => n.rotation_id === r.id);
+  const [showForm, setShowForm] = useState(false);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: oncallKeys.all });
   const add = useMutation({
     mutationFn: () => {
       const toIso = (v: string) => fromBoardDate(new Date(v), zone); // datetime-local parses as board wall-clock
       return createOverride(r.id, { user_id: Number(f.user), starts_at: toIso(f.start), ends_at: toIso(f.end), reason: f.reason.trim() || null });
     },
-    onSuccess: () => { setF({ user: "", start: "", end: "", reason: "" }); refresh(); },
+    onSuccess: () => { setF({ user: "", start: "", end: "", reason: "" }); setShowForm(false); refresh(); },
   });
   const del = useMutation({ mutationFn: (id: number) => deleteOverride(id), onSuccess: refresh });
   const members = [...r.members].sort((a, b) => a.position - b.position);
@@ -161,6 +166,11 @@ function RotationCard({ rotation: r, canWrite, zone, staff, onEdit }: { rotation
       <p className="text-sm text-slate-600">
         Hands off {WEEKDAYS[r.handoff_weekday]}s at {r.handoff_time.slice(0, 5)} ({zone}), from {r.anchor_date}.
       </p>
+      {holder && (
+        <p className="mt-1 text-sm font-medium" data-testid="oncall-holder">
+          On call now: {holder.user_name ?? "nobody"}{holder.until ? ` until ${formatInZone(holder.until, zone, "EEE d MMM HH:mm")}` : ""}
+        </p>
+      )}
       <p className="mt-1 text-sm">{members.length ? members.map((m, i) => `${i + 1}. ${m.name}`).join("  ") : "No members."}</p>
       <h3 className="mt-3 text-sm font-semibold">Overrides</h3>
       <ErrorMsg error={overrides.error} />
@@ -171,13 +181,21 @@ function RotationCard({ rotation: r, canWrite, zone, staff, onEdit }: { rotation
               <b>{o.user_name ?? `User ${o.user_id}`}</b> {formatInZone(o.starts_at, zone, "EEE d MMM HH:mm")} to {formatInZone(o.ends_at, zone, "EEE d MMM HH:mm")}
               {o.reason && <span className="text-slate-500"> ({o.reason})</span>}
             </span>
-            {canWrite && <Button variant="secondary" aria-label={`Delete override for ${o.user_name ?? o.user_id}`} disabled={del.isPending} onClick={() => del.mutate(o.id)}>Delete</Button>}
+            {canWrite && (confirmId === o.id ? (
+              <span className="flex gap-1">
+                <Button variant="secondary" aria-label={`Confirm delete override for ${o.user_name ?? o.user_id}`} disabled={del.isPending} onClick={() => del.mutate(o.id, { onSettled: () => setConfirmId(null) })}>Confirm delete</Button>
+                <Button variant="secondary" disabled={del.isPending} onClick={() => setConfirmId(null)}>Cancel</Button>
+              </span>
+            ) : (
+              <Button variant="secondary" aria-label={`Delete override for ${o.user_name ?? o.user_id}`} disabled={del.isPending} onClick={() => setConfirmId(o.id)}>Delete</Button>
+            ))}
           </li>
         ))}
         {overrides.data?.length === 0 && <li className="py-1.5 text-slate-500">No overrides.</li>}
       </ul>
       <ErrorMsg error={del.error} />
-      {canWrite && (
+      {canWrite && !showForm && <Button className="mt-2" variant="secondary" onClick={() => setShowForm(true)}>Add override</Button>}
+      {canWrite && showForm && (
         <form className="mt-2 flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
           <Field label="Override user">
             <select className={inputCls} required value={f.user} onChange={(e) => setF({ ...f, user: e.target.value })}>
@@ -188,7 +206,8 @@ function RotationCard({ rotation: r, canWrite, zone, staff, onEdit }: { rotation
           <Field label="Override start"><input className={inputCls} type="datetime-local" required value={f.start} onChange={(e) => setF({ ...f, start: e.target.value })} /></Field>
           <Field label="Override end"><input className={inputCls} type="datetime-local" required value={f.end} onChange={(e) => setF({ ...f, end: e.target.value })} /></Field>
           <Field label="Reason"><input className={inputCls} maxLength={200} value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} /></Field>
-          <Button type="submit" disabled={add.isPending}>Add override</Button>
+          <Button type="submit" disabled={add.isPending}>Save override</Button>
+          <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
         </form>
       )}
       <ErrorMsg error={add.error} />
