@@ -11,7 +11,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import case, delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -290,7 +290,8 @@ def status_summary(ctx) -> dict:
     """Counts, newest failures and cache health for the settings page."""
     s = AppointmentSync
     scoped = lambda q: ctx.scope.apply(q, s.organization_id)  # noqa: E731
-    enabled = bool(ctx.db.get(Settings, 1).outlook_sync_enabled)
+    settings_row = ctx.db.get(Settings, 1)
+    enabled = bool(settings_row and settings_row.outlook_sync_enabled)
     counts = dict(ctx.db.execute(scoped(select(s.state, func.count()).group_by(s.state))).all())
     failures = ctx.db.execute(
         scoped(
@@ -302,8 +303,16 @@ def status_summary(ctx) -> dict:
         .limit(20)
     ).all()
     oldest, errors = ctx.db.execute(
-        select(func.min(CalendarBusyStatus.fetched_at), func.count(CalendarBusyStatus.last_error))
-        .join(User, User.id == CalendarBusyStatus.user_id)
+        select(
+            # min() skips NULLs, so a never-fetched user must force NULL explicitly
+            case(
+                (func.count() != func.count(CalendarBusyStatus.fetched_at), None),
+                else_=func.min(CalendarBusyStatus.fetched_at),
+            ),
+            func.count(CalendarBusyStatus.last_error),
+        )
+        .select_from(User)
+        .outerjoin(CalendarBusyStatus, CalendarBusyStatus.user_id == User.id)
         .where(*eligible_users())
     ).one()
     return dict(

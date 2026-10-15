@@ -189,6 +189,15 @@ def test_status_reports_oldest_fetch_and_errors(admin, owner, login):
             {"u": uid, "f": ts, "e": err},
         )
     s = admin.get("/api/calendar-sync/status").json()
+    assert s["busy_fetched_at"] is None  # other eligible users were never fetched
+    owner.execute(
+        text(
+            "INSERT INTO calendar_busy_status (user_id, fetched_at) "
+            "SELECT id, :f FROM users WHERE id NOT IN (:a, :b)"
+        ),
+        {"f": FETCHED + timedelta(hours=2), "a": a, "b": b},
+    )
+    s = admin.get("/api/calendar-sync/status").json()
     assert s["busy_fetched_at"] == "2030-01-07T06:00:00Z" and s["busy_errors"] == 1
     assert s["enabled"] is False
 

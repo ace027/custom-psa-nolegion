@@ -99,6 +99,29 @@ function EventBlock({ event }: EventProps<CalItem>) {
   );
 }
 
+const CAL_COMPONENTS = { event: EventBlock };
+const eventClass = (e: CalItem) => ({ className: isShade(e) ? SHADE_CLASS[e.kind] : e.conflicts.length > 0 ? "has-conflict" : undefined });
+
+// Owns the clock tick so only this caption re-renders, and only while sync is on.
+function OutlookCaption({ fetched }: { fetched: ReturnType<typeof oldestFetch> }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const caption: { text: string; warn: boolean } =
+    fetched === null
+      ? { text: "Outlook busy not loaded yet", warn: true }
+      : isStale(fetched, now)
+        ? { text: `Outlook busy may be out of date (updated ${ageMinutes(fetched, now)} min ago)`, warn: true }
+        : { text: `Outlook busy updated ${ageMinutes(fetched, now)} min ago`, warn: false };
+  return (
+    <p data-testid="outlook-caption" className={caption.warn ? "text-sm font-medium text-amber-800" : "text-sm text-slate-600"}>
+      {caption.warn && <span aria-hidden>⚠ </span>}{caption.text}
+    </p>
+  );
+}
+
 /* ---- Day helpers (YYYY-MM-DD strings, zone-free) ---- */
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -186,11 +209,6 @@ export default function Dispatch() {
   });
   const syncStatus = useQuery({ queryKey: schedulingKeys.syncStatus(), queryFn: getCalendarSyncStatus, retry: false, refetchInterval: 60_000 });
   const syncOn = syncStatus.data?.enabled === true;
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(t);
-  }, []);
   const availParams = range ? { from: range.from, to: range.to, userIds: week && tech != null ? [tech] : undefined } : null;
   const avail = useQuery({
     queryKey: availParams ? schedulingKeys.availability(availParams) : schedulingKeys.all,
@@ -278,15 +296,11 @@ export default function Dispatch() {
     const rows = avail.data ? (week ? avail.data.filter((r) => r.user_id === tech) : avail.data) : [];
     return oldestFetch(rows);
   }, [avail.data, week, tech]);
-  const caption: { text: string; warn: boolean } | null = !syncOn || !avail.data
-    ? null
-    : outlookFetched === null
-      ? { text: "Outlook busy not loaded yet", warn: true }
-      : isStale(outlookFetched, now)
-        ? { text: `Outlook busy may be out of date (updated ${ageMinutes(outlookFetched, now)} min ago)`, warn: true }
-        : { text: `Outlook busy updated ${ageMinutes(outlookFetched, now)} min ago`, warn: false };
   const failures = syncOn ? syncStatus.data?.failures ?? [] : [];
   const failedCount = syncOn ? syncStatus.data?.failed ?? 0 : 0;
+  useEffect(() => {
+    if (failedCount === 0) setFailuresOpen(false);
+  }, [failedCount]);
   const techZones = useMemo(() => new Map((avail.data ?? []).map((r) => [r.user_id, r.timezone])), [avail.data]);
 
   const tooltip = (e: CalItem): string => {
@@ -378,11 +392,7 @@ export default function Dispatch() {
         <li><span aria-hidden className="swatch shade-outlook" />Outlook busy</li>
         <li><span aria-hidden className="swatch swatch-conflict">⚠</span>Conflict</li>
       </ul>
-      {caption && (
-        <p data-testid="outlook-caption" className={caption.warn ? "text-sm font-medium text-amber-800" : "text-sm text-slate-600"}>
-          {caption.warn && <span aria-hidden>⚠ </span>}{caption.text}
-        </p>
-      )}
+      {syncOn && avail.data && <OutlookCaption fetched={outlookFetched} />}
       {failedCount > 0 && failuresOpen && (
         <div id="sync-failures" className="rounded-lg border border-red-200 bg-surface p-3 text-sm">
           <p className="mb-1 font-medium">Outlook sync failures</p>
@@ -436,8 +446,8 @@ export default function Dispatch() {
             step={15}
             timeslots={4}
             scrollToTime={new Date(1970, 0, 1, 7)}
-            eventPropGetter={(e) => ({ className: isShade(e) ? SHADE_CLASS[e.kind] : e.conflicts.length > 0 ? "has-conflict" : undefined })}
-            components={{ event: EventBlock }}
+            eventPropGetter={eventClass}
+            components={CAL_COMPONENTS}
             selectable={canWrite}
             resizable={canWrite}
             draggableAccessor={(e) => canWrite && !isShade(e)}

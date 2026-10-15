@@ -36,7 +36,9 @@ export function EditDialog({ appointment: a, zone, staff, canWrite, onClose, onS
     },
   });
 
-  const [sync, setSync] = useState<AppointmentSync | undefined>(a.sync);
+  // Only retry results override the prop; otherwise follow a.sync.
+  const [syncOverride, setSync] = useState<AppointmentSync | undefined>(undefined);
+  const sync = syncOverride ?? a.sync;
   const [retryError, setRetryError] = useState("");
   const retry = useRetrySync({
     onSuccess: (updated) => { setRetryError(""); setSync(updated.sync); },

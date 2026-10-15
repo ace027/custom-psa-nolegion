@@ -69,7 +69,7 @@ export function OutlookSyncCard() {
   const qc = useQueryClient();
   const { data: me } = useMe();
   const isAdmin = me?.role === "admin";
-  const q = useQuery({ queryKey: schedulingKeys.syncStatus(), queryFn: getCalendarSyncStatus, enabled: can(me, "schedule:read"), retry: false });
+  const q = useQuery({ queryKey: schedulingKeys.syncStatus(), queryFn: getCalendarSyncStatus, enabled: can(me, "schedule:read"), retry: false, refetchInterval: 60_000 });
   const save = useMutation({
     mutationFn: (outlook_sync_enabled: boolean) => api("/settings", { method: "PATCH", json: { outlook_sync_enabled } }),
     onSuccess: () => {
@@ -83,6 +83,7 @@ export function OutlookSyncCard() {
   return (
     <Card title="Outlook calendar sync">
       <ErrorMsg error={q.error} />
+      {q.isLoading && <p className="text-sm text-slate-500">Loading…</p>}
       {s && (
         <div className="space-y-2 text-sm">
           {isAdmin ? (

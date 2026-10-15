@@ -134,7 +134,7 @@ def test_disabled_setting_does_nothing(owner, fake, appt):
     assert sync(owner, appt).state == "pending"
 
 
-def test_create_pushes_the_approved_payload(owner, fake, enabled, appt, make_user):
+def test_create_pushes_the_approved_payload(owner, fake, enabled, appt):
     assert push(fake) == 1
     row = sync(owner, appt)
     ticket_id = owner.execute(
