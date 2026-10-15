@@ -8,6 +8,7 @@ from app import audit
 from app import billing_repo as brepo
 from app import portal as svc
 from app import repositories as repo
+from app import ticket_services as tsvc
 from app.asset_schemas import PortalAssetsOut
 from app.auth import portal_sessions
 from app.config import get_settings
@@ -15,6 +16,7 @@ from app.context import client_ip_var
 from app.invoice_pdf import render_invoice_pdf
 from app.notices import build_statement
 from app.portal_deps import PortalCtx, billing_only, devices_only, portal_required, public_session
+from app.scheduling_schemas import PortalAppointmentOut
 from app.schemas import (
     ErrorOut,
     PortalInvoiceDetail,
@@ -170,6 +172,16 @@ def statement_pdf(ctx: PortalCtx = portal_required()):
 def devices(ctx: PortalCtx = portal_required()):
     devices_only(ctx)
     return svc.list_devices(ctx)
+
+
+# ---- appointments ----
+@router.get(
+    "/appointments",
+    response_model=list[PortalAppointmentOut],
+    summary="Your upcoming and recent appointments (client-visible, scheduled only)",
+)
+def appointments(ctx: PortalCtx = portal_required()):
+    return svc.list_appointments(ctx, tsvc.now())
 
 
 # ---- tickets ----

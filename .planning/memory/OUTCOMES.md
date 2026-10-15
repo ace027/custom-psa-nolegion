@@ -62,3 +62,4 @@ verification: 11/11 passed
 | O-032 | 2026-10-15 | dev | 5 | 05-01 | engineering-backend-architect | implementation | success | 2 | client-confirmations-on-call, engineering | Schema, models, schemas and on-call math: Complete |
 | O-033 | 2026-10-15 | dev | 5 | 05-02 | engineering-backend-architect | implementation | success | 2 | client-confirmations-on-call, engineering | Client appointment emails: Complete |
 | O-034 | 2026-10-15 | dev | 5 | 05-03 | engineering-senior-developer | implementation | failed | 5 | client-confirmations-on-call, engineering | On-call API and portal appointments: BLOCKED |
+| O-035 | 2026-10-15 | dev | 5 | 05-03 | engineering-senior-developer | implementation | success | 2 | client-confirmations-on-call, engineering | On-call API and portal appointments: Complete |

@@ -1,18 +1,17 @@
 # Plan 05-03 Summary: On-call API and portal appointments
 
 ## Result
-**Status**: BLOCKED
+**Status**: Complete
 **Wave**: 2
 **Agent**: engineering-senior-developer
 **Completed**: 2026-10-15
-**Failure Class**: BLOCKER — $ service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_oncall_api.py (exit 4)
 
 ## Agent Selection Rationale
 
 | Candidate | Semantic | Heuristic | Memory | Total | Source |
 |-----------|----------|-----------|--------|-------|--------|
-| engineering-senior-developer | — | 19 | 3.78 | 22.78 | heuristic |
-| engineering-backend-architect | — | 14 | 3.6 | 17.6 | heuristic |
+| engineering-senior-developer | — | 19 | 3.65 | 22.65 | heuristic |
+| engineering-backend-architect | — | 14 | 3.67 | 17.67 | heuristic |
 | testing-qa-verification-specialist | — | 12 | 4.38 | 16.38 | heuristic |
 
 - **Task type detected**: implementation
@@ -21,79 +20,53 @@
 - **Model tier**: sonnet
 
 ## Completed Tasks
-- [ ] Task 1: On-call service and router (skipped)
-- [ ] Task 2: Portal appointments (skipped)
-- [ ] Task 3: Tests (skipped)
+- [x] Task 1: On-call service and router (done)
+- [x] Task 2: Portal appointments (done)
+- [x] Task 3: Tests (done)
 
 ## Files Modified
-(none)
+- `backend/app/main.py`
+- `backend/app/oncall_service.py`
+- `backend/app/portal.py`
+- `backend/app/routers/oncall.py`
+- `backend/app/routers/portal.py`
+- `backend/tests/test_oncall_api.py`
+- `backend/tests/test_portal_appointments.py`
 
 ## Verification Results
-2/5 verification commands passed (run by Triad after the agent finished).
+5/5 verification commands passed (run by Triad after the agent finished).
 
 ## Verification Commands
 | Command | Exit Code | Result |
 |---------|-----------|--------|
 | `service postgresql start >/dev/null 2>&1; cd backend && ruff check app tests && ruff format --check app tests` | 0 | PASS |
 | `service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q` | 0 | PASS |
-| `service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_oncall_api.py` | 4 | FAIL |
-| `service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_portal_appointments.py` | 4 | FAIL |
-| `service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_oncall_api.py tests/test_portal_appointments.py tests/test_portal.py tests/test_zz_api_contract.py` | 4 | FAIL |
+| `service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_oncall_api.py` | 0 | PASS |
+| `service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_portal_appointments.py` | 0 | PASS |
+| `service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_oncall_api.py tests/test_portal_appointments.py tests/test_portal.py tests/test_zz_api_contract.py` | 0 | PASS |
 
 ## Key Decisions
-(none)
+- Invalid input (unknown or inactive users, anchor not on the handoff weekday, bad window) raises InvalidOncall, which the router returns as 422.
+- Overrides accept any active user, not only rotation members. An override for a user later removed from the rotation still applies, and a test covers it.
+- A schedule window of exactly 31 days is accepted; one second over is 422. start and end must carry a timezone offset.
+- audit.snapshot cannot serialize time values, so oncall_service converts handoff_time to ISO text for the audit snapshot (audit.py is outside my file list).
+- /now and /schedule cover active rotations only; the business timezone comes from the settings row.
 
 ## Issues Encountered
-- `RotationCreate` and `OverrideCreate` in `backend/app/oncall_schemas.py` have no `organization_id`. `backend/app/oncall_schemas.py`, `backend/app/models.py` and `backend/alembic/` are forbidden to me.
-- Staff requests run with `Scope.all()`, and there is no home or internal organization concept: `Settings` has no org column and `Organization` has no internal flag.
-- "404 for ids outside the org" in Task 1 has no defined meaning when staff see every client.
-- Everything else in the plan is resolvable from the existing code.
-- Blocked: The plan does not say how a rotation gets its organization_id. I will not guess a source for it, because the choice shapes the RLS behavior and the API contract that plan 05-04 will build on.
-- BLOCKER: $ service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_oncall_api.py (exit 4)
+- The shared conftest reset does not truncate the oncall_* tables, so rows persisted across tests. test_oncall_api.py has an autouse fixture that truncates oncall_rotations. Adding the oncall tables to conftest TABLES would be cleaner but conftest is outside my files.
+- A disabled portal answers 403 (not 401) for a signed-in contact. I tested it against /portal/me and /portal/appointments rather than assuming 401.
 
 ## Escalations
-| # | Severity | Type | Decision | Status | Resolution |
-|---|----------|------|----------|--------|------------|
-| 1 | blocker | schema | Choose how a rotation, member or override gets its organization_id. I have listed the options in the order I would rank them. | approved | Owner chose staff-only: oncall_* tables have no organization_id and no RLS (like user_time_off), guarded by schedule:read/write. Migration 0026, models and schema tests updated on the main model; 05-03 plan text updated (404 = unknown id). |
-| 2 | blocker | api | Resolve: $ service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_oncall_api.py (exit 4) | approved | Verification failed only because 05-03 stopped before writing tests (exit 4 = no test file). Unblocked by the decision in #1; re-run the build. |
-
-- #1 context: / (a) Add an optional organization_id to RotationCreate and RotationOut (touches the forbidden oncall_schemas.py), and have 404 mean the rotation's org is not visible. This makes on-call per client. It does not fit "who is on call now" for a small MSP. (b) Add a nullable or home-organization concept through a new migration that drops NOT NULL on organization_id and changes the RLS policy (touches the forbidden alembic/ and models.py). This is the cleanest fit for an MSP-wide rotation. (c) Treat a designated organization as the MSP's own, for example the lowest-id organization or a settings value. This needs a new setting, so it is a schema change too. After you decide, 05-03 needs the forbidden-file edits from the chosen option, or an explicit okay for me to write that source into oncall_service.py (for example a constant lookup).
-- #2 context: Verification failed (service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_oncall_api.py; service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_portal_appointments.py; service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_oncall_api.py tests/test_portal_appointments.py tests/test_portal.py tests/test_zz_api_contract.py); a BLOCKER is not auto-fixed.
+(none)
 
 ## Handoff Context
-- **Key outputs**: (none)
-- **Decisions made**: (none)
+- **Key outputs**: backend/app/main.py; backend/app/oncall_service.py; backend/app/portal.py; backend/app/routers/oncall.py; backend/app/routers/portal.py; backend/tests/test_oncall_api.py; backend/tests/test_portal_appointments.py
+- **Decisions made**: Invalid input (unknown or inactive users, anchor not on the handoff weekday, bad window) raises InvalidOncall, which the router returns as 422.; Overrides accept any active user, not only rotation members. An override for a user later removed from the rotation still applies, and a test covers it.; A schedule window of exactly 31 days is accepted; one second over is 422. start and end must carry a timezone offset.; audit.snapshot cannot serialize time values, so oncall_service converts handoff_time to ISO text for the audit snapshot (audit.py is outside my file list).; /now and /schedule cover active rotations only; the business timezone comes from the settings row.
 - **Open questions**: (none)
-- **Conventions established**: (none)
+- **Conventions established**: Routes: GET/POST /api/oncall/rotations, PATCH /api/oncall/rotations/{id}, GET/POST /api/oncall/rotations/{id}/overrides, DELETE /api/oncall/overrides/{id}, GET /api/oncall/now, GET /api/oncall/schedule, GET /api/portal/appointments.; oncall_service.now(ctx, at=None) and schedule(ctx, start, end) are reusable by later waves.
 
 ## Requirements Covered
 - REQ-05
 
-### Failed verification output
-`service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_oncall_api.py`
-```
-
-no tests ran in 0.00s
-ERROR: file or directory not found: tests/test_oncall_api.py
-
-
-```
-`service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_portal_appointments.py`
-```
-
-no tests ran in 0.00s
-ERROR: file or directory not found: tests/test_portal_appointments.py
-
-
-```
-`service postgresql start >/dev/null 2>&1; cd backend && python -m pytest -q tests/test_oncall_api.py tests/test_portal_appointments.py tests/test_portal.py tests/test_zz_api_contract.py`
-```
-
-no tests ran in 0.00s
-ERROR: file or directory not found: tests/test_oncall_api.py
-
-
-```
-
 ## Token Usage
-11 requests, 520140 input tokens (453445 cached), 3972 output tokens, $0.2971
+17 requests, 970904 input tokens (755993 cached), 18927 output tokens, $0.8777
