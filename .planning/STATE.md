@@ -2,12 +2,12 @@
 
 ## Current Position
 - **Phase**: 5 of 13 (executing)
-- **Status**: Phase 5 executing — Plan 05-01 complete
-- **Last Activity**: Plan 05-01 execution (2026-10-15)
+- **Status**: Phase 5 executing — Plan 05-03 failed
+- **Last Activity**: Plan 05-03 execution (2026-10-15)
 
 ## Progress
 ```
-[######..............] 31% — 14/44 plans complete
+[######..............] 34% — 15/44 plans complete
 ```
 
 ## Recent Decisions
@@ -66,3 +66,5 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 (build started 2026-10-15)
 - Plan 05-01 (Wave 1): Schema, models, schemas and on-call math — PARTIAL: Migration 0026, models, schemas, `app/oncall.py` and both test files are on disk. Ruff check, format and the schema import pass. The 21 new tests and the alembic round-trip passed in an earlier run be
 - Plan 05-01 (Wave 1): Schema, models, schemas and on-call math — Complete
+- Plan 05-02 (Wave 2): Client appointment emails — Complete
+- Plan 05-03 (Wave 2): On-call API and portal appointments — BLOCKED: The plan does not say how a rotation gets its organization_id. I will not guess a source for it, because the choice shapes the RLS behavior and the API contract that plan 05-04 will build on.
