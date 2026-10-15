@@ -5,7 +5,7 @@
 - [x] Phase 1: Block-hour / retainer agreements (3 plans)
 - [x] Phase 2: Scheduling: availability & appointments (3 plans)
 - [x] Phase 3: Dispatch board (3 plans)
-- [ ] Phase 4: Outlook push + free/busy (3 plans)
+- [x] Phase 4: Outlook push + free/busy (3 plans)
 - [ ] Phase 5: Client confirmations + on-call (3 plans)
 - [ ] Phase 6: RMM alerts to tickets (3 plans)
 - [ ] Phase 7: Automation & API (4 plans)
@@ -158,7 +158,7 @@
 | 1 | 3 | 3 | Complete |
 | 2 | 3 | 3 | Shipped |
 | 3 | 3 | 3 | Shipped |
-| 4 | 4 | 4 | Executed |
+| 4 | 4 | 4 | Complete |
 | 5 | 3 | 0 | Pending |
 | 6 | 3 | 0 | Pending |
 | 7 | 4 | 0 | Pending |

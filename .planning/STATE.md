@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 4 of 13 (executed, pending review)
-- **Status**: Phase 4 under review — cycle 1/3, 0 blocker(s) remaining
-- **Last Activity**: Phase 4 review cycle 1 (2026-10-15)
+- **Phase**: 4 of 13 (complete)
+- **Status**: Phase 4 complete — review passed (2 cycle(s))
+- **Last Activity**: Phase 4 review (2026-10-15)
 
 ## Progress
 ```
@@ -21,7 +21,7 @@
 - Appointments link to tickets only (no SLA or billing effect)
 
 ## Next Action
-Run `/triad:review` to verify Phase 4: Outlook push + free/busy
+Run `/triad:plan 5` to plan Phase 5: Client confirmations + on-call
 
 ## Phase 1 Results
 (build started 2026-10-09)
