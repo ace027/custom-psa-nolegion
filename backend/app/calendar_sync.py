@@ -144,14 +144,14 @@ def _finish(
         row.last_error = None
     else:
         row.attempts += 1
-        row.last_error = str(error)[:500]
+        row.last_error = error.public[:500]
         if not error.transient or row.attempts >= MAX_ATTEMPTS:
             row.state = "failed"
         else:
             row.next_attempt_at = now + timedelta(minutes=min(2**row.attempts, 60))
     db.commit()
     if error is not None:
-        log.warning("outlook push failed for appointment %s: %s", appointment_id, row.last_error)
+        log.warning("outlook push failed for appointment %s: %s", appointment_id, error)
     else:
         log.info("outlook push %s for appointment %s (v%s)", row.state, appointment_id, version)
 
@@ -212,7 +212,9 @@ def refresh_busy(db: Session, client, *, now: datetime) -> int:
             )
         except GraphError as e:
             log.warning("getSchedule failed for %d user(s): %s", len(batch), e)
-            _record_busy_error(db, [uid for uid, _ in batch], str(e)[:500] or "getSchedule failed")
+            _record_busy_error(
+                db, [uid for uid, _ in batch], e.public[:500] or "getSchedule failed"
+            )
             db.commit()
             continue
         by_email = {k.lower(): v for k, v in result.items()}
@@ -398,6 +400,11 @@ def push_pending(db: Session, client, *, now: datetime, batch: int = 20) -> int:
             error = e
         except Exception as e:  # never let one bad row stop the batch
             log.exception("unexpected error pushing appointment %s", appointment_id)
-            error = GraphError(f"{type(e).__name__}: {e}", None, True)
+            error = GraphError(
+                f"{type(e).__name__}: {e}",
+                None,
+                True,
+                public=f"Internal error ({type(e).__name__})",
+            )
         _finish(db, appointment_id, work, version, now, state, error)
     return len(ids)

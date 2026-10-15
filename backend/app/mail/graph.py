@@ -6,10 +6,12 @@ The rest of the app talks to the `MailClient` protocol so tests use a fake.
 
 import base64
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol
+from urllib.parse import quote
 
 import httpx
 
@@ -17,10 +19,31 @@ log = logging.getLogger("psa.mail")
 
 
 class GraphError(Exception):
-    def __init__(self, message: str = "", status: int | None = None, transient: bool = False):
+    """`str(e)` carries Graph's response text for the server log; `public` is the short
+    message safe to store and show to staff (no tenant ids or response bodies)."""
+
+    def __init__(
+        self,
+        message: str = "",
+        status: int | None = None,
+        transient: bool = False,
+        public: str | None = None,
+    ):
         super().__init__(message)
         self.status = status
         self.transient = transient
+        if public is None:
+            public = f"Graph error {status}" if status is not None else message
+        self.public = public
+
+
+def _error_code(r: httpx.Response) -> str:
+    """Graph's error code (e.g. ErrorAccessDenied), or '' if the body has none."""
+    try:
+        code = r.json()["error"]["code"]
+    except Exception:
+        return ""
+    return code if isinstance(code, str) and re.fullmatch(r"[A-Za-z0-9_.]{1,64}", code) else ""
 
 
 @dataclass
@@ -153,7 +176,10 @@ class GraphClient:
                 },
             )
             if r.status_code != 200:
-                raise GraphError(f"token request failed: {r.status_code} {r.text[:300]}")
+                raise GraphError(
+                    f"token request failed: {r.status_code} {r.text[:300]}",
+                    public=f"Graph sign-in failed ({r.status_code})",
+                )
             body = r.json()
             self._token = body["access_token"]
             self._token_expires = time.time() + int(body.get("expires_in", 3600))
@@ -161,17 +187,24 @@ class GraphClient:
 
     def _request_user(self, user: str, method: str, path: str, **kw) -> httpx.Response:
         headers = {**self._auth(), **kw.pop("headers", {})}
+        # Encode the mailbox so an address with / ? # % cannot change the Graph path.
+        url = f"{self.base_url}/users/{quote(user, safe='@')}{path}"
         try:
-            r = self.http.request(
-                method, f"{self.base_url}/users/{user}{path}", headers=headers, **kw
-            )
+            r = self.http.request(method, url, headers=headers, **kw)
         except httpx.TransportError as e:
-            raise GraphError(f"{method} {path} -> network error: {e}", None, True) from e
+            raise GraphError(
+                f"{method} {path} -> network error: {e}",
+                None,
+                True,
+                public="Graph unreachable (network error)",
+            ) from e
         if r.status_code >= 400:
+            code = _error_code(r)
             raise GraphError(
                 f"{method} {path} -> {r.status_code}: {r.text[:300]}",
                 r.status_code,
                 r.status_code == 429 or r.status_code >= 500,
+                public=f"Graph error {r.status_code}" + (f" ({code})" if code else ""),
             )
         return r
 

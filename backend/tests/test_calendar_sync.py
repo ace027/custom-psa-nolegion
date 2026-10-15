@@ -236,7 +236,7 @@ def test_transient_errors_back_off_then_fail(owner, fake, enabled, appt):
         fake.fail.append(("create", GraphError("down", 503, True)))
         assert push(fake, now) == 1
         row = sync(owner, appt)
-        assert row.attempts == attempt and "down" in row.last_error
+        assert row.attempts == attempt and row.last_error == "Graph error 503"
         if attempt == 1:
             assert row.next_attempt_at == now + timedelta(minutes=2)
         if attempt < 6:
@@ -250,7 +250,15 @@ def test_a_permanent_error_fails_at_once(owner, fake, enabled, appt):
     fake.fail.append(("create", GraphError("Forbidden for this mailbox", 403, False)))
     push(fake)
     row = sync(owner, appt)
-    assert row.state == "failed" and "Forbidden" in row.last_error and row.attempts == 1
+    assert row.state == "failed" and row.last_error == "Graph error 403" and row.attempts == 1
+
+
+def test_an_unexpected_error_stores_only_its_class(owner, fake, enabled, appt):
+    fake.fail.append(("create", RuntimeError("connection to db-internal:5432 failed")))
+    push(fake)
+    row = sync(owner, appt)
+    assert (row.state, row.attempts) == ("pending", 1)
+    assert row.last_error == "Internal error (RuntimeError)"
 
 
 def test_tech_without_an_email_fails(owner, fake, enabled, appt):

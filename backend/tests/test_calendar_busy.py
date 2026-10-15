@@ -120,7 +120,7 @@ def test_graph_error_keeps_old_blocks_and_records_it(login, owner, fake, enabled
     assert run(fake, NOW + timedelta(minutes=5)) == 0
     assert len(blocks(owner, t["id"])) == 1
     s = status(owner, t["id"])
-    assert s.fetched_at == NOW and len(s.last_error) == 500
+    assert s.fetched_at == NOW and s.last_error == "Graph error 503"  # never the raw body
 
 
 def test_missing_user_keeps_blocks_while_others_refresh(login, owner, fake, enabled):

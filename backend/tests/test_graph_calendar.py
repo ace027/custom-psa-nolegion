@@ -87,6 +87,44 @@ def test_transport_error_is_transient():
     assert ei.value.status is None and ei.value.transient is True
 
 
+def test_mailbox_is_encoded_so_it_cannot_change_the_graph_path():
+    seen = {}
+
+    def handler(request):
+        seen["req"] = request
+        return httpx.Response(201, json={"id": "EV1"})
+
+    client, _ = make_client(handler)
+    client.create_event("x/mailFolders/drafts/messages?a#b@msp.com", {}, "t")
+    raw = seen["req"].url.raw_path.decode()
+    assert raw.endswith("/users/x%2FmailFolders%2Fdrafts%2Fmessages%3Fa%23b@msp.com/events")
+    assert seen["req"].url.query == b""
+
+
+def test_public_error_hides_the_response_body():
+    body = {"error": {"code": "ErrorAccessDenied", "message": "tenant 1234-abcd app 5678"}}
+    client, _ = make_client(lambda r: httpx.Response(403, json=body))
+    with pytest.raises(GraphError) as ei:
+        client.create_event("tech@msp.com", {}, "t")
+    assert ei.value.public == "Graph error 403 (ErrorAccessDenied)"
+    assert "1234-abcd" in str(ei.value)  # full text stays available for the server log
+
+
+def test_public_error_without_a_code_and_on_network_failure():
+    client, _ = make_client(lambda r: httpx.Response(500, text="<html>oops</html>"))
+    with pytest.raises(GraphError) as ei:
+        client.create_event("tech@msp.com", {}, "t")
+    assert ei.value.public == "Graph error 500"
+
+    def down(request):
+        raise httpx.ConnectError("dns for internal-host failed")
+
+    client, _ = make_client(down)
+    with pytest.raises(GraphError) as ei:
+        client.create_event("tech@msp.com", {}, "t")
+    assert ei.value.public == "Graph unreachable (network error)"
+
+
 def test_get_schedule_parses_items_drops_free_and_maps_errors():
     seen = {}
 
