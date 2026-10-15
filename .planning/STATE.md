@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 4 of 13 (complete)
-- **Status**: Phase 4 shipped (2026-10-15)
-- **Last Activity**: Phase 4 shipped (2026-10-15)
+- **Phase**: 5 of 13 (planned)
+- **Status**: Phase 5 planned -- 5 plans across 3 waves
+- **Last Activity**: Phase 5 planning (2026-10-15)
 
 ## Progress
 ```
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:plan 5` to plan Phase 5: Client confirmations + on-call
+Run `/triad:build` to execute Phase 5: Client confirmations + on-call
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -33,6 +33,7 @@ Run `/triad:plan 5` to plan Phase 5: Client confirmations + on-call
 - Phase 2 issue: #3 (closed); shipped in PR #4
 - Phase 3 issue: #5 (closed); merged to main in PR #4
 - Phase 4 issue: #6 (closed); merged to main in PR #7
+- Phase 5 issue: #8
 
 ## Phase 2 Results
 (build started 2026-10-09)

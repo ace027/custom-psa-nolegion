@@ -170,7 +170,7 @@
 | 2 | 3 | 3 | Shipped |
 | 3 | 3 | 3 | Shipped |
 | 4 | 4 | 4 | Shipped |
-| 5 | 3 | 0 | Pending |
+| 5 | 5 | 0 | Planned |
 | 6 | 3 | 0 | Pending |
 | 7 | 4 | 0 | Pending |
 | 8 | 4 | 0 | Pending |
