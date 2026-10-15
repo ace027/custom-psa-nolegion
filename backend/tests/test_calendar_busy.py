@@ -19,6 +19,7 @@ class FakeBusyClient:
         self.busy: dict[str, list[BusyItem]] = {}
         self.error: GraphError | None = None
         self.omit: set[str] = set()
+        self.errored: set[str] = set()  # per-schedule Graph error entries (omitted by the client)
 
     def get_schedule(self, caller, schedules, start, end, interval_minutes=15):
         self.calls.append(
@@ -26,7 +27,9 @@ class FakeBusyClient:
         )
         if self.error:
             raise self.error
-        return {s.lower(): self.busy.get(s, []) for s in schedules if s not in self.omit}
+        return {
+            s.lower(): self.busy.get(s, []) for s in schedules if s not in self.omit | self.errored
+        }
 
 
 @pytest.fixture
@@ -131,6 +134,23 @@ def test_missing_user_keeps_blocks_while_others_refresh(login, owner, fake, enab
     assert blocks(owner, a["id"])[0].starts_at == NOW + timedelta(hours=7)
     assert blocks(owner, b["id"])[0].starts_at == NOW + timedelta(hours=2)
     assert status(owner, b["id"]).last_error
+    assert status(owner, a["id"]).last_error is None
+
+
+def test_per_schedule_error_keeps_blocks_and_records_it(login, owner, fake, enabled):
+    # Graph answers 200 with a per-schedule error (e.g. ErrorAccessDenied); get_schedule omits
+    # that user from the result, so the old blocks must survive and the error must be visible.
+    a = login("tech", "a@example.com").user
+    b = login("tech", "b@example.com").user
+    fake.busy.update({"a@example.com": [item(1)], "b@example.com": [item(2)]})
+    run(fake)
+    fake.busy.update({"a@example.com": [item(7)], "b@example.com": [item(8)]})
+    fake.errored = {"b@example.com"}
+    run(fake, NOW + timedelta(minutes=5))
+    assert blocks(owner, b["id"])[0].starts_at == NOW + timedelta(hours=2)
+    sb = status(owner, b["id"])
+    assert sb.last_error and sb.fetched_at == NOW
+    assert blocks(owner, a["id"])[0].starts_at == NOW + timedelta(hours=7)
     assert status(owner, a["id"]).last_error is None
 
 

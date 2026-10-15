@@ -325,6 +325,28 @@ def status_summary(ctx) -> dict:
     )
 
 
+def enqueue_unsynced(db: Session, now: datetime) -> None:
+    """Pending rows for future scheduled appointments that have none (booked before sync was
+    on). Rows are only created, never touched, so a normal enqueue is not disturbed."""
+    a = Appointment.__table__.c
+    db.execute(
+        insert(AppointmentSync)
+        .from_select(
+            ["appointment_id", "organization_id"],
+            select(a.id, a.organization_id).where(
+                a.status == "scheduled",
+                a.ends_at > now,
+                ~select(AppointmentSync.appointment_id)
+                .where(AppointmentSync.appointment_id == a.id)
+                .exists(),
+            ),
+        )
+        .on_conflict_do_nothing(index_elements=[AppointmentSync.__table__.c.appointment_id])
+    )
+    db.commit()
+    set_org_scope(db, "all")
+
+
 def push_pending(db: Session, client, *, now: datetime, batch: int = 20) -> int:
     """Push due outbox rows to Outlook; returns how many rows were processed."""
     set_org_scope(db, "all")  # transaction-local, so it is set again after every commit
@@ -332,6 +354,7 @@ def push_pending(db: Session, client, *, now: datetime, batch: int = 20) -> int:
     if settings is None or not settings.outlook_sync_enabled:
         db.rollback()
         return 0
+    enqueue_unsynced(db, now)
     claimed = list(
         db.execute(
             select(AppointmentSync)

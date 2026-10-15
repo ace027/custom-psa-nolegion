@@ -309,3 +309,29 @@ def test_batch_limits_the_rows_processed(admin, owner, fake, enabled, make_ticke
     assert push(fake, batch=2) == 2
     assert push(fake) == 1
     assert {sync(owner, i).state for i in ids} == {"synced"}
+
+
+def test_existing_future_appointments_without_a_row_get_pushed(
+    owner, fake, enabled, make_org_with_ticket, tech
+):
+    org, ticket = make_org_with_ticket("Org A")
+    ins = (
+        "INSERT INTO appointments (organization_id, ticket_id, tech_id, starts_at, ends_at) "
+        "VALUES (:o, :t, :u, :s, :e) RETURNING id"
+    )
+    p = {"o": org["id"], "t": ticket["id"], "u": tech.user["id"]}
+    future = owner.execute(
+        text(ins), {**p, "s": MON + timedelta(hours=9), "e": MON + timedelta(hours=10)}
+    ).scalar_one()
+    past = owner.execute(
+        text(ins),
+        {**p, "s": NOW - timedelta(days=9), "e": NOW - timedelta(days=9) + timedelta(hours=1)},
+    ).scalar_one()
+    assert push(fake) == 1
+    assert sync(owner, future).state == "synced" and len(fake.events) == 1
+    assert (
+        owner.execute(
+            text("SELECT count(*) FROM appointment_sync WHERE appointment_id = :i"), {"i": past}
+        ).scalar_one()
+        == 0
+    )

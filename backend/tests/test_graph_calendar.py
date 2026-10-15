@@ -140,8 +140,7 @@ def test_get_schedule_parses_items_drops_free_and_maps_errors():
     assert seen["req"].headers["Prefer"] == 'outlook.timezone="UTC"'
     assert seen["body"]["startTime"] == {"dateTime": "2026-10-12T00:00:00", "timeZone": "UTC"}
     assert seen["body"]["availabilityViewInterval"] == 15
-    assert set(out) == {"tech@msp.com", "other@msp.com"}
-    assert out["other@msp.com"] == []
+    assert set(out) == {"tech@msp.com"}  # errored schedule is omitted, not reported as empty
     assert out["tech@msp.com"] == [
         BusyItem(
             datetime(2026, 10, 12, 9, tzinfo=UTC), datetime(2026, 10, 12, 10, tzinfo=UTC), "busy"

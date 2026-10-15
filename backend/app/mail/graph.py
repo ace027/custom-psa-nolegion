@@ -220,7 +220,8 @@ class GraphClient:
             key = (entry.get("scheduleId") or "").lower()
             if entry.get("error"):
                 log.warning("getSchedule error for %s: %s", key, entry["error"])
-                out[key] = []
+                # Leave errored schedules out: the caller keeps the old blocks and records
+                # the failure instead of treating it as "no busy time".
                 continue
             items = []
             for it in entry.get("scheduleItems") or []:
