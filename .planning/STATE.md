@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 5 of 13 (partial — 1 plan(s) failed)
-- **Status**: Phase 5 partial — 05-03 failed, stopped after wave 2, review needed
+- **Phase**: 5 of 13 (executing)
+- **Status**: Phase 5 executing — Plan 05-03 complete
 - **Last Activity**: Plan 05-03 execution (2026-10-15)
 
 ## Progress
 ```
-[######..............] 34% — 15/44 plans complete
+[#######.............] 36% — 16/44 plans complete
 ```
 
 ## Recent Decisions
@@ -68,3 +68,4 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 - Plan 05-01 (Wave 1): Schema, models, schemas and on-call math — Complete
 - Plan 05-02 (Wave 2): Client appointment emails — Complete
 - Plan 05-03 (Wave 2): On-call API and portal appointments — BLOCKED: The plan does not say how a rotation gets its organization_id. I will not guess a source for it, because the choice shapes the RLS behavior and the API contract that plan 05-04 will build on.
+- Plan 05-03 (Wave 2): On-call API and portal appointments — Complete
