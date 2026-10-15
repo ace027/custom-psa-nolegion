@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button, ErrorMsg, Field, inputCls } from "../ui";
 import { cancelAppointment, getAppointment, retryErrorText, schedulingKeys, useRetrySync, type Appointment, type AppointmentPatch, type AppointmentSync, type StaffUser } from "./api";
-import { conflictLabel, dropPatch } from "./board";
+import { conflictLabel, dropPatch, noticeLine } from "./board";
 import { Modal, SlotInputs, slotDates, slotFields, type SlotFields } from "./BookingDialog";
 
 export interface EditDialogProps {
@@ -23,6 +23,7 @@ export function EditDialog({ appointment: a, zone, staff, canWrite, onClose, onS
   const [techId, setTechId] = useState(String(a.tech_id));
   const [slot, setSlot] = useState<SlotFields>(() => slotFields(a.starts_at, a.ends_at, zone));
   const [notes, setNotes] = useState(a.notes ?? "");
+  const [noEmail, setNoEmail] = useState(a.notify_client === false);
   const [formError, setFormError] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [reason, setReason] = useState("");
@@ -63,6 +64,7 @@ export function EditDialog({ appointment: a, zone, staff, canWrite, onClose, onS
     const patch: AppointmentPatch = dropPatch(a, { start: dates.start, end: dates.end, resourceId: Number(techId) }, zone) ?? {};
     const newNotes = notes.trim() || null;
     if (newNotes !== (a.notes ?? null)) patch.notes = newNotes;
+    if (a.client_visible && noEmail !== (a.notify_client === false)) patch.notify_client = !noEmail;
     if (Object.keys(patch).length) onSave(patch);
     onClose();
   };
@@ -103,6 +105,12 @@ export function EditDialog({ appointment: a, zone, staff, canWrite, onClose, onS
         <SlotInputs value={slot} onChange={setSlot} disabled={!canWrite} />
         <p className="text-xs text-slate-500">Times in {zone}</p>
         <Field label="Notes"><textarea className={inputCls} disabled={!canWrite} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
+        {a.client_visible && (
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" disabled={!canWrite} checked={noEmail} onChange={(e) => setNoEmail(e.target.checked)} />Don't email client</label>
+            {a.client_notice && <p className="text-sm text-slate-600" data-testid="notice-line">{noticeLine(a.client_notice, zone)}</p>}
+          </div>
+        )}
         {formError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>}
         <ErrorMsg error={cancel.error} />
         {canWrite && confirming && (

@@ -1,4 +1,5 @@
-import type { Appointment, AppointmentPatch, AvailabilityRow, Conflict, ConflictKind, StaffUser, Window } from "./api";
+import type { Appointment, AppointmentPatch, AvailabilityRow, ClientNotice, Conflict, ConflictKind, StaffUser, Window } from "./api";
+import type { Shift } from "./oncall";
 import { formatInZone, fromBoardDate, toBoardDate } from "./zone";
 
 export interface BoardEvent {
@@ -14,7 +15,7 @@ export interface BoardResource {
   id: number;
   title: string;
 }
-export type BlockKind = "off_hours" | "time_off" | "time_off_pending" | "outlook";
+export type BlockKind = "off_hours" | "time_off" | "time_off_pending" | "outlook" | "oncall";
 export interface BackgroundBlock {
   resourceId: number;
   kind: BlockKind;
@@ -22,6 +23,8 @@ export interface BackgroundBlock {
   end: Date;
   /** Outlook blocks only: busy | tentative | oof | workingElsewhere. */
   status?: string;
+  /** On-call blocks only: the rotation's name. */
+  rotation?: string;
 }
 
 export function toEvents(appointments: Appointment[], zone: string): BoardEvent[] {
@@ -62,6 +65,8 @@ export function backgroundBlocks(
   availability: AvailabilityRow[],
   zone: string,
   range: { from: string; to: string },
+  shifts: Shift[] = [],
+  rotationNames: Record<number, string> = {},
 ): BackgroundBlock[] {
   const from = ms(range.from);
   const to = ms(range.to);
@@ -78,7 +83,22 @@ export function backgroundBlocks(
     for (const w of row.time_off_pending) add("time_off_pending", ms(w.starts_at), ms(w.ends_at));
     for (const w of row.outlook_busy ?? []) add("outlook", ms(w.starts_at), ms(w.ends_at), w.status);
   }
+  // On-call shifts shade the on-call tech's row. Shading only; it never blocks booking.
+  for (const sh of shifts) {
+    const lo = Math.max(ms(sh.starts_at), from);
+    const hi = Math.min(ms(sh.ends_at), to);
+    if (hi > lo) {
+      out.push({ resourceId: sh.user_id, kind: "oncall", start: board(lo), end: board(hi), rotation: rotationNames[sh.rotation_id] ?? `Rotation ${sh.rotation_id}` });
+    }
+  }
   return out;
+}
+
+/** The notice state line in the edit dialog. */
+export function noticeLine(n: ClientNotice, zone: string): string {
+  if (n.state === "pending") return "Email queued";
+  if (n.state === "sent") return `Emailed ${n.kind ?? "update"}${n.sent_at ? ` ${formatInZone(n.sent_at, zone, "EEE d MMM HH:mm")}` : ""}`;
+  return `Not emailed: ${n.reason ?? "unknown reason"}`;
 }
 
 export const STALE_MINUTES = 15;

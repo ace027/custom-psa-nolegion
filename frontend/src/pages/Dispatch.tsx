@@ -40,6 +40,7 @@ import {
   type BoardEvent,
   type BoardResource,
 } from "../scheduling/board";
+import { getOnCallSchedule, listRotations, oncallKeys } from "../scheduling/oncall";
 import { BookingDialog } from "../scheduling/BookingDialog";
 import "../scheduling/dispatch.css";
 import { EditDialog } from "../scheduling/EditDialog";
@@ -69,10 +70,10 @@ const withDragAndDrop =
   (dndModule as unknown as { default?: typeof dndModule }).default ?? dndModule;
 const DnDCalendar = withDragAndDrop<CalItem, BoardResource>(Calendar);
 
-const SHADE_CLASS: Record<BackgroundBlock["kind"], string> = { off_hours: "shade-off", time_off: "shade-timeoff", time_off_pending: "shade-pending", outlook: "shade-outlook" };
-const SHADE_LABEL: Record<BackgroundBlock["kind"], string> = { off_hours: "Off hours", time_off: "Time off", time_off_pending: "Pending", outlook: "Outlook: busy" };
+const SHADE_CLASS: Record<BackgroundBlock["kind"], string> = { off_hours: "shade-off", time_off: "shade-timeoff", time_off_pending: "shade-pending", outlook: "shade-outlook", oncall: "shade-oncall" };
+const SHADE_LABEL: Record<BackgroundBlock["kind"], string> = { off_hours: "Off hours", time_off: "Time off", time_off_pending: "Pending", outlook: "Outlook: busy", oncall: "On call" };
 const OUTLOOK_LABEL: Record<string, string> = { busy: "Outlook: busy", tentative: "Outlook: tentative", oof: "Outlook: out of office", workingElsewhere: "Outlook: working elsewhere" };
-const shadeTitle = (b: BackgroundBlock): string => (b.kind === "outlook" ? OUTLOOK_LABEL[b.status ?? "busy"] ?? "Outlook: busy" : SHADE_LABEL[b.kind]);
+const shadeTitle = (b: BackgroundBlock): string => (b.kind === "oncall" ? `On call: ${b.rotation ?? ""}`.trim() : b.kind === "outlook" ? OUTLOOK_LABEL[b.status ?? "busy"] ?? "Outlook: busy" : SHADE_LABEL[b.kind]);
 
 const hhmm = (d: Date): string => format(d, "HH:mm");
 const formats: Formats = {
@@ -216,6 +217,15 @@ export default function Dispatch() {
     enabled: !!availParams && (!week || tech != null),
   });
 
+  // On-call shading is optional: if these fail (or are unmocked) the board simply has no bands.
+  const rotations = useQuery({ queryKey: oncallKeys.rotations(), queryFn: listRotations, retry: false });
+  const shifts = useQuery({
+    queryKey: range ? oncallKeys.schedule(range.from, range.to) : oncallKeys.all,
+    queryFn: () => getOnCallSchedule(range!.from, range!.to),
+    enabled: !!range,
+    retry: false,
+  });
+
   /* ---- Feedback: alert for failures, toast with Undo for changes ---- */
   const [alert, setAlert] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
@@ -290,8 +300,10 @@ export default function Dispatch() {
   const shades: ShadeItem[] = useMemo(() => {
     if (!zone || !range || !avail.data) return [];
     const rows = week ? avail.data.filter((r) => r.user_id === tech) : avail.data;
-    return backgroundBlocks(rows, zone, range).map((b, i) => ({ ...b, id: `shade-${i}`, title: shadeTitle(b), shade: true as const }));
-  }, [avail.data, zone, range?.from, range?.to, week, tech]);
+    const names = Object.fromEntries((rotations.data ?? []).map((r) => [r.id, r.name]));
+    const sh = (shifts.data ?? []).filter((x) => !week || x.user_id === tech);
+    return backgroundBlocks(rows, zone, range, sh, names).map((b, i) => ({ ...b, id: `shade-${i}`, title: shadeTitle(b), shade: true as const }));
+  }, [avail.data, shifts.data, rotations.data, zone, range?.from, range?.to, week, tech]);
   const outlookFetched = useMemo(() => {
     const rows = avail.data ? (week ? avail.data.filter((r) => r.user_id === tech) : avail.data) : [];
     return oldestFetch(rows);
@@ -390,6 +402,7 @@ export default function Dispatch() {
         <li><span aria-hidden className="swatch shade-timeoff" />Time off</li>
         <li><span aria-hidden className="swatch shade-pending" />Pending time off</li>
         <li><span aria-hidden className="swatch shade-outlook" />Outlook busy</li>
+        <li><span aria-hidden className="swatch shade-oncall" />On call</li>
         <li><span aria-hidden className="swatch swatch-conflict">⚠</span>Conflict</li>
       </ul>
       {syncOn && avail.data && <OutlookCaption fetched={outlookFetched} />}
