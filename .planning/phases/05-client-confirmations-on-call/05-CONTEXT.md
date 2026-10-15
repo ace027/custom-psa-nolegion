@@ -33,3 +33,5 @@ Clients get an email when an appointment on their ticket is booked, moved or can
 - **Plan 05-03 (Wave 2)**: On-call API and portal appointments -- Expose on-call rotation management and who-is-on queries to staff, and upcoming appointments to portal contacts.
 - **Plan 05-04 (Wave 3)**: Staff UI: email switch, on-call page, widget and board -- Let staff turn appointment emails on, opt a booking out, see notice state, manage rotations, and see who is on call in the sidebar and on the dispatch board.
 - **Plan 05-05 (Wave 3)**: Portal appointments page, docs and verify checklist -- Show upcoming appointments in the client portal and document the phase, including the deferred owner checks.
+
+- 2026-10-15 owner decision (05-03 escalation): oncall_rotations, oncall_members and oncall_overrides are staff-internal like user_time_off — no organization_id, no RLS, guarded by schedule:read/write. appointment_notices stays client-scoped with forced RLS. Migration 0026 edited in place (unshipped).

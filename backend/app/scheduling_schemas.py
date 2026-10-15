@@ -89,6 +89,7 @@ class AppointmentIn(BaseModel):
     ends_at: AwareDatetime
     notes: str | None = Field(default=None, max_length=4000)
     client_visible: bool = True
+    notify_client: bool = True
 
 
 class AppointmentPatch(BaseModel):
@@ -97,6 +98,7 @@ class AppointmentPatch(BaseModel):
     ends_at: AwareDatetime | None = None
     notes: str | None = Field(default=None, max_length=4000)
     client_visible: bool | None = None
+    notify_client: bool | None = None
 
 
 class AppointmentCancel(BaseModel):
@@ -117,6 +119,24 @@ class SyncOut(BaseModel):
     last_error: str | None = None
 
 
+class ClientNoticeOut(BaseModel):
+    state: Literal["pending", "sent", "skipped"]
+    kind: str | None = None
+    send_after: datetime
+    sent_at: datetime | None = None
+    reason: str | None = None
+
+
+class PortalAppointmentOut(BaseModel):
+    id: int
+    ticket_id: int
+    ticket_number: int | None
+    ticket_subject: str | None
+    starts_at: datetime
+    ends_at: datetime
+    tech_first_name: str | None = None
+
+
 class AppointmentOut(BaseModel):
     id: int
     organization_id: int
@@ -131,6 +151,8 @@ class AppointmentOut(BaseModel):
     status: AppointmentStatus
     notes: str | None
     client_visible: bool
+    notify_client: bool = True  # default keeps the pre-Phase-5 router builders valid
+    client_notice: ClientNoticeOut | None = None
     created_by: int | None
     cancelled_at: datetime | None
     cancel_reason: str | None
