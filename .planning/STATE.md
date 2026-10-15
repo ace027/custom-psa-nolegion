@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Phase**: 5 of 13 (executing)
-- **Status**: Phase 5 executing — Plan 05-05 complete
+- **Phase**: 5 of 13 (executed, pending review)
+- **Status**: Phase 5 complete — all plans executed successfully
 - **Last Activity**: Plan 05-05 execution (2026-10-15)
 
 ## Progress
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Fix the failed plans and run `/triad:build` again (completed plans are kept), or run `/triad:review`
+Run `/triad:review` to verify Phase 5: Client confirmations + on-call
 
 ## Phase 1 Results
 (build started 2026-10-09)
