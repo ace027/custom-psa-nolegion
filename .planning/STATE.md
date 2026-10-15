@@ -32,7 +32,7 @@ Run `/triad:plan 5` to plan Phase 5: Client confirmations + on-call
 - Phase 1 issue: #2 (closed)
 - Phase 2 issue: #3 (closed); shipped in PR #4
 - Phase 3 issue: #5 (closed); merged to main in PR #4
-- Phase 4 issue: #6 https://github.com/ace027/custom-psa-nolegion/issues/6 (created via the GitHub connector)
+- Phase 4 issue: #6 (closed); merged to main in PR #7
 
 ## Phase 2 Results
 (build started 2026-10-09)
