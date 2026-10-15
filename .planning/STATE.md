@@ -19,6 +19,7 @@
 - Scheduling supports per-tech timezones
 - Calendar board uses an MIT library (react-big-calendar after a spike)
 - Appointments link to tickets only (no SLA or billing effect)
+- Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
 Run `/triad:plan 5` to plan Phase 5: Client confirmations + on-call
@@ -58,3 +59,4 @@ Run `/triad:plan 5` to plan Phase 5: Client confirmations + on-call
 - Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — PARTIAL: All three tasks are on disk and the plan's checks pass: 65 passed, 1 skipped, and ruff is clean. One caveat is the `GRANT ... DELETE` edit to forbidden `0025_outlook_sync.py`. It is described under is
 - Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — Complete with Warnings
 - Plan 04-04 (Wave 4): Board Outlook busy shading, sync badges, settings card and setup docs — Complete
+- 2026-10-15: owner manual testing moved to a final Phase 14: Verify; deferred checks queued in .planning/VERIFY.md

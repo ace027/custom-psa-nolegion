@@ -13,3 +13,13 @@ Managed by the memory manager. Learnings recorded with /triad:learn are kept bel
 | D-005 | 2026-10-09 | dev | review-verdict | Phase 2 review | PASS | accepted | positive | system | review |
 | D-006 | 2026-10-10 | dev | review-verdict | Phase 3 review | PASS | accepted | positive | system | review |
 | D-007 | 2026-10-15 | dev | review-verdict | Phase 4 review | PASS | accepted | positive | system | review |
+
+## PRF-001: Owner does no manual testing until the final Phase 14: Verify
+- **Date**: 2026-10-15
+- **Type**: preference
+- **Tags**: planning, verification, owner, manual-testing
+- **Phase**: 4
+
+The owner asked that all manual testing be deferred to a final phase, Phase 14: Verify. Plans for phases 5-13 must not make a success criterion, verification command or handoff wait on the owner running something by hand (real-tenant spikes, vendor connections, UI walkthroughs). Phases still write docs/verify/ checklists and must append their manual checks to .planning/VERIFY.md under their phase heading. Automated tests against fakes stand in until Phase 14.
+
+---

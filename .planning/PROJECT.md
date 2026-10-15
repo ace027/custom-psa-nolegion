@@ -44,7 +44,7 @@ Staff of a 1-10 technician MSP (admins, technicians, billing, read-only) and the
 - Applied Alembic revisions are never edited; schema changes add a new revision
 - Money in USD integer cents; billing math, auth/permissions, RLS/migrations, quoting rules and security review stay on the main model (CLAUDE.md)
 - Only the worker holds the Microsoft Graph secret; Graph is app-only and scoped with Exchange RBAC for Applications
-- Tests run against real PostgreSQL (never SQLite); each phase ends with working, tested software, docs, seed data and a manual checklist (docs/verify/)
+- Tests run against real PostgreSQL (never SQLite); each phase ends with working, tested software, docs, seed data and a manual checklist (docs/verify/). The owner does no manual testing during phases 1-13: phases write the checklist and add it to .planning/VERIFY.md, and no phase's success may wait on an owner's manual check. All manual testing happens in Phase 14: Verify
 - MIT/free libraries only unless the owner approves otherwise
 
 ## Key Decisions
@@ -59,6 +59,7 @@ Staff of a 1-10 technician MSP (admins, technicians, billing, read-only) and the
 | Scheduling supports per-tech timezones | Owner chose per-tech timezone over a single org timezone. | Pending |
 | Calendar board uses an MIT library (react-big-calendar after a spike) | Owner chose free/MIT only; FullCalendar resource views are paid. | Pending |
 | Appointments link to tickets only (no SLA or billing effect) | Owner chose link-only integration; can start the existing timer. | Pending |
+| Owner manual testing deferred to a final Phase 14: Verify | Owner asked to batch all manual checks (real tenant, vendors, checklists) at the end instead of between phases; phases record them in .planning/VERIFY.md. | Pending |
 
 ## Architecture Influences
 Layered FastAPI app: routers -> services.py (business rules, audit) -> repositories.py (Scope-filtered queries) over PostgreSQL with forced RLS. A worker process (app.worker) runs mail, billing, notification and integration jobs and alone talks to Microsoft Graph. React SPA with staff app, client portal and public CSAT shells, gated by permissions. Caddy serves the frontend and proxies /api. See .planning/CODEBASE.md.
