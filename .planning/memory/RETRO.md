@@ -96,3 +96,29 @@ Didn't work:
 - Files modified: 27
 
 ---
+
+## Phase 5: Client confirmations + on-call — 2026-10-16
+
+### Key Findings
+Went well: 5/5 plans complete; review PASSED in 1 cycle with 0 must-fix; parallel waves with no shared files had no conflicts; PR #9 merged green first time; owner decisions escalated (staff-only on-call, cancel email after hide/mute); security PASS with LOW fixes in c6d50a9; polish no changes.
+Didn't work: 3/5 plans re-run (05-01, 05-03, 05-05); 05-01 and 05-05 marked Partial despite passing verification; build again committed only SUMMARY.md for 05-01 (3ae105e) and 05-05 (55d20c8) — code committed by hand (885485f, 80938c9), and 05-02 (786feea) depended on uncommitted 05-01 code; 05-03 BLOCKED by a planning gap (oncall tables given organization_id/RLS though staff-internal like user_time_off); conftest reset missed new tables; ship clean-tree gate tripped by SPEND.json and SHIP-REPORT.md; backend suite now ~12 min.
+
+### Action Items
+| # | Action | Priority | Evidence |
+|---|--------|----------|----------|
+| 1 | Build must fail or auto-commit when code is left uncommitted after the SUMMARY commit; verify a plan's dependencies are committed before the next wave starts | High | 3ae105e, 55d20c8, 885485f, 80938c9, 786feea; recurred from Phase 4 |
+| 2 | Schema-plan checklist: mirror tenancy/RLS of comparable tables, decide staff-internal vs client-scoped, and register new tables in tests/conftest.py reset list | High | 05-03 BLOCKED (O-034), 885485f, c6d50a9 |
+| 3 | A plan whose verification commands all pass is Complete; agent uncertainty goes in Issues | Medium | 05-01-SUMMARY, 05-05-SUMMARY, O-031, O-037 |
+| 4 | Exclude .planning/SPEND.json and SHIP-REPORT.md from the clean-tree gate; ignore stale runner notices after gates pass | Medium | Phase 4 and Phase 5 ship |
+| 5 | Investigate backend suite runtime (per-test TRUNCATE, IO wait) | Medium | 703-717s for 970 tests vs ~3.5 min earlier |
+| 6 | When parallel plans touch the same frontend area, re-run plan-level tests after the sibling plan lands | Low | 05-05 Dispatch.test.tsx vs 05-04 |
+| 7 | Triage the 27 deferred review items, hot-spot files first | Low | 05-REVIEW.md deferred, hot spots |
+
+### Metrics
+- Plans completed: 5
+- Review pass rate: 1/1 (100%)
+- Escalations: 0 (0 blockers)
+- Agents used: 3 (engineering-backend-architect, engineering-senior-developer, engineering-frontend-developer)
+- Files modified: 28
+
+---
