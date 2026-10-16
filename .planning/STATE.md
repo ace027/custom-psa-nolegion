@@ -33,7 +33,7 @@ Run `/triad:plan 6` to plan Phase 6: RMM alerts to tickets
 - Phase 2 issue: #3 (closed); shipped in PR #4
 - Phase 3 issue: #5 (closed); merged to main in PR #4
 - Phase 4 issue: #6 (closed); merged to main in PR #7
-- Phase 5 issue: #8; PR #9 (dev → main)
+- Phase 5 issue: #8 (closed); merged to main in PR #9
 
 ## Phase 2 Results
 (build started 2026-10-09)
