@@ -1,5 +1,5 @@
 import type { Appointment, AvailabilityRow, ConflictKind, StaffUser } from "./api";
-import { ageMinutes, backgroundBlocks, conflictLabel, dropPatch, isStale, moveSummary, oldestFetch, toEvents, toResources, undoPatch } from "./board";
+import { ageMinutes, backgroundBlocks, conflictLabel, dropPatch, isStale, moveSummary, noticeLine, oldestFetch, toEvents, toResources, undoPatch } from "./board";
 import { toBoardDate } from "./zone";
 
 const CHI = "America/Chicago";
@@ -213,5 +213,36 @@ describe("isStale / ageMinutes / oldestFetch", () => {
     expect(oldestFetch([r(ago(3)), r(ago(9))])).toBe(ago(9));
     expect(oldestFetch([r(ago(3)), r(null)])).toBeNull();
     expect(oldestFetch([])).toBeNull();
+  });
+});
+
+describe("on-call shading", () => {
+  const range = { from: "2030-01-07T06:00:00.000Z", to: "2030-01-08T06:00:00.000Z" };
+  const shift = (over = {}) => ({ rotation_id: 4, user_id: 10, user_name: "Sam", starts_at: "2030-01-06T15:00:00Z", ends_at: "2030-01-13T15:00:00Z", source: "rotation" as const, ...over });
+
+  it("draws a shift clipped to the visible range in the on-call tech's row", () => {
+    const blocks = backgroundBlocks([], CHI, range, [shift()], { 4: "Weekly" });
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toMatchObject({ resourceId: 10, kind: "oncall", rotation: "Weekly" });
+    expect(blocks[0].start.getHours()).toBe(0);
+    expect(blocks[0].end.getDate()).toBe(8);
+  });
+
+  it("skips shifts outside the range and adds nothing without shifts", () => {
+    expect(backgroundBlocks([], CHI, range, [shift({ starts_at: "2030-02-01T00:00:00Z", ends_at: "2030-02-02T00:00:00Z" })])).toEqual([]);
+    expect(backgroundBlocks([], CHI, range)).toEqual([]);
+  });
+
+  it("falls back to a rotation id when the name is unknown", () => {
+    expect(backgroundBlocks([], CHI, range, [shift()])[0].rotation).toBe("Rotation 4");
+  });
+});
+
+describe("noticeLine", () => {
+  const n = { state: "pending" as const, kind: null, send_after: "2030-01-07T15:00:00Z", sent_at: null, reason: null };
+  it("words each state", () => {
+    expect(noticeLine(n, CHI)).toBe("Email queued");
+    expect(noticeLine({ ...n, state: "sent", kind: "booked", sent_at: "2030-01-07T15:00:00Z" }, CHI)).toBe("Emailed booked Mon 7 Jan 09:00");
+    expect(noticeLine({ ...n, state: "skipped", reason: "no contact email" }, CHI)).toBe("Not emailed: no contact email");
   });
 });

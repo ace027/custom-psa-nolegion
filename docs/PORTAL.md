@@ -14,6 +14,15 @@ on** (Settings > Client portal) and needs the mailbox configured, because sign-i
 - **Invoices, invoice PDFs and the statement are for contacts marked as billing contacts only.** Drafts and
   voided invoices are never shown.
 
+## Appointments page
+Signed-in contacts get an **Appointments** tab (`/portal/appointments`, backed by `GET /api/portal/appointments`).
+It lists upcoming appointments first (soonest first), then past ones from the last 30 days, each with the
+date, the time range, the technician's **first name** and a link to the ticket. With none it says "No
+appointments scheduled".
+- **Visibility rule:** only appointments that are `scheduled` and marked client-visible, on tickets the contact
+  may already see (their own, or the whole company's with *See all company tickets*). Cancelled appointments,
+  notes, cancel reasons, the tech's email and internal ids are never returned.
+
 ## How signing in works (no passwords)
 1. The person enters their email at `/portal`. The answer is always the same ("if that address has portal
    access, a link is on its way"), so the form cannot be used to find out who has access.

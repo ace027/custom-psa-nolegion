@@ -134,6 +134,7 @@ function BookingForm({ onClose, initial, zone, onBooked }: BookingDialogProps) {
   const [slot, setSlot] = useState<SlotFields>(() => defaultSlot(initial, zone));
   const [notes, setNotes] = useState("");
   const [visible, setVisible] = useState(true);
+  const [noEmail, setNoEmail] = useState(false);
   const [formError, setFormError] = useState("");
   const fixedTicket = initial?.ticketId;
 
@@ -170,6 +171,7 @@ function BookingForm({ onClose, initial, zone, onBooked }: BookingDialogProps) {
       ends_at: fromBoardDate(dates.end, zone),
       notes: notes.trim() || null,
       client_visible: visible,
+      ...(noEmail ? { notify_client: false } : {}), // omitted means the server default (email)
     });
   };
 
@@ -212,6 +214,7 @@ function BookingForm({ onClose, initial, zone, onBooked }: BookingDialogProps) {
         <p className="text-xs text-slate-500">Times in {zone}</p>
         <Field label="Notes"><textarea className={inputCls} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={visible} onChange={(e) => setVisible(e.target.checked)} />Visible to client</label>
+        {visible && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={noEmail} onChange={(e) => setNoEmail(e.target.checked)} />Don't email client</label>}
         {formError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>}
         <ErrorMsg error={book.error} />
         <div className="flex justify-end gap-2">

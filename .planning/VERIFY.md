@@ -22,3 +22,6 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Turn on Outlook sync in Settings; book, move, reassign and cancel an appointment and check each tech's Outlook calendar
 - [ ] Put a meeting in a tech's Outlook; within 5 minutes the board shows hatched busy time with the cache-age caption
 - [ ] Force a failure (e.g. a tech outside the group); the board shows the failed badge and Retry works after fixing it
+
+## Phase 5: Client confirmations + on-call
+- [ ] Walk through docs/verify/client-notices-oncall.md

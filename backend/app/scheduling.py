@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import Select, select
 
-from app import audit, availability, calendar_sync
+from app import audit, availability, calendar_sync, client_notices
 from app import permissions as P
 from app import repositories as repo
 from app import ticket_services as tsvc
@@ -31,6 +31,7 @@ from app.models import (
     UserTimeOff,
     UserWorkHours,
 )
+from app.scheduling_schemas import ClientNoticeOut
 
 BOOKABLE_ROLES = ("admin", "tech")
 MAX_APPOINTMENT = timedelta(hours=24)
@@ -397,16 +398,30 @@ def appointment_views(
         tech_ids = {a.tech_id for a in rows}
         keep += ctx.db.execute(select(User).where(User.id.in_(tech_ids))).scalars().all()
     states = sync_states(ctx, [a.id for a in rows])
+    notices = client_notices.latest_for(ctx.db, [a.id for a in rows])
     return [
-        appointment_view(ctx, a, with_conflicts=with_conflicts, sync=states[a.id]) for a in rows
+        appointment_view(
+            ctx, a, with_conflicts=with_conflicts, sync=states[a.id], notice=notices.get(a.id)
+        )
+        for a in rows
     ]
 
 
+_UNSET: object = object()  # "notice not supplied": fetch it, as opposed to a known None
+
+
 def appointment_view(
-    ctx: Ctx, a: Appointment, *, with_conflicts: bool = False, sync: dict | None = None
+    ctx: Ctx,
+    a: Appointment,
+    *,
+    with_conflicts: bool = False,
+    sync: dict | None = None,
+    notice: ClientNoticeOut | None | object = _UNSET,
 ) -> dict:
     if sync is None:
         sync = sync_states(ctx, [a.id])[a.id]
+    if notice is _UNSET:
+        notice = client_notices.latest_for(ctx.db, [a.id]).get(a.id)
     org = ctx.db.get(Organization, a.organization_id)
     ticket = ctx.db.get(Ticket, a.ticket_id)
     tech = repo.get_user(ctx.db, a.tech_id)
@@ -424,6 +439,8 @@ def appointment_view(
         status=a.status,
         notes=a.notes,
         client_visible=a.client_visible,
+        notify_client=a.notify_client,
+        client_notice=notice,
         created_by=a.created_by,
         cancelled_at=a.cancelled_at,
         cancel_reason=a.cancel_reason,
@@ -451,12 +468,14 @@ def create_appointment(ctx: Ctx, data: dict) -> Appointment:
         status="scheduled",
         notes=data.get("notes"),
         client_visible=data.get("client_visible", True),
+        notify_client=data.get("notify_client", True),
         created_by=ctx.user.id,
     )
     ctx.db.add(a)
     ctx.db.flush()
     ctx.db.refresh(a)
     calendar_sync.enqueue(ctx.db, a)
+    client_notices.queue(ctx.db, a, repo.get_settings_row(ctx.db), tsvc.now())
     audit.record(
         ctx.db,
         ctx.user,
@@ -473,7 +492,7 @@ def update_appointment(ctx: Ctx, appointment_id: int, data: dict) -> Appointment
     a = get_appointment(ctx, appointment_id, lock=True)
     if a.status != "scheduled":
         raise Conflict("Only scheduled appointments can be changed")
-    for f in ("tech_id", "starts_at", "ends_at", "client_visible"):
+    for f in ("tech_id", "starts_at", "ends_at", "client_visible", "notify_client"):
         if f in data and data[f] is None:
             raise InvalidSchedule(f"{f} cannot be cleared")
     if any(f in data for f in ("tech_id", "starts_at", "ends_at")):
@@ -486,15 +505,21 @@ def update_appointment(ctx: Ctx, appointment_id: int, data: dict) -> Appointment
     _range(starts, ends, MAX_APPOINTMENT, "An appointment")
     before = audit.snapshot(a)
     moved = (a.tech_id, a.starts_at, a.ends_at) != (tech_id, starts, ends)
+    retimed = (a.starts_at, a.ends_at) != (starts, ends)
+    was_notifiable = a.client_visible and a.notify_client
     a.tech_id, a.starts_at, a.ends_at = tech_id, starts, ends
     if "notes" in data:
         a.notes = data["notes"]
     if "client_visible" in data:
         a.client_visible = data["client_visible"]
+    if "notify_client" in data:
+        a.notify_client = data["notify_client"]
     ctx.db.flush()
     ctx.db.refresh(a)
     if moved:
         calendar_sync.enqueue(ctx.db, a)
+    if retimed or (a.client_visible and a.notify_client and not was_notifiable):
+        client_notices.queue(ctx.db, a, repo.get_settings_row(ctx.db), tsvc.now())
     audit.record(
         ctx.db,
         ctx.user,
@@ -519,6 +544,7 @@ def cancel_appointment(ctx: Ctx, appointment_id: int, reason: str | None) -> App
     ctx.db.flush()
     ctx.db.refresh(a)
     calendar_sync.enqueue(ctx.db, a)
+    client_notices.queue(ctx.db, a, repo.get_settings_row(ctx.db), tsvc.now())
     audit.record(
         ctx.db,
         ctx.user,

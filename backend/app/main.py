@@ -22,6 +22,7 @@ from app.routers import (
     invoices,
     late_fees,
     notices,
+    oncall,
     organizations,
     payments,
     portal,
@@ -113,6 +114,7 @@ def create_app() -> FastAPI:
         csat.router,
         timekeeping.router,
         scheduling.router,
+        oncall.router,
         expenses.router,
         portal.router,
     ):

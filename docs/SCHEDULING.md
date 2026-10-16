@@ -150,3 +150,44 @@ audited like other settings). While it is off, pushes queue as `pending` and the
 |---|---|---|
 | `GET /calendar-sync/status` | schedule:read | `{enabled, pending, failed, failures, busy_fetched_at, busy_errors}`. `failures` is the newest 20 (`appointment_id, ticket_id, tech_id, last_error, updated_at`); `busy_fetched_at` is the oldest fetch across polled users; `busy_errors` counts polled users whose last fetch failed |
 | `POST /appointments/{id}/sync/retry` | schedule:write | Requeues a failed push (attempts reset, audited as `appointment.sync_retry`) and returns the appointment. 409 when the sync is not failed, 404 when the appointment is not visible |
+
+## Client appointment emails (REQ-05)
+
+Clients get a plain-text email when an appointment on their ticket is booked, moved or cancelled.
+
+- **Switch.** `Settings.appointment_emails_enabled` is the master switch and is **off by default**. While it
+  is off nothing is queued.
+- **Per-booking opt-out.** Each appointment has `notify_client` (default true), shown as the "Don't email
+  client" box in the booking and edit dialogs. Only `client_visible` appointments ever send email.
+- **Debounce.** Every change upserts one pending `appointment_notices` row per appointment with
+  `send_after = now + 2 minutes`. The worker decides the kind at send time by comparing the appointment with
+  the last snapshot it sent: `booked` (nothing sent before), `moved` (start or end changed), `cancelled`, or
+  skip. So book-then-move inside 2 minutes sends one "booked" email with the final time, and
+  book-then-cancel sends nothing. A reassignment with no time change sends nothing. Hiding or muting an appointment stops booked and moved emails, but if the client was already emailed about it, cancelling it still sends the "cancelled" email (the master switch must be on).
+- **Recipient.** The ticket's contact email, falling back to the ticket's `requester_email`. No recipient
+  means the notice is skipped. It is notify-only: no reply handling, no confirm or decline links.
+- **Never included.** Internal notes, cancel reasons, the tech's email address or anything about other
+  clients. The tech appears by first name only, and times are shown in the business timezone. A cancelled
+  email shows the time it was scheduled for and omits the technician.
+- **Delivery.** Rows are written to the normal email outbox with `auto_generated=True` (so auto-reply headers
+  are added) and sent by the worker, which runs this only while the mailbox is configured. Skipped notices are
+  not audited; sent ones get an `appointment_notice.send` audit row.
+
+## On-call rotations (REQ-05)
+
+On-call is **display only**: no alerts, paging or SLA escalation.
+
+- **Rotation.** A weekly rotation has an ordered member list, a handoff weekday and time in the business
+  timezone, and an `anchor_date` that must fall on the handoff weekday. Member N of the list is on call for
+  week N counted from the anchor, wrapping around. Changing members or anchor is audited.
+- **Overrides.** A dated override (`starts_at` to `ends_at`) puts any active user on call for that window; the
+  latest created override wins when they overlap. An override for someone later removed from the rotation
+  still applies.
+- **Permissions.** Manage with `schedule:write`, read with `schedule:read`. The tables are staff-internal
+  (no organization, no RLS), like time off.
+- **API.** `GET/POST /api/oncall/rotations`, `PATCH /api/oncall/rotations/{id}`,
+  `GET/POST /api/oncall/rotations/{id}/overrides`, `DELETE /api/oncall/overrides/{id}`,
+  `GET /api/oncall/now` and `GET /api/oncall/schedule` (window of at most 31 days; `start` and `end` need a
+  timezone offset). Invalid input is 422. `now` and `schedule` cover active rotations only.
+- **Where it appears.** The On-call page, the sidebar widget ("who is on call now") and shading on the
+  dispatch board.

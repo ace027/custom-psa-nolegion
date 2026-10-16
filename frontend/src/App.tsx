@@ -26,6 +26,8 @@ import { RunList, RunPage } from "./pages/billing/Runs";
 import Dashboard from "./pages/Dashboard";
 import Integrations from "./pages/Integrations";
 import WarrantyReport from "./pages/WarrantyReport";
+import OnCall from "./pages/OnCall";
+import OnCallWidget from "./OnCallWidget";
 import Login from "./pages/Login";
 import OrganizationDetail from "./pages/OrganizationDetail";
 import Organizations from "./pages/Organizations";
@@ -87,6 +89,7 @@ function Layout() {
           <NavLink to="/dashboard" className={link}>Dashboard</NavLink>
           <NavLink to="/tickets" className={link}>Tickets</NavLink>
           {can(me, "schedule:read") && <NavLink to="/dispatch" className={link}>Dispatch</NavLink>}
+          {can(me, "schedule:read") && <NavLink to="/oncall" className={link}>On-call</NavLink>}
           <NavLink to="/organizations" className={link}>Organizations</NavLink>
           {can(me, "time:write") && <NavLink to="/timesheet" className={link}>My timesheet</NavLink>}
           {can(me, "time:write") && <NavLink to="/expenses" className={link}>My expenses</NavLink>}
@@ -98,6 +101,7 @@ function Layout() {
           {can(me, "config:manage") && <NavLink to="/settings" className={link}>Settings</NavLink>}
           {can(me, "audit:read") && <NavLink to="/audit" className={link}>Audit log</NavLink>}
         </nav>
+        <OnCallWidget />
         <div className="mt-6 space-y-2 border-t border-slate-200 px-3 pt-4 text-sm">
           <Link className="block hover:underline" to="/profile" title="Your notification settings" onClick={close}>{me?.display_name} <span className="text-slate-500">({me?.role})</span></Link>
           <div className="flex items-center gap-3">
@@ -138,6 +142,7 @@ function StaffApp() {
           path="/dispatch"
           element={can(me, "schedule:read") ? <Suspense fallback={<p>Loading…</p>}><Dispatch /></Suspense> : <Navigate to="/" replace />}
         />
+        <Route path="/oncall" element={can(me, "schedule:read") ? <OnCall /> : <Navigate to="/" replace />} />
         <Route path="/timesheet" element={can(me, "time:write") ? <Timesheet /> : <Navigate to="/" replace />} />
         <Route path="/expenses" element={can(me, "time:write") ? <Expenses /> : <Navigate to="/" replace />} />
         <Route path="/settings" element={can(me, "config:manage") ? <Settings /> : <Navigate to="/" replace />} />

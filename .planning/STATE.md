@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 4 of 13 (complete)
-- **Status**: Phase 4 shipped (2026-10-15)
-- **Last Activity**: Phase 4 shipped (2026-10-15)
+- **Phase**: 5 of 13 (complete)
+- **Status**: Phase 5 shipped (2026-10-15)
+- **Last Activity**: Phase 5 shipped (2026-10-15)
 
 ## Progress
 ```
-[######..............] 31% — 13/41 plans complete
+[########............] 40% — 18/44 plans complete
 ```
 
 ## Recent Decisions
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:plan 5` to plan Phase 5: Client confirmations + on-call
+Run `/triad:plan 6` to plan Phase 6: RMM alerts to tickets
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -32,7 +32,8 @@ Run `/triad:plan 5` to plan Phase 5: Client confirmations + on-call
 - Phase 1 issue: #2 (closed)
 - Phase 2 issue: #3 (closed); shipped in PR #4
 - Phase 3 issue: #5 (closed); merged to main in PR #4
-- Phase 4 issue: #6 https://github.com/ace027/custom-psa-nolegion/issues/6 (created via the GitHub connector)
+- Phase 4 issue: #6 (closed); merged to main in PR #7
+- Phase 5 issue: #8; PR #9 (dev → main)
 
 ## Phase 2 Results
 (build started 2026-10-09)
@@ -60,3 +61,14 @@ Run `/triad:plan 5` to plan Phase 5: Client confirmations + on-call
 - Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — Complete with Warnings
 - Plan 04-04 (Wave 4): Board Outlook busy shading, sync badges, settings card and setup docs — Complete
 - 2026-10-15: owner manual testing moved to a final Phase 14: Verify; deferred checks queued in .planning/VERIFY.md
+
+## Phase 5 Results
+(build started 2026-10-15)
+- Plan 05-01 (Wave 1): Schema, models, schemas and on-call math — PARTIAL: Migration 0026, models, schemas, `app/oncall.py` and both test files are on disk. Ruff check, format and the schema import pass. The 21 new tests and the alembic round-trip passed in an earlier run be
+- Plan 05-01 (Wave 1): Schema, models, schemas and on-call math — Complete
+- Plan 05-02 (Wave 2): Client appointment emails — Complete
+- Plan 05-03 (Wave 2): On-call API and portal appointments — BLOCKED: The plan does not say how a rotation gets its organization_id. I will not guess a source for it, because the choice shapes the RLS behavior and the API contract that plan 05-04 will build on.
+- Plan 05-03 (Wave 2): On-call API and portal appointments — Complete
+- Plan 05-04 (Wave 3): Staff UI: email switch, on-call page, widget and board — Complete
+- Plan 05-05 (Wave 3): Portal appointments page, docs and verify checklist — PARTIAL: Portal Appointments page, tests, docs and the Phase 5 verify checklist are done. The full vitest run has 1 failure in Dispatch.test.tsx, caused by 05-04's in-flight work, not these files. typecheck an
+- Plan 05-05 (Wave 3): Portal appointments page, docs and verify checklist — Complete

@@ -14,6 +14,14 @@ export interface AppointmentSync {
   state: SyncState;
   last_error: string | null;
 }
+export type NoticeState = "pending" | "sent" | "skipped";
+export interface ClientNotice {
+  state: NoticeState;
+  kind: string | null;
+  send_after: string;
+  sent_at: string | null;
+  reason: string | null;
+}
 export interface Appointment {
   id: number;
   organization_id: number;
@@ -28,6 +36,8 @@ export interface Appointment {
   status: AppointmentStatus;
   notes: string | null;
   client_visible: boolean;
+  notify_client?: boolean;
+  client_notice?: ClientNotice | null;
   created_by: number | null;
   cancelled_at: string | null;
   cancel_reason: string | null;
@@ -41,6 +51,7 @@ export interface AppointmentCreate {
   ends_at: string;
   notes?: string | null;
   client_visible?: boolean;
+  notify_client?: boolean;
 }
 export interface AppointmentPatch {
   tech_id?: number;
@@ -48,6 +59,7 @@ export interface AppointmentPatch {
   ends_at?: string;
   notes?: string | null;
   client_visible?: boolean;
+  notify_client?: boolean;
 }
 export interface Window {
   starts_at: string;
@@ -115,6 +127,7 @@ export const schedulingKeys = {
   staff: () => ["scheduling", "staff"] as const,
   orgTimezone: () => ["scheduling", "orgTimezone"] as const,
   syncStatus: () => ["scheduling", "syncStatus"] as const,
+  oncallShifts: (from: string, to: string) => ["scheduling", "oncall", "shifts", from, to] as const,
 };
 
 function query(params: Record<string, string | number | boolean | undefined>): string {

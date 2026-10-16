@@ -123,6 +123,25 @@
   border-left-color: #22d3ee !important;
   color: #a5f3fc;
 }
+/* On call: a light blue stripe band with a dotted left rule. Informational; it never blocks booking. */
+.shade-oncall {
+  background: repeating-linear-gradient(
+    90deg,
+    rgb(37 99 235 / 0.1) 0 6px,
+    rgb(37 99 235 / 0.2) 6px 8px
+  ) !important;
+  border-left: 3px dotted #1d4ed8 !important;
+  color: #1e40af;
+}
+:root.dark .shade-oncall {
+  background: repeating-linear-gradient(
+    90deg,
+    rgb(96 165 250 / 0.14) 0 6px,
+    rgb(96 165 250 / 0.28) 6px 8px
+  ) !important;
+  border-left-color: #60a5fa !important;
+  color: #bfdbfe;
+}
 .dispatch-legend .swatch.shade-outlook {
   border-left-width: 3px !important;
 }

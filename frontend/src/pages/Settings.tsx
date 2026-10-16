@@ -16,6 +16,7 @@ export default function Settings() {
       <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
       <MailCard />
       <OutlookSyncCard />
+      <AppointmentEmailsCard />
       <InvoicingCard />
       <RemindersCard />
       <LateFeesCard />
@@ -106,6 +107,26 @@ export function OutlookSyncCard() {
           <p className="text-xs text-slate-500">One way, PSA to Outlook. Needs the Exchange permission steps in docs/CALENDAR_SETUP.md before it is switched on.</p>
         </div>
       )}
+      <ErrorMsg error={save.error} />
+    </Card>
+  );
+}
+
+export function AppointmentEmailsCard() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["lookup", "settings"], queryFn: () => api<AppSettings & { appointment_emails_enabled?: boolean }>("/settings") });
+  const save = useMutation({
+    mutationFn: (appointment_emails_enabled: boolean) => api("/settings", { method: "PATCH", json: { appointment_emails_enabled } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lookup"] }),
+  });
+  if (!q.data) return null;
+  return (
+    <Card title="Appointment emails">
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" role="switch" checked={q.data.appointment_emails_enabled === true} disabled={save.isPending} onChange={(e) => save.mutate(e.target.checked)} />
+        Send appointment emails
+      </label>
+      <p className="mt-2 text-xs text-slate-500">Email the ticket contact when a client-visible appointment is booked, moved or cancelled</p>
       <ErrorMsg error={save.error} />
     </Card>
   );

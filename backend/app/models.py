@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -17,6 +17,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    Time,
     UniqueConstraint,
     func,
     text,
@@ -273,6 +274,9 @@ class Settings(Base):
     outlook_sync_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    appointment_emails_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     reminders_prepared_on: Mapped[date | None] = mapped_column(Date)
     statements_prepared_month: Mapped[date | None] = mapped_column(Date)
     auto_ack_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -396,10 +400,104 @@ class Appointment(TimestampMixin, Base):
     client_visible: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true")
     )
+    notify_client: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     cancel_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class AppointmentNotice(Base):
+    """Queued client email about an appointment. One pending row per appointment. Client-owned
+    (RLS)."""
+
+    __tablename__ = "appointment_notices"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('pending','sent','skipped')", name="ck_appointment_notices_state"
+        ),
+        CheckConstraint(
+            "kind IS NULL OR kind IN ('booked','moved','cancelled')",
+            name="ck_appointment_notices_kind",
+        ),
+        Index("ix_appointment_notices_due", "state", "send_after"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    appointment_id: Mapped[int] = mapped_column(
+        ForeignKey("appointments.id", ondelete="CASCADE"), nullable=False
+    )
+    state: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str | None] = mapped_column(Text)
+    send_after: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    email_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("email_messages.id", ondelete="SET NULL")
+    )
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class OncallRotation(Base):
+    """Weekly on-call rotation (handoff_weekday 0 = Monday). Staff-internal like UserTimeOff: no
+    organization_id and no RLS; schedule:read/write guard it."""
+
+    __tablename__ = "oncall_rotations"
+    __table_args__ = (
+        CheckConstraint("handoff_weekday BETWEEN 0 AND 6", name="ck_oncall_rotations_weekday"),
+        CheckConstraint(
+            "extract(isodow from anchor_date)::int - 1 = handoff_weekday",
+            name="ck_oncall_rotations_anchor",
+        ),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    handoff_weekday: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    handoff_time: Mapped[time] = mapped_column(Time, nullable=False)
+    anchor_date: Mapped[date] = mapped_column(Date, nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class OncallMember(Base):
+    __tablename__ = "oncall_members"
+    __table_args__ = (
+        UniqueConstraint("rotation_id", "position", name="uq_oncall_members_position"),
+        UniqueConstraint("rotation_id", "user_id", name="uq_oncall_members_user"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    rotation_id: Mapped[int] = mapped_column(
+        ForeignKey("oncall_rotations.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class OncallOverride(Base):
+    __tablename__ = "oncall_overrides"
+    __table_args__ = (
+        CheckConstraint("ends_at > starts_at", name="ck_oncall_overrides_range"),
+        Index("ix_oncall_overrides_rotation", "rotation_id", "starts_at"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    rotation_id: Mapped[int] = mapped_column(
+        ForeignKey("oncall_rotations.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class AppointmentSync(Base):

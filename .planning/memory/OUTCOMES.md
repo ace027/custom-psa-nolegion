@@ -58,3 +58,22 @@ agent: ship-pipeline
 result: success
 pr: N/A
 verification: 11/11 passed
+| O-031 | 2026-10-15 | dev | 5 | 05-01 | engineering-backend-architect | implementation | failed | 5 | client-confirmations-on-call, engineering | Schema, models, schemas and on-call math: Partial |
+| O-032 | 2026-10-15 | dev | 5 | 05-01 | engineering-backend-architect | implementation | success | 2 | client-confirmations-on-call, engineering | Schema, models, schemas and on-call math: Complete |
+| O-033 | 2026-10-15 | dev | 5 | 05-02 | engineering-backend-architect | implementation | success | 2 | client-confirmations-on-call, engineering | Client appointment emails: Complete |
+| O-034 | 2026-10-15 | dev | 5 | 05-03 | engineering-senior-developer | implementation | failed | 5 | client-confirmations-on-call, engineering | On-call API and portal appointments: BLOCKED |
+| O-035 | 2026-10-15 | dev | 5 | 05-03 | engineering-senior-developer | implementation | success | 2 | client-confirmations-on-call, engineering | On-call API and portal appointments: Complete |
+| O-036 | 2026-10-15 | dev | 5 | 05-04 | engineering-frontend-developer | implementation | success | 2 | client-confirmations-on-call, engineering | Staff UI: email switch, on-call page, widget and board: Complete |
+| O-037 | 2026-10-15 | dev | 5 | 05-05 | engineering-frontend-developer | implementation | failed | 5 | client-confirmations-on-call, engineering | Portal appointments page, docs and verify checklist: Partial |
+| O-038 | 2026-10-15 | dev | 5 | 05-05 | engineering-frontend-developer | implementation | success | 2 | client-confirmations-on-call, engineering | Portal appointments page, docs and verify checklist: Complete |
+| O-039 | 2026-10-15 | dev | 5 | 05-00 | testing-qa-verification-specialist | quality-review | success | 2 | review, testing | Phase 5 review PASSED in 1 cycle(s), 1 finding(s) |
+| O-040 | 2026-10-15 | dev | 5 | 05-00 | engineering-senior-developer | quality-review | success | 3 | review, engineering | Phase 5 review PASSED in 1 cycle(s), 1 finding(s) |
+| O-041 | 2026-10-15 | dev | 5 | 05-00 | design-ux-researcher | quality-review | success | 3 | review, design | Phase 5 review PASSED in 1 cycle(s), 1 finding(s) |
+| O-042 | 2026-10-15 | dev | 5 | 05-00 | design-ui-designer | quality-review | success | 3 | review, design | Phase 5 review PASSED in 1 cycle(s), 1 finding(s) |
+
+## Phase 5 — Shipped 2026-10-15
+task_type: ship
+agent: ship-pipeline
+result: success
+pr: N/A
+verification: 9/9 passed

@@ -2,7 +2,7 @@
 organization (Scope + row-level security), and only customer-visible information is returned:
 never internal notes, assignees, SLA clocks, time entries, costs or other clients' data."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -16,7 +16,7 @@ from app.auth import portal_sessions
 from app.billing import today
 from app.config import get_settings
 from app.errors import Conflict, NotFound
-from app.models import EmailMessage, Invoice, Ticket, TicketNote, User
+from app.models import Appointment, EmailMessage, Invoice, Ticket, TicketNote, User
 from app.payments import payment_state
 from app.portal_deps import PortalCtx
 
@@ -94,6 +94,53 @@ def me(ctx: PortalCtx) -> dict:
         can_see_all_tickets=ctx.contact.portal_org_tickets,
         can_see_devices=devices_visible(ctx, org),
     )
+
+
+# ---- appointments ----------------------------------------------------------------------
+def list_appointments(ctx: PortalCtx, now: datetime) -> list[dict]:
+    """Scheduled, client-visible appointments on tickets this contact can see. Notes, cancel
+    reasons, tech email and ids are never returned."""
+    base = (
+        select(Appointment, Ticket, User.display_name)
+        .join(
+            Ticket,
+            (Ticket.id == Appointment.ticket_id)
+            & (Ticket.organization_id == Appointment.organization_id),
+        )
+        .join(User, User.id == Appointment.tech_id, isouter=True)
+        .where(
+            Appointment.status == "scheduled",
+            Appointment.client_visible.is_(True),
+            _visible(ctx),
+        )
+    )
+    # Upcoming and recent-past rows get separate limits so old visits never crowd out new ones.
+    upcoming = ctx.db.execute(
+        base.where(Appointment.ends_at >= now)
+        .order_by(Appointment.starts_at, Appointment.id)
+        .limit(200)
+    ).all()
+    recent = ctx.db.execute(
+        base.where(Appointment.ends_at < now, Appointment.ends_at >= now - timedelta(days=30))
+        .order_by(Appointment.starts_at.desc(), Appointment.id.desc())
+        .limit(200)
+    ).all()
+    rows = list(reversed(recent)) + list(upcoming)
+    out = []
+    for a, t, tech_name in rows:
+        words = (tech_name or "").split()
+        out.append(
+            dict(
+                id=a.id,
+                ticket_id=t.id,
+                ticket_number=t.number,
+                ticket_subject=t.subject,
+                starts_at=a.starts_at,
+                ends_at=a.ends_at,
+                tech_first_name=words[0] if words else None,
+            )
+        )
+    return out
 
 
 # ---- invoices and statement (billing contacts) -----------------------------------------
