@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 5 of 13 (complete)
-- **Status**: Phase 5 shipped (2026-10-15)
-- **Last Activity**: Phase 5 shipped (2026-10-15)
+- **Phase**: 6 of 13 (planned)
+- **Status**: Phase 6 planned -- 3 plans across 3 waves
+- **Last Activity**: Phase 6 planning (2026-10-19)
 
 ## Progress
 ```
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:plan 6` to plan Phase 6: RMM alerts to tickets
+Run `/triad:build` to execute Phase 6: RMM alerts to tickets
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -34,6 +34,7 @@ Run `/triad:plan 6` to plan Phase 6: RMM alerts to tickets
 - Phase 3 issue: #5 (closed); merged to main in PR #4
 - Phase 4 issue: #6 (closed); merged to main in PR #7
 - Phase 5 issue: #8 (closed); merged to main in PR #9
+- Phase 6 issue: #10 (open)
 
 ## Phase 2 Results
 (build started 2026-10-09)
