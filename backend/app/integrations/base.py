@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import Protocol
 
 KINDS = ("computer", "server", "network", "other")
+SEVERITIES = ("NONE", "MINOR", "MODERATE", "MAJOR", "CRITICAL")
 
 
 class VendorError(Exception):
@@ -44,7 +45,23 @@ class RemoteAsset:
         }
 
 
+@dataclass
+class RemoteAlert:
+    external_id: str
+    device_external_id: str
+    condition_key: str
+    severity: str
+    message: str
+    created_at: datetime | None = None
+
+
 class Adapter(Protocol):
     def test_connection(self) -> None: ...
     def list_clients(self) -> list[RemoteClient]: ...
     def list_assets(self, client_external_id: str) -> list[RemoteAsset]: ...
+
+
+class AlertAdapter(Protocol):
+    """Separate from Adapter: only RMM vendors (NinjaOne) report alerts; Hudu does not."""
+
+    def list_alerts(self) -> list[RemoteAlert]: ...

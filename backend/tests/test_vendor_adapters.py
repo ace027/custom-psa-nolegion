@@ -134,3 +134,50 @@ def test_hudu_without_a_warranty_field_leaves_warranty_unknown():
 def test_hudu_error_status_is_a_vendor_error():
     with pytest.raises(VendorError):
         hudu(lambda r: httpx.Response(403, text=json.dumps({"error": "nope"}))).test_connection()
+
+
+def _alert_handler(alerts_response):
+    def handler(req: httpx.Request):
+        if req.url.path == "/ws/oauth/token":
+            return httpx.Response(200, json={"access_token": "tok"})
+        assert req.method == "GET" and req.url.path == "/v2/alerts"
+        return alerts_response
+
+    return handler
+
+
+def test_ninjaone_lists_alerts_and_builds_condition_keys():
+    body = [
+        {
+            "uid": "u1",
+            "deviceId": 11,
+            "sourceConfigUid": "cfg-9",
+            "severity": "major",
+            "message": "  Disk   low\non C:  ",
+            "createTime": 1790000000.5,
+        },
+        {"uid": "u2", "deviceId": 12, "sourceType": "CONDITION_CPU", "severity": "WEIRD"},
+        {"uid": "u3", "deviceId": 13, "subject": "Patch failed"},
+        {"uid": "u4", "message": "no device"},
+        {"deviceId": 14, "message": "no uid"},
+    ]
+    alerts = ninja(_alert_handler(httpx.Response(200, json=body))).list_alerts()
+    assert [a.external_id for a in alerts] == ["u1", "u2", "u3"]
+    first, second, third = alerts
+    assert (first.device_external_id, first.condition_key) == ("11", "11:cfg-9")
+    assert first.severity == "MAJOR" and first.message == "Disk low on C:"
+    assert first.created_at is not None
+    assert (second.condition_key, second.severity, second.message) == (
+        "12:CONDITION_CPU",
+        "NONE",
+        "Alert",
+    )
+    assert second.created_at is None
+    assert (third.condition_key, third.severity, third.message) == ("13:u3", "NONE", "Patch failed")
+
+
+def test_ninjaone_alert_failures_are_vendor_errors():
+    for response in (httpx.Response(500, text="boom"), httpx.Response(200, json={"a": 1})):
+        with pytest.raises(VendorError) as exc:
+            ninja(_alert_handler(response)).list_alerts()
+        assert "csecret" not in str(exc.value) and "tok" not in str(exc.value)
