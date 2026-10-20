@@ -2,12 +2,12 @@
 
 ## Current Position
 - **Phase**: 6 of 13 (executing)
-- **Status**: Phase 6 executing — Plan 06-01 complete
-- **Last Activity**: Plan 06-01 execution (2026-10-20)
+- **Status**: Phase 6 executing — Plan 06-02 complete
+- **Last Activity**: Plan 06-02 execution (2026-10-20)
 
 ## Progress
 ```
-[########............] 43% — 19/44 plans complete
+[#########...........] 45% — 20/44 plans complete
 ```
 
 ## Recent Decisions
@@ -77,3 +77,4 @@ Run `/triad:build` to execute Phase 6: RMM alerts to tickets
 ## Phase 6 Results
 (build started 2026-10-20)
 - Plan 06-01 (Wave 1): RMM alert schema, models and NinjaOne alert adapter — Complete
+- Plan 06-02 (Wave 2): Alert polling engine, worker job and admin API — Complete
