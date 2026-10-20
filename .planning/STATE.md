@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 6 of 13 (planned)
-- **Status**: Phase 6 planned -- 3 plans across 3 waves
-- **Last Activity**: Phase 6 planning (2026-10-19)
+- **Phase**: 6 of 13 (executing)
+- **Status**: Phase 6 executing — Plan 06-01 complete
+- **Last Activity**: Plan 06-01 execution (2026-10-20)
 
 ## Progress
 ```
-[########............] 40% — 18/44 plans complete
+[########............] 43% — 19/44 plans complete
 ```
 
 ## Recent Decisions
@@ -73,3 +73,7 @@ Run `/triad:build` to execute Phase 6: RMM alerts to tickets
 - Plan 05-04 (Wave 3): Staff UI: email switch, on-call page, widget and board — Complete
 - Plan 05-05 (Wave 3): Portal appointments page, docs and verify checklist — PARTIAL: Portal Appointments page, tests, docs and the Phase 5 verify checklist are done. The full vitest run has 1 failure in Dispatch.test.tsx, caused by 05-04's in-flight work, not these files. typecheck an
 - Plan 05-05 (Wave 3): Portal appointments page, docs and verify checklist — Complete
+
+## Phase 6 Results
+(build started 2026-10-20)
+- Plan 06-01 (Wave 1): RMM alert schema, models and NinjaOne alert adapter — Complete
