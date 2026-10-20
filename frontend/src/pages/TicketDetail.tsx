@@ -37,6 +37,17 @@ export default function TicketDetail() {
         {t.needs_triage ? "Unmatched sender" : t.organization_name}
         {t.contact_name ? ` · ${t.contact_name}` : t.requester_email ? ` · ${t.requester_email}` : ""}
         {" · "}opened {fmt(t.created_at)} via {t.source}
+        {t.source === "rmm" && <span className="ml-2 rounded bg-slate-100 px-1.5 text-xs text-slate-700">From RMM alert</span>}
+        {t.asset_id != null && (
+          <>
+            {" · "}Device:{" "}
+            {t.organization_id ? (
+              <Link className="text-blue-700 hover:underline" to={`/organizations/${t.organization_id}`}>{t.asset_name}</Link>
+            ) : (
+              t.asset_name
+            )}
+          </>
+        )}
       </p>
       {t.needs_triage && canWrite && <TriagePanel ticket={t} onDone={refresh} />}
       <Fields ticket={t} canWrite={canWrite} onDone={refresh} />

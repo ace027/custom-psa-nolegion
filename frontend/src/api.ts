@@ -179,6 +179,8 @@ export interface Ticket {
   subject: string;
   description: string | null;
   source: string;
+  asset_id?: number | null;
+  asset_name?: string | null;
   requester_email: string | null;
   needs_triage: boolean;
   sla_state: SlaState;
@@ -829,7 +831,31 @@ export interface Integration {
   last_error: string | null;
   last_sync_at: string | null;
   sync_requested: boolean;
+  alerts_polled_at?: string | null;
+  alerts_requested?: boolean;
+  alerts_last_error?: string | null;
 }
+export interface RmmAlert {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  asset_id: number;
+  asset_name: string;
+  ticket_id: number | null;
+  ticket_number: number | null;
+  severity: string;
+  message: string;
+  state: string;
+  occurrences: number;
+  first_seen_at: string;
+  last_seen_at: string;
+  cleared_at: string | null;
+  resolution: string | null;
+}
+export type RmmAlertState = "open" | "cleared" | "all";
+export const listRmmAlerts = (id: number, state: RmmAlertState) =>
+  api<RmmAlert[]>(`/integrations/${id}/alerts?state=${state}`);
+export const requestAlertPoll = (id: number) => api<Integration>(`/integrations/${id}/alerts/poll`, { method: "POST" });
 export interface SyncRun {
   id: number;
   status: "running" | "ok" | "partial" | "failed";
