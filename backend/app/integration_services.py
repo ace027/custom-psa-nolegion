@@ -8,9 +8,11 @@ from app import audit, crypto
 from app.deps import Ctx
 from app.errors import Conflict, NotFound
 from app.integrations import registry
-from app.integrations.base import VendorError
+from app.integrations.base import SEVERITIES, VendorError
 from app.integrations.hudu import validate_config as validate_hudu
-from app.models import Integration, IntegrationClientMap, Organization, SyncRun
+from app.models import Integration, IntegrationClientMap, Organization, RmmAlert, SyncRun
+from app.rmm_alerts import CLEAR_RULES
+from app.rmm_alerts import settings as alert_settings
 
 
 def _get(ctx: Ctx, integration_id: int) -> Integration:
@@ -34,10 +36,32 @@ def view(i: Integration) -> dict:
         "last_error": i.last_error,
         "last_sync_at": i.last_sync_at,
         "sync_requested": i.sync_requested_at is not None,
+        "alerts_polled_at": i.alerts_polled_at,
+        "alerts_requested": i.alerts_requested_at is not None,
+        "alerts_last_error": i.alerts_last_error,
     }
 
 
+def _validate_alert_config(kind: str, config: dict) -> None:
+    keys = [k for k in config if k.startswith("alert")]
+    if kind != "ninjaone":
+        if keys:
+            raise Conflict("Alerts are only available for NinjaOne")
+        return
+    if "alerts_enabled" in config and not isinstance(config["alerts_enabled"], bool):
+        raise Conflict("alerts_enabled must be true or false")
+    if "alert_min_severity" in config and config["alert_min_severity"] not in SEVERITIES:
+        raise Conflict(f"alert_min_severity must be one of: {', '.join(SEVERITIES)}")
+    if "alert_clear_rule" in config and config["alert_clear_rule"] not in CLEAR_RULES:
+        raise Conflict(f"alert_clear_rule must be one of: {', '.join(CLEAR_RULES)}")
+    if "alert_poll_minutes" in config:
+        m = config["alert_poll_minutes"]
+        if isinstance(m, bool) or not isinstance(m, int) or not 1 <= m <= 60:
+            raise Conflict("alert_poll_minutes must be a whole number from 1 to 60")
+
+
 def _validate(kind: str, config: dict, creds: dict | None, required: bool) -> None:
+    _validate_alert_config(kind, config)
     if kind == "hudu":
         try:
             validate_hudu(config)
@@ -127,6 +151,50 @@ def request_sync(ctx: Ctx, integration_id: int) -> dict:
     i.sync_requested_at = sync.now()
     audit.record(ctx.db, ctx.user, "integration.sync_requested", i)
     return view(i)
+
+
+def request_alert_poll(ctx: Ctx, integration_id: int) -> dict:
+    i = _get(ctx, integration_id)
+    if i.kind != "ninjaone":
+        raise Conflict("Alerts are only available for NinjaOne")
+    if not alert_settings(i)["alerts_enabled"]:
+        raise Conflict("Alerts are turned off for this integration")
+    i.alerts_requested_at = sync.now()
+    audit.record(ctx.db, ctx.user, "integration.alerts_poll_requested", i)
+    return view(i)
+
+
+def list_alerts(ctx: Ctx, integration_id: int, state: str = "open", limit: int = 200) -> list[dict]:
+    _get(ctx, integration_id)
+    if state not in ("open", "cleared", "all"):
+        raise Conflict("state must be open, cleared or all")
+    if not 1 <= limit <= 500:
+        raise Conflict("limit must be from 1 to 500")
+    stmt = select(RmmAlert).where(RmmAlert.integration_id == integration_id)
+    if state != "all":
+        stmt = stmt.where(RmmAlert.state == state)
+    rows = ctx.db.scalars(stmt.order_by(RmmAlert.id.desc()).limit(limit))
+    orgs = {o.id: o.name for o in ctx.db.scalars(select(Organization))}
+    return [
+        {
+            "id": a.id,
+            "organization_id": a.organization_id,
+            "organization_name": orgs.get(a.organization_id, ""),
+            "asset_id": a.asset_id,
+            "asset_name": a.asset.name,
+            "ticket_id": a.ticket_id,
+            "ticket_number": a.ticket.number if a.ticket else None,
+            "severity": a.severity,
+            "message": a.message,
+            "state": a.state,
+            "occurrences": a.occurrences,
+            "first_seen_at": a.first_seen_at,
+            "last_seen_at": a.last_seen_at,
+            "cleared_at": a.cleared_at,
+            "resolution": a.resolution,
+        }
+        for a in rows
+    ]
 
 
 def runs(ctx: Ctx, integration_id: int, limit: int = 20) -> list[SyncRun]:

@@ -78,3 +78,4 @@ result: success
 pr: N/A
 verification: 9/9 passed
 | O-043 | 2026-10-20 | dev | 6 | 06-01 | engineering-backend-architect | implementation | success | 2 | rmm-alerts-to-tickets, engineering | RMM alert schema, models and NinjaOne alert adapter: Complete |
+| O-044 | 2026-10-20 | dev | 6 | 06-02 | engineering-senior-developer | implementation | success | 2 | rmm-alerts-to-tickets, engineering | Alert polling engine, worker job and admin API: Complete |

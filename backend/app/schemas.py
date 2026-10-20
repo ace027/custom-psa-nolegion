@@ -269,6 +269,8 @@ class TicketOut(BaseModel):
     contact_id: int | None
     contact_name: str | None
     site_id: int | None
+    asset_id: int | None
+    asset_name: str | None
     queue_id: int
     queue_name: str
     category_id: int | None

@@ -46,6 +46,27 @@ class IntegrationOut(BaseModel):
     last_error: str | None
     last_sync_at: datetime | None
     sync_requested: bool
+    alerts_polled_at: datetime | None
+    alerts_requested: bool
+    alerts_last_error: str | None
+
+
+class RmmAlertOut(BaseModel):
+    id: int
+    organization_id: int
+    organization_name: str
+    asset_id: int
+    asset_name: str
+    ticket_id: int | None
+    ticket_number: int | None
+    severity: str
+    message: str
+    state: str
+    occurrences: int
+    first_seen_at: datetime
+    last_seen_at: datetime
+    cleared_at: datetime | None
+    resolution: str | None
 
 
 class TestOut(BaseModel):

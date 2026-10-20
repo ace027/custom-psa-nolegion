@@ -348,6 +348,47 @@ def add_note(
     return note
 
 
+def system_note(ctx: Ctx, ticket: Ticket, body: str) -> TicketNote:
+    """An internal note written by the system (no author, never emailed)."""
+    note = TicketNote(
+        ticket_id=ticket.id,
+        organization_id=ticket.organization_id,
+        author_user_id=None,
+        visibility="internal",
+        source="ui",
+        body=body,
+    )
+    ctx.db.add(note)
+    ticket.updated_at = now()
+    ctx.db.flush()
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "ticket.note",
+        note,
+        after={"ticket_id": ticket.id, "visibility": "internal", "emailed": False},
+        organization_id=ticket.organization_id,
+    )
+    return note
+
+
+def resolve_by_system(ctx: Ctx, ticket: Ticket) -> None:
+    """Move a ticket to resolved on behalf of an automation (e.g. an RMM alert that cleared)."""
+    before = audit.snapshot(ticket)
+    _apply_status(ctx, ticket, "resolved")
+    ctx.db.flush()
+    ctx.db.refresh(ticket)
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "ticket.update",
+        ticket,
+        before={"status": before["status"]},
+        after={"status": ticket.status},
+        organization_id=ticket.organization_id,
+    )
+
+
 # ---- time ----------------------------------------------------------------------------------
 def _entry_date(ctx: Ctx, given: date | None) -> date:
     if given:
