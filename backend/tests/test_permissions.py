@@ -14,6 +14,16 @@ def test_matrix_shape():
     assert not P.has_permission("unknown-role", P.ORG_READ)
 
 
+def test_automation_permissions_admin_only():
+    for perm in (P.APIKEY_MANAGE, P.AUTOMATION_MANAGE):
+        assert P.has_permission("admin", perm)
+        for role in ("tech", "billing", "read_only"):
+            assert not P.has_permission(role, perm)
+    assert P.APIKEY_MANAGE == "apikey:manage"
+    assert P.AUTOMATION_MANAGE == "automation:manage"
+    assert frozenset({P.USER_MANAGE, P.APIKEY_MANAGE, P.PORTAL_MANAGE}) == P.KEY_FORBIDDEN
+
+
 @pytest.fixture
 def seeded(admin, make_org):
     org = make_org()

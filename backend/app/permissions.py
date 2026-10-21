@@ -27,6 +27,11 @@ SCHEDULE_READ = "schedule:read"  # schedules, appointments, availability, time o
 # book/move/cancel any tech's appointments; own working hours and time-off requests
 SCHEDULE_WRITE = "schedule:write"
 TIMEOFF_APPROVE = "timeoff:approve"  # approve/reject time off, manage anyone's hours and time off
+APIKEY_MANAGE = "apikey:manage"  # create / revoke API keys (admins)
+AUTOMATION_MANAGE = "automation:manage"  # automation rules and outbound webhooks (admins)
+
+# API keys can never carry these, whatever the owner's role
+KEY_FORBIDDEN = frozenset({USER_MANAGE, APIKEY_MANAGE, PORTAL_MANAGE})
 
 ROLES = ("admin", "tech", "billing", "read_only")
 
@@ -49,6 +54,8 @@ MATRIX: dict[str, frozenset[str]] = {
             INTEGRATION_MANAGE,
             SCHEDULE_WRITE,
             TIMEOFF_APPROVE,
+            APIKEY_MANAGE,
+            AUTOMATION_MANAGE,
         }
         | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE, PAYMENT_WRITE, REPORT_READ}
     ),

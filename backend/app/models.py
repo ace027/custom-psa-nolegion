@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
@@ -22,7 +23,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -596,6 +597,7 @@ class Ticket(TimestampMixin, Base):
     requester_email: Mapped[str | None] = mapped_column(String(320))
     sla_first_response_due: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sla_resolution_due: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sla_breached_event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     first_responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -1216,6 +1218,141 @@ class StaffNotification(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class ApiKey(Base):
+    """A staff-owned API key. Only the SHA-256 of the secret is stored; `prefix` finds the row."""
+
+    __tablename__ = "api_keys"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    prefix: Mapped[str] = mapped_column(String(8), nullable=False, unique=True)
+    key_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    permissions: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    user: Mapped["User"] = relationship(foreign_keys=[user_id], lazy="joined")
+
+
+class WebhookEndpoint(Base):
+    """An outbound webhook target (generic JSON or Microsoft Teams). `secret` is encrypted."""
+
+    __tablename__ = "webhook_endpoints"
+    __table_args__ = (
+        CheckConstraint("kind IN ('generic','teams')", name="ck_webhook_endpoints_kind"),
+        CheckConstraint(
+            "consecutive_failures >= 0", name="ck_webhook_endpoints_consecutive_failures"
+        ),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    secret: Mapped[str] = mapped_column(Text, nullable=False)
+    events: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    consecutive_failures: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_failure_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class WebhookDelivery(Base):
+    """One event queued for one endpoint; unique per (endpoint, event), so no duplicates."""
+
+    __tablename__ = "webhook_deliveries"
+    __table_args__ = (
+        UniqueConstraint("endpoint_id", "event_id", name="uq_webhook_deliveries_event"),
+        CheckConstraint(
+            "status IN ('pending','delivered','failed')", name="ck_webhook_deliveries_status"
+        ),
+        CheckConstraint("attempts >= 0", name="ck_webhook_deliveries_attempts"),
+        Index("ix_webhook_deliveries_due", "status", "next_attempt_at"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    endpoint_id: Mapped[int] = mapped_column(ForeignKey("webhook_endpoints.id"), nullable=False)
+    event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    next_attempt_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_status_code: Mapped[int | None] = mapped_column(Integer)
+    last_error: Mapped[str | None] = mapped_column(String(300))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    endpoint: Mapped["WebhookEndpoint"] = relationship()
+
+
+class AutomationRule(Base):
+    """A staff-defined trigger / conditions / actions rule."""
+
+    __tablename__ = "automation_rules"
+    __table_args__ = (
+        CheckConstraint("trigger <> ''", name="ck_automation_rules_trigger"),
+        CheckConstraint("fire_count >= 0", name="ck_automation_rules_fire_count"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    trigger: Mapped[str] = mapped_column(String(40), nullable=False)
+    conditions: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
+    actions: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    disabled_reason: Mapped[str | None] = mapped_column(String(200))
+    fire_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    last_fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class AutomationRun(Base):
+    """One evaluation of a rule against an event; real runs are unique per (rule, event)."""
+
+    __tablename__ = "automation_runs"
+    __table_args__ = (
+        Index(
+            "uq_automation_runs_event",
+            "rule_id",
+            "event_id",
+            unique=True,
+            postgresql_where=text("NOT dry_run"),
+        ),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    rule_id: Mapped[int] = mapped_column(ForeignKey("automation_rules.id"), nullable=False)
+    event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    ticket_id: Mapped[int | None] = mapped_column(ForeignKey("tickets.id"))
+    matched: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    dry_run: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    trace: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    rule: Mapped["AutomationRule"] = relationship()
 
 
 class TicketLink(Base):
