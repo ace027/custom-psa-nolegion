@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 8 of 13 (partial — 2 plan(s) failed)
-- **Status**: Phase 8 partial — 08-03, 08-04 failed, stopped after wave 3, review needed
+- **Phase**: 8 of 13 (executing)
+- **Status**: Phase 8 executing — Plan 08-04 complete
 - **Last Activity**: Plan 08-04 execution (2026-10-21)
 
 ## Progress
 ```
-[############........] 61% — 27/44 plans complete
+[#############.......] 65% — 29/44 plans complete
 ```
 
 ## Recent Decisions
@@ -97,3 +97,5 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 - Plan 08-02 (Wave 2): Projects, phases, tasks, dependencies and budget vs actual API — Complete
 - Plan 08-03 (Wave 3): Project billing: fixed fee up front and capped T&M — PARTIAL: Project billing is on disk: fixed fee up front, fee-covered time on a $0 line, the T&M budget cap, bill-fixed-fee, voiding releases the fee, and project time is kept out of normal billing and block ho
 - Plan 08-04 (Wave 3): Projects UI: list, detail, board view, budget card, seed and verify checklist — PARTIAL: The UI, tests, seed data and checklist are done. Typecheck, the full vitest run (259 tests), build and ruff all pass. tests/test_seed_and_migrations.py now fails, and I couldn't update it because it i
+- Plan 08-03 (Wave 3): Project billing: fixed fee up front and capped T&M — Complete with Warnings
+- Plan 08-04 (Wave 3): Projects UI: list, detail, board view, budget card, seed and verify checklist — Complete
