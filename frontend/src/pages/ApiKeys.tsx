@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ApiKey, createApiKey, listApiKeys, revokeApiKey } from "../api";
 import { useMe } from "../auth";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../ui";
@@ -16,12 +16,26 @@ export default function ApiKeys() {
   const [perms, setPerms] = useState<string[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const offered = (me.data?.permissions ?? []).filter((p) => !FORBIDDEN.includes(p)).sort();
+  const [copyFailed, setCopyFailed] = useState(false);
+  const keyRef = useRef<HTMLInputElement>(null);
+  const copy = () => {
+    if (!token) return;
+    const fail = () => {
+      setCopied(false);
+      setCopyFailed(true);
+      keyRef.current?.focus();
+      keyRef.current?.select();
+    };
+    if (!navigator.clipboard?.writeText) return fail();
+    navigator.clipboard.writeText(token).then(() => { setCopyFailed(false); setCopied(true); }, fail);
+  };
+  const offered =(me.data?.permissions ?? []).filter((p) => !FORBIDDEN.includes(p)).sort();
   const create = useMutation({
     mutationFn: () => createApiKey({ name, permissions: perms, expires_in_days: days }),
     onSuccess: (r) => {
       setToken(r.token);
       setCopied(false);
+      setCopyFailed(false);
       setName("");
       setPerms([]);
       qc.invalidateQueries({ queryKey: ["api-keys"] });
@@ -45,10 +59,11 @@ export default function ApiKeys() {
         <Card title="Your new key">
           <p role="alert" className="mb-2 rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">Copy this key now. It will not be shown again.</p>
           <div className="flex gap-2">
-            <input aria-label="New API key" readOnly className={`${inputCls} font-mono`} value={token} onFocus={(e) => e.currentTarget.select()} />
-            <Button variant="secondary" onClick={() => { navigator.clipboard?.writeText(token); setCopied(true); }}>{copied ? "Copied" : "Copy"}</Button>
+            <input ref={keyRef} aria-label="New API key" readOnly className={`${inputCls} font-mono`} value={token} onFocus={(e) => e.currentTarget.select()} />
+            <Button variant="secondary" onClick={copy}>{copied ? "Copied" : "Copy"}</Button>
             <Button variant="secondary" onClick={() => setToken(null)}>Dismiss</Button>
           </div>
+          {copyFailed && <p role="status" className="mt-2 text-sm text-red-700">Could not copy automatically. Press Ctrl+C to copy the selected key.</p>}
         </Card>
       )}
       <Card title="Keys">

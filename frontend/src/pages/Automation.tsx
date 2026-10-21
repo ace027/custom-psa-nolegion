@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   AutomationRule,
   Organization,
@@ -130,12 +130,20 @@ function ConditionRow({
   } else if (multi(c.op)) {
     const current = (Array.isArray(c.value) ? c.value : []).map(String);
     value = (
-      <select
-        multiple aria-label={`Condition value ${n}`} className={inputCls} value={current}
-        onChange={(e) => onChange({ ...c, value: Array.from(e.target.selectedOptions, (o) => conv(spec.kind, o.value)) })}
-      >
-        {choices.map(([k, text]) => <option key={k} value={k}>{text}</option>)}
-      </select>
+      <fieldset aria-label={`Condition value ${n}`} className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded border border-slate-300 p-2">
+        {choices.map(([k, text]) => (
+          <label key={k} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox" checked={current.includes(k)}
+              onChange={(e) => {
+                const next = e.target.checked ? [...current, k] : current.filter((x) => x !== k);
+                onChange({ ...c, value: choices.filter(([ck]) => next.includes(ck)).map(([ck]) => conv(spec.kind, ck)) });
+              }}
+            />
+            {text}
+          </label>
+        ))}
+      </fieldset>
     );
   } else {
     value = (
@@ -286,12 +294,21 @@ export default function Automation() {
   const [result, setResult] = useState<RuleTestResult | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["automation-rules"] });
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+  const [base, setBase] = useState(() => JSON.stringify(blank()));
+  const dirty = JSON.stringify(draft) !== base;
+  const formRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  const resetDraft = () => {
+    setBase(JSON.stringify(blank()));
+    setDraft(blank());
+    setResult(null);
+  };
 
   const save = useMutation({
     mutationFn: () => (draft.id == null ? createRule(toBody(draft)) : updateRule(draft.id, toBody(draft))),
     onSuccess: () => {
-      setDraft(blank());
-      setResult(null);
+      resetDraft();
       refresh();
     },
   });
@@ -302,8 +319,7 @@ export default function Automation() {
   const archive = useMutation({
     mutationFn: (id: number) => archiveRule(id),
     onSuccess: () => {
-      setDraft(blank());
-      setResult(null);
+      resetDraft();
       refresh();
     },
   });
@@ -312,15 +328,30 @@ export default function Automation() {
     onSuccess: setResult,
   });
   const edit = (r: AutomationRule) => {
+    if (dirty && !window.confirm("Replace the unsaved changes in the form?")) return;
     setResult(null);
-    setDraft({ id: r.id, name: r.name, trigger: r.trigger, enabled: r.enabled, position: r.position, conditions: r.conditions, actions: r.actions });
+    const next: Draft = { id: r.id, name: r.name, trigger: r.trigger, enabled: r.enabled, position: r.position, conditions: r.conditions, actions: r.actions };
+    setBase(JSON.stringify(next));
+    setDraft(next);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      nameRef.current?.focus();
+    }, 0);
   };
   const onTrigger = (trigger: string) =>
     set({ trigger, conditions: trigger.startsWith("rmm_alert.") ? draft.conditions : draft.conditions.filter((c) => c.field !== "alert_severity") });
   const onArchive = () => {
     if (draft.id != null && window.confirm(`Archive the rule "${draft.name}"? It stops running and is hidden from this list.`)) archive.mutate(draft.id);
   };
-  const ready = draft.name.trim().length > 0 && draft.actions.length > 0 && draft.actions.every(actionReady) && draft.conditions.every(conditionReady);
+  const badCondition = draft.conditions.findIndex((c) => !conditionReady(c));
+  const badAction = draft.actions.findIndex((a) => !actionReady(a));
+  const unmet =
+    draft.name.trim().length === 0 ? "Enter a name"
+    : draft.actions.length === 0 ? "Add at least one action"
+    : badCondition >= 0 ? `Choose a value for condition ${badCondition + 1}`
+    : badAction >= 0 ? `Finish action ${badAction + 1}`
+    : null;
+  const ready = unmet === null;
 
   return (
     <div className="space-y-4">
@@ -333,7 +364,7 @@ export default function Automation() {
         <ErrorMsg error={list.error ?? toggle.error} />
         <ul className="space-y-3">
           {list.data?.map((r) => (
-            <li key={r.id} className="rounded border border-slate-200 p-3">
+            <li key={r.id} aria-current={draft.id === r.id ? "true" : undefined} className={`rounded border p-3 ${draft.id === r.id ? "border-blue-500 bg-blue-50" : "border-slate-200"}`}>
               <div className="flex flex-wrap items-center gap-3">
                 <strong>{r.name}</strong>
                 <span className="text-sm text-slate-500">{triggerLabel(r.trigger)}</span>
@@ -359,10 +390,11 @@ export default function Automation() {
           {list.data?.length === 0 && <li className="text-sm text-slate-500">No rules yet.</li>}
         </ul>
       </Card>
+      <div ref={formRef}>
       <Card title={draft.id == null ? "New rule" : `Edit rule: ${draft.name}`}>
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Name"><input className={inputCls} maxLength={100} value={draft.name} onChange={(e) => set({ name: e.target.value })} /></Field>
+            <Field label="Name"><input ref={nameRef} className={inputCls} required maxLength={100} value={draft.name} onChange={(e) => set({ name: e.target.value })} /></Field>
             <Field label="When">
               <select className={inputCls} value={draft.trigger} onChange={(e) => onTrigger(e.target.value)}>
                 {TRIGGERS.map(([k, text]) => <option key={k} value={k}>{text}</option>)}
@@ -412,11 +444,13 @@ export default function Automation() {
           <ErrorMsg error={save.error ?? archive.error} />
           <div className="flex gap-2">
             <Button type="submit" disabled={!ready || save.isPending}>Save rule</Button>
+            {unmet && <span className="self-center text-sm text-slate-600">{unmet} to save.</span>}
             {draft.id != null && <Button type="button" variant="danger" onClick={onArchive}>Archive rule</Button>}
-            {draft.id != null && <Button type="button" variant="secondary" onClick={() => { setDraft(blank()); setResult(null); }}>Cancel</Button>}
+            {draft.id != null && <Button type="button" variant="secondary" onClick={resetDraft}>Cancel</Button>}
           </div>
         </form>
       </Card>
+      </div>
     </div>
   );
 }

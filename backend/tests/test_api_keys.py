@@ -132,7 +132,7 @@ def test_revoked_expired_deactivated_demoted(admin, mk, owner):
         {"i": k["key"]["id"]},
     )
     assert bearer(k["token"]).get("/api/tickets").status_code == 401
-    assert admin.get("/api/api-keys").json()[0]["state"] in ("expired", "active")
+    assert admin.get("/api/api-keys").json()[0]["state"] == "expired"
     # demoted: loses ticket:write -> 403, still reads
     k = mk(("ticket:read", "ticket:write"))
     c = bearer(k["token"])

@@ -244,6 +244,8 @@ def _attempt(ep: WebhookEndpoint, row: WebhookDelivery, now: datetime, transport
         return None, "Timed out"
     except httpx.HTTPError as exc:
         return None, f"Connection error ({type(exc).__name__})"
+    except Exception as exc:  # malformed payload, bad URL, missing secret: a failed attempt
+        return None, f"Delivery error ({type(exc).__name__})"
     if 200 <= resp.status_code < 300:
         return resp.status_code, None
     if 300 <= resp.status_code < 400:
@@ -274,38 +276,55 @@ def deliver_due(
     )
     ids = list(db.scalars(due))
     db.rollback()  # end the read transaction; each row is locked and committed on its own
+    failed_endpoints: set[int] = set()  # endpoints that failed this cycle; skip their other rows
     for delivery_id in ids:
-        row = db.scalar(
-            select(WebhookDelivery)
-            .where(WebhookDelivery.id == delivery_id, WebhookDelivery.status == "pending")
-            .with_for_update(skip_locked=True)
-        )
-        if row is None:  # another worker has it, or it was settled meanwhile
+        try:
+            _deliver_one(db, delivery_id, now, transport, counts, failed_endpoints)
+        except Exception:
             db.rollback()
-            continue
-        ep = db.get(WebhookEndpoint, row.endpoint_id)
-        if ep is None or not ep.enabled:
-            db.rollback()
-            continue
-        code, error = _attempt(ep, row, now, transport)
-        row.last_status_code = code
-        if error is None:
-            row.status, row.delivered_at, row.last_error = "delivered", now, None
-            ep.consecutive_failures, ep.last_success_at = 0, now
-            counts["delivered"] += 1
-        else:
-            row.attempts += 1
-            row.last_error = error[:300]
-            ep.consecutive_failures += 1
-            ep.last_failure_at = now
-            if row.attempts >= MAX_ATTEMPTS:
-                row.status = "failed"
-                counts["failed"] += 1
-            else:
-                row.next_attempt_at = now + timedelta(seconds=BACKOFF[row.attempts - 1])
-                counts["retried"] += 1
-        db.commit()
+            log.exception("webhook delivery %s crashed", delivery_id)
     return counts
+
+
+def _deliver_one(
+    db: Session,
+    delivery_id: int,
+    now: datetime,
+    transport: httpx.BaseTransport | None,
+    counts: dict,
+    failed_endpoints: set[int],
+) -> None:
+    row = db.scalar(
+        select(WebhookDelivery)
+        .where(WebhookDelivery.id == delivery_id, WebhookDelivery.status == "pending")
+        .with_for_update(skip_locked=True)
+    )
+    if row is None:  # another worker has it, or it was settled meanwhile
+        db.rollback()
+        return
+    ep = db.get(WebhookEndpoint, row.endpoint_id)
+    if ep is None or not ep.enabled or ep.id in failed_endpoints:
+        db.rollback()
+        return
+    code, error = _attempt(ep, row, now, transport)
+    row.last_status_code = code
+    if error is None:
+        row.status, row.delivered_at, row.last_error = "delivered", now, None
+        ep.consecutive_failures, ep.last_success_at = 0, now
+        counts["delivered"] += 1
+    else:
+        row.attempts += 1
+        row.last_error = error[:300]
+        ep.consecutive_failures += 1
+        ep.last_failure_at = now
+        failed_endpoints.add(ep.id)
+        if row.attempts >= MAX_ATTEMPTS:
+            row.status = "failed"
+            counts["failed"] += 1
+        else:
+            row.next_attempt_at = now + timedelta(seconds=BACKOFF[row.attempts - 1])
+            counts["retried"] += 1
+    db.commit()
 
 
 # ---- management ----------------------------------------------------------------------------
