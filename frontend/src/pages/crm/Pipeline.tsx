@@ -31,10 +31,11 @@ export default function Pipeline() {
       qc.invalidateQueries({ queryKey: ["crm"] });
     },
   });
-  const cols = (stages.data ?? []).filter((s) => s.active).sort((a, b) => a.position - b.position);
   const all = opps.data ?? [];
+  // Active stages, plus any deactivated stage that still holds deals, so none vanish.
+  const cols = (stages.data ?? []).filter((s) => s.active || all.some((o) => o.stage_id === s.id)).sort((a, b) => a.position - b.position);
   const pick = (opp: Opportunity, stageId: number) => {
-    const stage = cols.find((s) => s.id === stageId);
+    const stage = cols.find((s) => s.id === stageId && (s.active || s.id === opp.stage_id));
     if (!stage || stage.id === opp.stage_id) return;
     setClientError("");
     move.reset();
@@ -70,7 +71,7 @@ export default function Pipeline() {
           const items = all.filter((o) => o.stage_id === col.id);
           return (
             <section key={col.id} aria-label={col.name} className="rounded-xl bg-slate-50 p-2">
-              <h2 className="mb-2 px-1 text-sm font-semibold text-slate-700">{col.name} ({items.length})</h2>
+              <h2 className="mb-2 px-1 text-sm font-semibold text-slate-700">{col.name}{col.active ? "" : " (inactive)"} ({items.length})</h2>
               <ul className="space-y-2">
                 {items.map((o) => (
                   <li key={o.id} className={`${move.isPending ? "opacity-60 " : ""}rounded-lg border border-slate-200 bg-surface p-2 text-sm shadow-card`}>
@@ -90,7 +91,7 @@ export default function Pipeline() {
                         disabled={move.isPending}
                         onChange={(e) => pick(o, Number(e.target.value))}
                       >
-                        {cols.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        {cols.filter((s) => s.active || s.id === o.stage_id).map((s) => <option key={s.id} value={s.id}>{s.active ? s.name : `${s.name} (inactive)`}</option>)}
                       </select>
                     )}
                     {write && lost && lost.opp.id === o.id && (

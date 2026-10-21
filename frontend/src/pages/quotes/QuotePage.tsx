@@ -51,6 +51,7 @@ export default function QuotePage() {
   const quote = useQuery({ queryKey: ["quote", id], queryFn: () => api<Quote>(`/quotes/${id}`) });
   const [price, setPrice] = useState("");
   const [reason, setReason] = useState("");
+  const [priceError, setPriceError] = useState("");
   const [note, setNote] = useState("");
   const [email, setEmail] = useState(false);
   const [to, setTo] = useState("");
@@ -66,8 +67,12 @@ export default function QuotePage() {
   const editable = ["draft", "needs_approval", "approved"].includes(q.status);
   const adjust = () => {
     const cents = parseMoney(price);
-    if (cents === null) return act.reset();
-    act.mutate({ path: "", method: "PATCH", json: { final_price_cents: cents, adjustment_reason: reason || null } });
+    if (cents === null) {
+      act.reset();
+      return setPriceError("Enter the price as a dollar amount, like 450.00.");
+    }
+    setPriceError("");
+    act.mutate({ path: "", method: "PATCH", json: { final_price_cents: cents, adjustment_reason: reason.trim() || null } });
   };
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -108,10 +113,11 @@ export default function QuotePage() {
       {editable && write && (
         <Card title="Adjust the price">
           <div className="grid gap-3 sm:grid-cols-[10rem_1fr_auto] sm:items-end">
-            <Field label="New monthly price ($)"><input aria-label="New monthly price" className={inputCls} value={price} onChange={(e) => setPrice(e.target.value)} placeholder={(q.final_price_cents / 100).toFixed(2)} /></Field>
-            <Field label="Reason (required, internal only)"><input className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
-            <Button variant="secondary" onClick={adjust} disabled={!price}>Apply</Button>
+            <Field label="New monthly price ($)"><input aria-label="New monthly price" className={inputCls} value={price} aria-invalid={priceError ? true : undefined} onChange={(e) => { setPrice(e.target.value); setPriceError(""); }} placeholder={(q.final_price_cents / 100).toFixed(2)} /></Field>
+            <Field label="Reason (required, internal only)"><input className={inputCls} required aria-required="true" value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+            <Button variant="secondary" onClick={adjust} disabled={!price || !reason.trim()}>Apply</Button>
           </div>
+          {priceError && <p role="alert" className="mt-2 text-sm text-red-700">{priceError}</p>}
           <p className="mt-2 text-xs text-slate-500">A changed price must be approved by an admin before it can be sent. Any edit cancels an earlier approval.</p>
         </Card>
       )}

@@ -2,6 +2,7 @@
 (settings.renewal_reminder_days), the first of which also opens a renewal opportunity. Created once
 each (UNIQUE agreement_id + lead_days), so a dismissed reminder is never recreated."""
 
+import logging
 from datetime import date, timedelta
 
 from sqlalchemy import select, update
@@ -20,6 +21,8 @@ from app.models import (
     OpportunityStage,
     RenewalReminder,
 )
+
+log = logging.getLogger(__name__)
 
 
 def _line(text: str | None) -> str:
@@ -75,10 +78,92 @@ def _insert(ctx: Ctx, a: Agreement, lead_days: int) -> RenewalReminder | None:
     return reminder
 
 
+def _process(ctx, a, today, days, settings, can_mail, counts) -> None:
+    _follow_end_date(ctx, a)
+    fresh = []
+    for n in days:
+        if today >= a.end_date - timedelta(days=n):
+            reminder = _insert(ctx, a, n)
+            if reminder is not None:
+                fresh.append(reminder)
+    if not fresh:
+        return
+    counts["reminders"] += len(fresh)
+    latest = _latest_renewal(ctx, a.id)
+    opp, closed = (latest[0], latest[1] != "open") if latest else (None, False)
+    if opp is None:
+        opp = crm.create_opportunity(
+            ctx,
+            {
+                "organization_id": a.organization_id,
+                "name": f"Renewal: {_line(a.name)}",
+                "kind": "renewal",
+                "monthly_cents": monthly_amount_cents(a),
+                "term_months": 12,
+                "expected_close_date": a.end_date,
+                "agreement_id": a.id,
+            },
+        )
+        counts["opportunities"] += 1
+    for reminder in fresh:
+        reminder.opportunity_id = opp.id
+        if closed:  # the renewal is already won or lost: nothing to chase, nothing to email
+            reminder.status = "done"
+            counts["done"] += 1
+            continue
+        if can_mail:
+            subject, body = _compose(a)
+            email = EmailMessage(
+                direction="out",
+                organization_id=a.organization_id,
+                to_emails=[settings.renewal_email],
+                subject=subject,
+                body_text=body,
+                send_status="pending",
+                auto_generated=True,
+            )
+            ctx.db.add(email)
+            ctx.db.flush()
+            reminder.email_message_id = email.id
+            counts["emails"] += 1
+    ctx.db.flush()
+
+
+def _follow_end_date(ctx: Ctx, a: Agreement) -> None:
+    """The agreement's end date moved after reminders were made: move the open reminders, the open
+    renewal opportunity's expected close date, and rewrite any reminder email still waiting to be
+    sent (an email already sent or failed is left alone)."""
+    stale = (
+        ctx.db.execute(
+            select(RenewalReminder).where(
+                RenewalReminder.agreement_id == a.id,
+                RenewalReminder.status == "open",
+                RenewalReminder.due_on != a.end_date,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not stale:
+        return
+    subject, body = _compose(a)
+    for reminder in stale:
+        reminder.due_on = a.end_date
+        if reminder.email_message_id is not None:
+            mail = ctx.db.get(EmailMessage, reminder.email_message_id)
+            if mail is not None and mail.send_status == "pending":
+                mail.subject = subject
+                mail.body_text = body
+    latest = _latest_renewal(ctx, a.id)
+    if latest is not None and latest[1] == "open":
+        latest[0].expected_close_date = a.end_date
+    ctx.db.flush()
+
+
 def scan(ctx: Ctx, today: date) -> dict:
     """Create the reminders that have come due, plus their renewal opportunity and optional email.
     Idempotent. -> counts of reminders, opportunities, emails and reminders marked done."""
-    counts = {"reminders": 0, "opportunities": 0, "emails": 0, "done": 0}
+    counts = {"reminders": 0, "opportunities": 0, "emails": 0, "done": 0, "errors": 0}
     settings = repo.get_settings_row(ctx.db)
     days = sorted(set(settings.renewal_reminder_days or []), reverse=True)
     can_mail = bool(settings.renewal_email) and repo.get_mailbox_status(ctx.db).mailbox is not None
@@ -92,53 +177,17 @@ def scan(ctx: Ctx, today: date) -> dict:
         .scalars()
     )
     for a in list(agreements):
-        fresh = []
-        for n in days:
-            if today >= a.end_date - timedelta(days=n):
-                reminder = _insert(ctx, a, n)
-                if reminder is not None:
-                    fresh.append(reminder)
-        if not fresh:
+        part = {"reminders": 0, "opportunities": 0, "emails": 0, "done": 0}
+        agreement_id = a.id
+        try:
+            with ctx.db.begin_nested():  # one bad agreement must not undo the others' reminders
+                _process(ctx, a, today, days, settings, can_mail, part)
+        except (Conflict, IntegrityError) as exc:
+            log.warning("renewal reminder for agreement %s skipped: %s", agreement_id, exc)
+            counts["errors"] += 1
             continue
-        counts["reminders"] += len(fresh)
-        latest = _latest_renewal(ctx, a.id)
-        opp, closed = (latest[0], latest[1] != "open") if latest else (None, False)
-        if opp is None:
-            opp = crm.create_opportunity(
-                ctx,
-                {
-                    "organization_id": a.organization_id,
-                    "name": f"Renewal: {_line(a.name)}",
-                    "kind": "renewal",
-                    "monthly_cents": monthly_amount_cents(a),
-                    "term_months": 12,
-                    "expected_close_date": a.end_date,
-                    "agreement_id": a.id,
-                },
-            )
-            counts["opportunities"] += 1
-        for reminder in fresh:
-            reminder.opportunity_id = opp.id
-            if closed:  # the renewal is already won or lost: nothing to chase, nothing to email
-                reminder.status = "done"
-                counts["done"] += 1
-                continue
-            if can_mail:
-                subject, body = _compose(a)
-                email = EmailMessage(
-                    direction="out",
-                    organization_id=a.organization_id,
-                    to_emails=[settings.renewal_email],
-                    subject=subject,
-                    body_text=body,
-                    send_status="pending",
-                    auto_generated=True,
-                )
-                ctx.db.add(email)
-                ctx.db.flush()
-                reminder.email_message_id = email.id
-                counts["emails"] += 1
-        ctx.db.flush()
+        for key, n in part.items():
+            counts[key] += n
 
     closed = (
         select(Opportunity.id)

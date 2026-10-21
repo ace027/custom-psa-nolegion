@@ -82,8 +82,38 @@ def test_agreements_without_a_usable_end_date_get_no_reminders(run, owner, org):
     agreement(owner, org, end=END - timedelta(days=1), name="Ended already")
     with run() as ctx:
         counts = renewals.scan(ctx, END)
-        assert counts == {"reminders": 0, "opportunities": 0, "emails": 0, "done": 0}
+        assert counts == {"reminders": 0, "opportunities": 0, "emails": 0, "done": 0, "errors": 0}
         assert reminders(ctx) == [] and renewal_opps(ctx) == []
+
+
+def test_a_failing_agreement_is_skipped_and_counted_without_losing_the_others(run, owner, org):
+    agreement(owner, org, name="Needs an opportunity")
+    with run() as ctx:
+        for st in ctx.db.execute(
+            select(OpportunityStage).where(OpportunityStage.kind == "open")
+        ).scalars():
+            st.active = False
+        ctx.db.flush()
+        counts = renewals.scan(ctx, END - timedelta(days=89))
+        assert counts["errors"] == 1 and counts["reminders"] == 0
+        assert reminders(ctx) == [] and renewal_opps(ctx) == []
+
+
+def test_one_bad_agreement_does_not_stop_the_next_one(run, owner, org, monkeypatch):
+    bad = agreement(owner, org, name="Bad")
+    good = agreement(owner, org, name="Good")
+    real = crm.create_opportunity
+
+    def flaky(ctx, data):
+        if data["agreement_id"] == bad:
+            raise Conflict("boom")
+        return real(ctx, data)
+
+    monkeypatch.setattr(crm, "create_opportunity", flaky)
+    with run() as ctx:
+        counts = renewals.scan(ctx, END - timedelta(days=89))
+        assert counts["errors"] == 1 and counts["reminders"] == 1
+        assert [r.agreement_id for r in reminders(ctx)] == [good]
 
 
 def test_nothing_is_due_100_days_out(run, owner, org):
@@ -134,7 +164,7 @@ def test_scanning_again_creates_nothing(run, owner, org):
         renewals.scan(ctx, END - timedelta(days=10))
     with run() as ctx:
         counts = renewals.scan(ctx, END - timedelta(days=10))
-        assert counts == {"reminders": 0, "opportunities": 0, "emails": 0, "done": 0}
+        assert counts == {"reminders": 0, "opportunities": 0, "emails": 0, "done": 0, "errors": 0}
         assert len(reminders(ctx)) == 2 and len(renewal_opps(ctx)) == 1
 
 
@@ -303,7 +333,9 @@ def test_moving_the_end_date_after_a_scan_moves_the_reminders_and_the_email(
         renewals.scan(ctx, END - timedelta(days=89))
         assert [r.due_on for r in reminders(ctx)] == [END]
     new_end = END + timedelta(days=30)
-    owner.execute(text("UPDATE agreements SET end_date = :e WHERE id = :i"), {"e": new_end, "i": ag})
+    owner.execute(
+        text("UPDATE agreements SET end_date = :e WHERE id = :i"), {"e": new_end, "i": ag}
+    )
     with run() as ctx:
         renewals.scan(ctx, END - timedelta(days=80))
         assert all(r.due_on == new_end for r in reminders(ctx) if r.status == "open")
