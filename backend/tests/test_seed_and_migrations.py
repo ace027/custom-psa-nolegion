@@ -12,12 +12,12 @@ def test_seed_is_idempotent_and_usable(login, owner):
     seed.run()
     assert owner.execute(text("SELECT count(*) FROM organizations")).scalar_one() == 3
     assert owner.execute(text("SELECT count(*) FROM users")).scalar_one() == 4
-    assert owner.execute(text("SELECT count(*) FROM tickets")).scalar_one() == 5
+    assert owner.execute(text("SELECT count(*) FROM tickets")).scalar_one() == 12
     tech = login("tech", "tech@example.com")
     assert tech.get("/api/organizations").json()["total"] == 3
     d = tech.get("/api/dashboard").json()
-    assert d["counts"]["open"] == 5 and d["counts"]["needs_triage"] == 1
-    assert len(d["my_open"]) == 2
+    assert d["counts"]["open"] == 12 and d["counts"]["needs_triage"] == 1
+    assert len(d["my_open"]) == 6
     assert owner.execute(text("SELECT count(*) FROM agreements")).scalar_one() == 4
     assert owner.execute(text("SELECT count(*) FROM product_charges")).scalar_one() == 1
     assert owner.execute(text("SELECT count(*) FROM assets")).scalar_one() == 5
