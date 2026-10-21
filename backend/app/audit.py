@@ -10,7 +10,7 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from app import db as dbmod
-from app.context import client_ip_var, request_id_var
+from app.context import api_key_id_var, client_ip_var, request_id_var
 from app.models import AuditLog, User
 
 auth_logger = logging.getLogger("psa.auth")  # separate logger so it can be shipped to a SIEM
@@ -44,6 +44,9 @@ def record(
     organization_id: int | None = None,
     detail: dict | None = None,
 ) -> None:
+    key_id = db.info.get("api_key_id") or api_key_id_var.get()
+    if key_id is not None:
+        detail = {**(detail or {}), "api_key_id": key_id}
     db.add(
         AuditLog(
             actor_type="user" if actor else "system",

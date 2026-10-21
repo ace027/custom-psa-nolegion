@@ -1652,3 +1652,29 @@ class ExpenseOut(BaseModel):
     invoiced: bool
     voided_at: datetime | None
     receipts: list[ReceiptOut]
+
+
+# ---- api keys ----
+class ApiKeyCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    permissions: list[str]
+    expires_in_days: int = Field(365, ge=1, le=730)
+
+
+class ApiKeyOut(BaseModel):
+    id: int
+    name: str
+    prefix: str
+    permissions: list[str]
+    owner_id: int
+    owner_name: str
+    expires_at: datetime | None
+    revoked_at: datetime | None
+    last_used_at: datetime | None
+    created_at: datetime
+    state: Literal["active", "expired", "revoked"]
+
+
+class ApiKeyCreated(BaseModel):
+    key: ApiKeyOut
+    token: str

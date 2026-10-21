@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.context import client_ip_var, request_id_var
 from app.errors import Conflict, Forbidden, NotFound
 from app.routers import (
+    api_keys,
     assets,
     auth,
     billing,
@@ -60,7 +61,13 @@ def create_app() -> FastAPI:
         client_ip_var.set(request.client.host if request.client else None)
         # CSRF defense in depth on top of SameSite=Lax: a cross-site form/fetch cannot add this
         # header without a CORS preflight, which we never allow.
-        if request.method in UNSAFE and request.headers.get("x-requested-with") != "psa":
+        # Bearer API keys are never attached by browsers on their own, so they are exempt.
+        bearer_key = request.headers.get("authorization", "").startswith("Bearer psa_")
+        if (
+            request.method in UNSAFE
+            and not bearer_key
+            and request.headers.get("x-requested-with") != "psa"
+        ):
             return JSONResponse({"detail": "Missing X-Requested-With header"}, status_code=403)
         response = await call_next(request)
         response.headers["X-Request-ID"] = rid
@@ -117,6 +124,7 @@ def create_app() -> FastAPI:
         oncall.router,
         expenses.router,
         portal.router,
+        api_keys.router,
     ):
         app.include_router(r, prefix="/api")
     return app

@@ -92,3 +92,4 @@ result: success
 pr: N/A
 verification: 6/6 passed
 | O-050 | 2026-10-21 | dev | 7 | 07-01 | engineering-backend-architect | implementation | success | 2 | automation-api, engineering | Automation & API schema, models and permissions: Complete |
+| O-051 | 2026-10-21 | dev | 7 | 07-02 | engineering-security-engineer | implementation | success | 3 | automation-api, engineering | API keys: hashed, scoped, revocable bearer auth: Complete |

@@ -930,3 +930,22 @@ export interface LateFeePreview {
   max_per_invoice: number;
   rows: LateFeeRow[];
 }
+
+// ---- api keys ----
+export interface ApiKey {
+  id: number;
+  name: string;
+  prefix: string;
+  permissions: string[];
+  owner_id: number;
+  owner_name: string;
+  expires_at: string | null;
+  revoked_at: string | null;
+  last_used_at: string | null;
+  created_at: string;
+  state: "active" | "expired" | "revoked";
+}
+export const listApiKeys = () => api<ApiKey[]>("/api-keys");
+export const createApiKey = (json: { name: string; permissions: string[]; expires_in_days: number }) =>
+  api<{ key: ApiKey; token: string }>("/api-keys", { method: "POST", json });
+export const revokeApiKey = (id: number) => api<ApiKey>(`/api-keys/${id}/revoke`, { method: "POST" });
