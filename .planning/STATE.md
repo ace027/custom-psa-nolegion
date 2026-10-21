@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 8 of 13 (complete)
-- **Status**: Phase 8 complete — review passed (3 cycle(s))
-- **Last Activity**: Phase 8 review (2026-10-21)
+- **Phase**: 9 of 13 (planned)
+- **Status**: Phase 9 planned -- 3 plans across 3 waves
+- **Last Activity**: Phase 9 planning (2026-10-21)
 
 ## Progress
 ```
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:plan 9` to plan Phase 9: CRM & renewals
+Run `/triad:build` to execute Phase 9: CRM & renewals
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -37,6 +37,7 @@ Run `/triad:plan 9` to plan Phase 9: CRM & renewals
 - Phase 6 issue: #10 (closes with PR #11); PR #11 dev -> main
 - Phase 7 issue: #12
 - Phase 8 issue: #13
+- Phase 9 issue: #14
 
 ## Phase 2 Results
 (build started 2026-10-09)
