@@ -34,6 +34,7 @@ export default function Renewals() {
       <ErrorMsg error={q.error ?? dismiss.error} />
       {q.data && rows.length === 0 && <p className="text-sm text-slate-500">No renewals are due. Reminders appear before an agreement ends.</p>}
       {rows.length > 0 && (
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <caption className="sr-only">Open renewal reminders</caption>
           <thead>
@@ -61,6 +62,7 @@ export default function Renewals() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

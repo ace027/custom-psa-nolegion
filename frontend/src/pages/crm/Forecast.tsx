@@ -31,6 +31,7 @@ export default function Forecast() {
           {f.buckets.length === 0 ? (
             <p className="text-sm text-slate-500">No open opportunities to forecast.</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <caption className="sr-only">Forecast by expected close month</caption>
               <thead>
@@ -47,6 +48,7 @@ export default function Forecast() {
                 {row({ ...f.total, label: "Total" }, true)}
               </tbody>
             </table>
+            </div>
           )}
           <p className="text-xs text-slate-500">Estimates only. Weighted monthly is monthly times the stage probability; nothing here is billed.</p>
         </>

@@ -275,3 +275,43 @@ def test_a_lost_renewal_is_not_reopened_either(run, owner, org):
     with run() as ctx:
         assert renewals.scan(ctx, END - timedelta(days=29))["opportunities"] == 0
         assert len(renewal_opps(ctx)) == 1
+
+
+def test_a_repriced_agreement_does_not_spawn_a_renewal_for_the_old_one(run, owner, org):
+    eff = END - timedelta(days=40)  # first of the new price; the old agreement ends the day before
+    old = agreement(owner, org, end=eff - timedelta(days=1), name="Old price")
+    owner.execute(
+        text(
+            "INSERT INTO agreements (organization_id, name, type, unit_price_cents, quantity, "
+            "start_date, end_date, notes) VALUES (:o, 'New price', 'flat', 120000, 1, :s, :e, "
+            "'Created from quote Q-1')"
+        ),
+        {"o": org, "s": eff, "e": END},
+    )
+    with run() as ctx:
+        renewals.scan(ctx, eff - timedelta(days=10))
+        assert [r for r in reminders(ctx) if r.agreement_id == old] == []
+        assert [o for o in renewal_opps(ctx) if o.agreement_id == old] == []
+
+
+def test_moving_the_end_date_after_a_scan_moves_the_reminders_and_the_email(
+    run, owner, org, mail_ready
+):
+    ag = agreement(owner, org)
+    owner.execute(text("UPDATE settings SET renewal_email = 'boss@msp.example'"))
+    with run() as ctx:
+        renewals.scan(ctx, END - timedelta(days=89))
+        assert [r.due_on for r in reminders(ctx)] == [END]
+    new_end = END + timedelta(days=30)
+    owner.execute(text("UPDATE agreements SET end_date = :e WHERE id = :i"), {"e": new_end, "i": ag})
+    with run() as ctx:
+        renewals.scan(ctx, END - timedelta(days=80))
+        assert all(r.due_on == new_end for r in reminders(ctx) if r.status == "open")
+    with run() as ctx:
+        renewals.scan(ctx, new_end - timedelta(days=89))
+        open_90 = [r for r in reminders(ctx) if r.status == "open" and r.lead_days == 90]
+        assert len(open_90) == 1 and open_90[0].due_on == new_end
+        subjects = [m.subject for m in ctx.db.execute(select(EmailMessage)).scalars()]
+        assert any(new_end.isoformat() in s for s in subjects)
+        [o] = renewal_opps(ctx)
+        assert o.expected_close_date == new_end
