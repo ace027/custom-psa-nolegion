@@ -111,3 +111,5 @@ verification: 6/6 passed
 | O-067 | 2026-10-21 | dev | 8 | 08-00 | engineering-senior-developer | quality-review | success | 4 | review, engineering | Phase 8 review PASSED in 3 cycle(s), 9 finding(s) |
 | O-068 | 2026-10-21 | dev | 8 | 08-00 | engineering-frontend-developer | quality-review | success | 4 | review, engineering | Phase 8 review PASSED in 3 cycle(s), 9 finding(s) |
 | O-069 | 2026-10-21 | dev | 9 | 09-01 | engineering-backend-architect | implementation | success | 2 | crm-renewals, engineering | CRM schema, stages and permissions: Complete |
+| O-070 | 2026-10-21 | dev | 9 | 09-02 | engineering-backend-architect | implementation | failed | 5 | crm-renewals, engineering | CRM service, quote link, forecast and renewal job: Partial |
+| O-071 | 2026-10-21 | dev | 9 | 09-02 | engineering-backend-architect | implementation | success | 2 | crm-renewals, engineering | CRM service, quote link, forecast and renewal job: Complete |
