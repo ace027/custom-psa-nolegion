@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 9 of 13 (planned)
-- **Status**: Phase 9 planned -- 3 plans across 3 waves
-- **Last Activity**: Phase 9 planning (2026-10-21)
+- **Phase**: 9 of 13 (executing)
+- **Status**: Phase 9 executing — Plan 09-01 complete
+- **Last Activity**: Plan 09-01 execution (2026-10-21)
 
 ## Progress
 ```
-[#############.......] 65% — 29/44 plans complete
+[#############.......] 68% — 30/44 plans complete
 ```
 
 ## Recent Decisions
@@ -100,3 +100,7 @@ Run `/triad:build` to execute Phase 9: CRM & renewals
 - Plan 08-04 (Wave 3): Projects UI: list, detail, board view, budget card, seed and verify checklist — PARTIAL: The UI, tests, seed data and checklist are done. Typecheck, the full vitest run (259 tests), build and ruff all pass. tests/test_seed_and_migrations.py now fails, and I couldn't update it because it i
 - Plan 08-03 (Wave 3): Project billing: fixed fee up front and capped T&M — Complete with Warnings
 - Plan 08-04 (Wave 3): Projects UI: list, detail, board view, budget card, seed and verify checklist — Complete
+
+## Phase 9 Results
+(build started 2026-10-21)
+- Plan 09-01 (Wave 1): CRM schema, stages and permissions — Complete
