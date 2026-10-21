@@ -7,7 +7,7 @@ import App from "./App";
 const json = (body: unknown) => () => new Response(JSON.stringify(body), { status: 200 });
 const me = (role: string, permissions: string[]) => ({ id: 1, email: "u@example.com", display_name: "Una User", role, permissions });
 const READ = ["org:read", "user:read", "ticket:read", "billing:read"];
-const row = { invoices: 2, time_cents: 0, product_cents: 0, agreement_cents: 30000, manual_cents: 0, subtotal_cents: 30000, tax_cents: 0, total_cents: 30000 };
+const row = { invoices: 2, time_cents: 0, product_cents: 0, agreement_cents: 30000, project_cents: 250000, manual_cents: 0, subtotal_cents: 280000, tax_cents: 0, total_cents: 280000 };
 const handlers = (perms: string[]): Record<string, () => Response> => ({
   "/api/auth/me": json(me("billing", perms)),
   "/api/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
@@ -28,6 +28,8 @@ describe("reports", () => {
     go("/billing/reports", handlers([...READ, "report:read"]));
     expect(await screen.findByText("Revenue")).toBeInTheDocument();
     expect((await screen.findAllByText("$300.00")).length).toBeGreaterThan(0);
+    expect(await screen.findByRole("columnheader", { name: "Projects" })).toBeInTheDocument();
+    expect((await screen.findAllByText("$2,500.00")).length).toBeGreaterThan(0);
     expect(await screen.findByText(/0\.50 unpriced/)).toBeInTheDocument();
     const links = screen.getAllByRole("link", { name: "Download CSV" }).map((a) => a.getAttribute("href"));
     expect(links).toContain("/api/reports/revenue.csv");

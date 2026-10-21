@@ -46,14 +46,14 @@ function RevenueCard() {
         <>
           <p className="my-2 text-xs text-slate-500">Finalized, non-void invoices by invoice date, {d.start} to {d.end}. Excludes tax from the kind columns; Total includes it.</p>
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-1">Client</th><th className={num}>Invoices</th><th className={num}>Time</th><th className={num}>Products</th><th className={num}>Agreements</th><th className={num}>Other</th><th className={num}>Tax</th><th className={num}>Total</th></tr></thead>
+            <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-1">Client</th><th className={num}>Invoices</th><th className={num}>Time</th><th className={num}>Products</th><th className={num}>Agreements</th><th className={num}>Projects</th><th className={num}>Other</th><th className={num}>Tax</th><th className={num}>Total</th></tr></thead>
             <tbody>
               {d.clients.map((c) => (
-                <tr key={c.organization_id} className="border-b border-slate-100"><td className="p-1">{c.organization_name}</td><td className={num}>{c.invoices}</td><td className={num}>{money(c.time_cents)}</td><td className={num}>{money(c.product_cents)}</td><td className={num}>{money(c.agreement_cents)}</td><td className={num}>{money(c.manual_cents)}</td><td className={num}>{money(c.tax_cents)}</td><td className={num + " font-medium"}>{money(c.total_cents)}</td></tr>
+                <tr key={c.organization_id} className="border-b border-slate-100"><td className="p-1">{c.organization_name}</td><td className={num}>{c.invoices}</td><td className={num}>{money(c.time_cents)}</td><td className={num}>{money(c.product_cents)}</td><td className={num}>{money(c.agreement_cents)}</td><td className={num}>{money(c.project_cents)}</td><td className={num}>{money(c.manual_cents)}</td><td className={num}>{money(c.tax_cents)}</td><td className={num + " font-medium"}>{money(c.total_cents)}</td></tr>
               ))}
-              {d.clients.length === 0 && <tr><td colSpan={8} className="p-2 text-slate-500">No invoices in this range.</td></tr>}
+              {d.clients.length === 0 && <tr><td colSpan={9} className="p-2 text-slate-500">No invoices in this range.</td></tr>}
             </tbody>
-            {d.clients.length > 0 && <tfoot className="font-semibold"><tr><td className="p-1">Total</td><td className={num}>{d.totals.invoices}</td><td className={num}>{money(d.totals.time_cents)}</td><td className={num}>{money(d.totals.product_cents)}</td><td className={num}>{money(d.totals.agreement_cents)}</td><td className={num}>{money(d.totals.manual_cents)}</td><td className={num}>{money(d.totals.tax_cents)}</td><td className={num}>{money(d.totals.total_cents)}</td></tr></tfoot>}
+            {d.clients.length > 0 && <tfoot className="font-semibold"><tr><td className="p-1">Total</td><td className={num}>{d.totals.invoices}</td><td className={num}>{money(d.totals.time_cents)}</td><td className={num}>{money(d.totals.product_cents)}</td><td className={num}>{money(d.totals.agreement_cents)}</td><td className={num}>{money(d.totals.project_cents)}</td><td className={num}>{money(d.totals.manual_cents)}</td><td className={num}>{money(d.totals.tax_cents)}</td><td className={num}>{money(d.totals.total_cents)}</td></tr></tfoot>}
           </table>
           <h3 className="mt-4 text-sm font-medium">By month</h3>
           <Bars rows={d.months.map((m) => ({ label: m.month.slice(0, 7), cents: m.total_cents }))} />
