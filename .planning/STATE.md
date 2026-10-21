@@ -34,7 +34,7 @@ Run `/triad:plan 7` to plan Phase 7: Automation & API
 - Phase 3 issue: #5 (closed); merged to main in PR #4
 - Phase 4 issue: #6 (closed); merged to main in PR #7
 - Phase 5 issue: #8 (closed); merged to main in PR #9
-- Phase 6 issue: #10 (open)
+- Phase 6 issue: #10 (closes with PR #11); PR #11 dev -> main
 
 ## Phase 2 Results
 (build started 2026-10-09)
