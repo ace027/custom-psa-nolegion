@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, datetime
 from typing import Any, Generic, Literal, TypeVar
 
@@ -1678,3 +1679,57 @@ class ApiKeyOut(BaseModel):
 class ApiKeyCreated(BaseModel):
     key: ApiKeyOut
     token: str
+
+
+# ---- webhooks ----
+class WebhookCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    kind: str
+    url: str = Field(min_length=1, max_length=2000)
+    events: list[str]
+
+
+class WebhookPatch(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=100)
+    url: str | None = Field(None, min_length=1, max_length=2000)
+    events: list[str] | None = None
+    enabled: bool | None = None
+
+
+class WebhookOut(BaseModel):
+    id: int
+    name: str
+    kind: Literal["generic", "teams"]
+    url_host: str
+    url_preview: str
+    events: list[str]
+    enabled: bool
+    consecutive_failures: int
+    last_success_at: datetime | None
+    last_failure_at: datetime | None
+    created_at: datetime
+
+
+class WebhookCreated(BaseModel):
+    endpoint: WebhookOut
+    secret: str
+
+
+class WebhookDeliveryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    endpoint_id: int
+    event_id: uuid.UUID
+    event_type: str
+    status: Literal["pending", "delivered", "failed"]
+    attempts: int
+    next_attempt_at: datetime
+    last_status_code: int | None
+    last_error: str | None
+    delivered_at: datetime | None
+    created_at: datetime
+
+
+class WebhookTestOut(BaseModel):
+    queued: int

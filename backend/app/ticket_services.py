@@ -184,6 +184,13 @@ def create_ticket(
         notifications.notify(
             ctx, ticket.assignee_id, ticket, "assigned", now().isoformat(), actor=ctx.user
         )
+    from app import events
+
+    events.emit(ctx, "ticket.created", ticket)
+    if ticket.assignee_id:
+        events.emit(
+            ctx, "ticket.assigned", ticket, changes={"assignee_id": [None, ticket.assignee_id]}
+        )
     return ticket
 
 
@@ -288,6 +295,29 @@ def update_ticket(ctx: Ctx, ticket_id: int, data: dict) -> Ticket:
         notifications.notify(
             ctx, ticket.assignee_id, ticket, "assigned", now().isoformat(), actor=ctx.user
         )
+    from app import events
+
+    if ticket.assignee_id and ticket.assignee_id != before["assignee_id"]:
+        events.emit(
+            ctx,
+            "ticket.assigned",
+            ticket,
+            changes={"assignee_id": [before["assignee_id"], ticket.assignee_id]},
+        )
+    if ticket.status != before["status"]:
+        events.emit(
+            ctx,
+            "ticket.status_changed",
+            ticket,
+            changes={"status": [before["status"], ticket.status]},
+        )
+    if ticket.priority_id != before["priority_id"]:
+        events.emit(
+            ctx,
+            "ticket.priority_changed",
+            ticket,
+            changes={"priority_id": [before["priority_id"], ticket.priority_id]},
+        )
     return ticket
 
 
@@ -387,6 +417,15 @@ def resolve_by_system(ctx: Ctx, ticket: Ticket) -> None:
         after={"status": ticket.status},
         organization_id=ticket.organization_id,
     )
+    if ticket.status != before["status"]:
+        from app import events
+
+        events.emit(
+            ctx,
+            "ticket.status_changed",
+            ticket,
+            changes={"status": [before["status"], ticket.status]},
+        )
 
 
 # ---- time ----------------------------------------------------------------------------------
@@ -554,6 +593,9 @@ def customer_reply(
         notifications.notify(
             ctx, ticket.assignee_id, ticket, "customer_reply", str(email.id), actor=None
         )
+    from app import events
+
+    events.emit(ctx, "ticket.customer_reply", ticket)
     return note
 
 

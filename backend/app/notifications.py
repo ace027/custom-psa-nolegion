@@ -6,7 +6,7 @@ to be configured (otherwise nothing is queued, so there is no backlog to flush l
 Notification subjects deliberately contain no `[#12345]` token: a reply to one must not be mistaken
 for a customer reply on that ticket."""
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from app import repositories as repo
@@ -111,7 +111,39 @@ def scan_sla(ctx: Ctx) -> int:
         state = sla_state(ticket, cal, settings.sla_at_risk_percent, t)
         if state in ("at_risk", "breached"):
             sent += notify(ctx, ticket.assignee_id, ticket, f"sla_{state}", state)
+    scan_breach_events(ctx)
     return sent + scan_escalations(ctx)
+
+
+def scan_breach_events(ctx: Ctx) -> int:
+    """Emit ticket.sla_breached once per ticket (assigned or not), then remember that we did."""
+    from app import events
+
+    settings = repo.get_settings_row(ctx.db)
+    cal, t = calendar(ctx), now()
+    tickets = list(
+        ctx.db.execute(
+            select(Ticket).where(
+                Ticket.sla_breached_event_at.is_(None), Ticket.status.notin_(("resolved", "closed"))
+            )
+        )
+        .unique()
+        .scalars()
+    )
+    emitted = 0
+    for ticket in tickets:
+        if sla_state(ticket, cal, settings.sla_at_risk_percent, t) != "breached":
+            continue
+        # a core update keeps updated_at as it was: this is bookkeeping, not an edit
+        ctx.db.execute(
+            update(Ticket)
+            .where(Ticket.id == ticket.id)
+            .values(sla_breached_event_at=t, updated_at=Ticket.updated_at)
+        )
+        ticket.sla_breached_event_at = t
+        events.emit(ctx, "ticket.sla_breached", ticket)
+        emitted += 1
+    return emitted
 
 
 def scan_escalations(ctx: Ctx) -> int:

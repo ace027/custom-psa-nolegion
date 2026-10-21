@@ -169,6 +169,9 @@ def _create(
     )
     ctx.db.add(row)
     ctx.db.flush()
+    from app import events
+
+    events.emit(ctx, "rmm_alert.opened", ticket, alert=row)
     if previous_ticket is not None and previous_ticket.organization_id == ticket.organization_id:
         ticket_links.link_related(ctx, ticket.organization_id, ticket, previous_ticket)
     audit.record(
@@ -326,6 +329,10 @@ def _clear(ctx: Ctx, row: RmmAlert, rule: str, now: datetime, res: PollResult) -
         organization_id=row.organization_id,
         detail={"rule": rule, "resolution": row.resolution},
     )
+    if ticket is not None:
+        from app import events
+
+        events.emit(ctx, "rmm_alert.cleared", ticket, alert=row)
 
 
 def _set_error(ctx: Ctx, integration: Integration, error: str | None, now: datetime) -> bool:

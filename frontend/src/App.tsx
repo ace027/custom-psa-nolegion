@@ -25,6 +25,7 @@ import Reports from "./pages/billing/Reports";
 import { RunList, RunPage } from "./pages/billing/Runs";
 import Dashboard from "./pages/Dashboard";
 import ApiKeys from "./pages/ApiKeys";
+import Webhooks from "./pages/Webhooks";
 import Integrations from "./pages/Integrations";
 import WarrantyReport from "./pages/WarrantyReport";
 import OnCall from "./pages/OnCall";
@@ -100,6 +101,7 @@ function Layout() {
           <NavLink to="/users" className={link}>Users</NavLink>
           {can(me, "integration:manage") && <NavLink to="/integrations" className={link}>Integrations</NavLink>}
           {can(me, "apikey:manage") && <NavLink to="/api-keys" className={link}>API keys</NavLink>}
+          {can(me, "automation:manage") && <NavLink to="/webhooks" className={link}>Webhooks</NavLink>}
           {can(me, "config:manage") && <NavLink to="/settings" className={link}>Settings</NavLink>}
           {can(me, "audit:read") && <NavLink to="/audit" className={link}>Audit log</NavLink>}
         </nav>
@@ -178,6 +180,7 @@ function StaffApp() {
         )}
         <Route path="/warranty" element={can(me, "report:read") ? <WarrantyReport /> : <Navigate to="/" replace />} />
         <Route path="/api-keys" element={can(me, "apikey:manage") ? <ApiKeys /> : <Navigate to="/" replace />} />
+        <Route path="/webhooks" element={can(me, "automation:manage") ? <Webhooks /> : <Navigate to="/" replace />} />
         <Route path="/integrations" element={can(me, "integration:manage") ? <Integrations /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/users" element={<Users />} />

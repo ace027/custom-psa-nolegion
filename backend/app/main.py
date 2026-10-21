@@ -36,6 +36,7 @@ from app.routers import (
     tickets,
     timekeeping,
     users,
+    webhooks,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -125,6 +126,7 @@ def create_app() -> FastAPI:
         expenses.router,
         portal.router,
         api_keys.router,
+        webhooks.router,
     ):
         app.include_router(r, prefix="/api")
     return app

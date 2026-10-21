@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     credentials_key: str = ""
 
+    # Outbound webhooks refuse private, loopback and link-local destinations (SSRF guard). Set
+    # WEBHOOK_ALLOW_PRIVATE_HOSTS=true only to reach a LAN service such as a self-hosted n8n.
+    webhook_allow_private_hosts: bool = False
+
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"

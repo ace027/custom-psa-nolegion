@@ -131,6 +131,21 @@ def alert_jobs() -> None:
         log.exception("alert jobs failed")
 
 
+def webhook_jobs() -> None:
+    """Send due webhook deliveries (signed, with retries). A failure never raises."""
+    from app import db as dbmod
+    from app.webhooks import deliver_due
+
+    try:
+        with dbmod.new_session() as db:
+            dbmod.set_org_scope(db, "all")
+            counts = deliver_due(db)
+        if any(counts.values()):
+            log.info("webhook deliveries: %s", counts)
+    except Exception:
+        log.exception("webhook jobs failed")
+
+
 def calendar_jobs(client) -> None:
     """Push pending appointment changes to Outlook (idempotent; a failure never raises)."""
     from datetime import UTC, datetime
@@ -199,6 +214,7 @@ def main(argv: list[str]) -> int:
             notify_jobs()
             integration_jobs()
             alert_jobs()
+            webhook_jobs()
             if "--once" in argv:
                 break
             for _ in range(60):
@@ -216,6 +232,7 @@ def main(argv: list[str]) -> int:
         notify_jobs()
         integration_jobs()
         alert_jobs()
+        webhook_jobs()
         if "--once" in argv:
             break
         for _ in range(s.mail_poll_seconds):

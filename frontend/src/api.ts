@@ -949,3 +949,43 @@ export const listApiKeys = () => api<ApiKey[]>("/api-keys");
 export const createApiKey = (json: { name: string; permissions: string[]; expires_in_days: number }) =>
   api<{ key: ApiKey; token: string }>("/api-keys", { method: "POST", json });
 export const revokeApiKey = (id: number) => api<ApiKey>(`/api-keys/${id}/revoke`, { method: "POST" });
+
+// ---- webhooks ----
+export interface Webhook {
+  id: number;
+  name: string;
+  kind: "generic" | "teams";
+  url_host: string;
+  url_preview: string;
+  events: string[];
+  enabled: boolean;
+  consecutive_failures: number;
+  last_success_at: string | null;
+  last_failure_at: string | null;
+  created_at: string;
+}
+export interface WebhookDelivery {
+  id: number;
+  endpoint_id: number;
+  event_id: string;
+  event_type: string;
+  status: "pending" | "delivered" | "failed";
+  attempts: number;
+  next_attempt_at: string;
+  last_status_code: number | null;
+  last_error: string | null;
+  delivered_at: string | null;
+  created_at: string;
+}
+export const listWebhooks = () => api<Webhook[]>("/webhooks");
+export const createWebhook = (json: { name: string; kind: string; url: string; events: string[] }) =>
+  api<{ endpoint: Webhook; secret: string }>("/webhooks", { method: "POST", json });
+export const updateWebhook = (id: number, json: Partial<{ name: string; url: string; events: string[]; enabled: boolean }>) =>
+  api<Webhook>(`/webhooks/${id}`, { method: "PATCH", json });
+export const rotateWebhookSecret = (id: number) =>
+  api<{ endpoint: Webhook; secret: string }>(`/webhooks/${id}/rotate-secret`, { method: "POST" });
+export const testWebhook = (id: number) => api<{ queued: number }>(`/webhooks/${id}/test`, { method: "POST" });
+export const listWebhookDeliveries = (id: number, status?: string, limit = 50) =>
+  api<WebhookDelivery[]>(`/webhooks/${id}/deliveries?${status ? `status=${status}&` : ""}limit=${limit}`);
+export const retryWebhookDelivery = (id: number) =>
+  api<WebhookDelivery>(`/webhooks/deliveries/${id}/retry`, { method: "POST" });
