@@ -104,26 +104,30 @@ export default function RmmAlertsCard({ integration: i, onSaved }: { integration
         <ErrorMsg error={alerts.error} />
         {alerts.data && (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table aria-label="RMM alerts" className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 text-slate-500">
-                <tr><th className="p-1">Severity</th><th>Client</th><th>Device</th><th>Message</th><th>Times</th><th>First seen</th><th>Cleared</th><th>Resolution</th><th>Ticket</th></tr>
+                <tr>
+                  {["Severity", "Client", "Device", "Message", "Times", "First seen", "Cleared", "Resolution", "Ticket"].map((h) => (
+                    <th key={h} scope="col" className="px-2 py-1">{h}</th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {alerts.data.map((a) => (
                   <tr key={a.id} className="border-b border-slate-100 align-top">
-                    <td className="p-1"><span className={`rounded px-1.5 text-xs ${SEV_STYLE[a.severity] ?? "bg-slate-100 text-slate-700"}`}>{a.severity}</span></td>
-                    <td>{a.organization_name}</td>
-                    <td>{a.asset_name}</td>
-                    <td className="break-words">{a.message}</td>
-                    <td>{a.occurrences}</td>
-                    <td>{fmt(a.first_seen_at)}</td>
-                    <td>{a.cleared_at ? fmt(a.cleared_at) : "—"}</td>
-                    <td>{a.resolution ? (RESOLUTION[a.resolution] ?? a.resolution) : "—"}</td>
-                    <td>{a.ticket_id ? <Link className="text-blue-700 hover:underline" to={`/tickets/${a.ticket_id}`}>#{a.ticket_number}</Link> : "—"}</td>
+                    <td className="px-2 py-1"><span className={`rounded px-1.5 text-xs ${SEV_STYLE[a.severity] ?? "bg-slate-100 text-slate-700"}`}>{a.severity}</span></td>
+                    <td className="px-2 py-1">{a.organization_name}</td>
+                    <td className="px-2 py-1">{a.asset_name}</td>
+                    <td className="break-words px-2 py-1">{a.message}</td>
+                    <td className="px-2 py-1">{a.occurrences}</td>
+                    <td className="px-2 py-1">{fmt(a.first_seen_at)}</td>
+                    <td className="px-2 py-1">{a.cleared_at ? fmt(a.cleared_at) : "—"}</td>
+                    <td className="px-2 py-1">{a.resolution ? (RESOLUTION[a.resolution] ?? a.resolution) : "—"}</td>
+                    <td className="px-2 py-1">{a.ticket_id ? <Link className="text-blue-700 hover:underline" to={`/tickets/${a.ticket_id}`}>#{a.ticket_number}</Link> : "—"}</td>
                   </tr>
                 ))}
                 {alerts.data.length === 0 && (
-                  <tr><td colSpan={9} className="p-2 text-slate-500">{state === "open" ? "No open alerts." : "No alerts."}</td></tr>
+                  <tr><td colSpan={9} className="px-2 py-2 text-slate-500">{state === "open" ? "No open alerts." : "No alerts."}</td></tr>
                 )}
               </tbody>
             </table>

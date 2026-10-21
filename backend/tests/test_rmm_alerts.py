@@ -133,6 +133,14 @@ def test_unmapped_device_is_skipped(env, owner):
     assert res.skipped_unmapped == 1 and tickets(owner) == [] and alert_rows(owner) == []
 
 
+def test_retired_asset_is_skipped(env, owner):
+    owner.execute(text("UPDATE assets SET retired_at = now()"))
+    owner.commit()
+    env.vendor.alerts = [alert("1")]
+    res = poll(env.iid)
+    assert res.skipped_unmapped == 1 and tickets(owner) == [] and alert_rows(owner) == []
+
+
 def test_a_single_priority_serves_critical_and_major(env, owner):
     owner.execute(text("UPDATE priorities SET archived_at = now() WHERE name <> 'Normal'"))
     env.vendor.alerts = [alert("1", "a", severity="CRITICAL"), alert("2", "b", severity="MAJOR")]

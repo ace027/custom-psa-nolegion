@@ -119,9 +119,14 @@ def alert_jobs() -> None:
             dbmod.set_org_scope(db, "all")
             ctx = Ctx(db=db, user=None, scope=Scope.all())
             for integration in due(ctx, datetime.now(UTC)):
-                result = poll(ctx, integration)
-                db.commit()  # one commit per integration so a later failure keeps earlier polls
-                log.info("polled alerts for %s: %s", integration.name, result)
+                name = integration.name
+                try:
+                    result = poll(ctx, integration)
+                    db.commit()  # one commit per integration so a later failure keeps earlier polls
+                    log.info("polled alerts for %s: %s", name, result)
+                except Exception:
+                    db.rollback()
+                    log.exception("alert poll for %s failed", name)
     except Exception:
         log.exception("alert jobs failed")
 

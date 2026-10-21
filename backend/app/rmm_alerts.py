@@ -99,7 +99,10 @@ def priority_for(ctx: Ctx, severity: str) -> Priority:
         return active[0]
     if severity == "MAJOR" and active:
         return active[1] if len(active) > 1 else active[0]
-    return repo.get_default(ctx.db, Priority) or active[0]
+    chosen = repo.get_default(ctx.db, Priority) or (active[0] if active else None)
+    if chosen is None:
+        raise ValueError("no priority configured")
+    return chosen
 
 
 def _description(alert: RemoteAlert, asset: Asset, first_seen: datetime) -> str:
@@ -192,6 +195,7 @@ def _apply_alert(
         .where(
             AssetSource.integration_id == integration.id,
             AssetSource.external_id == alert.device_external_id,
+            Asset.retired_at.is_(None),
         )
     )
     if asset is None:
@@ -351,6 +355,8 @@ def poll(
 
     integration.alerts_polled_at = now
     integration.alerts_requested_at = None
-    integration.alerts_last_error = None
+    integration.alerts_last_error = (
+        f"{res.failed} alert(s) could not be processed; see the server log" if res.failed else None
+    )
     ctx.db.flush()
     return res
