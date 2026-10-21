@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 9 of 13 (executed, pending review)
-- **Status**: Phase 9 under review — cycle 1/3, 0 blocker(s) remaining
-- **Last Activity**: Phase 9 review cycle 1 (2026-10-21)
+- **Phase**: 9 of 13 (complete)
+- **Status**: Phase 9 complete — review passed (2 cycle(s))
+- **Last Activity**: Phase 9 review (2026-10-21)
 
 ## Progress
 ```
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Fix the unresolved findings in 09-REVIEW.md, accept the phase as is, or re-plan; then run `/triad:review --phase 9`
+Run `/triad:plan 10` to plan Phase 10: Procurement & inventory
 
 ## Phase 1 Results
 (build started 2026-10-09)
