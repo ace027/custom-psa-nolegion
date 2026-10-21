@@ -27,6 +27,7 @@ from app.models import (
     AssetSource,
     Integration,
     IntegrationClientMap,
+    Organization,
     Priority,
     RmmAlert,
     Ticket,
@@ -224,7 +225,10 @@ def _apply_alert(
             & (IntegrationClientMap.psa_organization_id == Asset.organization_id)
             & (IntegrationClientMap.ignored.is_(False)),
         )
+        .join(Organization, Organization.id == Asset.organization_id)
         .where(
+            Organization.status == "active",
+            Organization.archived_at.is_(None),
             AssetSource.integration_id == integration.id,
             AssetSource.external_id == alert.device_external_id,
             Asset.retired_at.is_(None),

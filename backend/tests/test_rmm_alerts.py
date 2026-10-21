@@ -503,6 +503,15 @@ def test_ignored_client_gets_no_ticket(env, owner):
     assert res.skipped_unmapped == 1 and tickets(owner) == [] and alert_rows(owner) == []
 
 
+@pytest.mark.parametrize(
+    "change", ["status = 'inactive'", "archived_at = now()"], ids=["inactive", "archived"]
+)
+def test_inactive_or_archived_client_gets_no_ticket(env, owner, change):
+    owner.execute(text(f"UPDATE organizations SET {change}"))
+    env.vendor.alerts = [alert("1")]
+    assert poll(env.iid).skipped_unmapped == 1 and tickets(owner) == []
+
+
 def test_asset_in_another_org_than_the_mapped_client_gets_no_ticket(env, owner, make_org):
     other = make_org("Other Co")
     owner.execute(text("UPDATE assets SET organization_id = :o"), {"o": other["id"]})

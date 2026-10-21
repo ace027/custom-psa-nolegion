@@ -52,6 +52,7 @@ Run `/triad:plan 7` to plan Phase 7: Automation & API
 
 ## Quick Tasks
 - 2026-10-10: date tests use the business timezone (fixes PR #4 CI failing between 00:00 and 05:00 UTC), f69cd2f
+- 2026-10-20: phase 6 low and info security items: NinjaOne host allowlist, credentials re-entered on host change, inactive or archived clients skipped
 
 ## Phase 4 Results
 (build started 2026-10-10)
