@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 8 of 13 (planned)
-- **Status**: Phase 8 planned -- 4 plans across 3 waves
-- **Last Activity**: Phase 8 planning (2026-10-21)
+- **Phase**: 8 of 13 (executing)
+- **Status**: Phase 8 executing — Plan 08-01 complete
+- **Last Activity**: Plan 08-01 execution (2026-10-21)
 
 ## Progress
 ```
-[###########.........] 56% — 25/44 plans complete
+[###########.........] 59% — 26/44 plans complete
 ```
 
 ## Recent Decisions
@@ -90,3 +90,7 @@ Run `/triad:build` to execute Phase 8: Projects & project billing
 - Plan 07-03 (Wave 3): Events and signed outbound webhooks (generic, Teams, n8n) — Complete
 - Plan 07-04 (Wave 4): Rules engine with dry run, trace and loop guard — PARTIAL: Rules engine, routes, rule builder page, docs and the Phase 7 checklist are done and their tests pass. The full backend suite was not re-run in one go after a late fix. A first full run stopped at tes
 - Plan 07-04 (Wave 4): Rules engine with dry run, trace and loop guard — Complete
+
+## Phase 8 Results
+(build started 2026-10-21)
+- Plan 08-01 (Wave 1): Projects schema, permissions and approved money rules — Complete
