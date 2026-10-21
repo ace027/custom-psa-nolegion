@@ -260,6 +260,10 @@ class Settings(Base):
     statement_body: Mapped[str] = mapped_column(Text, nullable=False)
     notify_staff: Mapped[bool] = mapped_column(Boolean, nullable=False)
     portal_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    renewal_reminder_days: Mapped[list[int]] = mapped_column(
+        ARRAY(Integer), nullable=False, server_default=text("'{90,30}'::integer[]")
+    )
+    renewal_email: Mapped[str | None] = mapped_column(String(320))
     invoice_email_subject: Mapped[str] = mapped_column(Text, nullable=False)
     invoice_email_body: Mapped[str] = mapped_column(Text, nullable=False)
     auto_prepare_invoice_emails: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -1792,3 +1796,76 @@ class ProjectTaskDependency(Base):
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
     task_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     depends_on_task_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+
+
+class Lead(TimestampMixin, Base):
+    """Staff-internal sales lead (no organization_id, no RLS)."""
+
+    __tablename__ = "leads"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    company: Mapped[str | None] = mapped_column(String(200))
+    email: Mapped[str | None] = mapped_column(String(320))
+    phone: Mapped[str | None] = mapped_column(String(50))
+    source: Mapped[str | None] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="new")
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    notes: Mapped[str | None] = mapped_column(Text)
+    converted_organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"))
+    converted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class OpportunityStage(Base):
+    """Pipeline stage config (staff-internal); seeded by migration 0030."""
+
+    __tablename__ = "opportunity_stages"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    probability_bp: Mapped[int] = mapped_column(Integer, nullable=False)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)  # open|won|lost
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+
+
+class Opportunity(TimestampMixin, Base):
+    """Client-scoped; the migration owns constraints, composite FKs, RLS and grants."""
+
+    __tablename__ = "opportunities"
+    __table_args__ = (UniqueConstraint("id", "organization_id", name="uq_opportunities_id_org"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False, server_default="new")
+    stage_id: Mapped[int] = mapped_column(ForeignKey("opportunity_stages.id"), nullable=False)
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    monthly_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+    term_months: Mapped[int] = mapped_column(Integer, nullable=False, server_default="12")
+    expected_close_date: Mapped[date | None] = mapped_column(Date)
+    # composite FKs (quote_id|agreement_id, organization_id) live in migration 0030
+    quote_id: Mapped[int | None] = mapped_column(BigInteger)
+    agreement_id: Mapped[int | None] = mapped_column(BigInteger)
+    lost_reason: Mapped[str | None] = mapped_column(String(300))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+
+
+class RenewalReminder(Base):
+    __tablename__ = "renewal_reminders"
+    __table_args__ = (
+        UniqueConstraint("agreement_id", "lead_days", name="uq_renewal_reminders_once"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    agreement_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    lead_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    due_on: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="open")
+    opportunity_id: Mapped[int | None] = mapped_column(BigInteger)
+    email_message_id: Mapped[int | None] = mapped_column(ForeignKey("email_messages.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

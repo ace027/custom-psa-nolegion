@@ -33,6 +33,18 @@ def test_project_write_admin_and_tech_only():
     assert P.PROJECT_WRITE not in P.KEY_FORBIDDEN
 
 
+def test_crm_permissions():
+    assert P.CRM_READ == "crm:read"
+    assert P.CRM_WRITE == "crm:write"
+    for role in ROLES:
+        assert P.has_permission(role, P.CRM_READ)
+    for role in ("admin", "tech"):
+        assert P.has_permission(role, P.CRM_WRITE)
+    for role in ("billing", "read_only"):
+        assert not P.has_permission(role, P.CRM_WRITE)
+    assert not {P.CRM_READ, P.CRM_WRITE} & P.KEY_FORBIDDEN
+
+
 @pytest.fixture
 def seeded(admin, make_org):
     org = make_org()

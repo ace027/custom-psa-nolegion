@@ -32,6 +32,7 @@ from alembic import command  # noqa: E402
 from app.main import app  # noqa: E402
 
 TABLES = (
+    "renewal_reminders, opportunities, opportunity_stages, leads, "
     "project_task_dependencies, project_tasks, project_phases, projects, "
     "automation_runs, automation_rules, webhook_deliveries, webhook_endpoints, api_keys, late_fee_applications, credit_memo_applications, credit_memo_lines, credit_memos, credit_memo_counters, refunds, expense_receipts, expenses, expense_categories, timesheets, timers, internal_time_entries, time_categories, csat_surveys, ticket_links, custom_fields, ticket_types, ticket_statuses, holidays, ticket_auto_acks, ticket_escalations, canned_responses, rmm_alerts, asset_overrides, asset_sources, assets, sync_runs, integration_client_maps, integrations, quotes, survey_apps, survey_devices, site_surveys, staff_notifications, outbound_attachments, billing_notice_invoices, billing_notices, statements, "
     "write_offs, payment_applications, payments, invoice_counters, product_charges, invoice_lines, invoices, billing_runs, "
@@ -54,6 +55,9 @@ INSERT INTO time_categories (name) VALUES ('Administration'), ('Training'), ('Me
   ('Paid time off');
 INSERT INTO expense_categories (name) VALUES ('Travel'), ('Meals'), ('Parts and supplies'),
   ('Software and subscriptions'), ('Other');
+INSERT INTO opportunity_stages (position, name, probability_bp, kind) VALUES
+  (1,'Qualify',1000,'open'), (2,'Site survey',2500,'open'), (3,'Proposal',5000,'open'),
+  (4,'Negotiation',7500,'open'), (5,'Won',10000,'won'), (6,'Lost',0,'lost');
 DELETE FROM settings; INSERT INTO settings (id) VALUES (1);
 DELETE FROM mailbox_status; INSERT INTO mailbox_status (id) VALUES (1);
 DELETE FROM quote_settings; INSERT INTO quote_settings (id) VALUES (1);

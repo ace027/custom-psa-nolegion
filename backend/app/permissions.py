@@ -31,13 +31,15 @@ APIKEY_MANAGE = "apikey:manage"  # create / revoke API keys (admins)
 AUTOMATION_MANAGE = "automation:manage"  # automation rules and outbound webhooks (admins)
 # projects, phases, tasks, dependencies; billing fields need billing:write
 PROJECT_WRITE = "project:write"
+CRM_READ = "crm:read"  # leads, opportunities, pipeline, forecast, renewals (every staff role)
+CRM_WRITE = "crm:write"  # create / edit / convert leads and opportunities (admin, tech)
 
 # API keys can never carry these, whatever the owner's role
 KEY_FORBIDDEN = frozenset({USER_MANAGE, APIKEY_MANAGE, PORTAL_MANAGE})
 
 ROLES = ("admin", "tech", "billing", "read_only")
 
-_READ = {ORG_READ, USER_READ, TICKET_READ, BILLING_READ, QUOTE_READ, SCHEDULE_READ}
+_READ = {ORG_READ, USER_READ, TICKET_READ, BILLING_READ, QUOTE_READ, SCHEDULE_READ, CRM_READ}
 
 MATRIX: dict[str, frozenset[str]] = {
     "admin": frozenset(
@@ -59,6 +61,7 @@ MATRIX: dict[str, frozenset[str]] = {
             APIKEY_MANAGE,
             AUTOMATION_MANAGE,
             PROJECT_WRITE,
+            CRM_WRITE,
         }
         | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE, PAYMENT_WRITE, REPORT_READ}
     ),
@@ -72,6 +75,7 @@ MATRIX: dict[str, frozenset[str]] = {
             QUOTE_WRITE,
             SCHEDULE_WRITE,
             PROJECT_WRITE,
+            CRM_WRITE,
         }
     ),
     "billing": frozenset(
