@@ -2,8 +2,8 @@
 
 ## Current Position
 - **Phase**: 9 of 13 (executed, pending review)
-- **Status**: Phase 9 under review — cycle 2/3, 0 blocker(s) remaining
-- **Last Activity**: Phase 9 review cycle 2 (2026-10-21)
+- **Status**: Phase 9 review escalated — 1 unresolved finding(s) (0 blocker/critical) after 3 cycles
+- **Last Activity**: Phase 9 review (2026-10-21)
 
 ## Progress
 ```
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:review` to verify Phase 9: CRM & renewals
+Fix the unresolved findings in 09-REVIEW.md, accept the phase as is, or re-plan; then run `/triad:review --phase 9`
 
 ## Phase 1 Results
 (build started 2026-10-09)

@@ -114,3 +114,7 @@ verification: 6/6 passed
 | O-070 | 2026-10-21 | dev | 9 | 09-02 | engineering-backend-architect | implementation | failed | 5 | crm-renewals, engineering | CRM service, quote link, forecast and renewal job: Partial |
 | O-071 | 2026-10-21 | dev | 9 | 09-02 | engineering-backend-architect | implementation | success | 2 | crm-renewals, engineering | CRM service, quote link, forecast and renewal job: Complete |
 | O-072 | 2026-10-21 | dev | 9 | 09-03 | engineering-frontend-developer | implementation | success | 2 | crm-renewals, engineering | Sales pipeline, forecast and renewals UI, docs and verify checklist: Complete |
+| O-073 | 2026-10-21 | dev | 9 | 09-00 | testing-qa-verification-specialist | quality-review | partial | 4 | review, testing | Phase 9 review ESCALATED in 3 cycle(s), 19 finding(s) |
+| O-074 | 2026-10-21 | dev | 9 | 09-00 | design-ui-designer | quality-review | partial | 5 | review, design | Phase 9 review ESCALATED in 3 cycle(s), 19 finding(s) |
+| O-075 | 2026-10-21 | dev | 9 | 09-00 | engineering-senior-developer | quality-review | partial | 5 | review, engineering | Phase 9 review ESCALATED in 3 cycle(s), 19 finding(s) |
+| O-076 | 2026-10-21 | dev | 9 | 09-00 | design-ux-researcher | quality-review | partial | 5 | review, design | Phase 9 review ESCALATED in 3 cycle(s), 19 finding(s) |
