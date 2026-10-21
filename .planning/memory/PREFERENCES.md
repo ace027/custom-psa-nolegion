@@ -26,3 +26,13 @@ Managed by the memory manager. Learnings recorded with /triad:learn are kept bel
 The owner asked that all manual testing be deferred to a final phase, Phase 14: Verify. Plans for phases 5-13 must not make a success criterion, verification command or handoff wait on the owner running something by hand (real-tenant spikes, vendor connections, UI walkthroughs). Phases still write docs/verify/ checklists and must append their manual checks to .planning/VERIFY.md under their phase heading. Automated tests against fakes stand in until Phase 14.
 
 ---
+
+## PRF-002: Project billing money rules approved: fixed fee up front, T&M capped
+- **Date**: 2026-10-21
+- **Type**: preference
+- **Tags**: billing, projects, money-rules, owner-decision
+- **Phase**: 7
+
+Owner-approved project billing money rules (2026-10-21): (1) Fixed-fee projects bill 100% up front as one line when the project is approved; extra time is never billed. (2) T&M projects bill time at the existing rates and rounding, capped cumulatively at the project budget; anything over the cap is written off (our cost, never billed). (3) Milestones track progress only and are not billed (assumed from 'bill all up front'). (4) Project time does not draw down block hours (assumed). (5) Tax and deposits same as normal invoices.
+
+---

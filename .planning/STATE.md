@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 7 of 13 (complete)
-- **Status**: Phase 7 complete — review passed (3 cycle(s))
-- **Last Activity**: Phase 7 review (2026-10-21)
+- **Phase**: 8 of 13 (planned)
+- **Status**: Phase 8 planned -- 4 plans across 3 waves
+- **Last Activity**: Phase 8 planning (2026-10-21)
 
 ## Progress
 ```
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:plan 8` to plan Phase 8: Projects & project billing
+Run `/triad:build` to execute Phase 8: Projects & project billing
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -36,6 +36,7 @@ Run `/triad:plan 8` to plan Phase 8: Projects & project billing
 - Phase 5 issue: #8 (closed); merged to main in PR #9
 - Phase 6 issue: #10 (closes with PR #11); PR #11 dev -> main
 - Phase 7 issue: #12
+- Phase 8 issue: #13
 
 ## Phase 2 Results
 (build started 2026-10-09)
