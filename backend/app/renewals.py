@@ -26,18 +26,16 @@ def _line(text: str | None) -> str:
     return " ".join((text or "").split())[:200]
 
 
-def _open_renewal(ctx: Ctx, agreement_id: int) -> Opportunity | None:
-    return ctx.db.execute(
-        select(Opportunity)
+def _latest_renewal(ctx: Ctx, agreement_id: int) -> tuple[Opportunity, str] | None:
+    """The newest renewal opportunity of the agreement in any stage, with its stage kind."""
+    row = ctx.db.execute(
+        select(Opportunity, OpportunityStage.kind)
         .join(OpportunityStage, OpportunityStage.id == Opportunity.stage_id)
-        .where(
-            Opportunity.kind == "renewal",
-            Opportunity.agreement_id == agreement_id,
-            OpportunityStage.kind == "open",
-        )
-        .order_by(Opportunity.id)
+        .where(Opportunity.kind == "renewal", Opportunity.agreement_id == agreement_id)
+        .order_by(Opportunity.id.desc())
         .limit(1)
-    ).scalar_one_or_none()
+    ).first()
+    return (row[0], row[1]) if row else None
 
 
 def _compose(a: Agreement) -> tuple[str, str]:
@@ -103,7 +101,8 @@ def scan(ctx: Ctx, today: date) -> dict:
         if not fresh:
             continue
         counts["reminders"] += len(fresh)
-        opp = _open_renewal(ctx, a.id)
+        latest = _latest_renewal(ctx, a.id)
+        opp, closed = (latest[0], latest[1] != "open") if latest else (None, False)
         if opp is None:
             opp = crm.create_opportunity(
                 ctx,
@@ -120,6 +119,10 @@ def scan(ctx: Ctx, today: date) -> dict:
             counts["opportunities"] += 1
         for reminder in fresh:
             reminder.opportunity_id = opp.id
+            if closed:  # the renewal is already won or lost: nothing to chase, nothing to email
+                reminder.status = "done"
+                counts["done"] += 1
+                continue
             if can_mail:
                 subject, body = _compose(a)
                 email = EmailMessage(
@@ -147,7 +150,7 @@ def scan(ctx: Ctx, today: date) -> dict:
         .where(RenewalReminder.status == "open", RenewalReminder.opportunity_id.in_(closed))
         .values(status="done")
     )
-    counts["done"] = result.rowcount or 0
+    counts["done"] += result.rowcount or 0
     return counts
 
 

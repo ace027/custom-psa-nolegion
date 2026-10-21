@@ -43,6 +43,7 @@ export default function Leads() {
       <ErrorMsg error={leads.error ?? setLeadStatus.error} />
       {leads.data && rows.length === 0 && <p className="text-sm text-slate-500">No leads yet.</p>}
       {rows.length > 0 && (
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <caption className="sr-only">Sales leads</caption>
           <thead>
@@ -56,7 +57,7 @@ export default function Leads() {
               <tr key={l.id} className="border-b border-slate-100 align-top">
                 <td className="py-1.5 font-medium">{l.name}</td>
                 <td>{l.company ?? "—"}</td>
-                <td>{[l.email, l.phone].filter(Boolean).join(" · ") || "—"}</td>
+                <td className="break-words">{[l.email, l.phone].filter(Boolean).join(" · ") || "—"}</td>
                 <td>{l.source ?? "—"}</td>
                 <td>{l.owner_name ?? "—"}</td>
                 <td>
@@ -78,6 +79,7 @@ export default function Leads() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

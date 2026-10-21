@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Opportunity, Stage, crmApi } from "../../api";
 import { can, useMe } from "../../auth";
@@ -16,6 +16,12 @@ export default function Pipeline() {
   const [lost, setLost] = useState<{ opp: Opportunity; stage: Stage } | null>(null);
   const [reason, setReason] = useState("");
   const [clientError, setClientError] = useState("");
+  const reasonRef = useRef<HTMLInputElement>(null);
+  const selectRefs = useRef(new Map<number, HTMLSelectElement>());
+  // Move focus to the reason field when the lost form appears.
+  useEffect(() => {
+    if (lost) reasonRef.current?.focus();
+  }, [lost]);
   const move = useMutation({
     mutationFn: ({ opp, stage, why }: { opp: Opportunity; stage: Stage; why?: string }) => crmApi.moveStage(opp.id, stage.id, why),
     onSuccess: () => {
@@ -46,22 +52,16 @@ export default function Pipeline() {
     setClientError("");
     move.mutate({ opp: lost.opp, stage: lost.stage, why: reason.trim() });
   };
+  const cancelLost = () => {
+    const id = lost?.opp.id;
+    setLost(null);
+    setClientError("");
+    move.reset();
+    if (id !== undefined) setTimeout(() => selectRefs.current.get(id)?.focus(), 0);
+  };
   return (
     <div className="space-y-3">
       <ErrorMsg error={stages.error ?? opps.error} />
-      {lost && (
-        <div role="group" aria-label="Mark as lost" className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">
-          <label className="block">
-            <span className="mb-1 block font-medium">Why was “{lost.opp.name}” lost?</span>
-            <input aria-label="Lost reason" className={inputCls} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
-          </label>
-          {clientError && <p role="alert" className="text-red-700">{clientError}</p>}
-          <div className="flex gap-2">
-            <Button onClick={confirmLost} disabled={move.isPending}>Mark lost</Button>
-            <Button variant="secondary" onClick={() => { setLost(null); setClientError(""); move.reset(); }}>Cancel</Button>
-          </div>
-        </div>
-      )}
       <ErrorMsg error={move.error} />
       {stages.data && cols.length === 0 && <p className="text-sm text-slate-500">No pipeline stages are set up. An admin can add them in Settings.</p>}
       {cols.length > 0 && all.length === 0 && !opps.isLoading && <p className="text-sm text-slate-500">No opportunities yet. Convert a lead or add one from a client page.</p>}
@@ -83,14 +83,28 @@ export default function Pipeline() {
                     </div>
                     {write && (
                       <select
+                        ref={(el) => { if (el) selectRefs.current.set(o.id, el); else selectRefs.current.delete(o.id); }}
                         aria-label={`Move ${o.name} to stage`}
                         className={`${inputCls} mt-2`}
-                        value={o.stage_id}
+                        value={lost && lost.opp.id === o.id ? lost.stage.id : o.stage_id}
                         disabled={move.isPending}
                         onChange={(e) => pick(o, Number(e.target.value))}
                       >
                         {cols.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                       </select>
+                    )}
+                    {write && lost && lost.opp.id === o.id && (
+                      <div role="group" aria-label="Mark as lost" className="mt-2 space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-2 text-sm">
+                        <label className="block">
+                          <span className="mb-1 block font-medium">Why was “{lost.opp.name}” lost?</span>
+                          <input ref={reasonRef} aria-label="Lost reason" className={inputCls} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
+                        </label>
+                        {clientError && <p role="alert" className="text-red-700">{clientError}</p>}
+                        <div className="flex gap-2">
+                          <Button onClick={confirmLost} disabled={move.isPending}>Mark lost</Button>
+                          <Button variant="secondary" onClick={cancelLost}>Cancel</Button>
+                        </div>
+                      </div>
                     )}
                   </li>
                 ))}

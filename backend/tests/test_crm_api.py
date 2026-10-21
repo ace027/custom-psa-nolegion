@@ -321,3 +321,30 @@ def test_declining_a_linked_quote_leaves_the_opportunity_open(admin, tech, rates
     tech.post(f"/api/quotes/{q['id']}/send", json={})
     assert admin.post(f"/api/quotes/{q['id']}/decline", json={}).status_code == 200
     assert admin.get(f"/api/crm/opportunities/{opp['id']}").json()["stage_kind"] == "open"
+
+
+def test_a_null_lead_status_is_ignored_not_a_server_error(admin):
+    made = lead(admin, status="contacted")
+    r = admin.patch(f"/api/crm/leads/{made['id']}", json={"status": None, "notes": "kept"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["status"], r.json()["notes"]) == ("contacted", "kept")
+
+
+def test_revising_a_linked_quote_moves_the_opportunity_and_accepting_wins_it(
+    admin,
+    tech,
+    rates,
+    prospect,  # noqa: F811
+):
+    opp = new_opp(tech, prospect)
+    q = approved(tech, prospect)
+    link = f"/api/crm/opportunities/{opp['id']}/quote"
+    assert tech.post(link, json={"quote_id": q["id"]}).status_code == 200
+    n = tech.post(f"/api/quotes/{q['id']}/revise").json()
+    assert admin.get(f"/api/crm/opportunities/{opp['id']}").json()["quote_id"] == n["id"]
+    submitted = tech.post(f"/api/quotes/{n['id']}/submit").json()
+    assert submitted["status"] == "approved"
+    assert tech.post(f"/api/quotes/{n['id']}/send", json={}).status_code == 200
+    assert admin.post(f"/api/quotes/{n['id']}/accept", json={}).status_code == 200
+    won = admin.get(f"/api/crm/opportunities/{opp['id']}").json()
+    assert won["stage_kind"] == "won" and won["quote_id"] == n["id"]

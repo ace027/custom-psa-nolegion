@@ -251,3 +251,27 @@ def test_list_reminders_filters_by_status_and_names_the_client(run, owner, org, 
         assert len(renewals.list_reminders(ctx, "open")) == len(rows) - 1
         assert len(renewals.list_reminders(ctx, "dismissed")) == 1
         assert renewals.list_reminders(ctx, "done") == []
+
+
+def test_a_won_renewal_is_not_reopened_by_the_30_day_reminder(run, owner, org):
+    agreement(owner, org)
+    with run() as ctx:
+        renewals.scan(ctx, END - timedelta(days=89))
+        [o] = renewal_opps(ctx)
+        crm.move_stage(ctx, o.id, stage_id(ctx, "won"))
+    with run() as ctx:
+        counts = renewals.scan(ctx, END - timedelta(days=29))
+        assert counts["reminders"] == 1 and counts["opportunities"] == 0 and counts["emails"] == 0
+        assert len(renewal_opps(ctx)) == 1
+        assert [(r.lead_days, r.status) for r in reminders(ctx)] == [(30, "done"), (90, "done")]
+
+
+def test_a_lost_renewal_is_not_reopened_either(run, owner, org):
+    agreement(owner, org)
+    with run() as ctx:
+        renewals.scan(ctx, END - timedelta(days=89))
+        [o] = renewal_opps(ctx)
+        crm.move_stage(ctx, o.id, stage_id(ctx, "lost"), "Going elsewhere")
+    with run() as ctx:
+        assert renewals.scan(ctx, END - timedelta(days=29))["opportunities"] == 0
+        assert len(renewal_opps(ctx)) == 1

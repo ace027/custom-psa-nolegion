@@ -1,6 +1,7 @@
 """CRM: leads, the sales pipeline, the forecast and renewal reminders."""
 
 from fastapi import APIRouter
+from sqlalchemy import select
 
 from app import crm as svc
 from app import permissions as P
@@ -24,12 +25,12 @@ from app.crm_schemas import (
     StagePatch,
 )
 from app.deps import Ctx, require
-from app.models import Agreement, Opportunity
+from app.models import Agreement, Opportunity, Organization, User
 from app.schemas import ErrorOut
 
 router = APIRouter(tags=["crm"])
 ERR = {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
-NOT_NULL = ("name", "monthly_cents", "term_months")
+NOT_NULL = ("name", "monthly_cents", "term_months", "status")
 
 
 def _lead_out(ctx: Ctx, lead) -> LeadOut:
@@ -38,24 +39,53 @@ def _lead_out(ctx: Ctx, lead) -> LeadOut:
     return out
 
 
-def _opp_out(ctx: Ctx, opp: Opportunity) -> OpportunityOut:
-    from app.models import Organization
+def _opp_outs(ctx: Ctx, opps: list[Opportunity]) -> list[OpportunityOut]:
+    """Output rows with one query each for stages, clients, owners and agreements."""
+    if not opps:
+        return []
 
-    stage = svc.get_stage(ctx, opp.stage_id)
-    agreement = ctx.db.get(Agreement, opp.agreement_id) if opp.agreement_id else None
-    data = {c: getattr(opp, c) for c in OpportunityOut.model_fields if hasattr(opp, c)}
-    return OpportunityOut(
-        **{
-            **data,
-            "organization_name": ctx.db.get(Organization, opp.organization_id).name,
-            "stage_name": stage.name,
-            "stage_kind": stage.kind,
-            "probability_bp": stage.probability_bp,
-            "owner_name": svc.user_name(ctx, opp.owner_id),
-            "quote_number": f"Q-{opp.quote_id}" if opp.quote_id else None,
-            "agreement_name": agreement.name if agreement else None,
-        }
-    )
+    def names(model, column, ids):
+        ids = {i for i in ids if i is not None}
+        if not ids:
+            return {}
+        return dict(ctx.db.execute(select(model.id, column).where(model.id.in_(ids))).all())
+
+    stages = {s.id: s for s in svc.list_stages(ctx)}
+    orgs = names(Organization, Organization.name, [o.organization_id for o in opps])
+    owners = names(User, User.display_name, [o.owner_id for o in opps])
+    agreements = names(Agreement, Agreement.name, [o.agreement_id for o in opps])
+    return [
+        OpportunityOut(
+            id=o.id,
+            organization_id=o.organization_id,
+            organization_name=orgs[o.organization_id],
+            name=o.name,
+            kind=o.kind,
+            stage_id=o.stage_id,
+            stage_name=stages[o.stage_id].name,
+            stage_kind=stages[o.stage_id].kind,
+            probability_bp=stages[o.stage_id].probability_bp,
+            owner_id=o.owner_id,
+            owner_name=owners.get(o.owner_id),
+            monthly_cents=o.monthly_cents,
+            term_months=o.term_months,
+            expected_close_date=o.expected_close_date,
+            quote_id=o.quote_id,
+            quote_number=f"Q-{o.quote_id}" if o.quote_id else None,
+            agreement_id=o.agreement_id,
+            agreement_name=agreements.get(o.agreement_id),
+            lost_reason=o.lost_reason,
+            closed_at=o.closed_at,
+            notes=o.notes,
+            created_at=o.created_at,
+            updated_at=o.updated_at,
+        )
+        for o in opps
+    ]
+
+
+def _opp_out(ctx: Ctx, opp: Opportunity) -> OpportunityOut:
+    return _opp_outs(ctx, [opp])[0]
 
 
 def _patch(body) -> dict:
@@ -117,7 +147,7 @@ def list_opportunities(
     ctx: Ctx = require(P.CRM_READ),
 ):
     rows = svc.list_opportunities(ctx, stage_id, owner_id, organization_id, kind, open_only)
-    return [_opp_out(ctx, o) for o in rows]
+    return _opp_outs(ctx, rows)
 
 
 @router.post(

@@ -24,6 +24,8 @@ from app.models import (
     Agreement,
     EmailMessage,
     InvoiceLine,
+    Opportunity,
+    OpportunityStage,
     OutboundAttachment,
     Quote,
     QuoteSettings,
@@ -484,7 +486,7 @@ def revise_quote(ctx: Ctx, quote_id: int) -> Quote:
         before = audit.snapshot(old)
         old.status, old.decision_note = "cancelled", f"Superseded by a revision of quote {old.id}"
         _changed(ctx, old, "quote.cancel", before)
-    return _new_quote(
+    new = _new_quote(
         ctx,
         survey,
         kind=old.kind,
@@ -494,6 +496,28 @@ def revise_quote(ctx: Ctx, quote_id: int) -> Quote:
         version=old.version + 1,
         replaces=old.id,
     )
+    # open opportunities follow the revision, so accepting it still wins them
+    linked = ctx.db.execute(
+        select(Opportunity)
+        .join(OpportunityStage, OpportunityStage.id == Opportunity.stage_id)
+        .where(Opportunity.quote_id == old.id, OpportunityStage.kind == "open")
+        .with_for_update(of=Opportunity)
+    ).scalars()
+    for opp in list(linked):
+        opp_before = audit.snapshot(opp)
+        opp.quote_id = new.id
+        ctx.db.flush()
+        audit.record(
+            ctx.db,
+            ctx.user,
+            "opportunity.link_quote",
+            opp,
+            before=opp_before,
+            after=audit.snapshot(opp),
+            organization_id=opp.organization_id,
+            detail={"quote_id": new.id, "revised_from": old.id},
+        )
+    return new
 
 
 def recipients(ctx: Ctx, org_id: int) -> list[str]:
