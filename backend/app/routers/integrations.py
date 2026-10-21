@@ -1,6 +1,8 @@
 """Vendor integrations (NinjaOne, Hudu): connect, test, sync, map clients. Admin only."""
 
-from fastapi import APIRouter
+from typing import Literal
+
+from fastapi import APIRouter, Query
 
 from app import integration_services as svc
 from app import permissions as P
@@ -10,6 +12,7 @@ from app.asset_schemas import (
     IntegrationIn,
     IntegrationOut,
     IntegrationPatch,
+    RmmAlertOut,
     SyncRunOut,
     TestOut,
 )
@@ -105,3 +108,29 @@ def refresh_clients(integration_id: int, ctx: Ctx = require(M)):
 )
 def map_client(integration_id: int, map_id: int, body: ClientMapIn, ctx: Ctx = require(M)):
     return svc.map_client(ctx, integration_id, map_id, body.organization_id, body.ignored)
+
+
+@router.get(
+    "/{integration_id}/alerts",
+    response_model=list[RmmAlertOut],
+    responses=ERR,
+    summary="Alerts reported by the vendor and the tickets they created",
+)
+def alerts(
+    integration_id: int,
+    state: Literal["open", "cleared", "all"] = "open",
+    limit: int = Query(200, ge=1, le=500),
+    ctx: Ctx = require(M),
+):
+    return svc.list_alerts(ctx, integration_id, state, limit)
+
+
+@router.post(
+    "/{integration_id}/alerts/poll",
+    response_model=IntegrationOut,
+    status_code=202,
+    responses=ERR,
+    summary="Ask the worker to poll for alerts now",
+)
+def poll_alerts(integration_id: int, ctx: Ctx = require(M)):
+    return svc.request_alert_poll(ctx, integration_id)

@@ -9,7 +9,7 @@ from app import db as dbmod
 from app.asset_sync import sync_integration
 from app.deps import Ctx
 from app.integrations import registry
-from app.integrations.base import RemoteAsset, RemoteClient, VendorError
+from app.integrations.base import RemoteAlert, RemoteAsset, RemoteClient, VendorError
 from app.models import Integration
 from app.scope import Scope
 
@@ -23,6 +23,8 @@ class FakeVendor:
         self.fail_clients = False
         self.fail_assets: set[str] = set()
         self.fail_test = False
+        self.alerts: list[RemoteAlert] = []
+        self.fail_alerts = False
 
     def test_connection(self):
         if self.fail_test:
@@ -37,6 +39,21 @@ class FakeVendor:
         if client_id in self.fail_assets:
             raise VendorError("vendor timed out")
         return list(self.assets.get(client_id, []))
+
+    def list_alerts(self):
+        if self.fail_alerts:
+            raise VendorError("NinjaOne returned HTTP 500 for /v2/alerts")
+        return list(self.alerts)
+
+
+def alert(device, cond="c1", uid=None, severity="MAJOR", message="Disk low"):
+    return RemoteAlert(
+        external_id=uid or f"{device}-{cond}-1",
+        device_external_id=device,
+        condition_key=f"{device}:{cond}",
+        severity=severity,
+        message=message,
+    )
 
 
 def dev(ext, name="PC-1", serial="SN-ABCD-1234", kind="computer", end=None, **kw):

@@ -104,6 +104,33 @@ def integration_jobs() -> None:
         log.exception("integration jobs failed")
 
 
+def alert_jobs() -> None:
+    """Poll NinjaOne for alerts on integrations that are due (or were asked to poll now) and turn
+    them into tickets. A vendor failure is recorded on the integration and never raises."""
+    from datetime import UTC, datetime
+
+    from app import db as dbmod
+    from app.deps import Ctx
+    from app.rmm_alerts import due, poll
+    from app.scope import Scope
+
+    try:
+        with dbmod.new_session() as db:
+            dbmod.set_org_scope(db, "all")
+            ctx = Ctx(db=db, user=None, scope=Scope.all())
+            for integration in due(ctx, datetime.now(UTC)):
+                name = integration.name
+                try:
+                    result = poll(ctx, integration)
+                    db.commit()  # one commit per integration so a later failure keeps earlier polls
+                    log.info("polled alerts for %s: %s", name, result)
+                except Exception:
+                    db.rollback()
+                    log.exception("alert poll for %s failed", name)
+    except Exception:
+        log.exception("alert jobs failed")
+
+
 def calendar_jobs(client) -> None:
     """Push pending appointment changes to Outlook (idempotent; a failure never raises)."""
     from datetime import UTC, datetime
@@ -171,6 +198,7 @@ def main(argv: list[str]) -> int:
             billing_jobs()
             notify_jobs()
             integration_jobs()
+            alert_jobs()
             if "--once" in argv:
                 break
             for _ in range(60):
@@ -187,6 +215,7 @@ def main(argv: list[str]) -> int:
         billing_jobs()
         notify_jobs()
         integration_jobs()
+        alert_jobs()
         if "--once" in argv:
             break
         for _ in range(s.mail_poll_seconds):

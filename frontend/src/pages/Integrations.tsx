@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ClientMap, Integration, Organization, SyncRun, api } from "../api";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../ui";
+import RmmAlertsCard from "./RmmAlertsCard";
 
 const STATUS_STYLE = { ok: "text-green-700", error: "text-red-700", unknown: "text-slate-500" };
 const CRED_FIELDS = {
@@ -24,7 +25,12 @@ export default function Integrations() {
         Credentials are stored encrypted and are never shown again after you save them.
       </p>
       <ErrorMsg error={list.error} />
-      {list.data?.map((i) => <IntegrationCard key={i.id} integration={i} />)}
+      {list.data?.map((i) => (
+        <div key={i.id} className="space-y-4">
+          <IntegrationCard integration={i} />
+          {i.kind === "ninjaone" && <RmmAlertsCard integration={i} onSaved={() => list.refetch()} />}
+        </div>
+      ))}
       {list.data?.length === 0 && <p className="text-sm text-slate-500">No vendors connected yet.</p>}
       <ConnectForm />
     </div>

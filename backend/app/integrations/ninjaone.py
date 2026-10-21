@@ -6,13 +6,24 @@ Everything vendor-specific is in `_to_asset`; if the first real sync shows warra
 missing, only that function needs adjusting (docs/INTEGRATIONS.md, "First connection").
 """
 
+import hashlib
+import unicodedata
 from datetime import UTC, date, datetime
 
 import httpx
 
-from app.integrations.base import RemoteAsset, RemoteClient, VendorError
+from app.integrations.base import (
+    SEVERITIES,
+    RemoteAlert,
+    RemoteAsset,
+    RemoteClient,
+    VendorError,
+)
 
 PAGE = 200
+ID_MAX = 200
+MESSAGE_MAX = 1000
+_STRIPPED = ("Cc", "Cf", "Zl", "Zp")
 MAX_PAGES = 500
 
 # nodeClass -> neutral kind
@@ -78,6 +89,36 @@ def _to_asset(d: dict) -> RemoteAsset:
     )
 
 
+def _clean(text: str) -> str:
+    """Drop control and format characters (bidi overrides, zero-width), then collapse spaces."""
+    kept = "".join(c for c in text if unicodedata.category(c) not in _STRIPPED or c in " \t\n\r")
+    return " ".join(kept.split())
+
+
+def _to_alert(a: dict) -> RemoteAlert | None:
+    """UNVERIFIED field names (uid, deviceId, sourceConfigUid, sourceType, severity, message,
+    createTime). Items without uid or deviceId cannot be tied to a device and are skipped."""
+    if not isinstance(a, dict) or a.get("uid") in (None, "") or a.get("deviceId") in (None, ""):
+        return None
+    uid, device = str(a["uid"]), str(a["deviceId"])[:ID_MAX]
+    source = str(a.get("sourceConfigUid") or a.get("sourceType") or uid)
+    key = f"{device}:{source}"
+    if len(key) > ID_MAX:  # keep distinct long ids distinct: truncate and add a digest of the whole
+        key = f"{key[:150]}:{hashlib.sha256(key.encode()).hexdigest()[:49]}"
+    severity = str(a.get("severity") or "NONE").upper()
+    if severity not in SEVERITIES:
+        severity = "NONE"
+    message = _clean(str(a.get("message") or a.get("subject") or "Alert"))[:MESSAGE_MAX] or "Alert"
+    return RemoteAlert(
+        external_id=uid,
+        device_external_id=device,
+        condition_key=key,
+        severity=severity,
+        message=message,
+        created_at=_epoch(a.get("createTime")),
+    )
+
+
 class NinjaOneClient:
     def __init__(
         self,
@@ -85,7 +126,7 @@ class NinjaOneClient:
         client_id: str,
         client_secret: str,
         transport: httpx.BaseTransport | None = None,
-    ):
+    ) -> None:
         self.base = base_url.rstrip("/")
         self._id = client_id
         self._secret = client_secret
@@ -156,3 +197,10 @@ class NinjaOneClient:
                 return out
             after = page[-1]["id"]
         raise VendorError("NinjaOne device list did not end")
+
+    def list_alerts(self) -> list[RemoteAlert]:
+        """The currently active alerts (UNVERIFIED: one unpaginated GET /v2/alerts)."""
+        body = self._get("/v2/alerts")
+        if not isinstance(body, list):
+            raise VendorError("NinjaOne alert list was not a list")
+        return [alert for alert in map(_to_alert, body) if alert is not None]

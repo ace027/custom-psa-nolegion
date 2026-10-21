@@ -1,16 +1,26 @@
 """Settings > Integrations: connect a vendor, store its credentials (write-only), test it, and map
 its clients to PSA clients. Credentials are never returned or logged."""
 
+from urllib.parse import urlsplit
+
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app import asset_sync as sync
 from app import audit, crypto
 from app.deps import Ctx
 from app.errors import Conflict, NotFound
 from app.integrations import registry
-from app.integrations.base import VendorError
+from app.integrations.base import SEVERITIES, VendorError
 from app.integrations.hudu import validate_config as validate_hudu
-from app.models import Integration, IntegrationClientMap, Organization, SyncRun
+from app.models import Integration, IntegrationClientMap, Organization, RmmAlert, SyncRun
+from app.rmm_alerts import CLEAR_RULES
+from app.rmm_alerts import settings as alert_settings
+
+ALERT_KEYS = ("alerts_enabled", "alert_min_severity", "alert_clear_rule", "alert_poll_minutes")
+# The worker sends the stored client secret to base_url, so NinjaOne may only point at NinjaOne's
+# own regional hosts (app., eu., oc., ca., us2. ...). Hudu is self-hosted and keeps any host.
+NINJAONE_DOMAINS = ("ninjarmm.com", "ninjaone.com")
 
 
 def _get(ctx: Ctx, integration_id: int) -> Integration:
@@ -34,10 +44,61 @@ def view(i: Integration) -> dict:
         "last_error": i.last_error,
         "last_sync_at": i.last_sync_at,
         "sync_requested": i.sync_requested_at is not None,
+        "alerts_polled_at": i.alerts_polled_at,
+        "alerts_requested": i.alerts_requested_at is not None,
+        "alerts_last_error": i.alerts_last_error,
     }
 
 
+def _validate_alert_config(kind: str, config: dict) -> None:
+    keys = [k for k in config if k.startswith("alert")]
+    if kind != "ninjaone":
+        if keys:
+            raise Conflict("Alerts are only available for NinjaOne")
+        return
+    unknown = [k for k in keys if k not in ALERT_KEYS]
+    if unknown:
+        raise Conflict(f"Unknown alert setting: {', '.join(sorted(unknown))}")
+    if "alerts_enabled" in config and not isinstance(config["alerts_enabled"], bool):
+        raise Conflict("alerts_enabled must be true or false")
+    if "alert_min_severity" in config and config["alert_min_severity"] not in SEVERITIES:
+        raise Conflict(f"alert_min_severity must be one of: {', '.join(SEVERITIES)}")
+    if "alert_clear_rule" in config and config["alert_clear_rule"] not in CLEAR_RULES:
+        raise Conflict(f"alert_clear_rule must be one of: {', '.join(CLEAR_RULES)}")
+    if "alert_poll_minutes" in config:
+        m = config["alert_poll_minutes"]
+        if isinstance(m, bool) or not isinstance(m, int) or not 1 <= m <= 60:
+            raise Conflict("alert_poll_minutes must be a whole number from 1 to 60")
+
+
+def _clean_url(kind: str, raw: str) -> str:
+    """A bare https origin (no credentials, port, query or fragment); NinjaOne hosts allowlisted."""
+    url = raw.strip().rstrip("/")
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError as exc:
+        raise Conflict("Base URL is not a valid URL") from exc
+    host = (parts.hostname or "").lower()
+    if (
+        parts.scheme != "https"
+        or not host
+        or parts.username is not None
+        or parts.password is not None
+        or port not in (None, 443)
+        or parts.query
+        or parts.fragment
+    ):
+        raise Conflict("Base URL must be a plain https:// address")
+    if kind == "ninjaone" and not any(
+        host == d or host.endswith("." + d) for d in NINJAONE_DOMAINS
+    ):
+        raise Conflict("NinjaOne base URL must be a ninjarmm.com or ninjaone.com address")
+    return url
+
+
 def _validate(kind: str, config: dict, creds: dict | None, required: bool) -> None:
+    _validate_alert_config(kind, config)
     if kind == "hudu":
         try:
             validate_hudu(config)
@@ -68,7 +129,7 @@ def create(ctx: Ctx, data: dict) -> dict:
     i = Integration(
         kind=data["kind"],
         name=data["name"].strip(),
-        base_url=data["base_url"].strip().rstrip("/"),
+        base_url=_clean_url(data["kind"], data["base_url"]),
         config=data.get("config") or {},
     )
     _store(i, data["credentials"])
@@ -84,10 +145,15 @@ def update(ctx: Ctx, integration_id: int, data: dict) -> dict:
     creds = data.pop("credentials", None)
     if "config" in data:
         _validate(i.kind, data["config"], None, required=False)
+    if "base_url" in data:
+        data["base_url"] = _clean_url(i.kind, data["base_url"])
+        if creds is None and urlsplit(data["base_url"]).hostname != urlsplit(i.base_url).hostname:
+            # The stored secret must never be sent to a host it was not entered for.
+            raise Conflict("Enter the credentials again when changing the base URL host")
     for key in ("name", "base_url", "config", "enabled"):
         if key in data:
             v = data[key]
-            setattr(i, key, v.strip().rstrip("/") if key == "base_url" else v)
+            setattr(i, key, v)
     if creds is not None:
         _validate(i.kind, i.config, creds, required=True)
         _store(i, creds)
@@ -127,6 +193,64 @@ def request_sync(ctx: Ctx, integration_id: int) -> dict:
     i.sync_requested_at = sync.now()
     audit.record(ctx.db, ctx.user, "integration.sync_requested", i)
     return view(i)
+
+
+def request_alert_poll(ctx: Ctx, integration_id: int) -> dict:
+    i = _get(ctx, integration_id)
+    if i.kind != "ninjaone":
+        raise Conflict("Alerts are only available for NinjaOne")
+    if not alert_settings(i)["alerts_enabled"]:
+        raise Conflict("Alerts are turned off for this integration")
+    i.alerts_requested_at = sync.now()
+    audit.record(ctx.db, ctx.user, "integration.alerts_poll_requested", i)
+    return view(i)
+
+
+def list_alerts(ctx: Ctx, integration_id: int, state: str = "open", limit: int = 200) -> list[dict]:
+    _get(ctx, integration_id)
+    if state not in ("open", "cleared", "all"):
+        raise Conflict("state must be open, cleared or all")
+    if not 1 <= limit <= 500:
+        raise Conflict("limit must be from 1 to 500")
+    stmt = select(RmmAlert).where(RmmAlert.integration_id == integration_id)
+    if state != "all":
+        stmt = stmt.where(RmmAlert.state == state)
+    rows = list(
+        ctx.db.scalars(
+            stmt.options(selectinload(RmmAlert.asset), selectinload(RmmAlert.ticket))
+            .order_by(RmmAlert.id.desc())
+            .limit(limit)
+        )
+    )
+    org_ids = {a.organization_id for a in rows}
+    orgs = (
+        {
+            o.id: o.name
+            for o in ctx.db.scalars(select(Organization).where(Organization.id.in_(org_ids)))
+        }
+        if org_ids
+        else {}
+    )
+    return [
+        {
+            "id": a.id,
+            "organization_id": a.organization_id,
+            "organization_name": orgs.get(a.organization_id, ""),
+            "asset_id": a.asset_id,
+            "asset_name": a.asset.name,
+            "ticket_id": a.ticket_id,
+            "ticket_number": a.ticket.number if a.ticket else None,
+            "severity": a.severity,
+            "message": a.message,
+            "state": a.state,
+            "occurrences": a.occurrences,
+            "first_seen_at": a.first_seen_at,
+            "last_seen_at": a.last_seen_at,
+            "cleared_at": a.cleared_at,
+            "resolution": a.resolution,
+        }
+        for a in rows
+    ]
 
 
 def runs(ctx: Ctx, integration_id: int, limit: int = 20) -> list[SyncRun]:

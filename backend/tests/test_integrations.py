@@ -57,6 +57,51 @@ def test_vendor_url_must_be_https(admin):
     assert r.status_code == 422
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://evil.example.com",
+        "https://ninjarmm.com.evil.example",
+        "https://user:pw@app.ninjarmm.com",
+        "https://app.ninjarmm.com:8443",
+        "https://app.ninjarmm.com/?x=1",
+        "https://app.ninjarmm.com:notaport",
+    ],
+)
+def test_ninjaone_url_must_be_a_plain_ninjaone_host(admin, url):
+    r = admin.post("/api/integrations", json={**NINJA, "base_url": url})
+    assert r.status_code == 409
+
+
+@pytest.mark.parametrize("url", ["https://eu.ninjarmm.com/", "https://app.ninjaone.com"])
+def test_regional_ninjaone_hosts_are_accepted(admin, url):
+    r = admin.post("/api/integrations", json={**NINJA, "base_url": url})
+    assert r.status_code == 201 and r.json()["base_url"] == url.rstrip("/")
+
+
+def test_hudu_keeps_any_https_host(admin):
+    r = admin.post("/api/integrations", json={**HUDU, "base_url": "https://docs.msp.example"})
+    assert r.status_code == 201
+
+
+def test_changing_the_host_needs_the_credentials_again(admin, owner):
+    i = connect(admin)
+    r = admin.patch(f"/api/integrations/{i['id']}", json={"base_url": "https://eu.ninjarmm.com"})
+    assert r.status_code == 409
+    stored = owner.execute(text("SELECT base_url FROM integrations")).scalar()
+    assert stored == NINJA["base_url"]
+    r = admin.patch(
+        f"/api/integrations/{i['id']}",
+        json={
+            "base_url": "https://eu.ninjarmm.com",
+            "credentials": {"client_id": "a", "client_secret": "b"},
+        },
+    )
+    assert r.status_code == 200 and r.json()["base_url"] == "https://eu.ninjarmm.com"
+    r = admin.patch(f"/api/integrations/{i['id']}", json={"base_url": "https://eu.ninjarmm.com/"})
+    assert r.status_code == 200
+
+
 def test_hudu_layout_config_is_validated(admin):
     r = admin.post("/api/integrations", json={**HUDU, "config": {"layouts": {"Switches": "gizmo"}}})
     assert r.status_code == 409

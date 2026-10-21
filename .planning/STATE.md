@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 5 of 13 (complete)
-- **Status**: Phase 5 shipped (2026-10-15)
-- **Last Activity**: Phase 5 shipped (2026-10-15)
+- **Phase**: 6 of 13 (complete)
+- **Status**: Phase 6 shipped (2026-10-21)
+- **Last Activity**: Phase 6 shipped (2026-10-21)
 
 ## Progress
 ```
-[########............] 40% — 18/44 plans complete
+[#########...........] 47% — 21/44 plans complete
 ```
 
 ## Recent Decisions
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:plan 6` to plan Phase 6: RMM alerts to tickets
+Run `/triad:plan 7` to plan Phase 7: Automation & API
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -33,7 +33,8 @@ Run `/triad:plan 6` to plan Phase 6: RMM alerts to tickets
 - Phase 2 issue: #3 (closed); shipped in PR #4
 - Phase 3 issue: #5 (closed); merged to main in PR #4
 - Phase 4 issue: #6 (closed); merged to main in PR #7
-- Phase 5 issue: #8; PR #9 (dev → main)
+- Phase 5 issue: #8 (closed); merged to main in PR #9
+- Phase 6 issue: #10 (closes with PR #11); PR #11 dev -> main
 
 ## Phase 2 Results
 (build started 2026-10-09)
@@ -51,6 +52,7 @@ Run `/triad:plan 6` to plan Phase 6: RMM alerts to tickets
 
 ## Quick Tasks
 - 2026-10-10: date tests use the business timezone (fixes PR #4 CI failing between 00:00 and 05:00 UTC), f69cd2f
+- 2026-10-20: phase 6 low and info security items: NinjaOne host allowlist, credentials re-entered on host change, inactive or archived clients skipped
 
 ## Phase 4 Results
 (build started 2026-10-10)
@@ -72,3 +74,9 @@ Run `/triad:plan 6` to plan Phase 6: RMM alerts to tickets
 - Plan 05-04 (Wave 3): Staff UI: email switch, on-call page, widget and board — Complete
 - Plan 05-05 (Wave 3): Portal appointments page, docs and verify checklist — PARTIAL: Portal Appointments page, tests, docs and the Phase 5 verify checklist are done. The full vitest run has 1 failure in Dispatch.test.tsx, caused by 05-04's in-flight work, not these files. typecheck an
 - Plan 05-05 (Wave 3): Portal appointments page, docs and verify checklist — Complete
+
+## Phase 6 Results
+(build started 2026-10-20)
+- Plan 06-01 (Wave 1): RMM alert schema, models and NinjaOne alert adapter — Complete
+- Plan 06-02 (Wave 2): Alert polling engine, worker job and admin API — Complete
+- Plan 06-03 (Wave 3): Integrations alerts panel, ticket device chip and verify docs — Complete

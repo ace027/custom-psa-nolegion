@@ -602,9 +602,18 @@ class Ticket(TimestampMixin, Base):
     sla_paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sla_paused_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    # composite FK (asset_id, organization_id) lives in migration 0027
+    asset_id: Mapped[int | None] = mapped_column(BigInteger)
 
     organization: Mapped[Organization | None] = relationship(lazy="joined")
     contact: Mapped[Contact | None] = relationship(lazy="joined")
+    asset: Mapped["Asset | None"] = relationship(
+        "Asset",
+        primaryjoin="Asset.id == Ticket.asset_id",
+        foreign_keys="[Ticket.asset_id]",
+        lazy="selectin",
+        viewonly=True,
+    )
     queue: Mapped[Queue] = relationship(lazy="joined")
     category: Mapped[Category | None] = relationship(lazy="joined")
     priority: Mapped[Priority] = relationship(lazy="joined")
@@ -1417,6 +1426,9 @@ class Integration(TimestampMixin, Base):
     last_error: Mapped[str | None] = mapped_column(Text)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sync_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    alerts_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    alerts_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    alerts_last_error: Mapped[str | None] = mapped_column(Text)
 
 
 class IntegrationClientMap(Base):
@@ -1507,3 +1519,47 @@ class AssetOverride(TimestampMixin, Base):
     value_date: Mapped[date] = mapped_column(Date, nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+
+class RmmAlert(Base):
+    """One open alert per (integration, condition); the migration owns constraints and indexes."""
+
+    __tablename__ = "rmm_alerts"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    integration_id: Mapped[int] = mapped_column(ForeignKey("integrations.id"), nullable=False)
+    external_id: Mapped[str] = mapped_column(Text, nullable=False)
+    condition_key: Mapped[str] = mapped_column(Text, nullable=False)
+    device_external_id: Mapped[str] = mapped_column(Text, nullable=False)
+    asset_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    ticket_id: Mapped[int | None] = mapped_column(BigInteger)
+    severity: Mapped[str] = mapped_column(Text, nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    state: Mapped[str] = mapped_column(Text, nullable=False, server_default="open")
+    occurrences: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    # Consecutive successful polls this open condition was absent from; cleared at two.
+    missed_polls: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    cleared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolution: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    asset: Mapped[Asset] = relationship(
+        primaryjoin="Asset.id == RmmAlert.asset_id",
+        foreign_keys="[RmmAlert.asset_id]",
+        lazy="selectin",
+        viewonly=True,
+    )
+    ticket: Mapped["Ticket | None"] = relationship(
+        primaryjoin="Ticket.id == RmmAlert.ticket_id",
+        foreign_keys="[RmmAlert.ticket_id]",
+        lazy="selectin",
+        viewonly=True,
+    )

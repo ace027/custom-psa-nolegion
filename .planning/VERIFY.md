@@ -25,3 +25,19 @@ pass. Mark each item pass or fail (with a note) when it is run.
 
 ## Phase 5: Client confirmations + on-call
 - [ ] Walk through docs/verify/client-notices-oncall.md
+
+## Phase 6: RMM alerts to tickets
+- [ ] Walk through docs/verify/rmm-alerts.md
+- [ ] Check the NinjaOne alert field names (uid, deviceId, severity, sourceConfigUid) against a live tenant first
+- [ ] Enable alerts with defaults on the Integrations card
+- [ ] A MODERATE+ alert on a mapped device makes one RMM ticket with device link and severity priority
+- [ ] A repeating alert raises occurrences and makes no second ticket
+- [ ] A MINOR alert makes no ticket
+- [ ] An unsynced device makes no ticket until asset sync
+- [ ] Clearing an untouched alert resolves the ticket with a note
+- [ ] Clearing after a tech note adds a note only and the ticket stays open
+- [ ] Rules note_only and always_resolve behave as labelled
+- [ ] Re-firing after resolve makes a new ticket linked as related
+- [ ] Broken credentials show an error on the card and change no tickets
+- [ ] Check now queues a poll and is disabled while alerts are off
+- [ ] Tech and read-only users cannot see the card

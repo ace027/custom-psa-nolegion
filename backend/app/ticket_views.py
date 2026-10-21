@@ -16,6 +16,8 @@ def ticket_out(t: Ticket, cal: Calendar, at_risk_percent: int, now: datetime) ->
         contact_id=t.contact_id,
         contact_name=t.contact.name if t.contact else None,
         site_id=t.site_id,
+        asset_id=t.asset_id,
+        asset_name=t.asset.name if t.asset else None,
         queue_id=t.queue_id,
         queue_name=t.queue.name,
         category_id=t.category_id,

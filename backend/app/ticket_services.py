@@ -225,7 +225,7 @@ def update_ticket(ctx: Ctx, ticket_id: int, data: dict) -> Ticket:
     type_changed = "type_id" in data and data["type_id"] != ticket.type_id
     if data.get("type_id") is not None and type_changed:
         _active(ctx, TicketType, data["type_id"], "ticket type")
-    new_type = data["type_id"] if "type_id" in data else ticket.type_id
+    new_type = data.get("type_id", ticket.type_id)
     new_values = None
     if type_changed or data.get("custom_values"):
         new_values = custom_fields.merge_values(
@@ -346,6 +346,47 @@ def add_note(
         organization_id=ticket.organization_id,
     )
     return note
+
+
+def system_note(ctx: Ctx, ticket: Ticket, body: str) -> TicketNote:
+    """An internal note written by the system (no author, never emailed)."""
+    note = TicketNote(
+        ticket_id=ticket.id,
+        organization_id=ticket.organization_id,
+        author_user_id=None,
+        visibility="internal",
+        source="ui",
+        body=body,
+    )
+    ctx.db.add(note)
+    ticket.updated_at = now()
+    ctx.db.flush()
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "ticket.note",
+        note,
+        after={"ticket_id": ticket.id, "visibility": "internal", "emailed": False},
+        organization_id=ticket.organization_id,
+    )
+    return note
+
+
+def resolve_by_system(ctx: Ctx, ticket: Ticket) -> None:
+    """Move a ticket to resolved on behalf of an automation (e.g. an RMM alert that cleared)."""
+    before = audit.snapshot(ticket)
+    _apply_status(ctx, ticket, "resolved")
+    ctx.db.flush()
+    ctx.db.refresh(ticket)
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "ticket.update",
+        ticket,
+        before={"status": before["status"]},
+        after={"status": ticket.status},
+        organization_id=ticket.organization_id,
+    )
 
 
 # ---- time ----------------------------------------------------------------------------------
