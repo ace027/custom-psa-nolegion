@@ -102,3 +102,6 @@ verification: 6/6 passed
 | O-058 | 2026-10-21 | dev | 7 | 07-00 | engineering-laravel-specialist | quality-review | success | 5 | review, engineering | Phase 7 review PASSED in 3 cycle(s), 6 finding(s) |
 | O-059 | 2026-10-21 | dev | 8 | 08-01 | engineering-backend-architect | implementation | success | 2 | projects-project-billing, engineering | Projects schema, permissions and approved money rules: Complete |
 | O-060 | 2026-10-21 | dev | 8 | 08-02 | engineering-senior-developer | implementation | success | 2 | projects-project-billing, engineering | Projects, phases, tasks, dependencies and budget vs actual API: Complete |
+| O-061 | 2026-10-21 | dev | 8 | 08-03 | engineering-senior-developer | implementation | failed | 5 | projects-project-billing, engineering | Project billing: fixed fee up front and capped T&M: Partial |
+| O-062 | 2026-10-21 | dev | 8 | 08-04 | engineering-frontend-developer | implementation | failed | 5 | projects-project-billing, engineering | Projects UI: list, detail, board view, budget card, seed and verify checklist: Partial |
+| O-063 | 2026-10-21 | dev | 8 | 08-03 | engineering-senior-developer | implementation | partial | 3 | projects-project-billing, engineering | Project billing: fixed fee up front and capped T&M: Complete with Warnings |

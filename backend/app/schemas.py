@@ -771,7 +771,7 @@ AgreementType = Literal["per_user", "per_device", "flat", "block"]
 BLOCK_MINUTES_MAX = 44_640
 InvoiceStatus = Literal["draft", "final", "void"]
 RunStatus = Literal["draft", "reviewed", "finalized", "cancelled"]
-LineKind = Literal["time", "product", "agreement", "manual", "proration"]
+LineKind = Literal["time", "product", "agreement", "manual", "proration", "project"]
 Cents = int
 
 
@@ -1394,6 +1394,7 @@ class RevenueRow(BaseModel):
     product_cents: int
     agreement_cents: int
     manual_cents: int
+    project_cents: int
     subtotal_cents: int
     tax_cents: int
     total_cents: int

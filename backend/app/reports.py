@@ -26,7 +26,7 @@ from app.models import (
 from app.money import hours, line_amounts, marked_up
 from app.payments import payment_state
 
-KINDS = ("time", "product", "agreement", "manual")
+KINDS = ("time", "product", "agreement", "manual", "project")
 
 
 def month_start(d: date) -> date:
