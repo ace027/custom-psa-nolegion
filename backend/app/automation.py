@@ -15,7 +15,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 
 from app import audit, events, notifications, ticket_links, webhooks
@@ -408,6 +408,31 @@ def _runs_last_hour(ctx: Ctx, rule_id: int) -> int:
     )
 
 
+def _check_rate_window_clear(ctx: Ctx, rule_id: int) -> None:
+    """Refuse to re-enable a rule whose rate window is still full: it would be switched
+    straight off again. Tells the admin when the window will have room."""
+    count = _runs_last_hour(ctx, rule_id)
+    if count < RATE_CAP:
+        return
+    # The run that must age out for the count to drop below the cap.
+    pivot = ctx.db.scalar(
+        select(AutomationRun.created_at)
+        .where(
+            AutomationRun.rule_id == rule_id,
+            AutomationRun.dry_run.is_(False),
+            AutomationRun.matched.is_(True),
+            AutomationRun.created_at >= _now() - timedelta(hours=1),
+        )
+        .order_by(AutomationRun.created_at)
+        .offset(count - RATE_CAP)
+        .limit(1)
+    )
+    when = (pivot + timedelta(hours=1)).astimezone(UTC).strftime("%H:%M UTC") if pivot else "soon"
+    raise Conflict(
+        f"This rule fired {count} times in the last hour. It can be turned back on after {when}"
+    )
+
+
 def on_event(
     ctx: Ctx,
     type: str,
@@ -432,6 +457,16 @@ def on_event(
             _process(ctx, rule, type, event_id, ticket, alert, changes)
         except Exception:  # noqa: BLE001 - a rules problem never undoes the ticket change
             log.exception("automation rule %s failed on %s", rule.id, type)
+
+
+def purge_old(ctx: Ctx, runs_days: int = 30, deliveries_days: int = 90) -> tuple[int, int]:
+    """Retention: delete old automation runs and finished webhook deliveries through the
+    SECURITY DEFINER purge function (psa_app has no DELETE grant). Returns (runs, deliveries)."""
+    row = ctx.db.execute(
+        text("SELECT * FROM purge_automation_data(:r, :d)"),
+        {"r": runs_days, "d": deliveries_days},
+    ).one()
+    return int(row[0]), int(row[1])
 
 
 def _process(ctx, rule, type, event_id, ticket, alert, changes) -> None:
@@ -584,6 +619,7 @@ def update(ctx: Ctx, rule_id: int, data: dict) -> AutomationRule:
     for key, value in spec.items():
         setattr(rule, key, value)
     if rule.enabled and not before["enabled"]:
+        _check_rate_window_clear(ctx, rule.id)
         rule.disabled_reason = None
     rule.updated_at = _now()
     ctx.db.flush()

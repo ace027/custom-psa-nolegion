@@ -360,6 +360,46 @@ def test_rate_cap_disables_the_rule_once_and_audits(admin, owner, make_ticket):
     assert n == 1
 
 
+def test_reenable_is_refused_while_the_rate_window_is_full(admin, owner, make_ticket):
+    rule = mkrule(admin, actions=[{"type": "set_priority", "priority_id": pri(admin, "Low")}])
+    owner.execute(
+        text(
+            "INSERT INTO automation_runs (rule_id, event_id, event_type, matched, trace) "
+            "SELECT :r, gen_random_uuid(), 'ticket.created', true, '{}'::jsonb "
+            "FROM generate_series(1, 200)"
+        ),
+        {"r": rule["id"]},
+    )
+    make_ticket()  # trips the cap
+    r = admin.patch(f"/api/automation/rules/{rule['id']}", json={"enabled": True})
+    assert r.status_code == 409 and "turned back on after" in r.text
+    # once the window has room, re-enabling works
+    owner.execute(
+        text("UPDATE automation_runs SET created_at = now() - interval '2 hours' WHERE rule_id=:r"),
+        {"r": rule["id"]},
+    )
+    r = admin.patch(f"/api/automation/rules/{rule['id']}", json={"enabled": True})
+    assert r.status_code == 200 and r.json()["disabled_reason"] is None
+
+
+def test_purge_function_removes_only_old_rows(admin, owner):
+    rule = mkrule(admin, actions=[{"type": "escalate"}])
+    owner.execute(
+        text(
+            "INSERT INTO automation_runs (rule_id, event_id, event_type, matched, trace, created_at)"
+            " VALUES (:r, gen_random_uuid(), 'ticket.created', true, '{}', now() - interval '40 days'),"
+            " (:r, gen_random_uuid(), 'ticket.created', true, '{}', now())"
+        ),
+        {"r": rule["id"]},
+    )
+    with dbmod.new_session() as db:
+        dbmod.set_org_scope(db, "all")
+        ctx = Ctx(db=db, user=None, scope=Scope.all())
+        assert automation.purge_old(ctx, 30, 90) == (1, 0)
+        db.commit()
+    assert len(runs(owner, rule["id"])) == 1
+
+
 # ---- failure isolation ----
 def test_a_failing_action_keeps_the_ticket_change_and_is_traced(
     admin, tech, owner, make_ticket, monkeypatch

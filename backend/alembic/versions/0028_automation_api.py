@@ -5,7 +5,8 @@ Revision ID: 0028
 Revises: 0027
 
 All five tables are staff-internal (like staff_notifications): no organization_id and no RLS.
-psa_app gets SELECT, INSERT, UPDATE only; nothing is ever deleted.
+psa_app gets SELECT, INSERT, UPDATE only; old rows go only through the SECURITY DEFINER
+purge_automation_data() retention function.
 """
 
 import sqlalchemy as sa
@@ -128,6 +129,32 @@ def upgrade() -> None:
         unique=True,
         postgresql_where=sa.text("NOT dry_run"),
     )
+    op.create_index("ix_automation_runs_rule_created", "automation_runs", ["rule_id", "created_at"])
+    op.create_index("ix_automation_runs_created", "automation_runs", ["created_at"])
+    op.create_index("ix_webhook_deliveries_created", "webhook_deliveries", ["created_at"])
+
+    # Retention: psa_app cannot DELETE, so purging goes through this narrow function.
+    op.execute(
+        """
+        CREATE FUNCTION purge_automation_data(runs_days integer, deliveries_days integer,
+            OUT runs_deleted bigint, OUT deliveries_deleted bigint)
+        LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+        BEGIN
+            IF runs_days < 7 OR deliveries_days < 7 THEN
+                RAISE EXCEPTION 'retention must be at least 7 days';
+            END IF;
+            DELETE FROM automation_runs
+                WHERE created_at < now() - make_interval(days => runs_days);
+            GET DIAGNOSTICS runs_deleted = ROW_COUNT;
+            DELETE FROM webhook_deliveries
+                WHERE status IN ('delivered','failed')
+                  AND created_at < now() - make_interval(days => deliveries_days);
+            GET DIAGNOSTICS deliveries_deleted = ROW_COUNT;
+        END $$
+        """
+    )
+    op.execute("REVOKE ALL ON FUNCTION purge_automation_data(integer, integer) FROM PUBLIC")
+    op.execute(f"GRANT EXECUTE ON FUNCTION purge_automation_data(integer, integer) TO {APP_ROLE}")
 
     op.add_column("tickets", sa.Column("sla_breached_event_at", sa.DateTime(timezone=True)))
     op.drop_constraint("ck_tickets_source", "tickets", type_="check")
@@ -141,6 +168,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.execute("DROP FUNCTION IF EXISTS purge_automation_data(integer, integer)")
     op.drop_table("automation_runs")
     op.drop_table("automation_rules")
     op.drop_table("webhook_deliveries")
