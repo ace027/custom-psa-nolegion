@@ -266,6 +266,94 @@ def seed_assets(db) -> None:
     db.flush()
 
 
+def seed_projects(db) -> None:
+    """One approved fixed-fee project and one approved T&M project with 5 h of Remote time."""
+    from app import projects
+    from app.models import Project
+
+    if db.execute(select(func.count()).select_from(Project)).scalar_one():
+        return
+    admin = repo.get_user_by_email(db, "admin@example.com")
+    tech = repo.get_user_by_email(db, "tech@example.com")
+    orgs = {o.name: o for o in db.execute(select(Organization)).scalars()}
+    if admin is None or tech is None or "Contoso Dental" not in orgs:
+        return
+    ctx = Ctx(db=db, user=admin, scope=Scope.all())
+    tech_ctx = Ctx(db=db, user=tech, scope=Scope.all())
+    remote = next(w for w in repo.list_lookup(db, WorkType, False) if w.name == "Remote")
+
+    fixed = projects.create_project(
+        ctx,
+        {
+            "organization_id": orgs["Contoso Dental"].id,
+            "name": "Office network refresh",
+            "description": "Replace the switch and Wi-Fi at the main office. Fixed fee.",
+            "billing_mode": "fixed_fee",
+            "fixed_fee_cents": 250000,
+            "taxable": False,
+        },
+    )
+    plan = projects.add_phase(ctx, fixed.id, {"name": "Plan"})
+    build = projects.add_phase(ctx, fixed.id, {"name": "Build"})
+    survey = projects.add_task(
+        ctx, fixed.id, {"title": "Site survey", "phase_id": plan.id, "estimate_minutes": 120}
+    )
+    order = projects.add_task(
+        ctx, fixed.id, {"title": "Order equipment", "phase_id": plan.id, "estimate_minutes": 60}
+    )
+    install = projects.add_task(
+        ctx,
+        fixed.id,
+        {
+            "title": "Install switch and access points",
+            "phase_id": build.id,
+            "assignee_id": tech.id,
+            "estimate_minutes": 240,
+        },
+    )
+    projects.add_task(
+        ctx, fixed.id, {"title": "Test and hand over", "phase_id": build.id, "estimate_minutes": 60}
+    )
+    projects.add_dependency(ctx, install.id, survey.id, fixed.id)
+    projects.add_dependency(ctx, install.id, order.id, fixed.id)
+    projects.approve(ctx, fixed.id)
+
+    tm = projects.create_project(
+        ctx,
+        {
+            "organization_id": orgs["Fabrikam Engineering"].id,
+            "name": "Microsoft 365 migration",
+            "description": "Move mailboxes to Microsoft 365. Time and materials, capped.",
+            "billing_mode": "tm",
+            "budget_cents": 100000,
+            "taxable": False,
+        },
+    )
+    tasks = [
+        projects.add_task(
+            ctx, tm.id, {"title": title, "assignee_id": tech.id, "estimate_minutes": est}
+        )
+        for title, est in [
+            ("Prepare tenant and domains", 120),
+            ("Migrate mailboxes", 240),
+            ("Cut over and train staff", 120),
+        ]
+    ]
+    projects.add_dependency(ctx, tasks[1].id, tasks[0].id, tm.id)
+    projects.approve(ctx, tm.id)
+    for task, minutes in zip(tasks, (120, 120, 60), strict=True):
+        tsvc.add_time(
+            tech_ctx,
+            task.ticket_id,
+            {
+                "work_type_id": remote.id,
+                "minutes": minutes,
+                "billable": True,
+                "note": "Project work",
+            },
+        )
+
+
 def run() -> None:
     if get_settings().is_production:
         raise SystemExit("Refusing to seed demo data in production")
@@ -276,6 +364,7 @@ def run() -> None:
             seed_tickets(db)
             seed_billing(db)
             seed_assets(db)
+            seed_projects(db)
             db.commit()
             return
         for email, name, role in USERS:
@@ -345,10 +434,11 @@ def run() -> None:
         seed_tickets(db)
         seed_billing(db)
         seed_assets(db)
+        seed_projects(db)
         db.commit()
         print(
-            f"Seeded {len(USERS)} users, {len(ORGS)} organizations, demo tickets, billing "
-            "and devices."
+            f"Seeded {len(USERS)} users, {len(ORGS)} organizations, demo tickets, billing, "
+            "devices and projects."
         )
 
 

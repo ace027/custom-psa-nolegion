@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Response
 
+from app import billing
 from app import permissions as P
 from app import projects as svc
 from app import repositories as repo
@@ -20,7 +21,8 @@ from app.project_schemas import (
     TaskOut,
     TaskPatch,
 )
-from app.schemas import ErrorOut, TicketOut
+from app.routers.invoices import _outs as invoice_outs
+from app.schemas import ErrorOut, InvoiceOut, TicketOut
 from app.sla import Calendar
 from app.ticket_views import ticket_out
 
@@ -117,6 +119,17 @@ def set_project_status(project_id: int, body: ProjectStatusIn, ctx: Ctx = requir
 )
 def project_budget(project_id: int, ctx: Ctx = require(P.TICKET_READ)):
     return svc.budget(ctx, project_id)
+
+
+@router.post(
+    "/projects/{project_id}/bill-fixed-fee",
+    response_model=InvoiceOut,
+    status_code=201,
+    responses=ERR,
+    summary="Bill a fixed-fee project's fee now on a draft one-off invoice",
+)
+def bill_fixed_fee(project_id: int, ctx: Ctx = require(P.BILLING_WRITE)):
+    return invoice_outs(ctx, [billing.bill_fixed_fee(ctx, project_id)])[0]
 
 
 # ---- phases ----

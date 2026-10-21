@@ -19,6 +19,7 @@ from app import audit
 from app import repositories as repo
 from app.billing_repo import (
     agreements_overlapping,
+    billable_projects,
     block_candidates,
     get_agreement,
     get_charge,
@@ -30,6 +31,7 @@ from app.billing_repo import (
     list_work_types,
     live_run_for_period,
     orgs_with_billables,
+    project_billed_cents,
     run_invoices,
     tickets_by_id,
     unbilled_charges,
@@ -49,6 +51,7 @@ from app.models import (
     OrgWorkTypeRate,
     Product,
     ProductCharge,
+    Project,
     TimeEntry,
     WorkType,
 )
@@ -528,12 +531,13 @@ def _pull_time(
 ) -> list[str]:
     """Bill unbilled time as one line per ticket + work type. Each entry counts only the minutes
     a block did not cover (minutes_billable - block_minutes_covered); fully covered entries are
-    skipped. skip_block_months (ad-hoc invoices): covered-type time in a month overlapping one of
-    the client's block agreements is left for the monthly run, which alone consumes blocks.
+    skipped. Time on project tickets is left for _pull_projects (monthly run only).
+    skip_block_months (ad-hoc invoices): covered-type time in a month overlapping one of the
+    client's block agreements is left for the monthly run, which alone consumes blocks.
     handled: a (start, end) window whose block draw-down _pull_block has just done on this
     invoice; covered-type time inside it is billed (only its uncovered minutes), not held."""
     warnings: list[str] = []
-    entries = unbilled_time(ctx.db, ctx.scope, org.id, through)
+    entries = unbilled_time(ctx.db, ctx.scope, org.id, through, project_time=False)
     entries = [e for e in entries if e.minutes_billable - e.block_minutes_covered > 0]
     if not entries:
         return warnings
@@ -751,6 +755,207 @@ def _pull_agreements(
     return warnings, block_line
 
 
+# ---- projects (docs/BILLING.md "Project billing", owner-approved PRF-002) ----
+def _hours_text(minutes: int) -> str:
+    return format(hours(minutes).normalize(), "f")
+
+
+def _fee_line(ctx: Ctx, invoice: Invoice, org: Organization, project: Project) -> InvoiceLine:
+    """The whole fixed fee as one 'project' line; marks the fee billed on the project."""
+    line = _add_line(
+        ctx,
+        invoice,
+        "project",
+        f"Project: {project.name} (fixed fee)",
+        Decimal(1),
+        project.fixed_fee_cents,
+        org.tax_rate_bp if project.taxable else 0,
+        project_id=project.id,
+    )
+    project.fixed_fee_invoice_line_id = line.id
+    ctx.db.flush()
+    return line
+
+
+def _zero_project_line(
+    ctx: Ctx, invoice: Invoice, project: Project, items: list[TimeEntry], what: str
+) -> InvoiceLine:
+    """One $0 'project' line holding time that is not charged (covered by the fee, or over the
+    T&M budget). Linking the entries marks them billed so they never bill twice."""
+    minutes = sum(e.minutes_billable - e.block_minutes_covered for e in items)
+    line = _add_line(
+        ctx,
+        invoice,
+        "project",
+        f"Project: {project.name}: {_hours_text(minutes)} h {what}",
+        hours(minutes),
+        0,
+        0,
+        project_id=project.id,
+    )
+    for e in items:
+        e.invoice_line_id = line.id
+    return line
+
+
+def _bill_tm_time(
+    ctx: Ctx,
+    invoice: Invoice,
+    org: Organization,
+    project: Project,
+    entries: list[TimeEntry],
+    work_types: dict[int, WorkType],
+) -> tuple[list[InvoiceLine], list[str]]:
+    """The T&M cap. Groups (ticket number, work type id) are priced exactly as _pull_time
+    prices them; a group that fits bills as a normal 'time' line, the group that crosses the
+    budget bills exactly what remains, and everything after joins one $0 over-budget line."""
+    warnings: list[str] = []
+    lines: list[InvoiceLine] = []
+    remaining = max(
+        0, (project.budget_cents or 0) - project_billed_cents(ctx.db, ctx.scope, project.id)
+    )
+    tickets = tickets_by_id(ctx.db, ctx.scope, {e.ticket_id for e in entries})
+    groups: dict[tuple[int, int], list[TimeEntry]] = {}
+    for e in entries:
+        t = tickets.get(e.ticket_id)
+        groups.setdefault((t.number if t else e.ticket_id, e.work_type_id), []).append(e)
+    over: list[TimeEntry] = []
+    for number, wt_id in sorted(groups):
+        items = groups[(number, wt_id)]
+        wt = work_types[wt_id]
+        rate = hourly_rate(ctx, org.id, wt)
+        minutes = sum(e.minutes_billable - e.block_minutes_covered for e in items)
+        if rate is None:
+            warnings.append(
+                f"No hourly rate for work type '{wt.name}': {len(items)} time "
+                f"entr{'y' if len(items) == 1 else 'ies'} "
+                f"({minutes} min) left unbilled"
+            )
+            continue
+        if remaining <= 0:
+            over += items
+            continue
+        t = tickets.get(items[0].ticket_id)
+        label = f"Ticket #{t.number}: {t.subject}" if t else f"Ticket {items[0].ticket_id}"
+        description = f"{label} ({wt.name}, hours)"
+        tax_rate = org.tax_rate_bp if wt.taxable else 0
+        qty = hours(minutes)
+        amount = line_amounts(qty, rate, tax_rate)[0]
+        if amount <= remaining:
+            line = _add_line(
+                ctx, invoice, "time", description, qty, rate, tax_rate, project_id=project.id
+            )
+            remaining -= amount
+        else:
+            line = _add_line(
+                ctx,
+                invoice,
+                "time",
+                f"{description} (capped at the project budget)",
+                Decimal(1),
+                remaining,
+                tax_rate,
+                project_id=project.id,
+            )
+            remaining = 0
+        lines.append(line)
+        for e in items:
+            e.invoice_line_id = line.id
+    if over:
+        lines.append(_zero_project_line(ctx, invoice, project, over, "over budget, not billed"))
+    return lines, warnings
+
+
+def _pull_projects(
+    ctx: Ctx, invoice: Invoice, org: Organization, start: date, end: date
+) -> list[str]:
+    """Monthly run only (never create_invoice): the fixed fee once after approval, fee-covered
+    time on a $0 line, and T&M time capped at the budget. Every line carries project_id."""
+    warnings: list[str] = []
+    projects = billable_projects(ctx.db, ctx.scope, org.id)
+    if not projects:
+        return warnings
+    work_types = {wt.id: wt for wt in list_work_types(ctx.db)}
+    for project in projects:
+        entries = unbilled_time(
+            ctx.db, ctx.scope, org.id, end, project_time=True, project_id=project.id
+        )
+        entries = [e for e in entries if e.minutes_billable - e.block_minutes_covered > 0]
+        lines: list[InvoiceLine] = []
+        if project.billing_mode == "fixed_fee":
+            if project.fixed_fee_invoice_line_id is None:
+                lines.append(_fee_line(ctx, invoice, org, project))
+            if entries:
+                lines.append(
+                    _zero_project_line(ctx, invoice, project, entries, "covered by the fixed fee")
+                )
+        elif project.billing_mode == "tm" and entries:
+            tm_lines, tm_warnings = _bill_tm_time(ctx, invoice, org, project, entries, work_types)
+            lines += tm_lines
+            warnings += [f"Project {project.name}: {w}" for w in tm_warnings]
+        if not lines:
+            continue
+        ctx.db.flush()
+        audit.record(
+            ctx.db,
+            ctx.user,
+            "project.run_billed",
+            project,
+            organization_id=org.id,
+            detail={
+                "billing_run_id": invoice.billing_run_id,
+                "invoice_id": invoice.id,
+                "period": [start.isoformat(), end.isoformat()],
+                "lines": [
+                    {"id": ln.id, "kind": ln.kind, "amount_cents": ln.amount_cents} for ln in lines
+                ],
+                "billed_cents": sum(ln.amount_cents for ln in lines),
+            },
+        )
+    return warnings
+
+
+def bill_fixed_fee(ctx: Ctx, project_id: int) -> Invoice:
+    """ "Bill fixed fee now": a draft one-off invoice holding only the fee line."""
+    stmt = ctx.scope.apply(select(Project).where(Project.id == project_id), Project.organization_id)
+    project = ctx.db.execute(stmt.with_for_update()).scalar_one_or_none()
+    if project is None:
+        raise NotFound("Project not found")
+    if project.billing_mode != "fixed_fee":
+        raise Conflict("Only a fixed-fee project has a fee to bill")
+    if not billable_projects(ctx.db, ctx.scope, project.organization_id, project.id):
+        raise Conflict("Approve the project before billing its fee")
+    if project.fixed_fee_invoice_line_id is not None:
+        raise Conflict("The fixed fee is already billed")
+    org = _org(ctx, project.organization_id)
+    invoice = _new_draft(ctx, org, memo=f"Project: {project.name} (fixed fee)")
+    line = _fee_line(ctx, invoice, org, project)
+    invoice.warnings = []
+    recalc(ctx, invoice)
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "invoice.create",
+        invoice,
+        after=audit.snapshot(invoice),
+        organization_id=org.id,
+    )
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "project.fee_billed",
+        project,
+        organization_id=org.id,
+        detail={
+            "invoice_id": invoice.id,
+            "invoice_line_id": line.id,
+            "amount_cents": line.amount_cents,
+            "tax_cents": line.tax_cents,
+        },
+    )
+    return invoice
+
+
 def create_invoice(ctx: Ctx, org_id: int, memo: str | None, include_unbilled: bool) -> Invoice:
     org = _org(ctx, org_id)
     invoice = _new_draft(ctx, org, memo=memo)
@@ -907,6 +1112,12 @@ def update_line(ctx: Ctx, line_id: int, data: dict) -> InvoiceLine:
 def _release(ctx: Ctx, line_ids: list[int]) -> None:
     if not line_ids:
         return
+    # a released fixed-fee line means the fee is no longer billed and can be billed again
+    ctx.db.execute(
+        update(Project)
+        .where(Project.fixed_fee_invoice_line_id.in_(line_ids))
+        .values(fixed_fee_invoice_line_id=None)
+    )
     ctx.db.execute(
         update(TimeEntry)
         .where(TimeEntry.invoice_line_id.in_(line_ids))
@@ -1120,6 +1331,7 @@ def create_run(ctx: Ctx, period: str) -> BillingRun:
         warnings += _pull_time(ctx, invoice, org, end)
         _pull_charges(ctx, invoice, org, end)
         _pull_expenses(ctx, invoice, org, end)
+        warnings += _pull_projects(ctx, invoice, org, start, end)
         if not invoice_lines(ctx.db, ctx.scope, invoice.id):
             # nothing billable after all (e.g. only rate-less time): keep it visible for review
             invoice.warnings = warnings + ["Nothing could be billed for this organization"]

@@ -37,6 +37,12 @@ export default function TicketDetail() {
         {t.needs_triage ? "Unmatched sender" : t.organization_name}
         {t.contact_name ? ` · ${t.contact_name}` : t.requester_email ? ` · ${t.requester_email}` : ""}
         {" · "}opened {fmt(t.created_at)} via {t.source}
+        {t.project_id != null && (
+          <>
+            {" · "}Project:{" "}
+            <Link className="text-blue-700 hover:underline" to={`/projects/${t.project_id}`}>{t.project_name ?? `#${t.project_id}`}</Link>
+          </>
+        )}
         {t.source === "rmm" && <span className="ml-2 rounded bg-slate-100 px-1.5 text-xs text-slate-700">From RMM alert</span>}
         {t.asset_id != null && (
           <>

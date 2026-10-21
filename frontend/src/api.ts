@@ -181,6 +181,8 @@ export interface Ticket {
   source: string;
   asset_id?: number | null;
   asset_name?: string | null;
+  project_id?: number | null;
+  project_name?: string | null;
   requester_email: string | null;
   needs_triage: boolean;
   sla_state: SlaState;
@@ -1060,3 +1062,133 @@ export const archiveRule = (id: number) => api<AutomationRule>(`/automation/rule
 export const listRuleRuns = (id: number, limit = 50) => api<RuleRun[]>(`/automation/rules/${id}/runs?limit=${limit}`);
 export const testRule = (json: { rule_id?: number; rule?: RuleBody; ticket_id: number }) =>
   api<RuleTestResult>("/automation/rules/test", { method: "POST", json });
+
+// ---- projects ----
+export type ProjectStatus = "draft" | "active" | "on_hold" | "completed" | "cancelled";
+export const PROJECT_STATUSES: ProjectStatus[] = ["draft", "active", "on_hold", "completed", "cancelled"];
+export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
+  draft: "Draft",
+  active: "Active",
+  on_hold: "On hold",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+export type BillingMode = "fixed_fee" | "tm";
+export interface ProjectSummary {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  name: string;
+  description: string | null;
+  status: ProjectStatus;
+  start_date: string | null;
+  due_date: string | null;
+  owner_id: number | null;
+  approved_at: string | null;
+  billing_mode: BillingMode | null;
+  fixed_fee_cents: number | null;
+  budget_cents: number | null;
+  taxable: boolean;
+  fixed_fee_billed: boolean;
+  task_count: number;
+  done_count: number;
+  created_at: string;
+  updated_at: string;
+}
+export interface ProjectPhase {
+  id: number;
+  project_id: number;
+  name: string;
+  position: number;
+  due_date: string | null;
+  completed_at: string | null;
+  task_count: number;
+}
+export interface ProjectTask {
+  id: number;
+  project_id: number;
+  ticket_id: number;
+  ticket_number: number;
+  title: string;
+  status: TicketStatus;
+  status_name: string;
+  assignee_id: number | null;
+  assignee_name: string | null;
+  phase_id: number | null;
+  estimate_minutes: number;
+  actual_minutes: number;
+  start_date: string | null;
+  due_date: string | null;
+  position: number;
+  depends_on: number[];
+  blocked: boolean;
+}
+export interface ProjectBudget {
+  estimate_minutes: number;
+  actual_minutes: number;
+  billable_minutes: number;
+  cost_at_rates_cents: number;
+  billed_cents: number;
+  remaining_cents: number | null;
+  over_budget: boolean;
+}
+export interface Project extends ProjectSummary {
+  approved_by_id: number | null;
+  phases: ProjectPhase[];
+  tasks: ProjectTask[];
+  budget: ProjectBudget;
+}
+export interface ProjectInput {
+  organization_id?: number;
+  name?: string;
+  description?: string | null;
+  start_date?: string | null;
+  due_date?: string | null;
+  owner_id?: number | null;
+  billing_mode?: BillingMode | null;
+  fixed_fee_cents?: number | null;
+  budget_cents?: number | null;
+  taxable?: boolean;
+}
+export interface TaskInput {
+  title?: string;
+  description?: string | null;
+  phase_id?: number | null;
+  queue_id?: number | null;
+  priority_id?: number | null;
+  assignee_id?: number | null;
+  status?: TicketStatus;
+  status_id?: number;
+  estimate_minutes?: number;
+  start_date?: string | null;
+  due_date?: string | null;
+  position?: number;
+}
+
+const enc = (q: Record<string, string | number | undefined | null>) => {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== null && v !== "") p.set(k, String(v));
+  const s = p.toString();
+  return s ? `?${s}` : "";
+};
+export const projectsApi = {
+  list: (q: { organization_id?: number; status?: ProjectStatus | "" } = {}) =>
+    api<ProjectSummary[]>(`/projects${enc(q)}`),
+  get: (id: number) => api<Project>(`/projects/${id}`),
+  create: (json: ProjectInput) => api<Project>("/projects", { method: "POST", json }),
+  update: (id: number, json: ProjectInput) => api<Project>(`/projects/${id}`, { method: "PATCH", json }),
+  approve: (id: number) => api<Project>(`/projects/${id}/approve`, { method: "POST" }),
+  setStatus: (id: number, status: ProjectStatus) => api<Project>(`/projects/${id}/status`, { method: "POST", json: { status } }),
+  budget: (id: number) => api<ProjectBudget>(`/projects/${id}/budget`),
+  billFixedFee: (id: number) => api<unknown>(`/projects/${id}/bill-fixed-fee`, { method: "POST" }),
+  addPhase: (id: number, json: { name: string; due_date?: string | null }) => api<ProjectPhase>(`/projects/${id}/phases`, { method: "POST", json }),
+  updatePhase: (id: number, phase: number, json: { name?: string; due_date?: string | null; completed?: boolean }) =>
+    api<ProjectPhase>(`/projects/${id}/phases/${phase}`, { method: "PATCH", json }),
+  deletePhase: (id: number, phase: number) => api<void>(`/projects/${id}/phases/${phase}`, { method: "DELETE" }),
+  addTask: (id: number, json: TaskInput) => api<ProjectTask>(`/projects/${id}/tasks`, { method: "POST", json }),
+  updateTask: (id: number, task: number, json: TaskInput) => api<ProjectTask>(`/projects/${id}/tasks/${task}`, { method: "PATCH", json }),
+  addDependency: (id: number, task: number, dep: number) => api<ProjectTask>(`/projects/${id}/tasks/${task}/dependencies/${dep}`, { method: "POST" }),
+  removeDependency: (id: number, task: number, dep: number) => api<ProjectTask>(`/projects/${id}/tasks/${task}/dependencies/${dep}`, { method: "DELETE" }),
+  attachTicket: (id: number, ticket: number) => api<Ticket>(`/projects/${id}/tickets/${ticket}`, { method: "POST" }),
+  detachTicket: (id: number, ticket: number) => api<Ticket>(`/projects/${id}/tickets/${ticket}`, { method: "DELETE" }),
+};

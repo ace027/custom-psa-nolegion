@@ -49,3 +49,8 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Unverified: a LAN n8n works with WEBHOOK_ALLOW_PRIVATE_HOSTS=true (https only)
 - [ ] A rule's assign, escalate, notify, webhook and create-ticket actions each work on a real ticket
 - [ ] Rules never trigger other rules; a rule firing more than 200 times in an hour switches itself off
+
+## Phase 8: Projects & project billing
+- [ ] Walk through docs/verify/projects.md (projects, phases, tasks, dependencies, board, budget, fixed-fee and T&M billing)
+- [ ] Confirm: milestones (phase completion) are not billed
+- [ ] Confirm: project time does not use block hours

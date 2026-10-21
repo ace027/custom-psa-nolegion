@@ -19,6 +19,8 @@ import QuotePage from "./pages/quotes/QuotePage";
 import QuotesList from "./pages/quotes/QuotesList";
 import RateCard from "./pages/quotes/RateCard";
 import SurveyPage from "./pages/quotes/SurveyPage";
+import ProjectDetail from "./pages/ProjectDetail";
+import Projects from "./pages/Projects";
 import Profile from "./pages/Profile";
 import Reminders from "./pages/billing/Reminders";
 import Reports from "./pages/billing/Reports";
@@ -93,6 +95,7 @@ function Layout() {
           <NavLink to="/tickets" className={link}>Tickets</NavLink>
           {can(me, "schedule:read") && <NavLink to="/dispatch" className={link}>Dispatch</NavLink>}
           {can(me, "schedule:read") && <NavLink to="/oncall" className={link}>On-call</NavLink>}
+          {can(me, "ticket:read") && <NavLink to="/projects" className={link}>Projects</NavLink>}
           <NavLink to="/organizations" className={link}>Organizations</NavLink>
           {can(me, "time:write") && <NavLink to="/timesheet" className={link}>My timesheet</NavLink>}
           {can(me, "time:write") && <NavLink to="/expenses" className={link}>My expenses</NavLink>}
@@ -144,6 +147,12 @@ function StaffApp() {
         <Route path="/search" element={<Search />} />
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/tickets/:id" element={<TicketDetail />} />
+        {can(me, "ticket:read") && (
+          <>
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:id" element={<ProjectDetail />} />
+          </>
+        )}
         <Route
           path="/dispatch"
           element={can(me, "schedule:read") ? <Suspense fallback={<p>Loading…</p>}><Dispatch /></Suspense> : <Navigate to="/" replace />}

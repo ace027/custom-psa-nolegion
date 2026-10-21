@@ -19,6 +19,7 @@ from app.models import (
     OrgWorkTypeRate,
     Product,
     ProductCharge,
+    Project,
     Ticket,
     TimeEntry,
     WorkType,
@@ -165,9 +166,26 @@ def unbilled_expenses(db: Session, scope: Scope, org_id: int, through: date):
 
 
 # ---- time ----
-def unbilled_time(db: Session, scope: Scope, org_id: int, through: date):
+def _project_ticket_ids(project_id: int | None = None):
+    stmt = select(Ticket.id).where(Ticket.project_id.is_not(None))
+    if project_id is not None:
+        stmt = stmt.where(Ticket.project_id == project_id)
+    return stmt
+
+
+def unbilled_time(
+    db: Session,
+    scope: Scope,
+    org_id: int,
+    through: date,
+    *,
+    project_time: bool | None = None,
+    project_id: int | None = None,
+):
     """Billable, non-voided, not-yet-invoiced entries. FOR UPDATE: two people generating
-    invoices at once cannot both pick up the same entries."""
+    invoices at once cannot both pick up the same entries.
+    project_time: None = every entry; False = only entries whose ticket is in no project (normal
+    billing); True = only entries on project tickets, of `project_id` when it is given."""
     stmt = scope.apply(
         select(TimeEntry).where(
             TimeEntry.organization_id == org_id,
@@ -179,6 +197,10 @@ def unbilled_time(db: Session, scope: Scope, org_id: int, through: date):
         ),
         TimeEntry.organization_id,
     ).with_for_update()
+    if project_time is False:
+        stmt = stmt.where(TimeEntry.ticket_id.not_in(_project_ticket_ids()))
+    elif project_time is True:
+        stmt = stmt.where(TimeEntry.ticket_id.in_(_project_ticket_ids(project_id)))
     return list(
         db.execute(
             stmt.order_by(TimeEntry.ticket_id, TimeEntry.work_type_id, TimeEntry.id)
@@ -190,7 +212,8 @@ def block_candidates(
     db: Session, scope: Scope, org_id: int, start: date, end: date
 ) -> list[TimeEntry]:
     """Unbilled time a block can draw on: billable, not voided, not invoiced, work date inside
-    [start, end], work type covered by blocks. In consumption order (work date, then id).
+    [start, end], work type covered by blocks, ticket in no project (project time never draws
+    down a block). In consumption order (work date, then id).
     FOR UPDATE (time entries only), like unbilled_time."""
     stmt = scope.apply(
         select(TimeEntry)
@@ -204,6 +227,7 @@ def block_candidates(
             TimeEntry.work_date >= start,
             TimeEntry.work_date <= end,
             WorkType.block_covered.is_(True),
+            TimeEntry.ticket_id.not_in(_project_ticket_ids()),
         ),
         TimeEntry.organization_id,
     ).with_for_update(of=TimeEntry)
@@ -218,7 +242,8 @@ def tickets_by_id(db: Session, scope: Scope, ids: set[int]) -> dict[int, Ticket]
 
 
 def orgs_with_billables(db: Session, scope: Scope, start: date, end: date) -> list[Organization]:
-    """Organizations that could appear on a run: active agreement, or unbilled time/charges."""
+    """Organizations that could appear on a run: active agreement, unbilled time/charges, or
+    an approved fixed-fee project whose fee is not billed yet."""
     ids: set[int] = set()
     ids |= {
         a.organization_id
@@ -232,10 +257,25 @@ def orgs_with_billables(db: Session, scope: Scope, start: date, end: date) -> li
             TimeEntry.invoice_line_id.is_(None),
             TimeEntry.minutes_billable > 0,
             TimeEntry.work_date <= end,
+            # time on a project that was never approved is never billed
+            TimeEntry.ticket_id.not_in(
+                select(Ticket.id)
+                .join(Project, Project.id == Ticket.project_id)
+                .where(Project.approved_at.is_(None))
+            ),
         ),
         TimeEntry.organization_id,
     ).distinct()
     ids |= {r[0] for r in db.execute(t)}
+    fee = scope.apply(
+        select(Project.organization_id).where(
+            Project.billing_mode == "fixed_fee",
+            Project.approved_at.is_not(None),
+            Project.fixed_fee_invoice_line_id.is_(None),
+        ),
+        Project.organization_id,
+    ).distinct()
+    ids |= {r[0] for r in db.execute(fee)}
     c = scope.apply(
         select(ProductCharge.organization_id).where(
             ProductCharge.invoice_line_id.is_(None),
@@ -259,6 +299,41 @@ def orgs_with_billables(db: Session, scope: Scope, start: date, end: date) -> li
         return []
     stmt = select(Organization).where(Organization.id.in_(ids))
     return list(db.execute(stmt.order_by(func.lower(Organization.name))).scalars())
+
+
+def billable_projects(db: Session, scope: Scope, org_id: int, project_id: int | None = None):
+    """Projects whose money rules apply: approved (active, on hold, completed, or cancelled
+    after approval). A draft, or a project cancelled before approval, bills nothing. FOR UPDATE
+    so a run and "bill fixed fee now" cannot both bill one fee."""
+    stmt = scope.apply(
+        select(Project).where(
+            Project.organization_id == org_id,
+            Project.billing_mode.is_not(None),
+            or_(
+                Project.status.in_(("active", "on_hold", "completed")),
+                (Project.status == "cancelled") & Project.approved_at.is_not(None),
+            ),
+        ),
+        Project.organization_id,
+    )
+    if project_id is not None:
+        stmt = stmt.where(Project.id == project_id)
+    return list(db.execute(stmt.order_by(Project.id).with_for_update()).scalars())
+
+
+def project_billed_cents(db: Session, scope: Scope, project_id: int) -> int:
+    """Pre-tax cents billed on a project: non-voided lines on invoices that are not void."""
+    stmt = scope.apply(
+        select(func.coalesce(func.sum(InvoiceLine.amount_cents), 0))
+        .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
+        .where(
+            InvoiceLine.project_id == project_id,
+            InvoiceLine.voided.is_(False),
+            Invoice.status != "void",
+        ),
+        InvoiceLine.organization_id,
+    )
+    return int(db.execute(stmt).scalar_one())
 
 
 # ---- invoices ----
