@@ -113,3 +113,4 @@ verification: 6/6 passed
 | O-069 | 2026-10-21 | dev | 9 | 09-01 | engineering-backend-architect | implementation | success | 2 | crm-renewals, engineering | CRM schema, stages and permissions: Complete |
 | O-070 | 2026-10-21 | dev | 9 | 09-02 | engineering-backend-architect | implementation | failed | 5 | crm-renewals, engineering | CRM service, quote link, forecast and renewal job: Partial |
 | O-071 | 2026-10-21 | dev | 9 | 09-02 | engineering-backend-architect | implementation | success | 2 | crm-renewals, engineering | CRM service, quote link, forecast and renewal job: Complete |
+| O-072 | 2026-10-21 | dev | 9 | 09-03 | engineering-frontend-developer | implementation | success | 2 | crm-renewals, engineering | Sales pipeline, forecast and renewals UI, docs and verify checklist: Complete |

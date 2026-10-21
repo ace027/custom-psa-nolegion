@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { CsatSummary, Dashboard as DashboardData, api } from "../api";
+import { can, useMe } from "../auth";
 import { Card, ErrorMsg } from "../ui";
+import { daysLeft, useOpenRenewals } from "./crm/Renewals";
 import TicketTable from "./TicketTable";
 
 export default function Dashboard() {
   const q = useQuery({ queryKey: ["dashboard"], queryFn: () => api<DashboardData>("/dashboard"), refetchInterval: 60_000 });
   const d = q.data;
+  const { data: me } = useMe();
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
@@ -20,6 +24,7 @@ export default function Dashboard() {
             <Stat label="Needs triage" value={d.counts.needs_triage} warn={d.counts.needs_triage > 0} />
           </div>
           <CsatCard />
+          {can(me, "crm:read") && <RenewalsCard />}
           <Card title="SLA at risk or breached">
             <TicketTable tickets={d.sla_at_risk} empty="Nothing at risk." />
           </Card>
@@ -56,6 +61,25 @@ function CsatCard() {
       </p>
       <ul className="mt-2 flex gap-4 text-sm text-slate-600">
         {[5, 4, 3, 2, 1].map((n) => <li key={n}>{n}★ {s.distribution[String(n)] ?? 0}</li>)}
+      </ul>
+    </Card>
+  );
+}
+
+function RenewalsCard() {
+  const q = useOpenRenewals();
+  const rows = (q.data ?? []).slice(0, 5);
+  return (
+    <Card title="Renewals due" actions={<Link className="text-sm text-blue-700 hover:underline" to="/crm/renewals">All renewals</Link>}>
+      <ErrorMsg error={q.error} />
+      {q.data && rows.length === 0 && <p className="text-sm text-slate-500">No renewals are due.</p>}
+      <ul className="divide-y divide-slate-100 text-sm">
+        {rows.map((r) => (
+          <li key={r.id} className="flex flex-wrap justify-between gap-2 py-1.5">
+            <span><Link className="text-blue-700 hover:underline" to={`/organizations/${r.organization_id}`}>{r.organization_name}</Link> · {r.agreement_name}</span>
+            <span className="text-slate-600">{r.due_on} ({daysLeft(r.due_on)} days)</span>
+          </li>
+        ))}
       </ul>
     </Card>
   );

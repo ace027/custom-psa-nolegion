@@ -13,6 +13,12 @@ import Payments from "./pages/billing/Payments";
 import Products from "./pages/billing/Products";
 import Rates from "./pages/billing/Rates";
 import Receivables from "./pages/billing/Receivables";
+import Forecast from "./pages/crm/Forecast";
+import Leads from "./pages/crm/Leads";
+import OpportunityPage from "./pages/crm/OpportunityPage";
+import Pipeline from "./pages/crm/Pipeline";
+import Renewals from "./pages/crm/Renewals";
+import Sales from "./pages/crm/Sales";
 import CsatPage from "./portal/CsatPage";
 import PortalApp from "./portal/PortalApp";
 import QuotePage from "./pages/quotes/QuotePage";
@@ -99,6 +105,7 @@ function Layout() {
           <NavLink to="/organizations" className={link}>Organizations</NavLink>
           {can(me, "time:write") && <NavLink to="/timesheet" className={link}>My timesheet</NavLink>}
           {can(me, "time:write") && <NavLink to="/expenses" className={link}>My expenses</NavLink>}
+          {can(me, "crm:read") && <NavLink to="/crm" className={link}>Sales</NavLink>}
           {can(me, "billing:read") && <NavLink to="/billing" className={link}>Billing</NavLink>}
           {can(me, "quote:read") && <NavLink to="/quotes" className={link}>Quotes</NavLink>}
           {can(me, "report:read") && <NavLink to="/warranty" className={link}>Warranty</NavLink>}
@@ -180,6 +187,18 @@ function StaffApp() {
             <Route path="rates" element={<Rates />} />
             <Route path="reports" element={can(me, "report:read") ? <Reports /> : <Navigate to="/billing" replace />} />
           </Route>
+        )}
+        {can(me, "crm:read") && (
+          <>
+            <Route path="/crm" element={<Sales />}>
+              <Route index element={<Navigate to="pipeline" replace />} />
+              <Route path="pipeline" element={<Pipeline />} />
+              <Route path="leads" element={<Leads />} />
+              <Route path="forecast" element={<Forecast />} />
+              <Route path="renewals" element={<Renewals />} />
+            </Route>
+            <Route path="/crm/opportunities/:id" element={<OpportunityPage />} />
+          </>
         )}
         {can(me, "quote:read") && (
           <>

@@ -1,11 +1,45 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Quote, api } from "../../api";
+import { Quote, api, crmApi } from "../../api";
 import { can, useMe } from "../../auth";
 import { money, parseMoney, percent } from "../../money";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../../ui";
 import { Badge } from "./QuotesList";
+
+function QuoteOpportunity({ quote }: { quote: Quote }) {
+  const { data: me } = useMe();
+  const qc = useQueryClient();
+  const [pick, setPick] = useState("");
+  const opps = useQuery({
+    queryKey: ["crm", "opportunities", "org", quote.organization_id],
+    queryFn: () => crmApi.opportunities({ organization_id: quote.organization_id }),
+  });
+  const link = useMutation({
+    mutationFn: () => crmApi.linkQuote(Number(pick), quote.id),
+    onSuccess: () => { setPick(""); qc.invalidateQueries({ queryKey: ["crm"] }); },
+  });
+  const all = opps.data ?? [];
+  const linked = all.find((o) => o.quote_id === quote.id);
+  const candidates = all.filter((o) => o.stage_kind === "open" && !o.quote_id);
+  return (
+    <div className="text-sm">
+      <span className="font-medium text-slate-700">Opportunity: </span>
+      {linked ? (
+        <Link className="text-blue-700 hover:underline" to={`/crm/opportunities/${linked.id}`}>{linked.name}</Link>
+      ) : can(me, "crm:write") && candidates.length > 0 ? (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <select aria-label="Link to opportunity" className={inputCls + " max-w-xs"} value={pick} onChange={(e) => setPick(e.target.value)}>
+            <option value="">Link to an opportunity…</option>
+            {candidates.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+          <Button variant="secondary" disabled={!pick || link.isPending} onClick={() => link.mutate()}>Link</Button>
+        </span>
+      ) : <span className="text-slate-500">None</span>}
+      <ErrorMsg error={link.error} />
+    </div>
+  );
+}
 
 export default function QuotePage() {
   const id = useParams().id as string;
@@ -49,6 +83,7 @@ export default function QuotePage() {
         {adjusted && <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-sm text-amber-900">Adjusted from the computed {money(q.computed_price_cents)}: {q.adjustment_reason}</p>}
         {q.decision_note && <p className="mt-2 text-sm text-slate-600">Note: {q.decision_note}</p>}
         {q.sent_to && <p className="mt-2 text-sm text-slate-600">Emailed to {q.sent_to}.</p>}
+        {can(me, "crm:read") && <div className="mt-2"><QuoteOpportunity quote={q} /></div>}
         {q.resulting_agreement_id && <p className="mt-2 text-sm text-green-800">Agreement created. See <Link className="underline" to="/billing/agreements">Billing &gt; Agreements</Link>.</p>}
       </Card>
       <Card title="How the price is built">

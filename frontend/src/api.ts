@@ -363,6 +363,8 @@ export interface AppSettings {
   late_fee_flat_cents: number;
   late_fee_grace_days: number;
   late_fee_max_per_invoice: number;
+  renewal_reminder_days: number[];
+  renewal_email: string | null;
 }
 export interface Dashboard {
   my_open: Ticket[];
@@ -1192,4 +1194,140 @@ export const projectsApi = {
   removeDependency: (id: number, task: number, dep: number) => api<ProjectTask>(`/projects/${id}/tasks/${task}/dependencies/${dep}`, { method: "DELETE" }),
   attachTicket: (id: number, ticket: number) => api<Ticket>(`/projects/${id}/tickets/${ticket}`, { method: "POST" }),
   detachTicket: (id: number, ticket: number) => api<Ticket>(`/projects/${id}/tickets/${ticket}`, { method: "DELETE" }),
+};
+
+// ---- crm ----
+export type LeadStatus = "new" | "contacted" | "qualified" | "disqualified" | "converted";
+export type OppKind = "new" | "renewal" | "upsell";
+export type StageKind = "open" | "won" | "lost";
+export type ReminderStatus = "open" | "done" | "dismissed";
+export interface Lead {
+  id: number;
+  name: string;
+  company: string | null;
+  email: string | null;
+  phone: string | null;
+  source: string | null;
+  status: LeadStatus;
+  owner_id: number | null;
+  owner_name: string | null;
+  notes: string | null;
+  converted_organization_id: number | null;
+  converted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface LeadInput {
+  name?: string;
+  company?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  source?: string | null;
+  status?: Exclude<LeadStatus, "converted">;
+  owner_id?: number | null;
+  notes?: string | null;
+}
+export interface LeadConvertInput {
+  name?: string;
+  monthly_cents: number;
+  term_months: number;
+  expected_close_date?: string | null;
+  notes?: string | null;
+}
+export interface Opportunity {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  name: string;
+  kind: OppKind;
+  stage_id: number;
+  stage_name: string;
+  stage_kind: StageKind;
+  probability_bp: number;
+  owner_id: number | null;
+  owner_name: string | null;
+  monthly_cents: number;
+  term_months: number;
+  expected_close_date: string | null;
+  quote_id: number | null;
+  quote_number: string | null;
+  agreement_id: number | null;
+  agreement_name: string | null;
+  lost_reason: string | null;
+  closed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface OpportunityInput {
+  organization_id?: number;
+  name?: string;
+  kind?: OppKind;
+  stage_id?: number | null;
+  owner_id?: number | null;
+  monthly_cents?: number;
+  term_months?: number;
+  expected_close_date?: string | null;
+  notes?: string | null;
+}
+export interface Stage {
+  id: number;
+  name: string;
+  position: number;
+  probability_bp: number;
+  kind: StageKind;
+  active: boolean;
+}
+export interface StageInput {
+  name?: string;
+  position?: number;
+  probability_bp?: number;
+  kind?: StageKind;
+  active?: boolean;
+}
+export interface ForecastBucket {
+  key: string;
+  label: string;
+  count: number;
+  monthly_cents: number;
+  weighted_monthly_cents: number;
+  contract_value_cents: number;
+}
+export interface Forecast {
+  buckets: ForecastBucket[];
+  total: ForecastBucket;
+  won_this_month: ForecastBucket;
+  won_this_quarter: ForecastBucket;
+}
+export interface RenewalReminder {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  agreement_id: number;
+  agreement_name: string;
+  lead_days: number;
+  due_on: string;
+  status: ReminderStatus;
+  opportunity_id: number | null;
+  created_at: string;
+}
+export const crmApi = {
+  leads: (q: { status?: string; owner_id?: number; q?: string } = {}) => api<Lead[]>(`/crm/leads${enc(q)}`),
+  createLead: (json: LeadInput) => api<Lead>("/crm/leads", { method: "POST", json }),
+  updateLead: (id: number, json: LeadInput) => api<Lead>(`/crm/leads/${id}`, { method: "PATCH", json }),
+  convertLead: (id: number, json: LeadConvertInput) => api<Opportunity>(`/crm/leads/${id}/convert`, { method: "POST", json }),
+  opportunities: (q: { stage_id?: number; owner_id?: number; organization_id?: number; kind?: OppKind; open_only?: boolean } = {}) =>
+    api<Opportunity[]>(`/crm/opportunities${enc({ ...q, open_only: q.open_only ? "true" : undefined })}`),
+  opportunity: (id: number | string) => api<Opportunity>(`/crm/opportunities/${id}`),
+  createOpportunity: (json: OpportunityInput) => api<Opportunity>("/crm/opportunities", { method: "POST", json }),
+  updateOpportunity: (id: number, json: OpportunityInput) => api<Opportunity>(`/crm/opportunities/${id}`, { method: "PATCH", json }),
+  moveStage: (id: number, stage_id: number, lost_reason?: string | null) =>
+    api<Opportunity>(`/crm/opportunities/${id}/stage`, { method: "POST", json: { stage_id, lost_reason: lost_reason ?? null } }),
+  linkQuote: (id: number, quote_id: number) => api<Opportunity>(`/crm/opportunities/${id}/quote`, { method: "POST", json: { quote_id } }),
+  forecast: () => api<Forecast>("/crm/forecast"),
+  stages: () => api<Stage[]>("/crm/stages"),
+  createStage: (json: StageInput) => api<Stage>("/crm/stages", { method: "POST", json }),
+  updateStage: (id: number, json: StageInput) => api<Stage>(`/crm/stages/${id}`, { method: "PATCH", json }),
+  renewals: (status?: ReminderStatus) => api<RenewalReminder[]>(`/crm/renewals${enc({ status })}`),
+  dismissRenewal: (id: number) => api<RenewalReminder>(`/crm/renewals/${id}/dismiss`, { method: "POST" }),
 };
