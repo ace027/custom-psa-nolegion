@@ -2,6 +2,7 @@
 its clients to PSA clients. Credentials are never returned or logged."""
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app import asset_sync as sync
 from app import audit, crypto
@@ -13,6 +14,8 @@ from app.integrations.hudu import validate_config as validate_hudu
 from app.models import Integration, IntegrationClientMap, Organization, RmmAlert, SyncRun
 from app.rmm_alerts import CLEAR_RULES
 from app.rmm_alerts import settings as alert_settings
+
+ALERT_KEYS = ("alerts_enabled", "alert_min_severity", "alert_clear_rule", "alert_poll_minutes")
 
 
 def _get(ctx: Ctx, integration_id: int) -> Integration:
@@ -48,6 +51,9 @@ def _validate_alert_config(kind: str, config: dict) -> None:
         if keys:
             raise Conflict("Alerts are only available for NinjaOne")
         return
+    unknown = [k for k in keys if k not in ALERT_KEYS]
+    if unknown:
+        raise Conflict(f"Unknown alert setting: {', '.join(sorted(unknown))}")
     if "alerts_enabled" in config and not isinstance(config["alerts_enabled"], bool):
         raise Conflict("alerts_enabled must be true or false")
     if "alert_min_severity" in config and config["alert_min_severity"] not in SEVERITIES:
@@ -173,8 +179,22 @@ def list_alerts(ctx: Ctx, integration_id: int, state: str = "open", limit: int =
     stmt = select(RmmAlert).where(RmmAlert.integration_id == integration_id)
     if state != "all":
         stmt = stmt.where(RmmAlert.state == state)
-    rows = ctx.db.scalars(stmt.order_by(RmmAlert.id.desc()).limit(limit))
-    orgs = {o.id: o.name for o in ctx.db.scalars(select(Organization))}
+    rows = list(
+        ctx.db.scalars(
+            stmt.options(selectinload(RmmAlert.asset), selectinload(RmmAlert.ticket))
+            .order_by(RmmAlert.id.desc())
+            .limit(limit)
+        )
+    )
+    org_ids = {a.organization_id for a in rows}
+    orgs = (
+        {
+            o.id: o.name
+            for o in ctx.db.scalars(select(Organization).where(Organization.id.in_(org_ids)))
+        }
+        if org_ids
+        else {}
+    )
     return [
         {
             "id": a.id,

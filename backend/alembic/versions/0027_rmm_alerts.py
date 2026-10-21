@@ -57,6 +57,7 @@ def upgrade() -> None:
         sa.Column("message", sa.Text, nullable=False),
         sa.Column("state", sa.Text, nullable=False, server_default="open"),
         sa.Column("occurrences", sa.Integer, nullable=False, server_default="1"),
+        sa.Column("missed_polls", sa.Integer, nullable=False, server_default="0"),
         sa.Column("first_seen_at", sa.DateTime(timezone=True), nullable=False, server_default=NOW),
         sa.Column("last_seen_at", sa.DateTime(timezone=True), nullable=False, server_default=NOW),
         sa.Column("cleared_at", sa.DateTime(timezone=True)),
@@ -73,6 +74,7 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint("(state = 'open') = (cleared_at IS NULL)", name="ck_rmm_alerts_cleared"),
         sa.CheckConstraint("occurrences >= 1", name="ck_rmm_alerts_occurrences"),
+        sa.CheckConstraint("missed_polls >= 0", name="ck_rmm_alerts_missed_polls"),
         sa.ForeignKeyConstraint(
             ["asset_id", "organization_id"],
             ["assets.id", "assets.organization_id"],

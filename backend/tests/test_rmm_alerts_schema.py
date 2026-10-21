@@ -115,6 +115,7 @@ def test_checks(owner, two_tickets):
         "ck_rmm_alerts_resolution": {"resolution": "weird"},
         "ck_rmm_alerts_cleared": {"cleared_at": "2026-03-02 10:00+00"},
         "ck_rmm_alerts_occurrences": {"occurrences": 0},
+        "ck_rmm_alerts_missed_polls": {"missed_polls": -1},
     }
     for name, extra in bad.items():
         with pytest.raises(IntegrityError, match=name):

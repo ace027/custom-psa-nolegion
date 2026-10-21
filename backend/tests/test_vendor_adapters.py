@@ -176,6 +176,26 @@ def test_ninjaone_lists_alerts_and_builds_condition_keys():
     assert (third.condition_key, third.severity, third.message) == ("13:u3", "NONE", "Patch failed")
 
 
+def test_ninjaone_alert_message_loses_control_and_format_characters():
+    body = [{"uid": "u1", "deviceId": 1, "message": "Disk\u202e low\u200b on\x00 C:\u2028ok"}]
+    (a,) = ninja(_alert_handler(httpx.Response(200, json=body))).list_alerts()
+    assert a.message == "Disk low on C:ok"
+    assert not any(c in a.message for c in "\u202e\u200b\x00\u2028")
+
+
+def test_ninjaone_alert_long_ids_are_truncated():
+    body = [
+        {"uid": "u" * 500, "deviceId": "d" * 500, "sourceConfigUid": "s" * 500},
+        {"uid": "u" * 500, "deviceId": "d" * 500, "sourceConfigUid": "t" * 500},
+        {"uid": "u1", "deviceId": 1, "message": "m" * 5000},
+    ]
+    one, two, three = ninja(_alert_handler(httpx.Response(200, json=body))).list_alerts()
+    assert len(one.device_external_id) == 200
+    assert len(one.condition_key) <= 200 and len(two.condition_key) <= 200
+    assert one.condition_key != two.condition_key
+    assert len(three.message) == 1000
+
+
 def test_ninjaone_alert_failures_are_vendor_errors():
     for response in (httpx.Response(500, text="boom"), httpx.Response(200, json={"a": 1})):
         with pytest.raises(VendorError) as exc:

@@ -206,7 +206,7 @@ def sync_integration(ctx: Ctx, integration: Integration, adapter=None) -> SyncRu
         adapter = adapter or registry.build_adapter(integration)
         maps = refresh_clients(ctx, integration, adapter)
     except Exception as exc:  # noqa: BLE001 - any adapter/key failure is a failed run, not a crash
-        return _finish(ctx, integration, run, "failed", _safe(exc))
+        return _finish(ctx, integration, run, "failed", safe_error(exc))
 
     kinds = _kinds(ctx)
     days = int(integration.config.get("retire_after_days", DEFAULT_RETIRE_DAYS))
@@ -219,7 +219,7 @@ def sync_integration(ctx: Ctx, integration: Integration, adapter=None) -> SyncRu
             remote = adapter.list_assets(m.external_id)  # fetch fully BEFORE touching any data
         except Exception as exc:  # noqa: BLE001
             run.clients_failed += 1
-            failures.append(f"{m.external_name}: {_safe(exc)}")
+            failures.append(f"{m.external_name}: {safe_error(exc)}")
             continue
         try:
             with ctx.db.begin_nested():
@@ -242,7 +242,7 @@ def sync_integration(ctx: Ctx, integration: Integration, adapter=None) -> SyncRu
     return _finish(ctx, integration, run, "ok", None)
 
 
-def _safe(exc: Exception) -> str:
+def safe_error(exc: Exception) -> str:
     """Only vendor errors (already free of secrets) show their message; anything else shows just
     its type, so an unexpected exception can never carry a credential into the UI or audit log."""
     return str(exc) if isinstance(exc, VendorError) else type(exc).__name__

@@ -16,7 +16,7 @@ from app.auth import portal_sessions
 from app.billing import today
 from app.config import get_settings
 from app.errors import Conflict, NotFound
-from app.models import Appointment, EmailMessage, Invoice, Ticket, TicketNote, User
+from app.models import Appointment, Asset, EmailMessage, Invoice, Ticket, TicketNote, User
 from app.payments import payment_state
 from app.portal_deps import PortalCtx
 
@@ -211,6 +211,14 @@ def _visible(ctx: PortalCtx):
     return cond
 
 
+def _portal_description(ctx: PortalCtx, t: Ticket) -> str:
+    """Monitoring tickets carry device ids and condition keys; contacts only get a plain line."""
+    if t.source != "rmm":
+        return t.description
+    asset = ctx.db.get(Asset, t.asset_id) if t.asset_id else None
+    return f"Monitoring alert on {asset.name}" if asset else "Monitoring alert"
+
+
 def _ticket_out(ctx: PortalCtx, t: Ticket) -> dict:
     return dict(
         id=t.id,
@@ -287,7 +295,7 @@ def ticket_detail(ctx: PortalCtx, ticket_id: int) -> dict:
     ]
     return {
         **_ticket_out(ctx, t),
-        "description": t.description,
+        "description": _portal_description(ctx, t),
         "notes": out,
         "custom_fields": visible,
     }

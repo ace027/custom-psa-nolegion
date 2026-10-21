@@ -17,14 +17,16 @@ from sqlalchemy import select
 from app import audit, ticket_links
 from app import repositories as repo
 from app import ticket_services as tsvc
-from app.asset_sync import _safe
+from app.asset_sync import safe_error
 from app.deps import Ctx
+from app.errors import Conflict
 from app.integrations import registry
 from app.integrations.base import SEVERITIES, RemoteAlert
 from app.models import (
     Asset,
     AssetSource,
     Integration,
+    IntegrationClientMap,
     Priority,
     RmmAlert,
     Ticket,
@@ -43,6 +45,10 @@ DEFAULTS = {
     "alert_poll_minutes": 5,
 }
 DONE = ("resolved", "closed")
+CLEAR_AFTER_MISSES = 2
+CLEAR_AFTER_EMPTY_POLLS = 3
+MAX_NEW_TICKETS_PER_POLL = 25
+MESSAGE_MAX = 1000
 
 
 @dataclass
@@ -55,11 +61,14 @@ class PollResult:
     skipped_unmapped: int = 0
     skipped_severity: int = 0
     failed: int = 0
+    deferred: int = 0
+    suspicious: bool = False
     error: str | None = None
 
 
 def settings(integration: Integration) -> dict:
-    return {**DEFAULTS, **(integration.config or {})}
+    config = integration.config if isinstance(integration.config, dict) else {}
+    return {**DEFAULTS, **config}
 
 
 def _now() -> datetime:
@@ -78,6 +87,8 @@ def due(ctx: Ctx, now: datetime) -> list[Integration]:
         if s["alerts_enabled"] is not True or not i.credentials:
             continue
         minutes = s["alert_poll_minutes"]
+        if isinstance(minutes, bool) or not isinstance(minutes, int) or not 1 <= minutes <= 60:
+            minutes = DEFAULTS["alert_poll_minutes"]
         if (
             i.alerts_requested_at is not None
             or i.alerts_polled_at is None
@@ -101,18 +112,18 @@ def priority_for(ctx: Ctx, severity: str) -> Priority:
         return active[1] if len(active) > 1 else active[0]
     chosen = repo.get_default(ctx.db, Priority) or (active[0] if active else None)
     if chosen is None:
-        raise ValueError("no priority configured")
+        raise Conflict("No ticket priority is configured")
     return chosen
 
 
-def _description(alert: RemoteAlert, asset: Asset, first_seen: datetime) -> str:
+def _description(alert: RemoteAlert, asset: Asset, first_seen: datetime, message: str) -> str:
     return "\n".join(
         [
             f"Severity: {alert.severity}",
             f"Device: {asset.name}",
             f"NinjaOne device id: {alert.device_external_id}",
             f"Condition: {alert.condition_key}",
-            f"Message: {alert.message}",
+            f"Message: {message}",
             f"First seen: {first_seen.isoformat(timespec='seconds')}",
         ]
     )
@@ -127,13 +138,14 @@ def _create(
     previous_ticket: Ticket | None,
 ) -> RmmAlert:
     first_seen = alert.created_at or now
-    subject = " ".join(f"[RMM] {asset.name}: {alert.message}".split())[:200]
+    message = alert.message[:MESSAGE_MAX]
+    subject = " ".join(f"[RMM] {asset.name}: {message}".split())[:200]
     ticket = tsvc.create_ticket(
         ctx,
         {
             "organization_id": asset.organization_id,
             "subject": subject,
-            "description": _description(alert, asset, first_seen),
+            "description": _description(alert, asset, first_seen, message),
             "priority_id": priority_for(ctx, alert.severity).id,
         },
         source="rmm",
@@ -149,7 +161,7 @@ def _create(
         asset_id=asset.id,
         ticket_id=ticket.id,
         severity=alert.severity,
-        message=alert.message,
+        message=message,
         state="open",
         first_seen_at=now,
         last_seen_at=now,
@@ -157,7 +169,7 @@ def _create(
     ctx.db.add(row)
     ctx.db.flush()
     if previous_ticket is not None and previous_ticket.organization_id == ticket.organization_id:
-        ticket_links._insert(ctx, ticket.organization_id, "related", ticket, previous_ticket)
+        ticket_links.link_related(ctx, ticket.organization_id, ticket, previous_ticket)
     audit.record(
         ctx.db,
         None,
@@ -186,21 +198,6 @@ def _previous_ticket(ctx: Ctx, integration: Integration, condition_key: str) -> 
 def _apply_alert(
     ctx: Ctx, integration: Integration, alert: RemoteAlert, now: datetime, minimum: int, res
 ) -> None:
-    if SEVERITY_ORDER.get(alert.severity, 0) < minimum:
-        res.skipped_severity += 1
-        return
-    asset = ctx.db.scalar(
-        select(Asset)
-        .join(AssetSource, AssetSource.asset_id == Asset.id)
-        .where(
-            AssetSource.integration_id == integration.id,
-            AssetSource.external_id == alert.device_external_id,
-            Asset.retired_at.is_(None),
-        )
-    )
-    if asset is None:
-        res.skipped_unmapped += 1
-        return
     open_row = ctx.db.scalar(
         select(RmmAlert).where(
             RmmAlert.integration_id == integration.id,
@@ -209,11 +206,37 @@ def _apply_alert(
         )
     )
     if open_row is not None:
-        open_row.last_seen_at = now
+        open_row.missed_polls = 0  # still active in the vendor, whatever happens below
+    if SEVERITY_ORDER.get(alert.severity, 0) < minimum:
+        res.skipped_severity += 1
+        return
+    asset = ctx.db.scalar(
+        select(Asset)
+        .join(AssetSource, AssetSource.asset_id == Asset.id)
+        .join(
+            IntegrationClientMap,
+            (IntegrationClientMap.integration_id == integration.id)
+            & (IntegrationClientMap.psa_organization_id == Asset.organization_id)
+            & (IntegrationClientMap.ignored.is_(False)),
+        )
+        .where(
+            AssetSource.integration_id == integration.id,
+            AssetSource.external_id == alert.device_external_id,
+            Asset.retired_at.is_(None),
+        )
+        .limit(1)
+    )
+    if asset is None:
+        res.skipped_unmapped += 1
+        return
+    superseding = False
+    if open_row is not None:
         if open_row.external_id == alert.external_id:
+            open_row.last_seen_at = now
             return
         ticket = ctx.db.get(Ticket, open_row.ticket_id) if open_row.ticket_id else None
         if ticket is None or ticket.status not in DONE:
+            open_row.last_seen_at = now
             open_row.occurrences += 1
             open_row.external_id = alert.external_id
             res.repeated += 1
@@ -226,6 +249,12 @@ def _apply_alert(
                 detail={"occurrences": open_row.occurrences, "external_id": alert.external_id},
             )
             return
+        superseding = True
+    if res.created >= MAX_NEW_TICKETS_PER_POLL:
+        res.deferred += 1
+        return
+    if superseding:
+        open_row.last_seen_at = now
         open_row.state, open_row.cleared_at, open_row.resolution = "cleared", now, "superseded"
         ctx.db.flush()
     _create(
@@ -290,6 +319,15 @@ def _clear(ctx: Ctx, row: RmmAlert, rule: str, now: datetime, res: PollResult) -
     )
 
 
+def _set_error(ctx: Ctx, integration: Integration, error: str | None, now: datetime) -> bool:
+    """Store the poll's error text; True when it differs from what was already stored."""
+    changed = error is not None and error != integration.alerts_last_error
+    integration.alerts_last_error = error
+    integration.alerts_polled_at = now
+    integration.alerts_requested_at = None
+    return changed
+
+
 def poll(
     ctx: Ctx, integration: Integration, adapter=None, now: datetime | None = None
 ) -> PollResult:
@@ -300,17 +338,15 @@ def poll(
         adapter = adapter or registry.build_adapter(integration)
         alerts = adapter.list_alerts()
     except Exception as exc:  # noqa: BLE001 - any adapter failure is a failed poll, not a crash
-        res.error = _safe(exc)[:2000]
-        integration.alerts_last_error = res.error
-        integration.alerts_polled_at = now
-        integration.alerts_requested_at = None
-        audit.record(
-            ctx.db,
-            None,
-            "integration.alerts_failed",
-            integration,
-            detail={"integration": integration.name, "error": res.error},
-        )
+        res.error = safe_error(exc)[:2000]
+        if _set_error(ctx, integration, res.error, now):
+            audit.record(
+                ctx.db,
+                None,
+                "integration.alerts_failed",
+                integration,
+                detail={"integration": integration.name, "error": res.error},
+            )
         ctx.db.flush()
         return res
 
@@ -337,12 +373,20 @@ def poll(
             log.exception("alert %s could not be processed", alert.condition_key)
             res.failed += 1
 
-    gone = ctx.db.scalars(
-        select(RmmAlert)
-        .where(RmmAlert.integration_id == integration.id, RmmAlert.state == "open")
-        .order_by(RmmAlert.id)
+    open_rows = list(
+        ctx.db.scalars(
+            select(RmmAlert)
+            .where(RmmAlert.integration_id == integration.id, RmmAlert.state == "open")
+            .order_by(RmmAlert.id)
+        )
     )
-    for row in [r for r in gone if r.condition_key not in active]:
+    # An empty list while alerts are open is more likely a vendor hiccup than a mass clear, so it
+    # needs one more miss than usual. A real "everything cleared" still resolves a poll later.
+    needed = CLEAR_AFTER_EMPTY_POLLS if not alerts else CLEAR_AFTER_MISSES
+    for row in [r for r in open_rows if r.condition_key not in active]:
+        row.missed_polls += 1
+        if row.missed_polls < needed:
+            continue
         counts = (res.cleared, res.resolved, res.noted)
         try:
             with ctx.db.begin_nested():
@@ -352,11 +396,33 @@ def poll(
             res.cleared, res.resolved, res.noted = counts
             res.failed += 1
             ctx.db.refresh(row)
+    suspicious_text = None
+    if not alerts and open_rows:
+        res.suspicious = True
+        suspicious_text = (
+            f"NinjaOne returned no active alerts while {len(open_rows)} are open; "
+            f"clears wait for {CLEAR_AFTER_EMPTY_POLLS} empty polls in a row"
+        )
 
-    integration.alerts_polled_at = now
-    integration.alerts_requested_at = None
-    integration.alerts_last_error = (
-        f"{res.failed} alert(s) could not be processed; see the server log" if res.failed else None
-    )
+    parts = []
+    if suspicious_text:
+        parts.append(suspicious_text)
+    if res.failed:
+        parts.append(f"{res.failed} alert(s) could not be processed; see the server log")
+    if res.deferred:
+        parts.append(
+            f"{res.deferred} new alert(s) deferred to the next poll "
+            f"(limit {MAX_NEW_TICKETS_PER_POLL} per poll)"
+        )
+    error = "; ".join(parts) or None
+    changed = _set_error(ctx, integration, error, now)
+    if res.suspicious and changed:
+        audit.record(
+            ctx.db,
+            None,
+            "integration.alerts_suspicious",
+            integration,
+            detail={"integration": integration.name, "open": len(open_rows)},
+        )
     ctx.db.flush()
     return res

@@ -6,7 +6,7 @@ from sqlalchemy import text
 from app import worker
 from tests.test_asset_sync import setup_ninja
 from tests.test_integrations import connect
-from tests.vendorfakes import HUDU, alert, dev, run_sync, vendors  # noqa: F401
+from tests.vendorfakes import HUDU, NINJA, alert, dev, run_sync, vendors  # noqa: F401
 
 
 def patch(admin, iid, **cfg):
@@ -44,6 +44,8 @@ def test_valid_alert_config_is_saved(admin):
         {"alert_poll_minutes": 61},
         {"alert_poll_minutes": True},
         {"alert_poll_minutes": "5"},
+        {"alert_typo": 1},
+        {"alerts_enable": True},
     ],
 )
 def test_invalid_alert_config_is_refused(admin, cfg):
@@ -75,6 +77,8 @@ def test_alert_list_has_names_and_filters_by_state(admin, env):
     env.vendor.alerts = [alert("1", "cpu")]
     admin.post(f"/api/integrations/{env.iid}/alerts/poll")
     worker.alert_jobs()
+    admin.post(f"/api/integrations/{env.iid}/alerts/poll")
+    worker.alert_jobs()  # a clear needs two polls
     openr = admin.get(f"/api/integrations/{env.iid}/alerts").json()
     assert len(openr) == 1
     a = openr[0]
@@ -142,3 +146,24 @@ def test_tickets_expose_the_linked_asset(admin, env):
     assert plain["asset_id"] is None and plain["asset_name"] is None
     got = admin.get(f"/api/tickets/{plain['id']}").json()
     assert got["asset_id"] is None and got["asset_name"] is None
+
+
+def test_worker_one_failing_integration_does_not_stop_the_next(admin, env, owner, monkeypatch):
+    from app import rmm_alerts
+
+    other = connect(admin, {**NINJA, "name": "Ninja Two"})
+    assert patch(admin, other["id"], alerts_enabled=True).status_code == 200
+    real = rmm_alerts.poll
+    seen = []
+
+    def flaky(ctx, integration, *a, **kw):
+        seen.append(integration.id)
+        if len(seen) == 1:
+            raise RuntimeError("boom")
+        return real(ctx, integration, *a, **kw)
+
+    monkeypatch.setattr(rmm_alerts, "poll", flaky)
+    worker.alert_jobs()
+    assert len(seen) == 2
+    rows = admin.get("/api/integrations").json()
+    assert sum(1 for r in rows if r["alerts_polled_at"]) == 1

@@ -63,3 +63,18 @@ No coverage data found (looked for coverage/coverage-summary.json, coverage-summ
 ## Security Review
 
 **Verdict**: PASS — 0 unresolved CRITICAL/HIGH finding(s). Details: `SECURITY-REVIEW.md`.
+
+## Owner decisions and follow-up fixes (after review)
+- Mass clear (review major findings, SEC MEDIUM): an alert clears only after 2 polls in a row without it (rmm_alerts.missed_polls, added to 0027). An empty list while alerts are open needs 3 empty polls in a row and shows a warning on the card. Audited as integration.alerts_suspicious.
+- Flood cap (SEC MEDIUM): at most 25 new tickets per poll, with the rest deferred and shown on the card. condition_key and device id are capped at 200 chars (digest suffix), and the message bound is re-applied in the engine.
+- Portal (SEC LOW): portal contacts see "Monitoring alert on <device>" instead of the stored description of RMM tickets.
+- Minor fixes:
+  - Audit failed or suspicious polls only when the error text changes.
+  - Strip Cc/Cf/Zl/Zp characters from alert text.
+  - Reject unknown alert* config keys.
+  - Make the due() poll interval defensive, and raise Conflict when no priority exists.
+  - Skip ignored client maps.
+  - Remove the N+1 in list_alerts.
+  - Make the helper names public (asset_sync.safe_error, ticket_links.link_related).
+  - Add a two-integration colliding-device-id test.
+- Still open by owner choice: SEC base_url allowlist (LOW), the INFO items.

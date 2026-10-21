@@ -509,3 +509,42 @@ def test_portal_actions_need_the_csrf_header(admin, sign_in, two_clients):
         headers={"X-Requested-With": ""},
     )
     assert r.status_code == 403
+
+
+def test_monitoring_ticket_shows_contacts_a_plain_description(admin, sign_in, two_clients, owner):
+    a, _ = two_clients
+    pat = add_contact(admin, a, "Pat", "pat@acme.com")
+    stored = "Device: PC-1\nNinjaOne device id: 4242\nCondition: 4242:cfg-secret-key"
+
+    def make(subject, description):
+        return admin.post(
+            "/api/tickets",
+            json={
+                "organization_id": a,
+                "contact_id": pat["id"],
+                "subject": subject,
+                "description": description,
+            },
+        ).json()
+
+    rmm, plain = make("[RMM] PC-1: Disk", stored), make("VPN", "It is slow")
+    bare = make("[RMM] x", stored)
+    asset_id = owner.execute(
+        text(
+            "INSERT INTO assets (organization_id, kind, name) VALUES (:o, 'computer', 'PC-1') "
+            "RETURNING id"
+        ),
+        {"o": a},
+    ).scalar()
+    owner.execute(
+        text("UPDATE tickets SET source = 'rmm', asset_id = :x WHERE id = :t"),
+        {"x": asset_id, "t": rmm["id"]},
+    )
+    owner.execute(text("UPDATE tickets SET source = 'rmm' WHERE id = :t"), {"t": bare["id"]})
+    c = sign_in("pat@acme.com")
+    d = c.get(f"/api/portal/tickets/{rmm['id']}")
+    assert d.json()["description"] == "Monitoring alert on PC-1"
+    assert d.json()["subject"] == "[RMM] PC-1: Disk"
+    assert "4242" not in d.text and "cfg-secret-key" not in d.text
+    assert c.get(f"/api/portal/tickets/{bare['id']}").json()["description"] == "Monitoring alert"
+    assert c.get(f"/api/portal/tickets/{plain['id']}").json()["description"] == "It is slow"

@@ -1537,6 +1537,8 @@ class RmmAlert(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False)
     state: Mapped[str] = mapped_column(Text, nullable=False, server_default="open")
     occurrences: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    # Consecutive successful polls this open condition was absent from; cleared at two.
+    missed_polls: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -117,6 +117,12 @@ def _insert(ctx: Ctx, org_id: int, kind: str, source: Ticket, target: Ticket) ->
     return link
 
 
+def link_related(ctx: Ctx, org_id: int, source: Ticket, target: Ticket) -> TicketLink:
+    """Link two tickets as 'related'. This is the entry point for system callers (no user, no
+    permission check); the caller guarantees both tickets belong to org_id."""
+    return _insert(ctx, org_id, "related", source, target)
+
+
 def add_link(ctx: Ctx, ticket_id: int, relation: str, other_number: int) -> TicketLink:
     ticket = _get(ctx, ticket_id)
     other = _resolve(ctx, ticket, other_number)

@@ -101,6 +101,15 @@ describe("RMM alerts card", () => {
     await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/integrations/1/alerts/poll"))).toBe(true));
   });
 
+  it("shows a deferred or suspicious warning from the last poll", async () => {
+    const warning = "3 new alert(s) deferred to the next poll (limit 25 per poll)";
+    go("/integrations", {
+      "/api/integrations": json([integ({ config: { alerts_enabled: true }, alerts_last_error: warning })]),
+      [ALERTS_OPEN]: json([]),
+    });
+    expect(await screen.findByText(warning)).toBeInTheDocument();
+  });
+
   it("lists alerts with a ticket link and switches the filter", async () => {
     go("/integrations", {
       "/api/integrations": json([integ()]),
