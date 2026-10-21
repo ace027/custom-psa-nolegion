@@ -400,6 +400,32 @@ def test_purge_function_removes_only_old_rows(admin, owner):
     assert len(runs(owner, rule["id"])) == 1
 
 
+def test_worker_retention_job_purges_and_is_throttled(admin, owner, monkeypatch):
+    from app import worker
+
+    rule = mkrule(admin, actions=[{"type": "escalate"}])
+    owner.execute(
+        text(
+            "INSERT INTO automation_runs (rule_id, event_id, event_type, matched, trace, created_at)"
+            " VALUES (:r, gen_random_uuid(), 'ticket.created', true, '{}', now() - interval '40 days'),"
+            " (:r, gen_random_uuid(), 'ticket.created', true, '{}', now())"
+        ),
+        {"r": rule["id"]},
+    )
+    monkeypatch.setattr(worker, "_last_retention", None)
+    worker.retention_jobs()
+    assert len(runs(owner, rule["id"])) == 1
+    calls = []
+    monkeypatch.setattr(automation, "purge_old", lambda *a: calls.append(a) or (0, 0))
+    worker.retention_jobs()  # within RETENTION_EVERY: skipped
+    assert calls == []
+    monkeypatch.setattr(worker, "_last_retention", None)
+    monkeypatch.setenv("AUTOMATION_RUNS_RETENTION_DAYS", "7")
+    monkeypatch.setenv("WEBHOOK_DELIVERIES_RETENTION_DAYS", "14")
+    worker.retention_jobs()
+    assert [c[1:] for c in calls] == [(7, 14)]
+
+
 # ---- failure isolation ----
 def test_a_failing_action_keeps_the_ticket_change_and_is_traced(
     admin, tech, owner, make_ticket, monkeypatch

@@ -5,6 +5,7 @@ python -m app.worker --once    # a single cycle (cron / debugging)
 """
 
 import logging
+import os
 import signal
 import sys
 import time
@@ -17,6 +18,8 @@ log = logging.getLogger("psa.worker")
 _stop = False
 BUSY_EVERY = 300  # seconds between free/busy refreshes
 _last_busy: float | None = None
+RETENTION_EVERY = 86400  # seconds between retention purges
+_last_retention: float | None = None
 
 
 def _handle(*_):
@@ -146,6 +149,36 @@ def webhook_jobs() -> None:
         log.exception("webhook jobs failed")
 
 
+def retention_jobs() -> None:
+    """Purge old automation runs and webhook deliveries, at most once every RETENTION_EVERY
+    seconds. Windows come from AUTOMATION_RUNS_RETENTION_DAYS (30) and
+    WEBHOOK_DELIVERIES_RETENTION_DAYS (90). A failure never raises."""
+    global _last_retention
+    from app import automation
+    from app import db as dbmod
+    from app.deps import Ctx
+    from app.scope import Scope
+
+    mono = time.monotonic()
+    if _last_retention is not None and mono - _last_retention < RETENTION_EVERY:
+        return
+    _last_retention = mono
+    try:
+        runs_days = int(os.environ.get("AUTOMATION_RUNS_RETENTION_DAYS", "30"))
+        deliveries_days = int(os.environ.get("WEBHOOK_DELIVERIES_RETENTION_DAYS", "90"))
+        with dbmod.new_session() as db:
+            dbmod.set_org_scope(db, "all")
+            runs, deliveries = automation.purge_old(
+                Ctx(db=db, user=None, scope=Scope.all()), runs_days, deliveries_days
+            )
+            db.commit()
+        log.info(
+            "retention purge: %d automation run(s), %d webhook delivery(ies)", runs, deliveries
+        )
+    except Exception:
+        log.exception("retention jobs failed")
+
+
 def calendar_jobs(client) -> None:
     """Push pending appointment changes to Outlook (idempotent; a failure never raises)."""
     from datetime import UTC, datetime
@@ -215,6 +248,7 @@ def main(argv: list[str]) -> int:
             integration_jobs()
             alert_jobs()
             webhook_jobs()
+            retention_jobs()
             if "--once" in argv:
                 break
             for _ in range(60):
@@ -233,6 +267,7 @@ def main(argv: list[str]) -> int:
         integration_jobs()
         alert_jobs()
         webhook_jobs()
+        retention_jobs()
         if "--once" in argv:
             break
         for _ in range(s.mail_poll_seconds):
