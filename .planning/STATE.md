@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 6 of 13 (complete)
-- **Status**: Phase 6 shipped (2026-10-21)
-- **Last Activity**: Phase 6 shipped (2026-10-21)
+- **Phase**: 7 of 13 (planned)
+- **Status**: Phase 7 planned -- 4 plans across 4 waves
+- **Last Activity**: Phase 7 planning (2026-10-21)
 
 ## Progress
 ```
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:plan 7` to plan Phase 7: Automation & API
+Run `/triad:build` to execute Phase 7: Automation & API
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -35,6 +35,7 @@ Run `/triad:plan 7` to plan Phase 7: Automation & API
 - Phase 4 issue: #6 (closed); merged to main in PR #7
 - Phase 5 issue: #8 (closed); merged to main in PR #9
 - Phase 6 issue: #10 (closes with PR #11); PR #11 dev -> main
+- Phase 7 issue: #12
 
 ## Phase 2 Results
 (build started 2026-10-09)
