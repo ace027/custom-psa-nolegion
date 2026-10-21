@@ -2,12 +2,12 @@
 
 ## Current Position
 - **Phase**: 8 of 13 (executing)
-- **Status**: Phase 8 executing — Plan 08-01 complete
-- **Last Activity**: Plan 08-01 execution (2026-10-21)
+- **Status**: Phase 8 executing — Plan 08-02 complete
+- **Last Activity**: Plan 08-02 execution (2026-10-21)
 
 ## Progress
 ```
-[###########.........] 59% — 26/44 plans complete
+[############........] 61% — 27/44 plans complete
 ```
 
 ## Recent Decisions
@@ -94,3 +94,4 @@ Run `/triad:build` to execute Phase 8: Projects & project billing
 ## Phase 8 Results
 (build started 2026-10-21)
 - Plan 08-01 (Wave 1): Projects schema, permissions and approved money rules — Complete
+- Plan 08-02 (Wave 2): Projects, phases, tasks, dependencies and budget vs actual API — Complete
