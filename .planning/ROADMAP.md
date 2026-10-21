@@ -172,7 +172,7 @@
 | 4 | 4 | 4 | Shipped |
 | 5 | 5 | 5 | Shipped |
 | 6 | 3 | 3 | Shipped |
-| 7 | 4 | 0 | Planned |
+| 7 | 4 | 1 | In Progress |
 | 8 | 4 | 0 | Pending |
 | 9 | 3 | 0 | Pending |
 | 10 | 3 | 0 | Pending |
