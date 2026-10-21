@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 8 of 13 (executed, pending review)
-- **Status**: Phase 8 under review — cycle 2/3, 0 blocker(s) remaining
-- **Last Activity**: Phase 8 review cycle 2 (2026-10-21)
+- **Phase**: 8 of 13 (complete)
+- **Status**: Phase 8 complete — review passed (3 cycle(s))
+- **Last Activity**: Phase 8 review (2026-10-21)
 
 ## Progress
 ```
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:review` to verify Phase 8: Projects & project billing
+Run `/triad:plan 9` to plan Phase 9: CRM & renewals
 
 ## Phase 1 Results
 (build started 2026-10-09)

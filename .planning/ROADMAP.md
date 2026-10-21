@@ -9,7 +9,7 @@
 - [x] Phase 5: Client confirmations + on-call (3 plans)
 - [x] Phase 6: RMM alerts to tickets (3 plans)
 - [x] Phase 7: Automation & API (4 plans)
-- [ ] Phase 8: Projects & project billing (4 plans)
+- [x] Phase 8: Projects & project billing (4 plans)
 - [ ] Phase 9: CRM & renewals (3 plans)
 - [ ] Phase 10: Procurement & inventory (3 plans)
 - [ ] Phase 11: Reporting & dashboards (3 plans)
@@ -173,7 +173,7 @@
 | 5 | 5 | 5 | Shipped |
 | 6 | 3 | 3 | Shipped |
 | 7 | 4 | 4 | Complete |
-| 8 | 4 | 4 | Executed |
+| 8 | 4 | 4 | Complete |
 | 9 | 3 | 0 | Pending |
 | 10 | 3 | 0 | Pending |
 | 11 | 3 | 0 | Pending |

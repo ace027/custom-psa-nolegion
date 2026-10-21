@@ -106,3 +106,7 @@ verification: 6/6 passed
 | O-062 | 2026-10-21 | dev | 8 | 08-04 | engineering-frontend-developer | implementation | failed | 5 | projects-project-billing, engineering | Projects UI: list, detail, board view, budget card, seed and verify checklist: Partial |
 | O-063 | 2026-10-21 | dev | 8 | 08-03 | engineering-senior-developer | implementation | partial | 3 | projects-project-billing, engineering | Project billing: fixed fee up front and capped T&M: Complete with Warnings |
 | O-064 | 2026-10-21 | dev | 8 | 08-04 | engineering-frontend-developer | implementation | success | 2 | projects-project-billing, engineering | Projects UI: list, detail, board view, budget card, seed and verify checklist: Complete |
+| O-065 | 2026-10-21 | dev | 8 | 08-00 | testing-qa-verification-specialist | quality-review | success | 3 | review, testing | Phase 8 review PASSED in 3 cycle(s), 9 finding(s) |
+| O-066 | 2026-10-21 | dev | 8 | 08-00 | design-ui-designer | quality-review | success | 4 | review, design | Phase 8 review PASSED in 3 cycle(s), 9 finding(s) |
+| O-067 | 2026-10-21 | dev | 8 | 08-00 | engineering-senior-developer | quality-review | success | 4 | review, engineering | Phase 8 review PASSED in 3 cycle(s), 9 finding(s) |
+| O-068 | 2026-10-21 | dev | 8 | 08-00 | engineering-frontend-developer | quality-review | success | 4 | review, engineering | Phase 8 review PASSED in 3 cycle(s), 9 finding(s) |
