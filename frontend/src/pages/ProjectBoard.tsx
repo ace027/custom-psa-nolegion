@@ -11,6 +11,8 @@ const COLUMNS: { key: string; label: string; behaviors: TicketStatus[]; target: 
   { key: "resolved", label: "Resolved", behaviors: ["resolved", "closed"], target: "resolved" },
 ];
 
+const OTHER = { key: "other", label: "Other", behaviors: [] as TicketStatus[], target: "" as TicketStatus };
+
 export default function ProjectBoard({ project, canWrite }: { project: Project; canWrite: boolean }) {
   const qc = useQueryClient();
   const statuses = useQuery({
@@ -29,19 +31,23 @@ export default function ProjectBoard({ project, canWrite }: { project: Project; 
     onSuccess: () => qc.invalidateQueries({ queryKey: ["project", project.id] }),
   });
   const writable = canWrite && project.status !== "completed" && project.status !== "cancelled";
+  const known = COLUMNS.flatMap((c) => c.behaviors);
+  const unmatched = project.tasks.filter((t) => !known.includes(t.status));
+  const columns = unmatched.length > 0 ? [...COLUMNS, OTHER] : COLUMNS;
   return (
     <div className="space-y-3">
       <ErrorMsg error={move.error} />
       {project.tasks.length === 0 && <p className="text-sm text-slate-500">No tasks yet. Add one on the Tasks tab.</p>}
+      <h2 className="sr-only">Board</h2>
       <div className="grid gap-3 md:grid-cols-4">
-        {COLUMNS.map((col) => {
-          const tasks = project.tasks.filter((t) => col.behaviors.includes(t.status));
+        {columns.map((col) => {
+          const tasks = col === OTHER ? unmatched : project.tasks.filter((t) => col.behaviors.includes(t.status));
           return (
             <section key={col.key} aria-label={col.label} className="rounded-xl bg-slate-50 p-2">
               <h3 className="mb-2 px-1 text-sm font-semibold text-slate-700">{col.label} ({tasks.length})</h3>
               <ul className="space-y-2">
                 {tasks.map((t) => (
-                  <li key={t.id} className="rounded-lg border border-slate-200 bg-surface p-2 text-sm shadow-card">
+                  <li key={t.id} className={`${move.isPending ? "opacity-60 " : ""}rounded-lg border border-slate-200 bg-surface p-2 text-sm shadow-card`}>
                     <Link className="font-medium text-blue-700 hover:underline" to={`/tickets/${t.ticket_id}`}>#{t.ticket_number}</Link> {t.title}
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
                       <span>{t.assignee_name ?? "Unassigned"}</span>
@@ -50,12 +56,13 @@ export default function ProjectBoard({ project, canWrite }: { project: Project; 
                     </div>
                     {writable && (
                       <select
-                        aria-label={`Move #${t.ticket_number}`}
+                        aria-label={`Move #${t.ticket_number} to column`}
                         className={`${inputCls} mt-2`}
                         value={col.target}
                         disabled={move.isPending}
                         onChange={(e) => move.mutate({ task: t, target: e.target.value as TicketStatus })}
                       >
+                        {col === OTHER && <option value="" disabled>Move to…</option>}
                         {COLUMNS.map((c) => <option key={c.key} value={c.target}>{c.label}</option>)}
                       </select>
                     )}

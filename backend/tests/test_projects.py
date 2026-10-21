@@ -429,7 +429,7 @@ def test_budget_exact_cents(run, org, wt, log, owner, admin):
     with run() as ctx:
         b = svc.budget(ctx, pid)
         assert b["estimate_minutes"] == 180
-        assert b["actual_minutes"] == 105 and b["billable_minutes"] == 105
+        assert b["actual_minutes"] == 127 and b["billable_minutes"] == 105  # 90 + 7 + 30 worked
         assert b["cost_at_rates_cents"] == 26_250  # 1.75 h x 150.00
         assert (b["billed_cents"], b["remaining_cents"], b["over_budget"]) == (
             0,
@@ -437,7 +437,7 @@ def test_budget_exact_cents(run, org, wt, log, owner, admin):
             False,
         )
         rows = {r["ticket_id"]: r for r in svc.task_rows(ctx, svc.get_project(ctx, pid))}
-        assert rows[t1_ticket]["actual_minutes"] == 90 and rows[t2_ticket]["actual_minutes"] == 15
+        assert rows[t1_ticket]["actual_minutes"] == 90 and rows[t2_ticket]["actual_minutes"] == 37
 
 
 def test_budget_billed_remaining_and_over_budget(run, org, wt, log, owner):

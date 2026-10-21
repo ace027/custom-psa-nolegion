@@ -299,7 +299,7 @@ function TaskForm({ project, task, onDone }: { project: Project; task?: ProjectT
       {others.length > 0 && (
         <fieldset className="col-span-full text-sm">
           <legend className="mb-1 font-medium text-slate-700">Depends on</legend>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <div className="grid max-h-48 grid-cols-1 gap-y-1 overflow-y-auto rounded border border-slate-200 p-2 sm:grid-cols-2">
             {others.map((o) => (
               <label key={o.id} className="flex items-center gap-1">
                 <input type="checkbox" checked={v.deps.includes(o.id)} onChange={() => toggleDep(o.id)} />#{o.ticket_number} {o.title}
@@ -335,7 +335,7 @@ function BudgetTab({ project: p, canBill, onDone }: { project: Project; canBill:
           <StatTile value={money(b.cost_at_rates_cents)} label="Cost at rates" />
           <StatTile value={money(b.billed_cents)} label="Billed" />
           <StatTile
-            value={b.remaining_cents === null ? "—" : money(b.remaining_cents)}
+            value={b.remaining_cents === null ? "—" : `${money(b.remaining_cents)}${b.over_budget ? " (over)" : ""}`}
             label={b.remaining_cents === null ? "Remaining (fixed fee)" : "Remaining"}
             tone={b.over_budget ? "text-red-700" : ""}
           />
@@ -384,8 +384,8 @@ function BillingForm({ project: p, onDone }: { project: Project; onDone: () => v
             <option value="tm">Time & materials</option>
           </select>
         </Field>
-        {mode === "fixed_fee" && <Field label="Fixed fee ($)"><input className={inputCls} value={fee} onChange={(e) => setFee(e.target.value)} /></Field>}
-        {mode === "tm" && <Field label="Budget ($)"><input className={inputCls} value={budget} onChange={(e) => setBudget(e.target.value)} /></Field>}
+        {mode === "fixed_fee" && <Field label="Fixed fee ($)"><input className={inputCls} inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} /></Field>}
+        {mode === "tm" && <Field label="Budget ($)"><input className={inputCls} inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} /></Field>}
         <label className="flex items-end gap-1 text-sm"><input type="checkbox" checked={taxable} onChange={(e) => setTaxable(e.target.checked)} />Taxable</label>
         <div className="col-span-full space-y-2">
           <ErrorMsg error={save.error} />

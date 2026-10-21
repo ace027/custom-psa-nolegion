@@ -8,9 +8,9 @@ migration 0029 enforce the rest).
 from datetime import date
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
-from app import audit, billing
+from app import api_keys, audit, billing
 from app import repositories as repo
 from app import ticket_services as tsvc
 from app.deps import Ctx
@@ -48,8 +48,6 @@ def can_bill(ctx: Ctx) -> bool:
     if ctx.user is None:
         return False
     if ctx.api_key_id is not None:
-        from app import api_keys
-
         key = ctx.db.get(ApiKey, ctx.api_key_id)
         return key is not None and api_keys.effective_permission(key, BILLING_WRITE)
     return has_permission(ctx.user.role, BILLING_WRITE)
@@ -285,7 +283,7 @@ def add_phase(ctx: Ctx, project_id: int, data: dict) -> ProjectPhase:
 
 
 def update_phase(ctx: Ctx, project_id: int, phase_id: int, data: dict) -> ProjectPhase:
-    project = get_project(ctx, project_id)
+    project = _open_project(ctx, project_id)
     phase = _phase(ctx, project, phase_id)
     before = audit.snapshot(phase)
     for key in ("name", "position"):
@@ -315,7 +313,7 @@ def update_phase(ctx: Ctx, project_id: int, phase_id: int, data: dict) -> Projec
 
 
 def delete_phase(ctx: Ctx, project_id: int, phase_id: int) -> None:
-    project = get_project(ctx, project_id)
+    project = _open_project(ctx, project_id)
     phase = _phase(ctx, project, phase_id)
     has_tasks = ctx.db.execute(
         select(func.count()).select_from(ProjectTask).where(ProjectTask.phase_id == phase.id)
@@ -383,7 +381,7 @@ def add_task(ctx: Ctx, project_id: int, data: dict) -> ProjectTask:
 
 
 def update_task(ctx: Ctx, project_id: int, task_id: int, data: dict) -> ProjectTask:
-    project = get_project(ctx, project_id)
+    project = _open_project(ctx, project_id)
     task = _task(ctx, task_id, project.id)
     before = audit.snapshot(task)
     if data.get("phase_id") is not None:
@@ -454,6 +452,9 @@ def add_dependency(
     ctx: Ctx, task_id: int, depends_on_task_id: int, project_id: int | None = None
 ) -> ProjectTask:
     task = _task(ctx, task_id, project_id)
+    # Serialize dependency edits per project so two requests cannot each pass the loop check.
+    ctx.db.execute(select(Project.id).where(Project.id == task.project_id).with_for_update())
+    _open_project(ctx, task.project_id)
     dep = _task(ctx, depends_on_task_id)
     if dep.project_id != task.project_id:
         raise Conflict("A task can only depend on a task in the same project")
@@ -489,6 +490,7 @@ def remove_dependency(
     ctx: Ctx, task_id: int, depends_on_task_id: int, project_id: int | None = None
 ) -> ProjectTask:
     task = _task(ctx, task_id, project_id)
+    _open_project(ctx, task.project_id)
     edge = ctx.db.execute(
         select(ProjectTaskDependency).where(
             ProjectTaskDependency.task_id == task.id,
@@ -536,7 +538,7 @@ def attach_ticket(ctx: Ctx, project_id: int, ticket_id: int) -> Ticket:
 
 
 def detach_ticket(ctx: Ctx, project_id: int, ticket_id: int) -> Ticket:
-    project = get_project(ctx, project_id)
+    project = _open_project(ctx, project_id)
     ticket = repo.get_ticket(ctx.db, ctx.scope, ticket_id)
     if ticket is None:
         raise NotFound("Ticket not found")
@@ -562,7 +564,7 @@ def detach_ticket(ctx: Ctx, project_id: int, ticket_id: int) -> Ticket:
 # ---- budget vs actual -----------------------------------------------------------------------
 def _minutes_by_ticket(ctx: Ctx, project_id: int) -> dict[int, int]:
     rows = ctx.db.execute(
-        select(TimeEntry.ticket_id, func.sum(TimeEntry.minutes_billable))
+        select(TimeEntry.ticket_id, func.sum(TimeEntry.minutes_actual))
         .join(Ticket, Ticket.id == TimeEntry.ticket_id)
         .where(Ticket.project_id == project_id, TimeEntry.voided_at.is_(None))
         .group_by(TimeEntry.ticket_id)
@@ -578,16 +580,25 @@ def budget(ctx: Ctx, project_id: int) -> dict:
         )
     ).scalar_one()
     by_type = ctx.db.execute(
-        select(TimeEntry.work_type_id, func.sum(TimeEntry.minutes_billable))
+        select(
+            TimeEntry.work_type_id,
+            func.sum(TimeEntry.minutes_actual),
+            func.coalesce(
+                func.sum(case((TimeEntry.billable.is_(True), TimeEntry.minutes_billable), else_=0)),
+                0,
+            ),
+        )
         .join(Ticket, Ticket.id == TimeEntry.ticket_id)
         .where(Ticket.project_id == project.id, TimeEntry.voided_at.is_(None))
         .group_by(TimeEntry.work_type_id)
     ).all()
     minutes = 0
+    billable_minutes = 0
     cost = 0
-    for work_type_id, total in by_type:
+    for work_type_id, actual, total in by_type:
         total = int(total)
-        minutes += total
+        minutes += int(actual)
+        billable_minutes += total
         wt = ctx.db.get(WorkType, work_type_id)
         rate = billing.hourly_rate(ctx, project.organization_id, wt)
         if rate is not None:
@@ -612,7 +623,7 @@ def budget(ctx: Ctx, project_id: int) -> dict:
     return {
         "estimate_minutes": int(estimate),
         "actual_minutes": minutes,
-        "billable_minutes": minutes,
+        "billable_minutes": billable_minutes,
         "cost_at_rates_cents": cost,
         "billed_cents": billed,
         "remaining_cents": remaining,

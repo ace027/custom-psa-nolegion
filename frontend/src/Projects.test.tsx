@@ -146,7 +146,7 @@ describe("project detail", () => {
     expect(within(newCol).getByText("Due 2026-11-01")).toBeInTheDocument();
     await screen.findByRole("region", { name: "Resolved" });
     await waitFor(() => expect(called("/api/ticket-statuses")).toBe(true));
-    fireEvent.change(within(newCol).getByLabelText("Move #501"), { target: { value: "resolved" } });
+    fireEvent.change(within(newCol).getByLabelText("Move #501 to column"), { target: { value: "resolved" } });
     await waitFor(() => expect(called("PATCH /api/tickets/101 ", '"status_id":4')).toBe(true));
   });
 
@@ -194,7 +194,7 @@ describe("project detail", () => {
     expect(screen.queryByRole("button", { name: "Put on hold" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Board" }));
-    expect(screen.queryByLabelText("Move #501")).toBeNull();
+    expect(screen.queryByLabelText("Move #501 to column")).toBeNull();
   });
 });
 

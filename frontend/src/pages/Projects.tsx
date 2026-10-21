@@ -20,9 +20,9 @@ function BudgetCells({ p }: { p: ProjectSummary }) {
   const b = useQuery({ queryKey: ["project-budget", p.id], queryFn: () => projectsApi.budget(p.id) });
   return (
     <>
-      <td className="px-3 py-2">{b.data ? hours(b.data.actual_minutes) : "…"}</td>
+      <td className="px-3 py-2">{b.data ? hours(b.data.actual_minutes) : b.isError ? "—" : "…"}</td>
       <td className="px-3 py-2">
-        {b.data ? (b.data.remaining_cents === null ? "—" : money(b.data.remaining_cents)) : "…"}
+        {b.data ? (b.data.remaining_cents === null ? "—" : money(b.data.remaining_cents)) : b.isError ? <span title="Budget unavailable">— (error)</span> : "…"}
         {b.data?.over_budget && <span className="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">Over budget</span>}
       </td>
     </>
