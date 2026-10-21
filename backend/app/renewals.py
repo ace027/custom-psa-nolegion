@@ -5,8 +5,9 @@ each (UNIQUE agreement_id + lead_days), so a dismissed reminder is never recreat
 import logging
 from datetime import date, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import exists, select, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased
 
 from app import audit, crm
 from app import repositories as repo
@@ -167,10 +168,17 @@ def scan(ctx: Ctx, today: date) -> dict:
     settings = repo.get_settings_row(ctx.db)
     days = sorted(set(settings.renewal_reminder_days or []), reverse=True)
     can_mail = bool(settings.renewal_email) and repo.get_mailbox_status(ctx.db).mailbox is not None
+    # A reprice ends the old agreement the day before its successor starts; that is not a renewal.
+    successor = aliased(Agreement)
+    replaced = exists().where(
+        successor.organization_id == Agreement.organization_id,
+        successor.id != Agreement.id,
+        successor.start_date == Agreement.end_date + 1,
+    )
     agreements = (
         ctx.db.execute(
             select(Agreement)
-            .where(Agreement.end_date.is_not(None), Agreement.end_date >= today)
+            .where(Agreement.end_date.is_not(None), Agreement.end_date >= today, ~replaced)
             .order_by(Agreement.id)
         )
         .unique()
