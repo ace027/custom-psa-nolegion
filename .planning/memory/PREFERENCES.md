@@ -14,6 +14,7 @@ Managed by the memory manager. Learnings recorded with /triad:learn are kept bel
 | D-006 | 2026-10-10 | dev | review-verdict | Phase 3 review | PASS | accepted | positive | system | review |
 | D-007 | 2026-10-15 | dev | review-verdict | Phase 4 review | PASS | accepted | positive | system | review |
 | D-008 | 2026-10-15 | dev | review-verdict | Phase 5 review | PASS | accepted | positive | system | review |
+| D-009 | 2026-10-21 | dev | review-verdict | Phase 6 review | PASS | accepted | positive | system | review |
 
 ## PRF-001: Owner does no manual testing until the final Phase 14: Verify
 - **Date**: 2026-10-15
