@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Phase**: 7 of 13 (executing)
-- **Status**: Phase 7 executing — Plan 07-04 failed
+- **Phase**: 7 of 13 (partial — 1 plan(s) failed)
+- **Status**: Phase 7 partial — 07-04 failed, stopped after wave 4, review needed
 - **Last Activity**: Plan 07-04 execution (2026-10-21)
 
 ## Progress
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:build` to execute Phase 7: Automation & API
+Fix the failed plans and run `/triad:build` again (completed plans are kept), or run `/triad:review`
 
 ## Phase 1 Results
 (build started 2026-10-09)
