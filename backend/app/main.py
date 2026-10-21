@@ -12,6 +12,7 @@ from app.routers import (
     api_keys,
     assets,
     auth,
+    automation,
     billing,
     config,
     credit_memos,
@@ -127,6 +128,7 @@ def create_app() -> FastAPI:
         portal.router,
         api_keys.router,
         webhooks.router,
+        automation.router,
     ):
         app.include_router(r, prefix="/api")
     return app

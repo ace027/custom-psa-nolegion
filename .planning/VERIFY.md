@@ -41,3 +41,11 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Broken credentials show an error on the card and change no tickets
 - [ ] Check now queues a poll and is disabled while alerts are off
 - [ ] Tech and read-only users cannot see the card
+
+## Phase 7: Automation & API
+- [ ] Walk through docs/verify/automation-api.md (API keys, webhooks, automation rules)
+- [ ] Unverified: a real Microsoft Teams Workflows webhook URL renders the adaptive card
+- [ ] Unverified: a real n8n instance accepts the payload and the HMAC-SHA256 signature verifies
+- [ ] Unverified: a LAN n8n works with WEBHOOK_ALLOW_PRIVATE_HOSTS=true (https only)
+- [ ] A rule's assign, escalate, notify, webhook and create-ticket actions each work on a real ticket
+- [ ] Rules never trigger other rules; a rule firing more than 200 times in an hour switches itself off

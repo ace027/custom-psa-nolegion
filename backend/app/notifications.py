@@ -21,13 +21,18 @@ PREFERENCE = {
     "sla_at_risk": "notify_sla",
     "sla_breached": "notify_sla",
     "customer_reply": "notify_reply",
+    "rule_notify": "notify_assigned",
 }
 HEADLINE = {
     "assigned": "was assigned to you",
     "sla_at_risk": "is at risk of breaching its SLA",
     "sla_breached": "has breached its SLA",
     "customer_reply": "has a new reply from the customer",
+    "rule_notify": "matched an automation rule",
 }
+# staff_notifications.event is CHECK-constrained to the four original events, so a rule's email
+# is stored as 'assigned' (its dedupe key starts with "rule:", which keeps it apart).
+STORED_EVENT = {"rule_notify": "assigned"}
 
 
 def _line(text: str | None) -> str:
@@ -82,7 +87,7 @@ def notify(
                 StaffNotification(
                     user_id=user.id,
                     ticket_id=ticket.id,
-                    event=event,
+                    event=STORED_EVENT.get(event, event),
                     dedupe_key=key,
                     email_message_id=email.id,
                 )

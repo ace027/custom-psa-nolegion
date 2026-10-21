@@ -989,3 +989,74 @@ export const listWebhookDeliveries = (id: number, status?: string, limit = 50) =
   api<WebhookDelivery[]>(`/webhooks/${id}/deliveries?${status ? `status=${status}&` : ""}limit=${limit}`);
 export const retryWebhookDelivery = (id: number) =>
   api<WebhookDelivery>(`/webhooks/deliveries/${id}/retry`, { method: "POST" });
+
+// ---- automation ----
+export interface RuleCondition {
+  field: string;
+  op: string;
+  value?: unknown;
+}
+export interface RuleAction {
+  type: string;
+  [param: string]: unknown;
+}
+export interface AutomationRule {
+  id: number;
+  name: string;
+  enabled: boolean;
+  trigger: string;
+  conditions: RuleCondition[];
+  actions: RuleAction[];
+  position: number;
+  disabled_reason: string | null;
+  fire_count: number;
+  last_fired_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface RuleBody {
+  name: string;
+  trigger: string;
+  enabled: boolean;
+  conditions: RuleCondition[];
+  actions: RuleAction[];
+  position: number;
+}
+export interface TraceCondition {
+  field: string | null;
+  op: string | null;
+  value: unknown;
+  actual: unknown;
+  matched: boolean;
+}
+export interface TraceAction {
+  type: string;
+  params: Record<string, unknown>;
+  status: string;
+  detail: string;
+}
+export interface RuleRun {
+  id: number;
+  rule_id: number;
+  event_id: string;
+  event_type: string;
+  ticket_id: number | null;
+  matched: boolean;
+  trace: { conditions: TraceCondition[]; actions: TraceAction[] };
+  created_at: string;
+}
+export interface RuleTestResult {
+  matched: boolean;
+  trigger: string;
+  conditions: TraceCondition[];
+  actions: TraceAction[];
+}
+export const listRules = () => api<AutomationRule[]>("/automation/rules");
+export const createRule = (json: RuleBody) => api<AutomationRule>("/automation/rules", { method: "POST", json });
+export const updateRule = (id: number, json: Partial<RuleBody>) =>
+  api<AutomationRule>(`/automation/rules/${id}`, { method: "PATCH", json });
+export const archiveRule = (id: number) => api<AutomationRule>(`/automation/rules/${id}/archive`, { method: "POST" });
+export const listRuleRuns = (id: number, limit = 50) => api<RuleRun[]>(`/automation/rules/${id}/runs?limit=${limit}`);
+export const testRule = (json: { rule_id?: number; rule?: RuleBody; ticket_id: number }) =>
+  api<RuleTestResult>("/automation/rules/test", { method: "POST", json });

@@ -1,5 +1,5 @@
 """Service events: ticket and RMM alert facts, fanned out to the webhook outbox (and, at depth 0,
-to automation rules registered in RULE_HOOK by plan 07-04).
+to automation rules: app.automation.on_event, then anything in RULE_HOOK).
 
 Payloads carry facts and a link only: never the ticket description, notes or email text."""
 
@@ -31,7 +31,7 @@ RULE_TRIGGERS = EVENT_TYPES
 # rules (webhooks still fire at any depth).
 automation_depth: ContextVar[int] = ContextVar("automation_depth", default=0)
 
-# Called as hook(ctx, type, event_id, ticket, alert, changes). Plan 07-04 registers into it.
+# Extra hooks, called as hook(ctx, type, event_id, ticket, alert, changes) after the rules engine.
 RULE_HOOK: list[Callable] = []
 
 
@@ -90,6 +90,9 @@ def emit(
     except Exception:  # noqa: BLE001
         log.exception("could not queue webhook event %s", type)
     if automation_depth.get() == 0:
-        for hook in list(RULE_HOOK):
+        # imported here (not at module level) so the API and the worker both always have rules
+        from app import automation
+
+        for hook in [automation.on_event, *RULE_HOOK]:
             hook(ctx, type, event_id, ticket, alert, changes)
     return event_id

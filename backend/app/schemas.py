@@ -1733,3 +1733,86 @@ class WebhookDeliveryOut(BaseModel):
 
 class WebhookTestOut(BaseModel):
     queued: int
+
+
+# ---- automation ----
+class RuleIn(BaseModel):
+    name: str
+    trigger: str
+    enabled: bool = True
+    conditions: list[dict[str, Any]] = Field(default_factory=list)
+    actions: list[dict[str, Any]] = Field(default_factory=list)
+    position: int = 0
+
+
+class RulePatch(BaseModel):
+    name: str | None = None
+    trigger: str | None = None
+    enabled: bool | None = None
+    conditions: list[dict[str, Any]] | None = None
+    actions: list[dict[str, Any]] | None = None
+    position: int | None = None
+
+
+class RuleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    enabled: bool
+    trigger: str
+    conditions: list[dict[str, Any]]
+    actions: list[dict[str, Any]]
+    position: int
+    disabled_reason: str | None
+    fire_count: int
+    last_fired_at: datetime | None
+    archived_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class RuleTest(BaseModel):
+    rule_id: int | None = None
+    rule: RuleIn | None = None
+    ticket_id: int
+
+
+class TraceCondition(BaseModel):
+    field: str | None
+    op: str | None
+    value: Any = None
+    actual: Any = None
+    matched: bool
+
+
+class TraceAction(BaseModel):
+    type: str
+    params: dict[str, Any]
+    status: str
+    detail: str
+
+
+class RunTrace(BaseModel):
+    conditions: list[TraceCondition]
+    actions: list[TraceAction]
+
+
+class RuleRunOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    rule_id: int
+    event_id: uuid.UUID
+    event_type: str
+    ticket_id: int | None
+    matched: bool
+    trace: RunTrace
+    created_at: datetime
+
+
+class RuleTestOut(BaseModel):
+    matched: bool
+    trigger: str
+    conditions: list[TraceCondition]
+    actions: list[TraceAction]
