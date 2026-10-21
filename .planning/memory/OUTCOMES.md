@@ -94,3 +94,5 @@ verification: 6/6 passed
 | O-050 | 2026-10-21 | dev | 7 | 07-01 | engineering-backend-architect | implementation | success | 2 | automation-api, engineering | Automation & API schema, models and permissions: Complete |
 | O-051 | 2026-10-21 | dev | 7 | 07-02 | engineering-security-engineer | implementation | success | 3 | automation-api, engineering | API keys: hashed, scoped, revocable bearer auth: Complete |
 | O-052 | 2026-10-21 | dev | 7 | 07-03 | engineering-backend-architect | implementation | success | 2 | automation-api, engineering | Events and signed outbound webhooks (generic, Teams, n8n): Complete |
+| O-053 | 2026-10-21 | dev | 7 | 07-04 | engineering-backend-architect | implementation | failed | 5 | automation-api, engineering | Rules engine with dry run, trace and loop guard: Partial |
+| O-054 | 2026-10-21 | dev | 7 | 07-04 | engineering-backend-architect | implementation | success | 2 | automation-api, engineering | Rules engine with dry run, trace and loop guard: Complete |
