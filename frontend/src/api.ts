@@ -416,7 +416,7 @@ export interface Invoice {
 }
 export interface InvoiceLine {
   id: number;
-  kind: "time" | "product" | "agreement" | "manual" | "proration";
+  kind: "time" | "product" | "agreement" | "manual" | "proration" | "project";
   description: string;
   quantity: string;
   unit_price_cents: number;
@@ -644,6 +644,7 @@ export interface RevenueRow {
   product_cents: number;
   agreement_cents: number;
   manual_cents: number;
+  project_cents: number;
   subtotal_cents: number;
   tax_cents: number;
   total_cents: number;

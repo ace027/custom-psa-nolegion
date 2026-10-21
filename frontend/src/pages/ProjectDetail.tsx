@@ -66,7 +66,7 @@ export default function ProjectDetail() {
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {writable && NEXT[p.status].map((n) => (
-          <Button key={n.to} variant={n.to === "cancelled" ? "danger" : "secondary"} disabled={status.isPending} onClick={() => status.mutate(n.to)}>{n.label}</Button>
+          <Button key={n.to} aria-label={n.to === "cancelled" ? `Cancel project ${p.name}` : undefined} variant={n.to === "cancelled" ? "danger" : "secondary"} disabled={status.isPending} onClick={() => { if (n.to !== "cancelled" || window.confirm(`Cancel project "${p.name}"? A cancelled project cannot be reopened.`)) status.mutate(n.to); }}>{n.label}</Button>
         ))}
         {canBill && p.status === "draft" && <Button disabled={approve.isPending} onClick={() => approve.mutate()}>Approve</Button>}
         {p.billing_mode === "fixed_fee" && p.approved_at && (
@@ -78,23 +78,39 @@ export default function ProjectDetail() {
         )}
       </div>
       <ErrorMsg error={status.error ?? approve.error ?? bill.error} />
-      <div role="tablist" className="flex gap-1 border-b border-slate-200">
-        {TABS.map((t) => (
+      <div role="tablist" aria-label="Project sections" className="flex gap-1 border-b border-slate-200">
+        {TABS.map((t, i) => (
           <button
             key={t.key}
+            id={`project-tab-${t.key}`}
             type="button"
             role="tab"
             aria-selected={tab === t.key}
-            className={`px-3 py-2 text-sm ${tab === t.key ? "border-b-2 border-blue-600 font-semibold text-blue-700" : "text-slate-500"}`}
+            aria-controls="project-tabpanel"
+            tabIndex={tab === t.key ? 0 : -1}
+            className={`px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${tab === t.key ? "border-b-2 border-blue-600 font-semibold text-blue-700" : "text-slate-700"}`}
             onClick={() => setTab(t.key)}
+            onKeyDown={(e) => {
+              let next = -1;
+              if (e.key === "ArrowRight") next = (i + 1) % TABS.length;
+              else if (e.key === "ArrowLeft") next = (i - 1 + TABS.length) % TABS.length;
+              else if (e.key === "Home") next = 0;
+              else if (e.key === "End") next = TABS.length - 1;
+              if (next < 0) return;
+              e.preventDefault();
+              setTab(TABS[next].key);
+              document.getElementById(`project-tab-${TABS[next].key}`)?.focus();
+            }}
           >
             {t.label}
           </button>
         ))}
       </div>
-      {tab === "tasks" && <TasksTab project={p} canWrite={writable} onDone={refresh} />}
-      {tab === "board" && <ProjectBoard project={p} canWrite={writable} />}
-      {tab === "budget" && <BudgetTab project={p} canBill={canBill} onDone={refresh} />}
+      <div role="tabpanel" id="project-tabpanel" aria-labelledby={`project-tab-${tab}`}>
+        {tab === "tasks" && <TasksTab project={p} canWrite={writable} onDone={refresh} />}
+        {tab === "board" && <ProjectBoard project={p} canWrite={writable} />}
+        {tab === "budget" && <BudgetTab project={p} canBill={canBill} onDone={refresh} />}
+      </div>
     </div>
   );
 }
@@ -183,9 +199,9 @@ function PhaseActions({ project, phase, canWrite, onDone }: { project: Project; 
       <span className="text-slate-500">{phase.due_date ? `due ${phase.due_date}` : ""}{phase.completed_at ? " · complete" : ""}</span>
       {canWrite && (
         <>
-          <Button variant="secondary" onClick={() => setEditing(!editing)}>Edit phase</Button>
-          <Button variant="secondary" onClick={() => toggle.mutate()}>{phase.completed_at ? "Reopen phase" : "Complete phase"}</Button>
-          {phase.task_count === 0 && <Button variant="danger" onClick={() => del.mutate()}>Delete phase</Button>}
+          <Button variant="secondary" aria-label={`Edit phase ${phase.name}`} onClick={() => setEditing(!editing)}>Edit phase</Button>
+          <Button variant="secondary" aria-label={`${phase.completed_at ? "Reopen" : "Complete"} phase ${phase.name}`} onClick={() => toggle.mutate()}>{phase.completed_at ? "Reopen phase" : "Complete phase"}</Button>
+          {phase.task_count === 0 && <Button variant="danger" aria-label={`Delete phase ${phase.name}`} onClick={() => { if (window.confirm(`Delete phase "${phase.name}"?`)) del.mutate(); }}>Delete phase</Button>}
         </>
       )}
       {editing && (
