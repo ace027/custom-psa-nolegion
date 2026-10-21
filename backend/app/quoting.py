@@ -676,4 +676,7 @@ def accept_quote(ctx: Ctx, quote_id: int, start_date: date | None, note: str | N
     quote.status, quote.decision_note = "accepted", note
     quote.decided_at, quote.decided_by = now(), ctx.user.id if ctx.user else None
     quote.resulting_agreement_id = agreement.id
+    from app import crm
+
+    crm.on_quote_accepted(ctx, quote, agreement)
     return _changed(ctx, quote, "quote.accept", before, {"agreement_id": agreement.id})

@@ -661,6 +661,8 @@ class SettingsOut(ORM):
     auto_ack_body: str
     escalation_email: str | None
     escalation_bump_priority: bool
+    renewal_reminder_days: list[int]
+    renewal_email: str | None
     csat_enabled: bool
     mileage_rate_cents: int
     portal_enabled: bool
@@ -697,6 +699,10 @@ class SettingsPatch(BaseModel):
     # An empty string clears the address (None means "leave unchanged", like every other field).
     escalation_email: str | None = Field(default=None, max_length=320)
     escalation_bump_priority: bool | None = None
+    # Days before an agreement ends to remind (1..365 each, 1..5 unique values).
+    renewal_reminder_days: list[int] | None = None
+    # An empty string clears the address.
+    renewal_email: str | None = Field(default=None, max_length=320)
     csat_enabled: bool | None = None
     mileage_rate_cents: int | None = Field(default=None, ge=0, le=10_000)
     portal_enabled: bool | None = None
@@ -725,7 +731,20 @@ class SettingsPatch(BaseModel):
     billing_increment_minutes: int | None = Field(default=None, ge=1, le=240)
     sla_at_risk_percent: int | None = Field(default=None, ge=0, le=100)
 
-    @field_validator("escalation_email")
+    @field_validator("renewal_reminder_days")
+    @classmethod
+    def _renewal_days(cls, v: list[int] | None) -> list[int] | None:
+        if v is None:
+            return v
+        if not 1 <= len(v) <= 5:
+            raise ValueError("Give between 1 and 5 reminder times")
+        if any(not 1 <= n <= 365 for n in v):
+            raise ValueError("Each reminder time must be between 1 and 365 days")
+        if len(set(v)) != len(v):
+            raise ValueError("Reminder times must be different")
+        return sorted(v, reverse=True)
+
+    @field_validator("escalation_email", "renewal_email")
     @classmethod
     def _email(cls, v: str | None) -> str | None:
         if v is None or v == "":

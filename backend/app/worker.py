@@ -44,6 +44,20 @@ def billing_jobs() -> None:
     except Exception:
         log.exception("billing jobs failed")
 
+    try:
+        from app import renewals
+        from app.billing import today
+
+        with dbmod.new_session() as db:
+            dbmod.set_org_scope(db, "all")
+            ctx = Ctx(db=db, user=None, scope=Scope.all())
+            counts = renewals.scan(ctx, today(ctx))
+            db.commit()
+        if any(counts.values()):
+            log.info("renewal reminders: %s", counts)
+    except Exception:
+        log.exception("renewal reminder jobs failed")
+
 
 def notify_jobs() -> None:
     """Email assignees whose tickets reached SLA at-risk or breached (once per state)."""

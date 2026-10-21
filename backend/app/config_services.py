@@ -105,6 +105,8 @@ def update_settings(ctx: Ctx, data: dict):
             setattr(row, key, value)
     if data.get("escalation_email") == "":
         row.escalation_email = None
+    if data.get("renewal_email") == "":
+        row.renewal_email = None
     try:
         ZoneInfo(row.timezone)
         Calendar.from_settings(row).validate()  # no query here: it would autoflush a bad row

@@ -16,6 +16,7 @@ from app.routers import (
     billing,
     config,
     credit_memos,
+    crm,
     csat,
     expenses,
     health,
@@ -131,6 +132,7 @@ def create_app() -> FastAPI:
         webhooks.router,
         automation.router,
         projects.router,
+        crm.router,
     ):
         app.include_router(r, prefix="/api")
     return app

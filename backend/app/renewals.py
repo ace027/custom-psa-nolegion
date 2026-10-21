@@ -1,0 +1,203 @@
+"""Renewal reminders: each agreement with an end date gets one reminder per configured lead time
+(settings.renewal_reminder_days), the first of which also opens a renewal opportunity. Created once
+each (UNIQUE agreement_id + lead_days), so a dismissed reminder is never recreated."""
+
+from datetime import date, timedelta
+
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
+
+from app import audit, crm
+from app import repositories as repo
+from app.billing import monthly_amount_cents
+from app.config import get_settings
+from app.deps import Ctx
+from app.errors import Conflict, NotFound
+from app.models import (
+    Agreement,
+    EmailMessage,
+    Opportunity,
+    OpportunityStage,
+    RenewalReminder,
+)
+
+
+def _line(text: str | None) -> str:
+    return " ".join((text or "").split())[:200]
+
+
+def _open_renewal(ctx: Ctx, agreement_id: int) -> Opportunity | None:
+    return ctx.db.execute(
+        select(Opportunity)
+        .join(OpportunityStage, OpportunityStage.id == Opportunity.stage_id)
+        .where(
+            Opportunity.kind == "renewal",
+            Opportunity.agreement_id == agreement_id,
+            OpportunityStage.kind == "open",
+        )
+        .order_by(Opportunity.id)
+        .limit(1)
+    ).scalar_one_or_none()
+
+
+def _compose(a: Agreement) -> tuple[str, str]:
+    client = _line(a.organization.name)
+    name = _line(a.name)
+    end = a.end_date.isoformat()
+    url = f"{get_settings().public_url.rstrip('/')}/crm/renewals"
+    subject = f"PSA: agreement {name} for {client} ends {end}"
+    body = "\n".join(
+        [
+            f"Agreement {name} is coming up for renewal.",
+            "",
+            f"Client:    {client}",
+            f"Agreement: {name}",
+            f"Ends:      {end}",
+            "",
+            f"Open the renewals list: {url}",
+        ]
+    )
+    return subject, body
+
+
+def _insert(ctx: Ctx, a: Agreement, lead_days: int) -> RenewalReminder | None:
+    try:
+        with ctx.db.begin_nested():  # a duplicate must not poison the job's transaction
+            reminder = RenewalReminder(
+                organization_id=a.organization_id,
+                agreement_id=a.id,
+                lead_days=lead_days,
+                due_on=a.end_date,
+                status="open",
+            )
+            ctx.db.add(reminder)
+            ctx.db.flush()
+    except IntegrityError:
+        return None
+    return reminder
+
+
+def scan(ctx: Ctx, today: date) -> dict:
+    """Create the reminders that have come due, plus their renewal opportunity and optional email.
+    Idempotent. -> counts of reminders, opportunities, emails and reminders marked done."""
+    counts = {"reminders": 0, "opportunities": 0, "emails": 0, "done": 0}
+    settings = repo.get_settings_row(ctx.db)
+    days = sorted(set(settings.renewal_reminder_days or []), reverse=True)
+    can_mail = bool(settings.renewal_email) and repo.get_mailbox_status(ctx.db).mailbox is not None
+    agreements = (
+        ctx.db.execute(
+            select(Agreement)
+            .where(Agreement.end_date.is_not(None), Agreement.end_date >= today)
+            .order_by(Agreement.id)
+        )
+        .unique()
+        .scalars()
+    )
+    for a in list(agreements):
+        fresh = []
+        for n in days:
+            if today >= a.end_date - timedelta(days=n):
+                reminder = _insert(ctx, a, n)
+                if reminder is not None:
+                    fresh.append(reminder)
+        if not fresh:
+            continue
+        counts["reminders"] += len(fresh)
+        opp = _open_renewal(ctx, a.id)
+        if opp is None:
+            opp = crm.create_opportunity(
+                ctx,
+                {
+                    "organization_id": a.organization_id,
+                    "name": f"Renewal: {_line(a.name)}",
+                    "kind": "renewal",
+                    "monthly_cents": monthly_amount_cents(a),
+                    "term_months": 12,
+                    "expected_close_date": a.end_date,
+                    "agreement_id": a.id,
+                },
+            )
+            counts["opportunities"] += 1
+        for reminder in fresh:
+            reminder.opportunity_id = opp.id
+            if can_mail:
+                subject, body = _compose(a)
+                email = EmailMessage(
+                    direction="out",
+                    organization_id=a.organization_id,
+                    to_emails=[settings.renewal_email],
+                    subject=subject,
+                    body_text=body,
+                    send_status="pending",
+                    auto_generated=True,
+                )
+                ctx.db.add(email)
+                ctx.db.flush()
+                reminder.email_message_id = email.id
+                counts["emails"] += 1
+        ctx.db.flush()
+
+    closed = (
+        select(Opportunity.id)
+        .join(OpportunityStage, OpportunityStage.id == Opportunity.stage_id)
+        .where(OpportunityStage.kind.in_(("won", "lost")))
+    )
+    result = ctx.db.execute(
+        update(RenewalReminder)
+        .where(RenewalReminder.status == "open", RenewalReminder.opportunity_id.in_(closed))
+        .values(status="done")
+    )
+    counts["done"] = result.rowcount or 0
+    return counts
+
+
+def list_reminders(ctx: Ctx, status: str | None = None) -> list[dict]:
+    stmt = ctx.scope.apply(
+        select(RenewalReminder, Agreement)
+        .join(Agreement, Agreement.id == RenewalReminder.agreement_id)
+        .order_by(RenewalReminder.due_on, RenewalReminder.lead_days.desc(), RenewalReminder.id),
+        RenewalReminder.organization_id,
+    )
+    if status:
+        stmt = stmt.where(RenewalReminder.status == status)
+    return [
+        {
+            "id": r.id,
+            "organization_id": r.organization_id,
+            "organization_name": a.organization.name,
+            "agreement_id": r.agreement_id,
+            "agreement_name": a.name,
+            "lead_days": r.lead_days,
+            "due_on": r.due_on,
+            "status": r.status,
+            "opportunity_id": r.opportunity_id,
+            "created_at": r.created_at,
+        }
+        for r, a in ctx.db.execute(stmt).unique().all()
+    ]
+
+
+def dismiss(ctx: Ctx, reminder_id: int) -> dict:
+    reminder = ctx.db.execute(
+        ctx.scope.apply(
+            select(RenewalReminder).where(RenewalReminder.id == reminder_id),
+            RenewalReminder.organization_id,
+        ).with_for_update()
+    ).scalar_one_or_none()
+    if reminder is None:
+        raise NotFound("Reminder not found")
+    if reminder.status != "open":
+        raise Conflict(f"This reminder is already {reminder.status}")
+    before = audit.snapshot(reminder)
+    reminder.status = "dismissed"
+    ctx.db.flush()
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "renewal_reminder.dismiss",
+        reminder,
+        before=before,
+        after=audit.snapshot(reminder),
+        organization_id=reminder.organization_id,
+    )
+    return next(r for r in list_reminders(ctx) if r["id"] == reminder.id)

@@ -54,3 +54,8 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Walk through docs/verify/projects.md (projects, phases, tasks, dependencies, board, budget, fixed-fee and T&M billing)
 - [ ] Confirm: milestones (phase completion) are not billed
 - [ ] Confirm: project time does not use block hours
+
+## Phase 9: CRM & renewals
+- [ ] Walk through docs/verify/crm.md (leads and conversion, pipeline, quote link and win, forecast, renewal reminders)
+- [ ] Confirm: the forecast is an estimate only and never creates invoices
+- [ ] Confirm: the renewal worker sends one email per new reminder and never repeats it
