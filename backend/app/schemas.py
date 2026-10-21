@@ -290,6 +290,8 @@ class TicketOut(BaseModel):
     subject: str
     description: str | None
     source: str
+    project_id: int | None = None
+    project_name: str | None = None
     requester_email: str | None
     needs_triage: bool
     sla_state: SlaState

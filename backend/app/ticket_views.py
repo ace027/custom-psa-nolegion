@@ -36,6 +36,8 @@ def ticket_out(t: Ticket, cal: Calendar, at_risk_percent: int, now: datetime) ->
         subject=t.subject,
         description=t.description,
         source=t.source,
+        project_id=t.project_id,
+        project_name=t.project.name if t.project else None,
         requester_email=t.requester_email,
         needs_triage=t.organization_id is None,
         sla_state=sla_state(t, cal, at_risk_percent, now),
