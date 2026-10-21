@@ -126,7 +126,7 @@ class NinjaOneClient:
         client_id: str,
         client_secret: str,
         transport: httpx.BaseTransport | None = None,
-    ):
+    ) -> None:
         self.base = base_url.rstrip("/")
         self._id = client_id
         self._secret = client_secret

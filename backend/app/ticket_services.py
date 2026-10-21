@@ -225,7 +225,7 @@ def update_ticket(ctx: Ctx, ticket_id: int, data: dict) -> Ticket:
     type_changed = "type_id" in data and data["type_id"] != ticket.type_id
     if data.get("type_id") is not None and type_changed:
         _active(ctx, TicketType, data["type_id"], "ticket type")
-    new_type = data["type_id"] if "type_id" in data else ticket.type_id
+    new_type = data.get("type_id", ticket.type_id)
     new_values = None
     if type_changed or data.get("custom_values"):
         new_values = custom_fields.merge_values(

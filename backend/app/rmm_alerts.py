@@ -196,7 +196,12 @@ def _previous_ticket(ctx: Ctx, integration: Integration, condition_key: str) -> 
 
 
 def _apply_alert(
-    ctx: Ctx, integration: Integration, alert: RemoteAlert, now: datetime, minimum: int, res
+    ctx: Ctx,
+    integration: Integration,
+    alert: RemoteAlert,
+    now: datetime,
+    minimum: int,
+    res: PollResult,
 ) -> None:
     open_row = ctx.db.scalar(
         select(RmmAlert).where(
@@ -273,12 +278,12 @@ def _untouched(ctx: Ctx, ticket: Ticket) -> bool:
     )
     if human_note is not None:
         return False
-    time = ctx.db.scalar(
+    time_entry = ctx.db.scalar(
         select(TimeEntry.id)
         .where(TimeEntry.ticket_id == ticket.id, TimeEntry.voided_at.is_(None))
         .limit(1)
     )
-    return time is None
+    return time_entry is None
 
 
 def _clear(ctx: Ctx, row: RmmAlert, rule: str, now: datetime, res: PollResult) -> None:
