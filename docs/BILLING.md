@@ -86,6 +86,47 @@ Client tax rate 8.25%; agreement "Managed Services" 12 users x $12.00 (taxable);
 - **Not covered by blocks**: an entry of a work type with that flag never draws on the block; it bills at its normal rate even when block hours are left.
 - **Mid-month start**: the block starts 15 Oct (17 of 31 days covered). Included minutes = 600 x 17/31 = 329.03 -> rounded **down** to the 15-minute increment = **315 min = 5.25 h**. The price follows the usual proration: 100,000 c - round_half_up(100,000 x 14/31 = 45,161.29) = 100,000 - 45,161 = **54,839 c**.
 
+## Project billing
+A project is billed in one of two modes, `fixed_fee` or `tm` (time and materials). Mode, fee and the taxable flag cannot change after the project is approved.
+
+**Approved by the owner 2026-10-21 (PRF-002):**
+1. **Fixed fee is billed 100% up front.** Once the project is approved, the whole fee is billed as one invoice line. Extra time is never billed.
+2. **T&M is billed at the existing rates and rounding, and the total billed is capped at the project budget.** Time over the cap is written off at our cost.
+3. **Tax and deposits are the same as normal invoices.**
+
+**Assumed, confirm in Phase 14** (stated to the owner, not yet confirmed):
+- Milestones (project phases) track progress only and are never billed.
+- Project time never draws down block hours.
+
+### When the fee is billed
+The fee line is added to the next monthly billing run after approval, or immediately with "Bill fixed fee now", which creates a draft one-off invoice holding only that line. A fee is billed once. Voiding the line or its invoice releases the fee (and the time covered by it) so it can be billed again. The line is kind `project`, quantity 1, unit price = the fee, taxed at the client's rate only if the project is marked taxable (default no), described "Project: <name> (fixed fee)".
+
+### Time on project tickets
+Time on tickets that belong to a project is never billed by the normal time pull or by block hours; the project rules below handle it. Time on a draft project, or one cancelled before approval, stays unbilled.
+- **Fixed fee**: time through the run end is attached to one $0 `project` line per project ("<h> h covered by the fixed fee"), which marks it billed so it never bills twice.
+- **T&M**: the cap algorithm below.
+
+### The T&M cap, in plain words
+Work in pre-tax cents. Billed so far = the sum of the project's non-voided lines on non-voided invoices. Remaining = budget minus billed so far, never below zero (a budget changed after approval is used as it stands). Take the project's unbilled time grouped by ticket number, then work type, and price each group exactly as a normal time line.
+- If the group fits in what remains, bill it as a normal time line and reduce what remains.
+- If only part fits, bill one line, quantity 1, priced at exactly what remains, with the description ending "(capped at the project budget)"; nothing remains after it.
+- If nothing remains, the group's time is attached to one $0 `project` line ("<h> h over budget, not billed").
+
+Every entry is linked to the line it landed on. A work type with no rate leaves its time unbilled, with the usual warning.
+
+Expenses and product charges on project tickets bill normally and are outside the cap.
+
+### Worked example
+Remote work at $150.00/h, untaxed; budget $1,000.00.
+
+| Run | Time | Billed | Remaining |
+|---|---|---|---|
+| 1 | 4 h | 600.00 | 400.00 |
+| 2 | two tickets, 2 h each | 300.00, then 100.00 (capped at the project budget; full price would be 300.00) | 0.00 |
+| 3 | 3 h | $0.00 over-budget line | 0.00 |
+
+Total billed: 600.00 + 300.00 + 100.00 + 0.00 = **1,000.00**.
+
 ## Payments and receivables
 **An invoice's balance is never stored on the invoice** (finalized invoices are frozen). It is always
 `invoice total - payments applied - write-offs`, worked out from the records below.

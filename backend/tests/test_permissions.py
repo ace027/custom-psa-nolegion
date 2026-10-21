@@ -24,6 +24,15 @@ def test_automation_permissions_admin_only():
     assert frozenset({P.USER_MANAGE, P.APIKEY_MANAGE, P.PORTAL_MANAGE}) == P.KEY_FORBIDDEN
 
 
+def test_project_write_admin_and_tech_only():
+    assert P.PROJECT_WRITE == "project:write"
+    for role in ("admin", "tech"):
+        assert P.has_permission(role, P.PROJECT_WRITE)
+    for role in ("billing", "read_only"):
+        assert not P.has_permission(role, P.PROJECT_WRITE)
+    assert P.PROJECT_WRITE not in P.KEY_FORBIDDEN
+
+
 @pytest.fixture
 def seeded(admin, make_org):
     org = make_org()

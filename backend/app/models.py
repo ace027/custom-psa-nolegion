@@ -606,9 +606,18 @@ class Ticket(TimestampMixin, Base):
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     # composite FK (asset_id, organization_id) lives in migration 0027
     asset_id: Mapped[int | None] = mapped_column(BigInteger)
+    # composite FK (project_id, organization_id) lives in migration 0029
+    project_id: Mapped[int | None] = mapped_column(BigInteger)
 
     organization: Mapped[Organization | None] = relationship(lazy="joined")
     contact: Mapped[Contact | None] = relationship(lazy="joined")
+    project: Mapped["Project | None"] = relationship(
+        "Project",
+        primaryjoin="Project.id == Ticket.project_id",
+        foreign_keys="[Ticket.project_id]",
+        lazy="select",
+        viewonly=True,
+    )
     asset: Mapped["Asset | None"] = relationship(
         "Asset",
         primaryjoin="Asset.id == Ticket.asset_id",
@@ -925,6 +934,7 @@ class InvoiceLine(Base):
     tax_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
     agreement_id: Mapped[int | None] = mapped_column(ForeignKey("agreements.id"))
     period_start: Mapped[date | None] = mapped_column(Date)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"))
     voided: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -1700,3 +1710,85 @@ class RmmAlert(Base):
         lazy="selectin",
         viewonly=True,
     )
+
+
+class Project(TimestampMixin, Base):
+    """Client-scoped project; the migration owns constraints, RLS and grants."""
+
+    __tablename__ = "projects"
+    __table_args__ = (UniqueConstraint("id", "organization_id", name="uq_projects_id_org"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="draft")
+    billing_mode: Mapped[str | None] = mapped_column(String(20))
+    fixed_fee_cents: Mapped[int | None] = mapped_column(BigInteger)
+    budget_cents: Mapped[int | None] = mapped_column(BigInteger)
+    taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    start_date: Mapped[date | None] = mapped_column(Date)
+    due_date: Mapped[date | None] = mapped_column(Date)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approved_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    fixed_fee_invoice_line_id: Mapped[int | None] = mapped_column(ForeignKey("invoice_lines.id"))
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+
+class ProjectPhase(Base):
+    __tablename__ = "project_phases"
+    __table_args__ = (UniqueConstraint("id", "organization_id", name="uq_project_phases_id_org"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    # composite FK (project_id, organization_id) lives in migration 0029
+    project_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    due_date: Mapped[date | None] = mapped_column(Date)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ProjectTask(Base):
+    """Each task owns exactly one ticket; composite FKs keep everything in one org."""
+
+    __tablename__ = "project_tasks"
+    __table_args__ = (UniqueConstraint("id", "organization_id", name="uq_project_tasks_id_org"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    project_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    phase_id: Mapped[int | None] = mapped_column(BigInteger)
+    ticket_id: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True)
+    estimate_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    start_date: Mapped[date | None] = mapped_column(Date)
+    due_date: Mapped[date | None] = mapped_column(Date)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+    ticket: Mapped[Ticket] = relationship(
+        primaryjoin="Ticket.id == ProjectTask.ticket_id",
+        foreign_keys="[ProjectTask.ticket_id]",
+        lazy="joined",
+        viewonly=True,
+    )
+    phase: Mapped[ProjectPhase | None] = relationship(
+        primaryjoin="ProjectPhase.id == ProjectTask.phase_id",
+        foreign_keys="[ProjectTask.phase_id]",
+        lazy="select",
+        viewonly=True,
+    )
+    project: Mapped[Project] = relationship(
+        primaryjoin="Project.id == ProjectTask.project_id",
+        foreign_keys="[ProjectTask.project_id]",
+        lazy="select",
+        viewonly=True,
+    )
+
+
+class ProjectTaskDependency(Base):
+    __tablename__ = "project_task_dependencies"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
+    task_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    depends_on_task_id: Mapped[int] = mapped_column(BigInteger, nullable=False)

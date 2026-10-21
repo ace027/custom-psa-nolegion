@@ -32,6 +32,7 @@ from alembic import command  # noqa: E402
 from app.main import app  # noqa: E402
 
 TABLES = (
+    "project_task_dependencies, project_tasks, project_phases, projects, "
     "automation_runs, automation_rules, webhook_deliveries, webhook_endpoints, api_keys, late_fee_applications, credit_memo_applications, credit_memo_lines, credit_memos, credit_memo_counters, refunds, expense_receipts, expenses, expense_categories, timesheets, timers, internal_time_entries, time_categories, csat_surveys, ticket_links, custom_fields, ticket_types, ticket_statuses, holidays, ticket_auto_acks, ticket_escalations, canned_responses, rmm_alerts, asset_overrides, asset_sources, assets, sync_runs, integration_client_maps, integrations, quotes, survey_apps, survey_devices, site_surveys, staff_notifications, outbound_attachments, billing_notice_invoices, billing_notices, statements, "
     "write_offs, payment_applications, payments, invoice_counters, product_charges, invoice_lines, invoices, billing_runs, "
     "agreement_quantity_log, agreements, products, org_work_type_rates, "

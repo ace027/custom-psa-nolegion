@@ -29,6 +29,8 @@ SCHEDULE_WRITE = "schedule:write"
 TIMEOFF_APPROVE = "timeoff:approve"  # approve/reject time off, manage anyone's hours and time off
 APIKEY_MANAGE = "apikey:manage"  # create / revoke API keys (admins)
 AUTOMATION_MANAGE = "automation:manage"  # automation rules and outbound webhooks (admins)
+# projects, phases, tasks, dependencies; billing fields need billing:write
+PROJECT_WRITE = "project:write"
 
 # API keys can never carry these, whatever the owner's role
 KEY_FORBIDDEN = frozenset({USER_MANAGE, APIKEY_MANAGE, PORTAL_MANAGE})
@@ -56,11 +58,21 @@ MATRIX: dict[str, frozenset[str]] = {
             TIMEOFF_APPROVE,
             APIKEY_MANAGE,
             AUTOMATION_MANAGE,
+            PROJECT_WRITE,
         }
         | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE, PAYMENT_WRITE, REPORT_READ}
     ),
     "tech": frozenset(
-        _READ | {ORG_WRITE, TICKET_WRITE, TIME_WRITE, CHARGE_WRITE, QUOTE_WRITE, SCHEDULE_WRITE}
+        _READ
+        | {
+            ORG_WRITE,
+            TICKET_WRITE,
+            TIME_WRITE,
+            CHARGE_WRITE,
+            QUOTE_WRITE,
+            SCHEDULE_WRITE,
+            PROJECT_WRITE,
+        }
     ),
     "billing": frozenset(
         _READ | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE, PAYMENT_WRITE, REPORT_READ}
