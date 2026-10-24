@@ -56,6 +56,7 @@ Run `/triad:plan 10` to plan Phase 10: Procurement & inventory
 ## Quick Tasks
 - 2026-10-10: date tests use the business timezone (fixes PR #4 CI failing between 00:00 and 05:00 UTC), f69cd2f
 - 2026-10-20: phase 6 low and info security items: NinjaOne host allowlist, credentials re-entered on host change, inactive or archived clients skipped
+- 2026-10-24: Node.js October 2026 security releases: frontend build requires patched Node 22.23.4 (Dockerfile, CI via .nvmrc, engines), c24004a; npm audit fix for dev-only vite, vitest, undici and source-map-js advisories
 
 ## Phase 4 Results
 (build started 2026-10-10)
