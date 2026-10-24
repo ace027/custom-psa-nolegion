@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=node:22-slim
+ARG NODE_IMAGE=node:22.23.4-slim
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

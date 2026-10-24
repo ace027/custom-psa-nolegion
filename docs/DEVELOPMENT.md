@@ -96,7 +96,7 @@ The sandbox has Docker installed but the daemon is not running, and outbound TLS
 intercepting proxy. To exercise `docker compose`:
 1. Start the daemon: `nohup dockerd > /tmp/dockerd.log 2>&1 &` then `docker run --rm hello-world`.
 2. Build base images that trust the proxy CA (`/root/.ccr/ca-bundle.crt`): a tiny Dockerfile that
-   `FROM python:3.12-slim` / `node:22-slim`, copies the CA and sets `PIP_CERT` / `SSL_CERT_FILE` /
+   `FROM python:3.12-slim` / `node:22.23.4-slim`, copies the CA and sets `PIP_CERT` / `SSL_CERT_FILE` /
    `NODE_EXTRA_CA_CERTS` / `npm_config_cafile`.
 3. Use an untracked override that passes them through the Dockerfiles' `PYTHON_IMAGE` / `NODE_IMAGE`
    build args, and set `HTTP_PORT=8080` in `.env`:
