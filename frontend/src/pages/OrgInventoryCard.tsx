@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 import { procurement } from "../api";
 import { ErrorMsg, Card } from "../ui";
+import { ITEM_STATUS_LABEL } from "./procurement/Inventory";
 
-const STATUS_LABEL = { in_stock: "Reserved", delivered: "Delivered", consumed: "Used" } as const;
 
 export default function OrgInventoryCard({ orgId }: { orgId: number }) {
   const q = useQuery({ queryKey: ["procurement", "org-inventory", orgId], queryFn: () => procurement.orgInventory(orgId) });
@@ -28,9 +27,9 @@ export default function OrgInventoryCard({ orgId }: { orgId: number }) {
                 <tr key={i.id} className="border-b border-slate-100">
                   <td className="py-1.5">{i.description}{i.quantity > 1 ? ` × ${i.quantity}` : ""}</td>
                   <td className="break-all">{i.serial_number ?? "—"}</td>
-                  <td>{STATUS_LABEL[i.status]}</td>
+                  <td>{ITEM_STATUS_LABEL[i.status]}</td>
                   <td>{i.delivered_on ?? "—"}</td>
-                  <td>{i.asset_id ? <Link className="text-blue-700 hover:underline" to={`/organizations/${orgId}`}>Asset #{i.asset_id}</Link> : "—"}</td>
+                  <td>{i.asset_id ? `Asset record #${i.asset_id}` : "—"}</td>
                 </tr>
               ))}
             </tbody>

@@ -76,7 +76,7 @@ function RuleTable({ title, rules, label, write, onChange, onDelete }: {
   const [bad, setBad] = useState("");
   const save = useMutation({
     mutationFn: ({ id, bp }: { id: number; bp: number }) => procurement.updateMarkupRule(id, bp),
-    onSuccess: () => { setEdit(null); onChange(); },
+    onSuccess: () => { setEdit(null); setBad(""); onChange(); },
   });
   if (rules.length === 0) return null;
   const commit = (r: MarkupRule) => {
@@ -100,7 +100,7 @@ function RuleTable({ title, rules, label, write, onChange, onDelete }: {
               <td className="py-1.5 capitalize">{label(r)}</td>
               <td>
                 {write && edit?.id === r.id ? (
-                  <input aria-label={`Markup for ${label(r)} (%)`} className={inputCls + " max-w-[8rem]"} inputMode="decimal" value={edit.text} onChange={(e) => setEdit({ id: r.id, text: e.target.value })} />
+                  <input aria-label={`Markup for ${label(r)} (%)`} aria-invalid={bad ? true : undefined} aria-describedby={bad ? `${title.replace(/\s+/g, "-")}-error` : undefined} className={inputCls + " max-w-[8rem]"} inputMode="decimal" value={edit.text} onChange={(e) => setEdit({ id: r.id, text: e.target.value })} />
                 ) : bpPercent(r.markup_bp)}
               </td>
               <td className="text-right">
@@ -109,10 +109,10 @@ function RuleTable({ title, rules, label, write, onChange, onDelete }: {
                     {edit?.id === r.id ? (
                       <>
                         <Button aria-label={`Save ${label(r)}`} disabled={save.isPending} onClick={() => commit(r)}>Save</Button>
-                        <Button variant="secondary" onClick={() => { setEdit(null); setBad(""); }}>Cancel</Button>
+                        <Button variant="secondary" aria-label={`Cancel editing ${label(r)}`} onClick={() => { setEdit(null); setBad(""); }}>Cancel</Button>
                       </>
                     ) : (
-                      <Button variant="secondary" aria-label={`Edit ${label(r)} markup`} onClick={() => setEdit({ id: r.id, text: pctText(r.markup_bp) })}>Edit</Button>
+                      <Button variant="secondary" aria-label={`Edit ${label(r)} markup`} onClick={() => { setBad(""); setEdit({ id: r.id, text: pctText(r.markup_bp) }); }}>Edit</Button>
                     )}
                     <Button variant="danger" aria-label={`Delete ${label(r)} rule`} onClick={() => { if (window.confirm("Delete this rule? Items already delivered keep their price.")) onDelete(r); }}>Delete</Button>
                   </span>
@@ -122,7 +122,7 @@ function RuleTable({ title, rules, label, write, onChange, onDelete }: {
           ))}
         </tbody>
       </table>
-      {bad && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{bad}</p>}
+      {bad && <p id={`${title.replace(/\s+/g, "-")}-error`} role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{bad}</p>}
       <ErrorMsg error={save.error} />
     </Card>
   );

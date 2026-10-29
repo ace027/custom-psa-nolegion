@@ -36,7 +36,7 @@ export default function PurchaseOrderPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["procurement"] }),
   });
   const po = q.data;
-  if (q.isLoading) return <p>Loading…</p>;
+  if (q.isLoading) return <p role="status" className="text-sm text-slate-500">Loading…</p>;
   if (!po) return <ErrorMsg error={q.error ?? "Not found"} />;
   const canReceive = write && (po.status === "ordered" || po.status === "partial");
   const total = po.lines.reduce((t, l) => t + l.quantity * l.unit_cost_cents, 0);
@@ -48,6 +48,7 @@ export default function PurchaseOrderPage() {
         <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none">{po.number ?? `Draft #${po.id}`}</h2>
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{PO_STATUS_LABEL[po.status]}</span>
         {write && po.status === "draft" && <Button disabled={order.isPending || po.lines.length === 0} onClick={() => order.mutate()}>Order</Button>}
+        {write && po.status === "draft" && po.lines.length === 0 && <span className="text-sm text-slate-500">Add at least one line to order.</span>}
         {write && (po.status === "draft" || po.status === "ordered") && (
           <Button variant="danger" disabled={cancel.isPending} onClick={() => { if (window.confirm("Cancel this purchase order?")) cancel.mutate(); }}>Cancel order</Button>
         )}

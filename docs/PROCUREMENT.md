@@ -10,7 +10,7 @@ A vendor has a name, account number, email, phone, website and notes. Add and ed
 ## Purchase order lifecycle
 | Status | Meaning | What you can do |
 |---|---|---|
-| Draft | Being written, no number yet | Edit vendor, client and lines; Remove a line; **Order**; Cancel |
+| Draft | Being written; the number (PO-<id>) is assigned on creation | Edit vendor, client and lines; Remove a line; **Order**; Cancel |
 | Ordered | Placed with the vendor | Receive; Cancel (only while nothing is received) |
 | Partly received | Some units received | Receive the rest |
 | Received | Every line fully received | Read only |
