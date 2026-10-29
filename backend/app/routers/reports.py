@@ -1,17 +1,27 @@
 """Billing reports (JSON) and CSV exports. Read-only; CSV downloads are audited."""
 
+import csv
+import io
 from datetime import date
 
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
 from app import permissions as P
+from app import report_metrics as metrics
 from app import reports as svc
 from app.deps import Ctx, require
+from app.report_schemas import (
+    AgingReportOut,
+    ProfitabilityReportOut,
+    SlaReportOut,
+    UtilisationReportOut,
+)
 from app.schemas import ErrorOut, RecurringOut, RevenueOut, UnbilledOut
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 ERR = {409: {"model": ErrorOut}}
+GROUP = Query("priority", description="Group SLA results by priority, organization or assignee")
 FROM = Query(None, alias="from", description="Start date (default: 12 months ago)")
 TO = Query(None, alias="to", description="End date (default: today, business time zone)")
 
@@ -186,3 +196,89 @@ def invoices_csv(
         f"invoices-{lo}-{hi}.csv",
         svc.to_csv(header, [[r[k] for k in keys] for r in rows], {5, 6, 7, 8, 9, 10, 11}),
     )
+
+
+# ---- management reports (definitions: app/report_metrics.py) ------------------------------
+def _metric_csv(ctx: Ctx, report: str, start, end, group="priority") -> Response:
+    name, text = metrics.csv_for(ctx, report, start, end, group)
+    rows = max(0, len(list(csv.reader(io.StringIO(text)))) - 1)
+    params = {"from": start, "to": end, **({"group": group} if report == "sla" else {})}
+    svc.record_export(ctx, report, params, rows)
+    return _csv(name, text)
+
+
+@router.get(
+    "/sla",
+    response_model=SlaReportOut,
+    responses=ERR,
+    summary="SLA performance for tickets created in the range, by priority, client or assignee",
+)
+def sla_report(
+    start: date | None = FROM,
+    end: date | None = TO,
+    group: metrics.SlaGroup = GROUP,
+    ctx: Ctx = require(P.REPORT_READ),
+):
+    return metrics.sla(ctx, start, end, group)
+
+
+@router.get("/sla.csv", responses=ERR, summary="SLA performance as CSV")
+def sla_csv(
+    start: date | None = FROM,
+    end: date | None = TO,
+    group: metrics.SlaGroup = GROUP,
+    ctx: Ctx = require(P.REPORT_READ),
+):
+    return _metric_csv(ctx, "sla", start, end, group)
+
+
+@router.get(
+    "/utilisation",
+    response_model=UtilisationReportOut,
+    responses=ERR,
+    summary="Technician utilisation: logged and billable time against working capacity",
+)
+def utilisation_report(
+    start: date | None = FROM, end: date | None = TO, ctx: Ctx = require(P.REPORT_READ)
+):
+    return metrics.utilisation(ctx, start, end)
+
+
+@router.get("/utilisation.csv", responses=ERR, summary="Technician utilisation as CSV")
+def utilisation_csv(
+    start: date | None = FROM, end: date | None = TO, ctx: Ctx = require(P.REPORT_READ)
+):
+    return _metric_csv(ctx, "utilisation", start, end)
+
+
+@router.get(
+    "/aging",
+    response_model=AgingReportOut,
+    summary="Receivables aging by client as of today (open invoice balances by days past due)",
+)
+def aging_report(ctx: Ctx = require(P.REPORT_READ)):
+    return metrics.aging(ctx)
+
+
+@router.get("/aging.csv", summary="Receivables aging by client as CSV (dollars)")
+def aging_csv(ctx: Ctx = require(P.REPORT_READ)):
+    return _metric_csv(ctx, "aging", None, None)
+
+
+@router.get(
+    "/profitability",
+    response_model=ProfitabilityReportOut,
+    responses=ERR,
+    summary="Client profitability: revenue against labour, goods and expense cost",
+)
+def profitability_report(
+    start: date | None = FROM, end: date | None = TO, ctx: Ctx = require(P.REPORT_READ)
+):
+    return metrics.profitability(ctx, start, end)
+
+
+@router.get("/profitability.csv", responses=ERR, summary="Client profitability as CSV (dollars)")
+def profitability_csv(
+    start: date | None = FROM, end: date | None = TO, ctx: Ctx = require(P.REPORT_READ)
+):
+    return _metric_csv(ctx, "profitability", start, end)

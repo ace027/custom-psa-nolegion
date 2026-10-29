@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Query
 
+from app import audit, services
 from app import permissions as P
 from app import repositories as repo
-from app import services
 from app.deps import Ctx, require
+from app.errors import NotFound
+from app.report_schemas import CostRateIn, CostRateOut
 from app.schemas import AuditOut, ErrorOut, Page, UserIn, UserOut, UserPatch
 
 router = APIRouter(tags=["users"])
@@ -34,6 +36,43 @@ def create_user(body: UserIn, ctx: Ctx = require(P.USER_MANAGE)):
 )
 def update_user(user_id: int, body: UserPatch, ctx: Ctx = require(P.USER_MANAGE)):
     return services.update_user(ctx, user_id, body.model_dump(exclude_unset=True))
+
+
+@router.get(
+    "/users/{user_id}/cost-rate",
+    response_model=CostRateOut,
+    responses=ERR,
+    summary="A person's hourly internal cost rate in cents (admin only)",
+)
+def get_cost_rate(user_id: int, ctx: Ctx = require(P.USER_MANAGE)):
+    user = repo.get_user(ctx.db, user_id)
+    if user is None:
+        raise NotFound("User not found")
+    return CostRateOut(user_id=user.id, cost_rate_cents=user.cost_rate_cents)
+
+
+@router.put(
+    "/users/{user_id}/cost-rate",
+    response_model=CostRateOut,
+    responses=ERR,
+    summary="Set or clear a person's hourly internal cost rate in cents (admin only)",
+)
+def put_cost_rate(user_id: int, body: CostRateIn, ctx: Ctx = require(P.USER_MANAGE)):
+    user = repo.get_user(ctx.db, user_id)
+    if user is None:
+        raise NotFound("User not found")
+    before = user.cost_rate_cents
+    if before != body.cost_rate_cents:
+        user.cost_rate_cents = body.cost_rate_cents
+        ctx.db.flush()
+        audit.record(
+            ctx.db,
+            ctx.user,
+            "user.cost_rate",
+            user,
+            detail={"from": before, "to": body.cost_rate_cents},
+        )
+    return CostRateOut(user_id=user.id, cost_rate_cents=user.cost_rate_cents)
 
 
 @router.get("/audit", response_model=Page[AuditOut], summary="Query the audit log (admin only)")

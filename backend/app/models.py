@@ -126,6 +126,8 @@ class User(TimestampMixin, Base):
     notify_sla: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     notify_reply: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     timezone: Mapped[str | None] = mapped_column(String(64))  # None = the Settings timezone
+    # Hourly internal cost of this person's time; set and read only through admin endpoints
+    cost_rate_cents: Mapped[int | None] = mapped_column(BigInteger)
 
 
 class Session(Base):
@@ -1963,3 +1965,40 @@ class MarkupRule(TimestampMixin, Base):
     product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), unique=True)
     category: Mapped[str | None] = mapped_column(String(10), unique=True)
     markup_bp: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+# ---------------------------------------------------------------------------------------
+# Phase 11: reporting. Staff-internal (no RLS); schedules are deactivated, never deleted.
+# ---------------------------------------------------------------------------------------
+class ReportSchedule(TimestampMixin, Base):
+    __tablename__ = "report_schedules"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    report: Mapped[str] = mapped_column(String(15), nullable=False)
+    frequency: Mapped[str] = mapped_column(String(10), nullable=False)
+    weekday: Mapped[int | None] = mapped_column(SmallInteger)  # weekly: 0 = Monday
+    day_of_month: Mapped[int | None] = mapped_column(SmallInteger)  # monthly: 1..28
+    recipient_user_ids: Mapped[list[int]] = mapped_column(ARRAY(BigInteger), nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+
+class ReportScheduleRun(Base):
+    """One row per schedule and period (UNIQUE), which keeps the worker idempotent."""
+
+    __tablename__ = "report_schedule_runs"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    schedule_id: Mapped[int] = mapped_column(ForeignKey("report_schedules.id"), nullable=False)
+    period_start: Mapped[date] = mapped_column(Date, nullable=False)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(10), nullable=False)  # sent|skipped|failed
+    recipients: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'::text[]")
+    )
+    email_message_id: Mapped[int | None] = mapped_column(ForeignKey("email_messages.id"))
+    detail: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
