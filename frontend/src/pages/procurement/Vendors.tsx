@@ -50,7 +50,7 @@ export default function Vendors() {
             <tbody>
               {rows.map((v) => (
                 <tr key={v.id} className="border-b border-slate-100 align-top">
-                  <td className={`py-1.5 font-medium ${v.archived_at ? "text-slate-400 line-through" : ""}`}>{v.name}</td>
+                  <td className={`py-1.5 font-medium ${v.archived_at ? "text-slate-600 line-through" : ""}`}>{v.name}{v.archived_at && <span className="sr-only"> (archived)</span>}</td>
                   <td>{v.account_number ?? "—"}</td>
                   <td className="break-words">{[v.email, v.phone].filter(Boolean).join(" · ") || "—"}</td>
                   <td className="break-words">{v.website ?? "—"}</td>

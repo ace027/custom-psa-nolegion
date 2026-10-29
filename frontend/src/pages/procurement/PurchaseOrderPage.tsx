@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PoLine, PurchaseOrder, bpPercent, procurement } from "../../api";
 import { can, useMe } from "../../auth";
@@ -14,6 +14,17 @@ export default function PurchaseOrderPage() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["procurement", "po", id], queryFn: () => procurement.purchaseOrder(id) });
   const [receiving, setReceiving] = useState<PoLine | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const prevReceiving = useRef<PoLine | null>(null);
+  // Return focus to the Receive button that opened the dialog (or the heading if it is gone).
+  useEffect(() => {
+    if (prevReceiving.current && !receiving) {
+      const el = triggerRef.current;
+      (el && el.isConnected ? el : headingRef.current)?.focus();
+    }
+    prevReceiving.current = receiving;
+  }, [receiving]);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const done = (po: PurchaseOrder) => {
     qc.setQueryData(["procurement", "po", id], po);
     qc.invalidateQueries({ queryKey: ["procurement"], predicate: (x) => x.queryKey[1] !== "po" });
@@ -34,7 +45,7 @@ export default function PurchaseOrderPage() {
       <ProcurementNav />
       <p><Link className="text-sm text-blue-700 hover:underline" to="/procurement">← Purchase orders</Link></p>
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-2xl font-bold tracking-tight">{po.number ?? `Draft #${po.id}`}</h2>
+        <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none">{po.number ?? `Draft #${po.id}`}</h2>
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{PO_STATUS_LABEL[po.status]}</span>
         {write && po.status === "draft" && <Button disabled={order.isPending || po.lines.length === 0} onClick={() => order.mutate()}>Order</Button>}
         {write && (po.status === "draft" || po.status === "ordered") && (
@@ -81,7 +92,7 @@ export default function PurchaseOrderPage() {
                     <td className="text-right">
                       <span className="flex justify-end gap-2">
                         {canReceive && l.received_quantity < l.quantity && (
-                          <Button variant="secondary" aria-label={`Receive ${l.description}`} onClick={() => setReceiving(l)}>Receive</Button>
+                          <Button variant="secondary" aria-label={`Receive ${l.description}`} onClick={(e) => { triggerRef.current = e.currentTarget; setReceiving(l); }}>Receive</Button>
                         )}
                         {write && po.status === "draft" && (
                           <Button variant="danger" aria-label={`Remove ${l.description}`} disabled={removeLine.isPending} onClick={() => removeLine.mutate(l.id)}>Remove</Button>
@@ -104,6 +115,11 @@ function ReceiveDialog({ poId, line, onClose, onDone }: { poId: number; line: Po
   const [qtyText, setQtyText] = useState(String(remaining));
   const [serials, setSerials] = useState<string[]>([]);
   const [bad, setBad] = useState("");
+  const [badField, setBadField] = useState<"qty" | number | null>(null);
+  const ref = useRef<HTMLElement>(null);
+  const qtyRef = useRef<HTMLInputElement>(null);
+  const serialRefs = useRef<(HTMLInputElement | null)[]>([]);
+  useEffect(() => { qtyRef.current?.focus(); }, []);
   const n = Number(qtyText);
   const validQty = Number.isInteger(n) && n >= 1 && n <= remaining;
   const units = line.serialised && validQty ? n : 0;
@@ -113,32 +129,34 @@ function ReceiveDialog({ poId, line, onClose, onDone }: { poId: number; line: Po
   });
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!validQty) return setBad(`Quantity must be a whole number from 1 to ${remaining}.`);
+    if (!validQty) { setBadField("qty"); qtyRef.current?.focus(); return setBad(`Quantity must be a whole number from 1 to ${remaining}.`); }
     const list = line.serialised ? Array.from({ length: n }, (_, i) => (serials[i] ?? "").trim()) : [];
-    if (line.serialised && list.some((s) => !s)) return setBad(`Enter ${n} serial number${n === 1 ? "" : "s"}, one per unit.`);
+    const missing = list.findIndex((s) => !s);
+    if (line.serialised && missing >= 0) { setBadField(missing); serialRefs.current[missing]?.focus(); return setBad(`Enter ${n} serial number${n === 1 ? "" : "s"}, one per unit.`); }
+    setBadField(null);
     setBad("");
     receive.mutate({ line_id: line.id, quantity: n, serials: list });
   };
   return (
-    <section role="dialog" aria-label={`Receive ${line.description}`} className="rounded-xl border border-blue-300 bg-surface p-5 shadow-card">
+    <section ref={ref} role="dialog" aria-modal="true" aria-label={`Receive ${line.description}`} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} className="rounded-xl border border-blue-300 bg-surface p-5 shadow-card">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-semibold">Receive {line.description}</h2>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
       <form onSubmit={submit} className="space-y-3">
         <div className="max-w-xs">
-          <Field label="Quantity received"><input className={inputCls} type="number" min={1} max={remaining} value={qtyText} onChange={(e) => setQtyText(e.target.value)} /></Field>
+          <Field label="Quantity received"><input ref={qtyRef} className={inputCls} type="number" min={1} max={remaining} aria-invalid={badField === "qty" || undefined} aria-describedby={badField === "qty" ? "receive-error" : undefined} value={qtyText} onChange={(e) => setQtyText(e.target.value)} /></Field>
         </div>
         {units > 0 && (
           <div className="grid gap-2 sm:grid-cols-3">
             {Array.from({ length: units }, (_, i) => (
               <Field key={i} label={`Serial number ${i + 1}`}>
-                <input className={inputCls} value={serials[i] ?? ""} onChange={(e) => { const next = [...serials]; next[i] = e.target.value; setSerials(next); }} />
+                <input ref={(el) => { serialRefs.current[i] = el; }} className={inputCls} aria-invalid={badField === i || undefined} aria-describedby={badField === i ? "receive-error" : undefined} value={serials[i] ?? ""} onChange={(e) => { const next = [...serials]; next[i] = e.target.value; setSerials(next); }} />
               </Field>
             ))}
           </div>
         )}
-        {bad && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{bad}</p>}
+        {bad && <p id="receive-error" role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{bad}</p>}
         <ErrorMsg error={receive.error} />
         <Button type="submit" disabled={receive.isPending}>Receive stock</Button>
       </form>

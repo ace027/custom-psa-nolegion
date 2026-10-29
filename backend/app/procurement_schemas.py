@@ -185,7 +185,7 @@ class InventoryItemOut(_ORM):
 
 class DeliverIn(BaseModel):
     organization_id: int
-    quantity: int = Field(default=1, gt=0, le=1_000_000)
+    quantity: int | None = Field(default=None, gt=0, le=1_000_000)
     asset_id: int | None = None
     create_asset: bool = False
     delivered_on: date | None = None

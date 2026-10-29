@@ -166,3 +166,14 @@ def test_response_shapes(admin, vendor, org_ctx):
     assert listed[0]["organization_name"] == "Acme Corp"
     fetched = admin.get(f"{P}/purchase-orders/{po['id']}").json()
     assert fetched["lines"][0]["received_quantity"] == 1 and fetched["status"] == "received"
+
+
+def test_deliver_without_quantity_delivers_whole_row(admin, vendor, org_ctx):
+    item = stock(admin, vendor, quantity=5)[0]
+    assert item["quantity"] == 5
+    r = deliver(admin, item, org_ctx["org"])
+    assert r.status_code == 200, r.text
+    assert r.json()["quantity"] == 5
+    assert r.json()["delivered_on"] is not None
+    rows = admin.get(f"{P}/inventory").json()
+    assert not [x for x in rows if x["delivered_on"] is None and x["id"] != item["id"]]

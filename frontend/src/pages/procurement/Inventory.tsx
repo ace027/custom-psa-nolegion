@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Asset, InventoryItem, InventoryStatus, Organization, api, bpPercent, procurement } from "../../api";
 import { can, useMe } from "../../auth";
@@ -18,6 +18,19 @@ export default function Inventory() {
   const [search, setSearch] = useState("");
   const [delivering, setDelivering] = useState<InventoryItem | null>(null);
   const [confirm, setConfirm] = useState<{ item: InventoryItem; kind: "undo" | "consume" } | null>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const confirmRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const remember = () => { triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; };
+  const finish = () => { triggerRef.current = pageRef.current; };
+  // Return focus to the control that opened the panel (or the page when that control is gone).
+  useEffect(() => {
+    if (delivering || confirm || !triggerRef.current) return;
+    const el = triggerRef.current;
+    triggerRef.current = null;
+    (el.isConnected ? el : pageRef.current)?.focus();
+  }, [delivering, confirm]);
+  useEffect(() => { if (confirm) confirmRef.current?.focus(); }, [confirm]);
   const orgs = useQuery({ queryKey: ["orgs-all"], queryFn: () => api<Organization[] | { items: Organization[] }>("/organizations") });
   const orgList = Array.isArray(orgs.data) ? orgs.data : orgs.data?.items ?? [];
   const q = useQuery({
@@ -27,11 +40,11 @@ export default function Inventory() {
   const act = useMutation({
     mutationFn: ({ item, kind }: { item: InventoryItem; kind: "undo" | "consume" }) =>
       kind === "undo" ? procurement.undoDelivery(item.id) : procurement.consume(item.id),
-    onSuccess: () => { setConfirm(null); qc.invalidateQueries({ queryKey: ["procurement"] }); },
+    onSuccess: () => { finish(); setConfirm(null); qc.invalidateQueries({ queryKey: ["procurement"] }); },
   });
   const rows = q.data ?? [];
   return (
-    <div className="space-y-4">
+    <div ref={pageRef} tabIndex={-1} className="space-y-4 outline-none">
       <ProcurementNav />
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Status">
@@ -50,11 +63,13 @@ export default function Inventory() {
       </div>
       {write && delivering && (
         <DeliverDialog key={delivering.id} item={delivering} orgs={orgList} onClose={() => setDelivering(null)}
-          onDone={() => { setDelivering(null); qc.invalidateQueries({ queryKey: ["procurement"] }); }} />
+          onDone={() => { finish(); setDelivering(null); qc.invalidateQueries({ queryKey: ["procurement"] }); }} />
       )}
       {write && confirm && (
-        <div role="alertdialog" aria-label={confirm.kind === "undo" ? "Confirm undo delivery" : "Confirm consume"} className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm">
-          <span>
+        <div ref={confirmRef} tabIndex={-1} role="alertdialog" aria-label={confirm.kind === "undo" ? "Confirm undo delivery" : "Confirm consume"} aria-describedby="inventory-confirm-msg"
+          onKeyDown={(e) => { if (e.key === "Escape") { setConfirm(null); act.reset(); } }}
+          className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+          <span id="inventory-confirm-msg">
             {confirm.kind === "undo"
               ? `Take back ${confirm.item.description} from ${confirm.item.organization_name ?? "the client"}? Its charge is voided.`
               : `Mark ${confirm.item.description} as used internally? It will never be billed.`}
@@ -90,9 +105,9 @@ export default function Inventory() {
                   <td className="text-right">
                     {write && (
                       <span className="flex justify-end gap-2">
-                        {i.status === "in_stock" && <Button variant="secondary" aria-label={`Deliver ${i.description}${i.serial_number ? ` ${i.serial_number}` : ""}`} onClick={() => setDelivering(i)}>Deliver</Button>}
-                        {i.status === "in_stock" && <Button variant="secondary" aria-label={`Consume ${i.description}${i.serial_number ? ` ${i.serial_number}` : ""}`} onClick={() => { act.reset(); setConfirm({ item: i, kind: "consume" }); }}>Consume</Button>}
-                        {i.status === "delivered" && <Button variant="secondary" aria-label={`Undo delivery of ${i.description}${i.serial_number ? ` ${i.serial_number}` : ""}`} onClick={() => { act.reset(); setConfirm({ item: i, kind: "undo" }); }}>Undo delivery</Button>}
+                        {i.status === "in_stock" && <Button variant="secondary" aria-label={`Deliver ${i.description}${i.serial_number ? ` ${i.serial_number}` : ""}`} onClick={() => { remember(); setDelivering(i); }}>Deliver</Button>}
+                        {i.status === "in_stock" && <Button variant="secondary" aria-label={`Consume ${i.description}${i.serial_number ? ` ${i.serial_number}` : ""}`} onClick={() => { remember(); act.reset(); setConfirm({ item: i, kind: "consume" }); }}>Consume</Button>}
+                        {i.status === "delivered" && <Button variant="secondary" aria-label={`Undo delivery of ${i.description}${i.serial_number ? ` ${i.serial_number}` : ""}`} onClick={() => { remember(); act.reset(); setConfirm({ item: i, kind: "undo" }); }}>Undo delivery</Button>}
                       </span>
                     )}
                   </td>
@@ -135,7 +150,10 @@ function DeliverDialog({ item, orgs, onClose, onDone }: { item: InventoryItem; o
       create_asset: assetMode === "create",
     });
   };
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { ref.current?.focus(); }, []);
   return (
+    <div ref={ref} tabIndex={-1} role="dialog" aria-label={`Deliver ${item.description}`} className="outline-none" onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
     <Card title={`Deliver ${item.description}`} actions={<Button variant="secondary" onClick={onClose}>Cancel</Button>}>
       <form onSubmit={submit} className="space-y-3" aria-label="Deliver to client">
         <div className="grid gap-3 sm:grid-cols-3">
@@ -169,5 +187,6 @@ function DeliverDialog({ item, orgs, onClose, onDone }: { item: InventoryItem; o
         <Button type="submit" disabled={deliver.isPending}>Deliver</Button>
       </form>
     </Card>
+    </div>
   );
 }

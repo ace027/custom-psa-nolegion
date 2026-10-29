@@ -34,9 +34,9 @@ export default function PurchaseOrders() {
   return (
     <div className="space-y-4">
       <ProcurementNav />
-      <div role="tablist" aria-label="Orders or vendors" className="flex gap-2">
-        <button role="tab" type="button" aria-selected={tab === "orders"} className={tabCls(tab === "orders")} onClick={() => setTab("orders")}>Purchase orders</button>
-        <button role="tab" type="button" aria-selected={tab === "vendors"} className={tabCls(tab === "vendors")} onClick={() => setTab("vendors")}>Vendors</button>
+      <div role="group" aria-label="Orders or vendors" className="flex gap-2">
+        <button type="button" aria-pressed={tab === "orders"} className={tabCls(tab === "orders")} onClick={() => setTab("orders")}>Purchase orders</button>
+        <button type="button" aria-pressed={tab === "vendors"} className={tabCls(tab === "vendors")} onClick={() => setTab("vendors")}>Vendors</button>
       </div>
       {tab === "orders" ? <OrderList /> : <Vendors />}
     </div>
