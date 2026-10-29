@@ -41,6 +41,7 @@ class VendorPatch(_Text):
     phone: str | None = Field(default=None, max_length=40)
     website: str | None = Field(default=None, max_length=300)
     notes: str | None = Field(default=None, max_length=10_000)
+    archived: bool | None = None  # true archives the vendor, false restores it
 
 
 class VendorOut(_ORM):
@@ -58,13 +59,27 @@ class VendorOut(_ORM):
 
 # ---- purchase orders ----
 class PurchaseOrderLineIn(_Text):
+    """With a product, description / unit cost / taxable default from the catalog (the service
+    answers 409 when neither the request nor the product gives a cost)."""
+
     product_id: int | None = None
-    description: str = Field(min_length=1, max_length=2000)
+    description: str | None = Field(default=None, max_length=2000)
     quantity: int = Field(gt=0, le=1_000_000)
-    unit_cost_cents: int = Field(ge=0, le=MAX_CENTS)
+    unit_cost_cents: int | None = Field(default=None, ge=0, le=MAX_CENTS)
     serialised: bool = False
     billable: bool = True
-    taxable: bool = True
+    taxable: bool | None = None
+    markup_bp: int | None = Field(default=None, ge=0, le=MAX_MARKUP_BP)
+
+
+class PurchaseOrderLinePatch(_Text):
+    product_id: int | None = None
+    description: str | None = Field(default=None, min_length=1, max_length=2000)
+    quantity: int | None = Field(default=None, gt=0, le=1_000_000)
+    unit_cost_cents: int | None = Field(default=None, ge=0, le=MAX_CENTS)
+    serialised: bool | None = None
+    billable: bool | None = None
+    taxable: bool | None = None
     markup_bp: int | None = Field(default=None, ge=0, le=MAX_MARKUP_BP)
 
 
@@ -202,3 +217,7 @@ class MarkupRuleOut(_ORM):
     markup_bp: int
     created_at: datetime
     updated_at: datetime
+
+
+class MarkupRulePatch(BaseModel):
+    markup_bp: int = Field(ge=0, le=MAX_MARKUP_BP)

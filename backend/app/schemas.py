@@ -690,6 +690,7 @@ class SettingsOut(ORM):
     business_end_minute: int
     billing_increment_minutes: int
     sla_at_risk_percent: int
+    default_markup_bp: int
 
 
 class SettingsPatch(BaseModel):
@@ -730,6 +731,7 @@ class SettingsPatch(BaseModel):
     business_end_minute: int | None = None
     billing_increment_minutes: int | None = Field(default=None, ge=1, le=240)
     sla_at_risk_percent: int | None = Field(default=None, ge=0, le=100)
+    default_markup_bp: int | None = Field(default=None, ge=0, le=100_000, description="1500 = 15%")
 
     @field_validator("renewal_reminder_days")
     @classmethod
@@ -886,6 +888,7 @@ class ProductIn(BaseModel):
     unit_price_cents: int = Field(ge=0, le=1_000_000_00)
     cost_cents: int | None = Field(default=None, ge=0, le=1_000_000_00)
     taxable: bool = True
+    category: Literal["hardware", "software", "license", "other"] | None = None
 
 
 class ProductPatch(BaseModel):
@@ -895,6 +898,7 @@ class ProductPatch(BaseModel):
     unit_price_cents: int | None = Field(default=None, ge=0, le=1_000_000_00)
     cost_cents: int | None = Field(default=None, ge=0, le=1_000_000_00)
     taxable: bool | None = None
+    category: Literal["hardware", "software", "license", "other"] | None = None
 
 
 class ProductOut(ORM):
@@ -906,6 +910,7 @@ class ProductOut(ORM):
     cost_cents: int | None
     taxable: bool
     archived_at: datetime | None
+    category: str | None = None
 
 
 class AgreementIn(BaseModel):

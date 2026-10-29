@@ -169,6 +169,7 @@ def upgrade() -> None:
 
     for table in TABLES:
         op.execute(f"GRANT SELECT, INSERT, UPDATE ON {table} TO {APP_ROLE}")
+    op.execute(f"GRANT DELETE ON purchase_order_lines, markup_rules TO {APP_ROLE}")
     op.execute(f"GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO {APP_ROLE}")
 
 

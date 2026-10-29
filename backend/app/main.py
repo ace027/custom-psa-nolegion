@@ -29,6 +29,7 @@ from app.routers import (
     organizations,
     payments,
     portal,
+    procurement,
     projects,
     quotes,
     reports,
@@ -133,6 +134,7 @@ def create_app() -> FastAPI:
         automation.router,
         projects.router,
         crm.router,
+        procurement.router,
     ):
         app.include_router(r, prefix="/api")
     return app

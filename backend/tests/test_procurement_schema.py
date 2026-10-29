@@ -189,7 +189,8 @@ def test_runtime_role_privileges(owner):
             has = owner.execute(
                 text("SELECT has_table_privilege('psa_app', :t, :p)"), {"t": table, "p": p}
             ).scalar_one()
-            assert has == (p != "DELETE"), (table, p)
+            can_delete = table in ("purchase_order_lines", "markup_rules")
+            assert has == (p != "DELETE" or can_delete), (table, p)
 
 
 def test_no_rls_on_new_tables(owner):
