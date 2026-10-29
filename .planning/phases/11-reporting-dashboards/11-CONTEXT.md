@@ -1,0 +1,33 @@
+# Phase 11: Reporting & dashboards -- Context
+
+## Phase Goal
+Managers see SLA performance, technician utilisation, AR aging and client profitability (on screen and as CSV), each role gets a dashboard, and scheduled report emails are sent by the worker.
+
+## Requirements Covered
+- REQ-11: Reporting & dashboards: SLA performance, utilisation, aging and profitability reports with CSV; role dashboards; scheduled report emails sent by the worker
+
+## What Already Exists (from prior phases)
+- backend/app/reports.py: revenue (finalized, non-voided invoice_lines amount_cents by org/month/kind), unbilled, recurring, invoice_rows, default_range, dollars, to_csv (with formula-injection guard _cell), record_export; backend/app/routers/reports.py prefix /api/reports, tag reports, _csv helper, every route require(P.REPORT_READ); report:read is held by admin and billing only
+- AR: payment_repo.balance_expr and payments.receivables (buckets current, 1-30, 31-60, 61-90, 90+ via bucket_for), exposed in routers/payments.py
+- SLA: Ticket.sla_first_response_due, sla_resolution_due, first_responded_at, resolved_at, closed_at, sla_paused_minutes; sla.py business_minutes_between(a, b, cal), sla_state(ticket, cal, at_risk_percent, now) and the calendar loader used by notifications.scan_sla
+- Time: TimeEntry (work_date, minutes_actual, minutes_billable, billable, voided_at, ticket_id, user_id), InternalTimeEntry, UserWorkHours and UserTimeOff (scheduling), holidays table; users have no cost rate yet
+- Costs: products.cost_cents, product_charges (no cost), inventory_items (unit_cost_cents, quantity, delivered_on, organization_id, product_charge_id), expenses (amount_cents is cost, markup_bp)
+- Worker: worker.py main loop with billing_jobs/notify_jobs/retention_jobs; outbound email is an EmailMessage (direction out, pending) with OutboundAttachment rows, sent by mail/ingest.send_pending; notices.send_notice is the pattern for queuing an email with attachments
+- Frontend: Dashboard.tsx uses GET /api/dashboard (routers/tickets.py); pages/billing/Reports.tsx links CSVs with <a href='/api/reports/*.csv'>; auth.tsx useMe and can(); no chart library (do not add one)
+- Latest migration 0031_procurement (revision '0031'); staff-internal tables: no RLS, GRANT SELECT, INSERT, UPDATE plus sequence usage
+
+## Key Design Decisions
+- Board constraints adopted: a metric dictionary in docs/REPORTS.md; reconciliation tests (aging total equals the sum of open balances; utilisation logged minutes equal the time entries; profitability revenue equals reports.revenue for the same range); every percentage is shown with its n; durations use p50/p90 (nearest-rank); cost rates and margins only behind report:read; scheduled emails only to active staff users who hold report:read when the email is sent.
+- Percentages are integer basis points computed as round_half_up(numerator*10000/denominator) and null when the denominator is 0.
+- SLA (assumed, confirm in Phase 14): population = tickets created in the range (business timezone dates). First response: met when first_responded_at <= sla_first_response_due; breached when first_responded_at > due, or it is null and now > due; still pending (null and not yet due) and tickets with no due date are excluded from the percentage and counted separately. Resolution: same using resolved_at (closed_at when resolved_at is null) against sla_resolution_due. Durations in business minutes via sla.business_minutes_between with the SLA calendar; resolution duration minus sla_paused_minutes, floored at 0. Group by priority, organization or assignee.
+- Utilisation (assumed): capacity = for each date in the range that is not a holiday, the user's UserWorkHours minutes for that weekday minus the minutes of UserTimeOff overlapping that day's working window. Logged = minutes_actual of non-voided TimeEntry rows (work_date in range) plus InternalTimeEntry minutes. Billable = minutes_actual of non-voided billable TimeEntry rows. utilisation_bp = logged/capacity, billable_bp = billable/capacity.
+- Profitability (assumed, money rule): revenue = exactly reports.revenue for the range (finalized, non-void invoices, non-voided lines, amount excl. tax, by invoice issue date). Cost = labour + goods + expenses, dated by work_date / delivered_on / expense_date in the range. Labour per time entry = money.round_cents(Decimal(minutes_actual) * cost_rate_cents / 60) using the worker's users.cost_rate_cents (hourly), summed per entry; entries whose user has no cost rate count as 0 and are reported as minutes_without_cost_rate. Goods = inventory items delivered to the client: quantity * unit_cost_cents; plus non-voided product charges dated in range that no inventory item points to and whose product has cost_cents: round_cents(quantity * cost_cents); charges without a known cost are counted as charges_without_cost. Expenses = amount_cents of the client's expenses. Margin = revenue - cost; margin_bp = margin/revenue, null when revenue <= 0. Internal time is not attributed to clients.
+- users.cost_rate_cents (hourly, nullable) is set and read only through admin endpoints (user:manage); the normal user list and UserOut never include it.
+- Scheduled reports (assumed): weekly (weekday 0=Mon..6) covering the previous Monday-Sunday, or monthly (day 1-28) covering the previous calendar month; one run per schedule and period (unique), so the worker is idempotent; the CSV is attached to an outbound EmailMessage queued like notices.send_notice; recipients are staff user ids only, never free-text addresses; schedules are deactivated, not deleted.
+- Role dashboards: GET /api/dashboard/me (ticket:read, only the caller's own data) for technicians; GET /api/reports/dashboard (report:read) for managers and billing. No chart library: tables and CSS bars.
+- Architecture proposals: skipped (no spec; auto default).
+
+## Plan Structure
+- **Plan 11-01 (Wave 1)**: Report metrics: SLA, utilisation, aging, profitability with CSV -- Add migration 0032_reporting (user cost rate, report schedules and runs), a report_metrics module implementing the four reports exactly as defined in CONTEXT, JSON and CSV routes, and admin-only cost-rate endpoints, with reconciliation tests.
+- **Plan 11-02 (Wave 2)**: Role dashboards API and scheduled report emails -- Add the technician and manager dashboard endpoints, report schedule management, and a worker job that emails each due scheduled report once per period to staff recipients who hold report:read.
+- **Plan 11-03 (Wave 3)**: Report pages, role dashboards UI, cost rates and docs -- Add the report pages with CSV downloads, role-based dashboard sections, the admin cost-rate field, schedule management, and the metric dictionary docs and verify checklist.
