@@ -7,13 +7,20 @@ from datetime import date
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
+from app import dashboards
 from app import permissions as P
 from app import report_metrics as metrics
+from app import report_schedules as schedules
 from app import reports as svc
 from app.deps import Ctx, require
 from app.report_schemas import (
     AgingReportOut,
+    ManagerDashboardOut,
     ProfitabilityReportOut,
+    ScheduleIn,
+    ScheduleOut,
+    ScheduleRunOut,
+    ScheduleUpdate,
     SlaReportOut,
     UtilisationReportOut,
 )
@@ -21,6 +28,7 @@ from app.schemas import ErrorOut, RecurringOut, RevenueOut, UnbilledOut
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 ERR = {409: {"model": ErrorOut}}
+ERR_ID = {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
 GROUP = Query("priority", description="Group SLA results by priority, organization or assignee")
 FROM = Query(None, alias="from", description="Start date (default: 12 months ago)")
 TO = Query(None, alias="to", description="End date (default: today, business time zone)")
@@ -282,3 +290,54 @@ def profitability_csv(
     start: date | None = FROM, end: date | None = TO, ctx: Ctx = require(P.REPORT_READ)
 ):
     return _metric_csv(ctx, "profitability", start, end)
+
+
+# ---- manager dashboard and scheduled emails ------------------------------------------------
+@router.get(
+    "/dashboard",
+    response_model=ManagerDashboardOut,
+    responses=ERR,
+    summary="Manager dashboard: month-to-date revenue and margin, receivables, unbilled, SLA",
+)
+def manager_dashboard(ctx: Ctx = require(P.REPORT_READ)):
+    return dashboards.manager(ctx)
+
+
+@router.get(
+    "/schedules",
+    response_model=list[ScheduleOut],
+    summary="List scheduled report emails",
+)
+def list_schedules(ctx: Ctx = require(P.REPORT_READ)):
+    return schedules.list_schedules(ctx)
+
+
+@router.post(
+    "/schedules",
+    response_model=ScheduleOut,
+    status_code=201,
+    responses=ERR,
+    summary="Schedule a report to be emailed to staff who hold report:read",
+)
+def create_schedule(body: ScheduleIn, ctx: Ctx = require(P.CONFIG_MANAGE)):
+    return schedules.create_schedule(ctx, body.model_dump())
+
+
+@router.patch(
+    "/schedules/{schedule_id}",
+    response_model=ScheduleOut,
+    responses=ERR_ID,
+    summary="Change a report schedule (set active to false to stop it; schedules are not deleted)",
+)
+def update_schedule(schedule_id: int, body: ScheduleUpdate, ctx: Ctx = require(P.CONFIG_MANAGE)):
+    return schedules.update_schedule(ctx, schedule_id, body.model_dump(exclude_unset=True))
+
+
+@router.get(
+    "/schedules/{schedule_id}/runs",
+    response_model=list[ScheduleRunOut],
+    responses=ERR_ID,
+    summary="History of a schedule: one row per period (sent, skipped or failed)",
+)
+def schedule_runs(schedule_id: int, ctx: Ctx = require(P.REPORT_READ)):
+    return schedules.list_runs(ctx, schedule_id)

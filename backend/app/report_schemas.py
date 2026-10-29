@@ -1,9 +1,9 @@
 """Response models for the management reports (see app/report_metrics.py for the definitions)."""
 
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RangeOut(BaseModel):
@@ -119,3 +119,96 @@ class CostRateIn(BaseModel):
 class CostRateOut(BaseModel):
     user_id: int
     cost_rate_cents: int | None
+
+
+# ---- role dashboards --------------------------------------------------------------------
+class MyWeekOut(BaseModel):
+    logged_minutes: int
+    billable_minutes: int
+    capacity_minutes: int
+    utilisation_bp: int | None
+
+
+class MyDashboardOut(BaseModel):
+    open_tickets: int
+    sla_at_risk: int
+    sla_breached: int
+    appointments_today: int
+    week: MyWeekOut
+
+
+class AgingBucketsOut(BaseModel):
+    current_cents: int
+    d1_30_cents: int
+    d31_60_cents: int
+    d61_90_cents: int
+    d90_plus_cents: int
+
+
+class SlaSummaryOut(BaseModel):
+    first_response_met_bp: int | None
+    resolution_met_bp: int | None
+    n: int
+
+
+class ManagerDashboardOut(BaseModel):
+    revenue_mtd_cents: int
+    margin_mtd_cents: int
+    margin_mtd_bp: int | None
+    ar_total_cents: int
+    ar_buckets: AgingBucketsOut
+    unbilled_cents: int
+    sla_30d: SlaSummaryOut
+    team_utilisation_last_week_bp: int | None
+
+
+# ---- report schedules -------------------------------------------------------------------
+ReportName = Literal["sla", "utilisation", "aging", "profitability"]
+
+
+class ScheduleIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    report: ReportName
+    frequency: Literal["weekly", "monthly"]
+    weekday: int | None = Field(default=None, ge=0, le=6, description="Weekly: 0 = Monday")
+    day_of_month: int | None = Field(default=None, ge=1, le=28, description="Monthly: 1 to 28")
+    recipient_user_ids: list[int] = Field(min_length=1, max_length=20)
+    active: bool = True
+
+
+class ScheduleUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    report: ReportName | None = None
+    frequency: Literal["weekly", "monthly"] | None = None
+    weekday: int | None = Field(default=None, ge=0, le=6)
+    day_of_month: int | None = Field(default=None, ge=1, le=28)
+    recipient_user_ids: list[int] | None = Field(default=None, min_length=1, max_length=20)
+    active: bool | None = None
+
+
+class ScheduleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    report: str
+    frequency: str
+    weekday: int | None
+    day_of_month: int | None
+    recipient_user_ids: list[int]
+    active: bool
+    created_by: int | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ScheduleRunOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    schedule_id: int
+    period_start: date
+    period_end: date
+    status: str
+    recipients: list[str]
+    email_message_id: int | None
+    detail: str | None
+    created_at: datetime

@@ -59,6 +59,26 @@ def billing_jobs() -> None:
         log.exception("renewal reminder jobs failed")
 
 
+def report_jobs() -> None:
+    """Email scheduled reports that are due, once per schedule and period (idempotent)."""
+    from app import db as dbmod
+    from app import report_schedules
+    from app.billing import today
+    from app.deps import Ctx
+    from app.scope import Scope
+
+    try:
+        with dbmod.new_session() as db:
+            dbmod.set_org_scope(db, "all")
+            ctx = Ctx(db=db, user=None, scope=Scope.all())
+            counts = report_schedules.run_due(ctx, today(ctx))
+            db.commit()
+        if any(counts.values()):
+            log.info("scheduled reports: %s", counts)
+    except Exception:
+        log.exception("report jobs failed")
+
+
 def notify_jobs() -> None:
     """Email assignees whose tickets reached SLA at-risk or breached (once per state)."""
     from app import db as dbmod
@@ -258,6 +278,7 @@ def main(argv: list[str]) -> int:
         while not _stop:
             heartbeat(None)
             billing_jobs()
+            report_jobs()
             notify_jobs()
             integration_jobs()
             alert_jobs()
@@ -277,6 +298,7 @@ def main(argv: list[str]) -> int:
         run_cycle(client, s.mail_mailbox)
         calendar_jobs(client)
         billing_jobs()
+        report_jobs()
         notify_jobs()
         integration_jobs()
         alert_jobs()
