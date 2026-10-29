@@ -45,6 +45,17 @@ def test_crm_permissions():
     assert not {P.CRM_READ, P.CRM_WRITE} & P.KEY_FORBIDDEN
 
 
+def test_procurement_permissions():
+    assert P.PROCUREMENT_READ == "procurement:read"
+    assert P.PROCUREMENT_WRITE == "procurement:write"
+    for role in ROLES:
+        assert P.has_permission(role, P.PROCUREMENT_READ)
+    for role in ("admin", "tech", "billing"):
+        assert P.has_permission(role, P.PROCUREMENT_WRITE)
+    assert not P.has_permission("read_only", P.PROCUREMENT_WRITE)
+    assert not {P.PROCUREMENT_READ, P.PROCUREMENT_WRITE} & P.KEY_FORBIDDEN
+
+
 @pytest.fixture
 def seeded(admin, make_org):
     org = make_org()

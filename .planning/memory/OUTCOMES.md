@@ -143,3 +143,4 @@ agent: ship-pipeline
 result: success
 pr: N/A
 verification: 6/6 passed
+| O-081 | 2026-10-29 | dev | 10 | 10-01 | engineering-backend-architect | implementation | success | 2 | procurement-inventory, engineering | Procurement schema, models and permissions: Complete |

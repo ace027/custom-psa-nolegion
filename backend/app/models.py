@@ -291,6 +291,7 @@ class Settings(Base):
     escalation_bump_priority: Mapped[bool] = mapped_column(Boolean, nullable=False)
     csat_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
     mileage_rate_cents: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    default_markup_bp: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
@@ -842,6 +843,7 @@ class Product(TimestampMixin, Base):
     cost_cents: Mapped[int | None] = mapped_column(BigInteger)
     taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    category: Mapped[str | None] = mapped_column(String(10))  # hardware|software|license|other
 
 
 class Agreement(TimestampMixin, Base):
@@ -1869,3 +1871,95 @@ class RenewalReminder(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+# ---- procurement (migration 0031; staff-internal, no RLS) ----
+class Vendor(TimestampMixin, Base):
+    __tablename__ = "vendors"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    account_number: Mapped[str | None] = mapped_column(String(64))
+    email: Mapped[str | None] = mapped_column(String(320))
+    phone: Mapped[str | None] = mapped_column(String(40))
+    website: Mapped[str | None] = mapped_column(String(300))
+    notes: Mapped[str | None] = mapped_column(Text)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PurchaseOrder(TimestampMixin, Base):
+    __tablename__ = "purchase_orders"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    number: Mapped[str | None] = mapped_column(String(20), unique=True)  # 'PO-<id>', set by service
+    vendor_id: Mapped[int] = mapped_column(ForeignKey("vendors.id"), nullable=False)
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"))
+    status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="draft")
+    ordered_on: Mapped[date | None] = mapped_column(Date)
+    expected_on: Mapped[date | None] = mapped_column(Date)
+    vendor_reference: Mapped[str | None] = mapped_column(String(100))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    vendor: Mapped[Vendor] = relationship(lazy="joined")
+    lines: Mapped[list["PurchaseOrderLine"]] = relationship(
+        order_by="PurchaseOrderLine.position, PurchaseOrderLine.id",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class PurchaseOrderLine(TimestampMixin, Base):
+    __tablename__ = "purchase_order_lines"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    purchase_order_id: Mapped[int] = mapped_column(
+        ForeignKey("purchase_orders.id", ondelete="CASCADE"), nullable=False
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"))
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    unit_cost_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    received_quantity: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    serialised: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    billable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    markup_bp: Mapped[int | None] = mapped_column(Integer)
+
+
+class InventoryItem(TimestampMixin, Base):
+    """Stock received against a PO line. Serial uniqueness (lower(serial_number)) lives in the
+    migration."""
+
+    __tablename__ = "inventory_items"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    purchase_order_line_id: Mapped[int | None] = mapped_column(
+        ForeignKey("purchase_order_lines.id")
+    )
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"))
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    serial_number: Mapped[str | None] = mapped_column(String(120))
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    unit_cost_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="in_stock")
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"))
+    asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"))
+    delivered_on: Mapped[date | None] = mapped_column(Date)
+    markup_bp: Mapped[int | None] = mapped_column(Integer)  # frozen at delivery
+    product_charge_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_charges.id"), unique=True
+    )
+    received_on: Mapped[date] = mapped_column(Date, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+
+class MarkupRule(TimestampMixin, Base):
+    """Exactly one of product_id / category is set (CHECK in the migration)."""
+
+    __tablename__ = "markup_rules"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), unique=True)
+    category: Mapped[str | None] = mapped_column(String(10), unique=True)
+    markup_bp: Mapped[int] = mapped_column(Integer, nullable=False)
