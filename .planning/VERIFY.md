@@ -67,3 +67,12 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Confirm: the default markup is 0% until you set it
 - [ ] Confirm: taxability comes from the purchase order line, which defaults from the product
 - [ ] Confirm: undo delivery is refused once the charge is invoiced, and a credit memo is the fix
+
+## Phase 11: Reporting & dashboards
+- [ ] Walk through docs/verify/reports.md (SLA, utilisation, aging, profitability, dashboards, scheduled emails)
+- [ ] Confirm: SLA population is tickets created in the range, and pending tickets are left out of the met percentage
+- [ ] Confirm: utilisation capacity is work hours minus holidays and time off, and logged includes internal time
+- [ ] Confirm: profitability cost is labour + goods (at delivery) + expenses, with revenue excluding tax by invoice date
+- [ ] Confirm: labour comes from each user's cost rate, and time with no rate counts as $0 and is flagged
+- [ ] Confirm: weekly reports cover the previous Monday to Sunday, monthly the previous calendar month (day 1-28)
+- [ ] Confirm: scheduled emails go once per period, only to staff holding report:read, and failures are not retried
