@@ -174,7 +174,7 @@
 | 6 | 3 | 3 | Shipped |
 | 7 | 4 | 4 | Shipped |
 | 8 | 4 | 4 | Shipped |
-| 9 | 3 | 3 | Complete |
+| 9 | 3 | 3 | Shipped |
 | 10 | 3 | 0 | Pending |
 | 11 | 3 | 0 | Pending |
 | 12 | 2 | 0 | Pending |
