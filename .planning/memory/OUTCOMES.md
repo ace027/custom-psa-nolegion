@@ -154,3 +154,7 @@ verification: 6/6 passed
 | O-089 | 2026-10-29 | dev | 11 | 11-01 | data-analytics-engineer | implementation | success | 4 | reporting-dashboards, specialized | Report metrics: SLA, utilisation, aging, profitability with CSV: Complete |
 | O-090 | 2026-10-29 | dev | 11 | 11-02 | engineering-backend-architect | implementation | success | 2 | reporting-dashboards, engineering | Role dashboards API and scheduled report emails: Complete |
 | O-091 | 2026-10-29 | dev | 11 | 11-03 | engineering-frontend-developer | implementation | success | 2 | reporting-dashboards, engineering | Report pages, role dashboards UI, cost rates and docs: Complete |
+| O-092 | 2026-10-29 | dev | 11 | 11-00 | testing-qa-verification-specialist | quality-review | partial | 4 | review, testing | Phase 11 review ESCALATED in 3 cycle(s), 12 finding(s) |
+| O-093 | 2026-10-29 | dev | 11 | 11-00 | engineering-frontend-developer | quality-review | partial | 5 | review, engineering | Phase 11 review ESCALATED in 3 cycle(s), 12 finding(s) |
+| O-094 | 2026-10-29 | dev | 11 | 11-00 | design-ux-architect | quality-review | partial | 5 | review, design | Phase 11 review ESCALATED in 3 cycle(s), 12 finding(s) |
+| O-095 | 2026-10-29 | dev | 11 | 11-00 | engineering-senior-developer | quality-review | partial | 5 | review, engineering | Phase 11 review ESCALATED in 3 cycle(s), 12 finding(s) |

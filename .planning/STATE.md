@@ -2,8 +2,8 @@
 
 ## Current Position
 - **Phase**: 11 of 13 (executed, pending review)
-- **Status**: Phase 11 under review — cycle 2/3, 0 blocker(s) remaining
-- **Last Activity**: Phase 11 review cycle 2 (2026-10-29)
+- **Status**: Phase 11 review escalated — 0 unresolved finding(s) (0 blocker/critical) after 3 cycles
+- **Last Activity**: Phase 11 review (2026-10-29)
 
 ## Progress
 ```
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:review` to verify Phase 11: Reporting & dashboards
+Fix the unresolved findings in 11-REVIEW.md, accept the phase as is, or re-plan; then run `/triad:review --phase 11`
 
 ## Phase 1 Results
 (build started 2026-10-09)
