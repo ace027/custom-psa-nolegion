@@ -11,7 +11,7 @@
 - [x] Phase 7: Automation & API (4 plans)
 - [x] Phase 8: Projects & project billing (4 plans)
 - [x] Phase 9: CRM & renewals (3 plans)
-- [ ] Phase 10: Procurement & inventory (3 plans)
+- [x] Phase 10: Procurement & inventory (3 plans)
 - [ ] Phase 11: Reporting & dashboards (3 plans)
 - [ ] Phase 12: Knowledge base (2 plans)
 - [ ] Phase 13: Portal polish (3 plans)
@@ -175,7 +175,7 @@
 | 7 | 4 | 4 | Shipped |
 | 8 | 4 | 4 | Shipped |
 | 9 | 3 | 3 | Shipped |
-| 10 | 3 | 3 | Executed |
+| 10 | 3 | 3 | Complete |
 | 11 | 3 | 0 | Pending |
 | 12 | 2 | 0 | Pending |
 | 13 | 3 | 0 | Pending |
