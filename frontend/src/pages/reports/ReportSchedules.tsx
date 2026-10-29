@@ -43,7 +43,7 @@ export default function ReportSchedules() {
   const done = () => { setEditing(null); qc.invalidateQueries({ queryKey: ["report-schedules"] }); };
   const toggle = useMutation({
     mutationFn: (s: ReportSchedule) => reportsApi.updateSchedule(s.id, { active: !s.active }),
-    onSuccess: done,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["report-schedules"] }),
   });
   const names = new Map((users.data ?? []).map((u) => [u.id, u.display_name]));
   return (
