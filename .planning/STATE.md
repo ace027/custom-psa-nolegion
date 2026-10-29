@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Phase**: 10 of 13 (executing)
-- **Status**: Phase 10 executing — Plan 10-02 failed
+- **Phase**: 10 of 13 (partial — 1 plan(s) failed)
+- **Status**: Phase 10 partial — 10-02 failed, stopped after wave 2, review needed
 - **Last Activity**: Plan 10-02 execution (2026-10-29)
 
 ## Progress
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:build` to execute Phase 10: Procurement & inventory
+Fix the failed plans and run `/triad:build` again (completed plans are kept), or run `/triad:review`
 
 ## Phase 1 Results
 (build started 2026-10-09)
