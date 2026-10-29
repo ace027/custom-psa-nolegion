@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { CsatSummary, Dashboard as DashboardData, api } from "../api";
+import { CsatSummary, Dashboard as DashboardData, api, hm, pctN, reportsApi } from "../api";
 import { can, useMe } from "../auth";
+import { money } from "../money";
 import { Card, ErrorMsg } from "../ui";
 import { daysLeft, useOpenRenewals } from "./crm/Renewals";
 import TicketTable from "./TicketTable";
@@ -14,6 +15,8 @@ export default function Dashboard() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
       <ErrorMsg error={q.error} />
+      <MyWeek />
+      {can(me, "report:read") && <Business />}
       {d && (
         <>
           <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-5">
@@ -81,6 +84,73 @@ function RenewalsCard() {
           </li>
         ))}
       </ul>
+    </Card>
+  );
+}
+
+function Tile({ label, value, to, warn }: { label: string; value: string; to?: string; warn?: boolean }) {
+  const body = (
+    <>
+      <div className="text-xl font-semibold tabular-nums">{value}</div>
+      <div className="text-slate-500">{label}</div>
+    </>
+  );
+  const cls = `block rounded-xl border px-4 py-3 shadow-card ${warn ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-surface"}`;
+  return to ? <Link to={to} className={`${cls} hover:border-blue-400`}>{body}</Link> : <div className={cls}>{body}</div>;
+}
+
+function MyWeek() {
+  const q = useQuery({ queryKey: ["dashboard-me"], queryFn: reportsApi.myDashboard, refetchInterval: 60_000 });
+  const d = q.data;
+  return (
+    <Card title="My week">
+      <ErrorMsg error={q.error} />
+      {d && (
+        <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-4">
+          <Tile label="My open tickets" value={String(d.open_tickets)} to="/tickets" />
+          <Tile label="My SLA at risk" value={String(d.sla_at_risk)} warn={d.sla_at_risk > 0} />
+          <Tile label="My SLA breached" value={String(d.sla_breached)} warn={d.sla_breached > 0} />
+          <Tile label="Appointments today" value={String(d.appointments_today)} to="/dispatch" />
+          <Tile label="Logged this week" value={hm(d.week.logged_minutes)} to="/timesheet" />
+          <Tile label="Billable this week" value={hm(d.week.billable_minutes)} />
+          <Tile label="Capacity this week" value={hm(d.week.capacity_minutes)} />
+          <Tile label="My utilisation" value={pctN(d.week.utilisation_bp)} />
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function Business() {
+  const q = useQuery({ queryKey: ["dashboard-business"], queryFn: reportsApi.managerDashboard, refetchInterval: 60_000 });
+  const d = q.data;
+  return (
+    <Card title="Business">
+      <ErrorMsg error={q.error} />
+      {d && (
+        <div className="space-y-3 text-sm">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <Tile label="Revenue month to date" value={money(d.revenue_mtd_cents)} to="/billing/reports" />
+            <Tile label="Margin month to date" value={money(d.margin_mtd_cents)} to="/reports/profitability" />
+            <Tile label="Margin % month to date" value={pctN(d.margin_mtd_bp)} to="/reports/profitability" />
+            <Tile label="Receivables (AR) total" value={money(d.ar_total_cents)} to="/reports/aging" />
+            <Tile label="Unbilled work" value={money(d.unbilled_cents)} to="/billing/reports" />
+            <Tile label="SLA first response met, 30 days" value={pctN(d.sla_30d.first_response_met_bp, d.sla_30d.n)} to="/reports/sla" />
+            <Tile label="SLA resolution met, 30 days" value={pctN(d.sla_30d.resolution_met_bp, d.sla_30d.n)} to="/reports/sla" />
+            <Tile label="Team utilisation last week" value={pctN(d.team_utilisation_last_week_bp)} to="/reports/utilisation" />
+          </div>
+          <div>
+            <h3 className="mb-1 font-medium text-slate-700">Receivables by days past due</h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <Tile label="Current" value={money(d.ar_buckets.current_cents)} to="/reports/aging" />
+              <Tile label="1-30" value={money(d.ar_buckets.d1_30_cents)} to="/reports/aging" />
+              <Tile label="31-60" value={money(d.ar_buckets.d31_60_cents)} to="/reports/aging" />
+              <Tile label="61-90" value={money(d.ar_buckets.d61_90_cents)} to="/reports/aging" />
+              <Tile label="90+" value={money(d.ar_buckets.d90_plus_cents)} to="/reports/aging" warn={d.ar_buckets.d90_plus_cents > 0} />
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

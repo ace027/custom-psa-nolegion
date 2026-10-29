@@ -1478,3 +1478,146 @@ export const procurement = {
   updateMarkupRule: (id: number, markup_bp: number) => api<MarkupRule>(`/procurement/markup-rules/${id}`, { method: "PATCH", json: { markup_bp } }),
   deleteMarkupRule: (id: number) => api<void>(`/procurement/markup-rules/${id}`, { method: "DELETE" }),
 };
+
+// ---- management reports and dashboards (money = integer cents, percentages = basis points) ----
+/** basis points -> "12.34% (n=56)"; "-" when the percentage is null (nothing to divide by). */
+export const pctN = (bp: number | null | undefined, n?: number) =>
+  bp === null || bp === undefined ? "-" : `${(bp / 100).toFixed(2)}%${n === undefined ? "" : ` (n=${n})`}`;
+/** minutes -> "2h 05m" ("-" when null) */
+export const hm = (minutes: number | null | undefined) =>
+  minutes === null || minutes === undefined ? "-" : `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}m`;
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** First of this month through today (local dates). */
+export const thisMonth = () => {
+  const now = new Date();
+  return { from: ymd(new Date(now.getFullYear(), now.getMonth(), 1)), to: ymd(now) };
+};
+export interface RangeOut {
+  start: string;
+  end: string;
+}
+export interface SlaClock {
+  met: number;
+  breached: number;
+  pending: number;
+  no_sla: number;
+  met_bp: number | null;
+  p50_minutes: number | null;
+  p90_minutes: number | null;
+}
+export interface SlaRow {
+  key: number | null;
+  label: string;
+  n: number;
+  first_response: SlaClock;
+  resolution: SlaClock;
+}
+export type SlaGroup = "priority" | "organization" | "assignee";
+export interface SlaReport {
+  range: RangeOut;
+  group: SlaGroup;
+  rows: SlaRow[];
+  totals: { n: number; first_response: SlaClock; resolution: SlaClock };
+}
+export interface UtilisationTotals {
+  capacity_minutes: number;
+  logged_minutes: number;
+  billable_minutes: number;
+  utilisation_bp: number | null;
+  billable_bp: number | null;
+}
+export interface UtilisationReport {
+  range: RangeOut;
+  rows: (UtilisationTotals & { user_id: number; name: string })[];
+  totals: UtilisationTotals;
+}
+export interface AgingReport {
+  as_of: string;
+  rows: AgingRow[];
+  totals: AgingRow;
+}
+export interface ProfitabilityTotals {
+  revenue_cents: number;
+  labour_cost_cents: number;
+  goods_cost_cents: number;
+  expense_cost_cents: number;
+  cost_cents: number;
+  margin_cents: number;
+  margin_bp: number | null;
+  minutes_without_cost_rate: number;
+  charges_without_cost: number;
+}
+export interface ProfitabilityReport {
+  range: RangeOut;
+  rows: (ProfitabilityTotals & { organization_id: number; organization_name: string })[];
+  totals: ProfitabilityTotals;
+}
+export interface MyDashboard {
+  open_tickets: number;
+  sla_at_risk: number;
+  sla_breached: number;
+  appointments_today: number;
+  week: { logged_minutes: number; billable_minutes: number; capacity_minutes: number; utilisation_bp: number | null };
+}
+export interface ManagerDashboard {
+  revenue_mtd_cents: number;
+  margin_mtd_cents: number;
+  margin_mtd_bp: number | null;
+  ar_total_cents: number;
+  ar_buckets: { current_cents: number; d1_30_cents: number; d31_60_cents: number; d61_90_cents: number; d90_plus_cents: number };
+  unbilled_cents: number;
+  sla_30d: { first_response_met_bp: number | null; resolution_met_bp: number | null; n: number };
+  team_utilisation_last_week_bp: number | null;
+}
+export type ReportName = "sla" | "utilisation" | "aging" | "profitability";
+export const REPORT_NAMES: ReportName[] = ["sla", "utilisation", "aging", "profitability"];
+export interface ReportSchedule {
+  id: number;
+  name: string;
+  report: ReportName;
+  frequency: "weekly" | "monthly";
+  weekday: number | null;
+  day_of_month: number | null;
+  recipient_user_ids: number[];
+  active: boolean;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface ScheduleInput {
+  name?: string;
+  report?: ReportName;
+  frequency?: "weekly" | "monthly";
+  weekday?: number | null;
+  day_of_month?: number | null;
+  recipient_user_ids?: number[];
+  active?: boolean;
+}
+export interface ScheduleRun {
+  id: number;
+  schedule_id: number;
+  period_start: string;
+  period_end: string;
+  status: string;
+  recipients: string[];
+  email_message_id: number | null;
+  detail: string | null;
+  created_at: string;
+}
+export const reportsApi = {
+  sla: (q: { from?: string; to?: string; group?: SlaGroup }) => api<SlaReport>(`/reports/sla${enc(q)}`),
+  utilisation: (q: { from?: string; to?: string }) => api<UtilisationReport>(`/reports/utilisation${enc(q)}`),
+  aging: () => api<AgingReport>("/reports/aging"),
+  profitability: (q: { from?: string; to?: string }) => api<ProfitabilityReport>(`/reports/profitability${enc(q)}`),
+  /** href of the CSV that matches a report page's query */
+  csv: (report: ReportName, q: Record<string, string | undefined> = {}) => `/api/reports/${report}.csv${enc(q)}`,
+  myDashboard: () => api<MyDashboard>("/dashboard/me"),
+  managerDashboard: () => api<ManagerDashboard>("/reports/dashboard"),
+  schedules: () => api<ReportSchedule[]>("/reports/schedules"),
+  createSchedule: (json: ScheduleInput) => api<ReportSchedule>("/reports/schedules", { method: "POST", json }),
+  updateSchedule: (id: number, json: ScheduleInput) => api<ReportSchedule>(`/reports/schedules/${id}`, { method: "PATCH", json }),
+  scheduleRuns: (id: number) => api<ScheduleRun[]>(`/reports/schedules/${id}/runs`),
+};
+export const getCostRate = (userId: number) => api<{ user_id: number; cost_rate_cents: number | null }>(`/users/${userId}/cost-rate`);
+export const putCostRate = (userId: number, cost_rate_cents: number | null) =>
+  api<{ user_id: number; cost_rate_cents: number | null }>(`/users/${userId}/cost-rate`, { method: "PUT", json: { cost_rate_cents } });

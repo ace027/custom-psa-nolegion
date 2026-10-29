@@ -13,6 +13,11 @@ import Payments from "./pages/billing/Payments";
 import Products from "./pages/billing/Products";
 import Rates from "./pages/billing/Rates";
 import Receivables from "./pages/billing/Receivables";
+import AgingReport from "./pages/reports/AgingReport";
+import ProfitabilityReport from "./pages/reports/ProfitabilityReport";
+import ReportSchedules from "./pages/reports/ReportSchedules";
+import SlaReport from "./pages/reports/SlaReport";
+import UtilisationReport from "./pages/reports/UtilisationReport";
 import Forecast from "./pages/crm/Forecast";
 import Leads from "./pages/crm/Leads";
 import OpportunityPage from "./pages/crm/OpportunityPage";
@@ -113,6 +118,16 @@ function Layout() {
           {can(me, "billing:read") && <NavLink to="/billing" className={link}>Billing</NavLink>}
           {can(me, "procurement:read") && <NavLink to="/procurement" className={link}>Procurement</NavLink>}
           {can(me, "quote:read") && <NavLink to="/quotes" className={link}>Quotes</NavLink>}
+          {can(me, "report:read") && (
+            <div role="group" aria-label="Reports" className="pt-1">
+              <div className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Reports</div>
+              <NavLink to="/reports/sla" className={link}>SLA report</NavLink>
+              <NavLink to="/reports/utilisation" className={link}>Utilisation report</NavLink>
+              <NavLink to="/reports/aging" className={link}>Aging report</NavLink>
+              <NavLink to="/reports/profitability" className={link}>Profitability report</NavLink>
+              <NavLink to="/reports/schedules" className={link}>Report schedules</NavLink>
+            </div>
+          )}
           {can(me, "report:read") && <NavLink to="/warranty" className={link}>Warranty</NavLink>}
           <NavLink to="/users" className={link}>Users</NavLink>
           {can(me, "integration:manage") && <NavLink to="/integrations" className={link}>Integrations</NavLink>}
@@ -219,6 +234,15 @@ function StaffApp() {
             <Route path="/quotes/rates" element={<RateCard />} />
             <Route path="/quotes/surveys/:id" element={<SurveyPage />} />
             <Route path="/quotes/:id" element={<QuotePage />} />
+          </>
+        )}
+        {can(me, "report:read") && (
+          <>
+            <Route path="/reports/sla" element={<SlaReport />} />
+            <Route path="/reports/utilisation" element={<UtilisationReport />} />
+            <Route path="/reports/aging" element={<AgingReport />} />
+            <Route path="/reports/profitability" element={<ProfitabilityReport />} />
+            <Route path="/reports/schedules" element={<ReportSchedules />} />
           </>
         )}
         <Route path="/warranty" element={can(me, "report:read") ? <WarrantyReport /> : <Navigate to="/" replace />} />

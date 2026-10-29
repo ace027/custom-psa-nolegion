@@ -153,3 +153,4 @@ verification: 6/6 passed
 | O-088 | 2026-10-29 | dev | 10 | 10-00 | design-ui-designer | quality-review | success | 4 | review, design | Phase 10 review PASSED in 2 cycle(s), 15 finding(s) |
 | O-089 | 2026-10-29 | dev | 11 | 11-01 | data-analytics-engineer | implementation | success | 4 | reporting-dashboards, specialized | Report metrics: SLA, utilisation, aging, profitability with CSV: Complete |
 | O-090 | 2026-10-29 | dev | 11 | 11-02 | engineering-backend-architect | implementation | success | 2 | reporting-dashboards, engineering | Role dashboards API and scheduled report emails: Complete |
+| O-091 | 2026-10-29 | dev | 11 | 11-03 | engineering-frontend-developer | implementation | success | 2 | reporting-dashboards, engineering | Report pages, role dashboards UI, cost rates and docs: Complete |
