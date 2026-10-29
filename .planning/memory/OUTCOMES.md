@@ -146,3 +146,4 @@ verification: 6/6 passed
 | O-081 | 2026-10-29 | dev | 10 | 10-01 | engineering-backend-architect | implementation | success | 2 | procurement-inventory, engineering | Procurement schema, models and permissions: Complete |
 | O-082 | 2026-10-29 | dev | 10 | 10-02 | engineering-senior-developer | implementation | failed | 5 | procurement-inventory, engineering | Procurement service and API: vendors, POs, receiving, inventory, delivery billing, markup: BLOCKED |
 | O-083 | 2026-10-29 | dev | 10 | 10-02 | engineering-senior-developer | implementation | success | 2 | procurement-inventory, engineering | Procurement service and API: vendors, POs, receiving, inventory, delivery billing, markup: Complete |
+| O-084 | 2026-10-29 | dev | 10 | 10-03 | engineering-frontend-developer | implementation | partial | 3 | procurement-inventory, engineering | Procurement UI, client inventory card and docs: Complete with Warnings |

@@ -17,6 +17,10 @@ import Forecast from "./pages/crm/Forecast";
 import Leads from "./pages/crm/Leads";
 import OpportunityPage from "./pages/crm/OpportunityPage";
 import Pipeline from "./pages/crm/Pipeline";
+import Inventory from "./pages/procurement/Inventory";
+import MarkupRules from "./pages/procurement/MarkupRules";
+import PurchaseOrderPage from "./pages/procurement/PurchaseOrderPage";
+import PurchaseOrders from "./pages/procurement/PurchaseOrders";
 import Renewals from "./pages/crm/Renewals";
 import Sales from "./pages/crm/Sales";
 import CsatPage from "./portal/CsatPage";
@@ -107,6 +111,7 @@ function Layout() {
           {can(me, "time:write") && <NavLink to="/expenses" className={link}>My expenses</NavLink>}
           {can(me, "crm:read") && <NavLink to="/crm" className={link}>Sales</NavLink>}
           {can(me, "billing:read") && <NavLink to="/billing" className={link}>Billing</NavLink>}
+          {can(me, "procurement:read") && <NavLink to="/procurement" className={link}>Procurement</NavLink>}
           {can(me, "quote:read") && <NavLink to="/quotes" className={link}>Quotes</NavLink>}
           {can(me, "report:read") && <NavLink to="/warranty" className={link}>Warranty</NavLink>}
           <NavLink to="/users" className={link}>Users</NavLink>
@@ -198,6 +203,14 @@ function StaffApp() {
               <Route path="renewals" element={<Renewals />} />
             </Route>
             <Route path="/crm/opportunities/:id" element={<OpportunityPage />} />
+          </>
+        )}
+        {can(me, "procurement:read") && (
+          <>
+            <Route path="/procurement" element={<PurchaseOrders />} />
+            <Route path="/procurement/purchase-orders/:id" element={<PurchaseOrderPage />} />
+            <Route path="/procurement/inventory" element={<Inventory />} />
+            <Route path="/procurement/markup" element={<MarkupRules />} />
           </>
         )}
         {can(me, "quote:read") && (

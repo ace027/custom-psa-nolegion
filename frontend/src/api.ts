@@ -1331,3 +1331,150 @@ export const crmApi = {
   renewals: (status?: ReminderStatus) => api<RenewalReminder[]>(`/crm/renewals${enc({ status })}`),
   dismissRenewal: (id: number) => api<RenewalReminder>(`/crm/renewals/${id}/dismiss`, { method: "POST" }),
 };
+
+// ---- procurement (money = integer cents, markup = basis points) ----
+export type PoStatus = "draft" | "ordered" | "partial" | "received" | "cancelled";
+export type InventoryStatus = "in_stock" | "delivered" | "consumed";
+export type ProductCategory = "hardware" | "software" | "license" | "other";
+export const PRODUCT_CATEGORIES: ProductCategory[] = ["hardware", "software", "license", "other"];
+/** basis points -> "15.00%" (always two decimals) */
+export const bpPercent = (bp: number) => `${(bp / 100).toFixed(2)}%`;
+export interface Vendor {
+  id: number;
+  name: string;
+  account_number: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  notes: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface VendorInput {
+  name?: string;
+  account_number?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  notes?: string | null;
+  archived?: boolean;
+}
+export interface PoLineInput {
+  product_id?: number | null;
+  description?: string | null;
+  quantity: number;
+  unit_cost_cents?: number | null;
+  serialised?: boolean;
+  billable?: boolean;
+  taxable?: boolean | null;
+  markup_bp?: number | null;
+}
+export interface PoLine {
+  id: number;
+  purchase_order_id: number;
+  position: number;
+  product_id: number | null;
+  description: string;
+  quantity: number;
+  unit_cost_cents: number;
+  received_quantity: number;
+  serialised: boolean;
+  billable: boolean;
+  taxable: boolean;
+  markup_bp: number | null;
+}
+export interface PurchaseOrderInput {
+  vendor_id?: number;
+  organization_id?: number | null;
+  ordered_on?: string | null;
+  expected_on?: string | null;
+  vendor_reference?: string | null;
+  notes?: string | null;
+  lines?: PoLineInput[];
+}
+export interface PurchaseOrder {
+  id: number;
+  number: string | null;
+  vendor_id: number;
+  vendor_name: string | null;
+  organization_id: number | null;
+  status: PoStatus;
+  ordered_on: string | null;
+  expected_on: string | null;
+  vendor_reference: string | null;
+  notes: string | null;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+  lines: PoLine[];
+}
+export interface InventoryItem {
+  id: number;
+  purchase_order_line_id: number | null;
+  product_id: number | null;
+  description: string;
+  serial_number: string | null;
+  quantity: number;
+  unit_cost_cents: number;
+  status: InventoryStatus;
+  organization_id: number | null;
+  organization_name: string | null;
+  asset_id: number | null;
+  delivered_on: string | null;
+  markup_bp: number | null;
+  product_charge_id: number | null;
+  received_on: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface DeliverInput {
+  organization_id: number;
+  quantity?: number;
+  asset_id?: number | null;
+  create_asset?: boolean;
+  delivered_on?: string | null;
+}
+export interface MarkupRule {
+  id: number;
+  product_id: number | null;
+  category: ProductCategory | null;
+  markup_bp: number;
+  created_at: string;
+  updated_at: string;
+}
+export interface MarkupRuleInput {
+  product_id?: number | null;
+  category?: ProductCategory | null;
+  markup_bp: number;
+}
+export const procurement = {
+  vendors: (include_archived = false) => api<Vendor[]>(`/procurement/vendors${enc({ include_archived: include_archived ? "true" : undefined })}`),
+  createVendor: (json: VendorInput) => api<Vendor>("/procurement/vendors", { method: "POST", json }),
+  updateVendor: (id: number, json: VendorInput) => api<Vendor>(`/procurement/vendors/${id}`, { method: "PATCH", json }),
+  purchaseOrders: (q: { status?: PoStatus | ""; vendor_id?: number; organization_id?: number } = {}) =>
+    api<PurchaseOrder[]>(`/procurement/purchase-orders${enc(q)}`),
+  purchaseOrder: (id: number | string) => api<PurchaseOrder>(`/procurement/purchase-orders/${id}`),
+  createPurchaseOrder: (json: PurchaseOrderInput) => api<PurchaseOrder>("/procurement/purchase-orders", { method: "POST", json }),
+  updatePurchaseOrder: (id: number, json: PurchaseOrderInput) => api<PurchaseOrder>(`/procurement/purchase-orders/${id}`, { method: "PATCH", json }),
+  addLine: (id: number, json: PoLineInput) => api<PurchaseOrder>(`/procurement/purchase-orders/${id}/lines`, { method: "POST", json }),
+  updateLine: (id: number, line: number, json: Partial<PoLineInput>) =>
+    api<PurchaseOrder>(`/procurement/purchase-orders/${id}/lines/${line}`, { method: "PATCH", json }),
+  deleteLine: (id: number, line: number) => api<void>(`/procurement/purchase-orders/${id}/lines/${line}`, { method: "DELETE" }),
+  order: (id: number) => api<PurchaseOrder>(`/procurement/purchase-orders/${id}/order`, { method: "POST" }),
+  cancel: (id: number) => api<PurchaseOrder>(`/procurement/purchase-orders/${id}/cancel`, { method: "POST" }),
+  receive: (id: number, json: { line_id: number; quantity: number; serials: string[] }) =>
+    api<InventoryItem[]>(`/procurement/purchase-orders/${id}/receive`, { method: "POST", json }),
+  inventory: (q: { status?: InventoryStatus | ""; organization_id?: number | ""; product_id?: number; q?: string } = {}) =>
+    api<InventoryItem[]>(`/procurement/inventory${enc(q)}`),
+  item: (id: number) => api<InventoryItem>(`/procurement/inventory/${id}`),
+  deliver: (id: number, json: DeliverInput) => api<InventoryItem>(`/procurement/inventory/${id}/deliver`, { method: "POST", json }),
+  undoDelivery: (id: number) => api<InventoryItem>(`/procurement/inventory/${id}/undo-delivery`, { method: "POST" }),
+  consume: (id: number) => api<InventoryItem>(`/procurement/inventory/${id}/consume`, { method: "POST" }),
+  orgInventory: (orgId: number) => api<InventoryItem[]>(`/procurement/organizations/${orgId}/inventory`),
+  markupRules: () => api<MarkupRule[]>("/procurement/markup-rules"),
+  createMarkupRule: (json: MarkupRuleInput) => api<MarkupRule>("/procurement/markup-rules", { method: "POST", json }),
+  updateMarkupRule: (id: number, markup_bp: number) => api<MarkupRule>(`/procurement/markup-rules/${id}`, { method: "PATCH", json: { markup_bp } }),
+  deleteMarkupRule: (id: number) => api<void>(`/procurement/markup-rules/${id}`, { method: "DELETE" }),
+};

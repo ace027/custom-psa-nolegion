@@ -6,6 +6,7 @@ import { can, useMe } from "../auth";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../ui";
 import OrgAssetsCard from "./OrgAssetsCard";
 import OrgBillingCard from "./OrgBillingCard";
+import OrgInventoryCard from "./OrgInventoryCard";
 import OrgOpportunitiesCard from "./OrgOpportunitiesCard";
 import OrgProjectsCard from "./OrgProjectsCard";
 
@@ -37,6 +38,7 @@ export default function OrganizationDetail() {
       <OrgForm org={org.data} canWrite={canWrite} onDone={refresh} />
       {can(me, "billing:read") && <OrgBillingCard orgId={id} />}
       {can(me, "crm:read") && <OrgOpportunitiesCard orgId={id} />}
+      {can(me, "procurement:read") && <OrgInventoryCard orgId={id} />}
       {can(me, "ticket:read") && <OrgProjectsCard orgId={id} />}
       <OrgAssetsCard org={org.data} />
       <SitesCard orgId={id} sites={sites.data ?? []} canWrite={canWrite} onDone={refresh} />

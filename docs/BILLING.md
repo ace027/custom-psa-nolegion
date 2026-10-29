@@ -227,6 +227,13 @@ never runs a client-supplied name as a formula.
 - **Invoice CSV:** one row per finalized or voided invoice by invoice date, with paid, written-off,
   balance and payment status, for your accountant. Nothing is sent to any accounting system.
 
+## Procurement charges
+Hardware and other goods you buy for a client are tracked in Procurement (see `docs/PROCUREMENT.md`). When a **billable** inventory item is delivered to a client it becomes one product charge at **cost plus markup** (line markup, then product rule, then category rule, then the default markup). That charge is picked up like any other and bills on the client's **next run**.
+- Tax follows the taxable flag on the purchase order line, which defaults from the product.
+- **Undo delivery** voids the charge while it is not yet invoiced.
+- Once the charge is on an invoice, undo is refused ("Already invoiced"); correct it with a credit memo instead.
+- Items marked "used internally" and non-billable lines never create a charge.
+
 ## Not built (by design or deferred)
 No automatic sending (every reminder/statement is approved by a person), no automatic late fees (a person approves each one), no accounting/payment-processor integrations (payments
 are *recorded by hand*, nothing is charged or reconciled with a bank), one tax rate per
