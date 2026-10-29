@@ -1,7 +1,7 @@
 ---
 phase: 08
 phase_name: Projects & project billing
-ship_date: 2026-10-29T01:24:29.415Z
+ship_date: 2026-10-29T01:47:25.667Z
 gate_result: PASSED
 files_modified_count: 4
 agents_used: 3
