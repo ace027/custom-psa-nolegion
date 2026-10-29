@@ -5,6 +5,7 @@ import { can, useMe } from "../auth";
 import { money } from "../money";
 import { Card, ErrorMsg } from "../ui";
 import { daysLeft, useOpenRenewals } from "./crm/Renewals";
+import { QueryStatus } from "./reports/SlaReport";
 import TicketTable from "./TicketTable";
 
 export default function Dashboard() {
@@ -104,9 +105,9 @@ function MyWeek() {
   const d = q.data;
   return (
     <Card title="My week">
-      <ErrorMsg error={q.error} />
+      <QueryStatus q={q} />
       {d && (
-        <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-4">
+        <div aria-busy={q.isFetching} className={`grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-4 ${q.isFetching ? "opacity-60" : ""}`}>
           <Tile label="My open tickets" value={String(d.open_tickets)} to="/tickets" />
           <Tile label="My SLA at risk" value={String(d.sla_at_risk)} warn={d.sla_at_risk > 0} />
           <Tile label="My SLA breached" value={String(d.sla_breached)} warn={d.sla_breached > 0} />
@@ -126,9 +127,9 @@ function Business() {
   const d = q.data;
   return (
     <Card title="Business">
-      <ErrorMsg error={q.error} />
+      <QueryStatus q={q} />
       {d && (
-        <div className="space-y-3 text-sm">
+        <div aria-busy={q.isFetching} className={`space-y-3 text-sm ${q.isFetching ? "opacity-60" : ""}`}>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             <Tile label="Revenue month to date" value={money(d.revenue_mtd_cents)} to="/billing/reports" />
             <Tile label="Margin month to date" value={money(d.margin_mtd_cents)} to="/reports/profitability" />

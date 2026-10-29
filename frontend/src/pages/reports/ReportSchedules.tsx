@@ -52,10 +52,12 @@ export default function ReportSchedules() {
       <p className="text-sm text-slate-600">
         The worker emails each report once per period as a CSV to staff who hold report:read. Weekly reports cover the previous Monday to Sunday; monthly reports cover the previous calendar month. Schedules are deactivated, not deleted.
       </p>
-      <ErrorMsg error={list.error ?? toggle.error} />
+      <ErrorMsg error={list.error ?? toggle.error ?? users.error} />
+      {users.isLoading && <p role="status" className="text-sm text-slate-500">Loading users...</p>}
       {write && editing === null && <Button onClick={() => setEditing("new")}>New schedule</Button>}
       {write && editing === "new" && <ScheduleForm initial={blank} users={users.data ?? []} onDone={done} onCancel={() => setEditing(null)} />}
       <Card title="Schedules">
+        {list.isLoading && <div role="status" aria-busy="true" className="space-y-2"><div className="h-10 animate-pulse rounded bg-slate-100" /><div className="h-10 animate-pulse rounded bg-slate-100" /><span className="sr-only">Loading schedules...</span></div>}
         {list.data && list.data.length === 0 && <p className="text-sm text-slate-500">No scheduled reports yet.</p>}
         <ul className="divide-y divide-slate-100 text-sm">
           {list.data?.map((s) => (
@@ -66,12 +68,12 @@ export default function ReportSchedules() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <b>{s.name}</b> <span className="text-slate-500">{REPORT_LABEL[s.report] ?? s.report} · {when(s)} · {s.active ? "active" : "inactive"}</span>
-                    <div className="text-xs text-slate-500">To: {s.recipient_user_ids.map((id) => names.get(id) ?? `user ${id}`).join(", ")}</div>
+                    <div className="text-xs text-slate-500">To: {s.recipient_user_ids.length === 0 ? "No recipients" : s.recipient_user_ids.map((id) => names.get(id) ?? `user ${id}`).join(", ")}</div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="secondary" aria-label={`Runs for ${s.name}`} onClick={() => setRunsFor(runsFor === s.id ? null : s.id)}>Runs</Button>
+                    <Button variant="secondary" aria-label={`Runs for ${s.name}`} aria-expanded={runsFor === s.id} aria-controls={`runs-${s.id}`} onClick={() => setRunsFor(runsFor === s.id ? null : s.id)}>Runs</Button>
                     {write && <Button variant="secondary" aria-label={`Edit ${s.name}`} onClick={() => setEditing(s.id)}>Edit</Button>}
-                    {write && <Button variant="secondary" aria-label={`${s.active ? "Deactivate" : "Activate"} ${s.name}`} onClick={() => toggle.mutate(s)}>{s.active ? "Deactivate" : "Activate"}</Button>}
+                    {write && <Button variant="secondary" aria-label={`${s.active ? "Deactivate" : "Activate"} ${s.name}`} disabled={toggle.isPending} onClick={() => toggle.mutate(s)}>{s.active ? "Deactivate" : "Activate"}</Button>}
                   </div>
                 </div>
               )}
@@ -87,8 +89,9 @@ export default function ReportSchedules() {
 function Runs({ id }: { id: number }) {
   const q = useQuery({ queryKey: ["report-schedule-runs", id], queryFn: () => reportsApi.scheduleRuns(id) });
   return (
-    <div className="mt-2 rounded-lg bg-slate-50 p-3">
+    <div id={`runs-${id}`} className="mt-2 rounded-lg bg-slate-50 p-3">
       <ErrorMsg error={q.error} />
+      {q.isLoading && <p role="status" className="text-xs text-slate-500">Loading runs...</p>}
       {q.data && q.data.length === 0 && <p className="text-xs text-slate-500">Not run yet.</p>}
       {q.data && q.data.length > 0 && (
         <table className="w-full text-left text-xs">
@@ -139,6 +142,7 @@ function ScheduleForm({ id, initial, users, onDone, onCancel }: { id?: number; i
       </div>
       <fieldset>
         <legend className="mb-1 text-sm font-medium text-slate-700">Recipients (staff with report:read)</legend>
+        {eligible.length === 0 && <p className="text-sm text-slate-500">No eligible recipients</p>}
         <div className="flex flex-wrap gap-3 text-sm">
           {eligible.map((u) => (
             <label key={u.id} className="flex items-center gap-1">
@@ -150,6 +154,7 @@ function ScheduleForm({ id, initial, users, onDone, onCancel }: { id?: number; i
       </fieldset>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={d.active} onChange={(e) => setD({ ...d, active: e.target.checked })} />Active</label>
       <ErrorMsg error={save.error} />
+      {(!d.name.trim() || d.recipients.length === 0) && <p className="text-xs text-slate-500">{!d.name.trim() ? "Enter a name. " : ""}{d.recipients.length === 0 ? "Select at least one recipient." : ""}</p>}
       <div className="flex gap-2">
         <Button type="submit" disabled={save.isPending || d.recipients.length === 0 || !d.name.trim()}>{id === undefined ? "Create schedule" : "Save schedule"}</Button>
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
