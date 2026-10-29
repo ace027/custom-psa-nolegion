@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 9 of 13 (complete)
-- **Status**: Phase 9 shipped (2026-10-29)
-- **Last Activity**: Phase 9 shipped (2026-10-29)
+- **Phase**: 10 of 13 (planned)
+- **Status**: Phase 10 planned -- 3 plans across 3 waves
+- **Last Activity**: Phase 10 planning (2026-10-29)
 
 ## Progress
 ```
@@ -22,7 +22,7 @@
 - Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
 
 ## Next Action
-Run `/triad:plan 10` to plan Phase 10: Procurement & inventory
+Run `/triad:build` to execute Phase 10: Procurement & inventory
 
 ## Phase 1 Results
 (build started 2026-10-09)
