@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
+from app.db import new_session, set_org_scope
 from app.procurement_schemas import MarkupRuleIn, ReceiveIn
 
 NEW = ("vendors", "purchase_orders", "purchase_order_lines", "inventory_items", "markup_rules")
@@ -193,12 +194,37 @@ def test_runtime_role_privileges(owner):
             assert has == (p != "DELETE" or can_delete), (table, p)
 
 
-def test_no_rls_on_new_tables(owner):
+def test_rls_only_on_tables_with_a_client(owner):
+    """purchase_orders and inventory_items carry organization_id, so they are under org_scope RLS
+    (test_isolation guards that); the other three are staff-internal."""
+    scoped = {"purchase_orders", "inventory_items"}
     for table in NEW:
         row = owner.execute(
-            text("SELECT relrowsecurity FROM pg_class WHERE relname = :t"), {"t": table}
+            text("SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = :t"),
+            {"t": table},
         ).one()
-        assert row == (False,), table
+        expected = table in scoped
+        assert row == (expected, expected), table
+
+
+def test_client_scope_hides_stock_and_other_clients_items(owner, make_org):
+    org, other = make_org("Acme")["id"], make_org("Other Co")["id"]
+    for org_id in (org, other, None):
+        owner.execute(
+            text(
+                "INSERT INTO inventory_items (description, quantity, unit_cost_cents, "
+                "organization_id, received_on) VALUES ('Laptop', 1, 100, :o, CURRENT_DATE)"
+            ),
+            {"o": org_id},
+        )
+    with new_session() as db:  # the runtime role, as the API uses it
+        set_org_scope(db, str(org))
+        seen = db.execute(text("SELECT organization_id FROM inventory_items")).scalars().all()
+    with new_session() as db:
+        set_org_scope(db, "all")
+        everything = db.execute(text("SELECT count(*) FROM inventory_items")).scalar_one()
+    assert seen == [org]
+    assert everything == 3
 
 
 def test_receive_in_serials_validation():

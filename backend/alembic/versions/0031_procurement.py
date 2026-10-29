@@ -3,9 +3,10 @@
 Revision ID: 0031
 Revises: 0030
 
-All five new tables are staff-internal (no organization-owned rows in the RLS sense, no RLS);
-organization_id on purchase orders and inventory only records who the goods are for. Also adds
-products.category and settings.default_markup_bp.
+Vendors, purchase order lines and markup rules are staff-internal (no RLS). Purchase orders and
+inventory items carry a nullable organization_id (who the goods are for), so they get the usual
+org_scope policy, as expenses do: staff (scope 'all') also see rows with no client, a client scope
+never does. Also adds products.category and settings.default_markup_bp.
 """
 
 import sqlalchemy as sa
@@ -17,6 +18,7 @@ down_revision = "0030"
 APP_ROLE = "psa_app"
 NOW = sa.text("now()")
 TABLES = ("vendors", "purchase_orders", "purchase_order_lines", "inventory_items", "markup_rules")
+SCOPED = ("purchase_orders", "inventory_items")
 CATEGORIES = "('hardware','software','license','other')"
 
 
@@ -167,6 +169,14 @@ def upgrade() -> None:
         sa.UniqueConstraint("category", name="uq_markup_rules_category"),
     )
 
+    for table in SCOPED:
+        op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
+        op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
+        op.execute(
+            f"CREATE POLICY org_scope ON {table} "
+            "USING (app_org_visible(organization_id)) "
+            "WITH CHECK (app_org_visible(organization_id))"
+        )
     for table in TABLES:
         op.execute(f"GRANT SELECT, INSERT, UPDATE ON {table} TO {APP_ROLE}")
     op.execute(f"GRANT DELETE ON purchase_order_lines, markup_rules TO {APP_ROLE}")
