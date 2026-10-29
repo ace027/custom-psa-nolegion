@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 10 of 13 (partial — 1 plan(s) failed)
-- **Status**: Phase 10 partial — 10-02 failed, stopped after wave 2, review needed
+- **Phase**: 10 of 13 (executing)
+- **Status**: Phase 10 executing — Plan 10-02 complete
 - **Last Activity**: Plan 10-02 execution (2026-10-29)
 
 ## Progress
 ```
-[###############.....] 75% — 33/44 plans complete
+[###############.....] 77% — 34/44 plans complete
 ```
 
 ## Recent Decisions
@@ -113,3 +113,4 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 (build started 2026-10-29)
 - Plan 10-01 (Wave 1): Procurement schema, models and permissions — Complete
 - Plan 10-02 (Wave 2): Procurement service and API: vendors, POs, receiving, inventory, delivery billing, markup — BLOCKED: The plan requires DELETE routes for PO lines and markup rules, but psa_app has no DELETE grant on those tables (alembic/versions/0031_procurement.py line 171). The fix needs a migration, or a change t
+- Plan 10-02 (Wave 2): Procurement service and API: vendors, POs, receiving, inventory, delivery billing, markup — Complete
