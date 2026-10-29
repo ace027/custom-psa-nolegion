@@ -59,3 +59,11 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Walk through docs/verify/crm.md (leads and conversion, pipeline, quote link and win, forecast, renewal reminders)
 - [ ] Confirm: the forecast is an estimate only and never creates invoices
 - [ ] Confirm: the renewal worker sends one email per new reminder and never repeats it
+
+## Phase 10: Procurement & inventory
+- [ ] Walk through docs/verify/procurement.md (vendors, purchase orders, receiving with serials, delivery, undo, consume, markup rules, client card)
+- [ ] Confirm: a client is billed when the item is delivered, not when it is received
+- [ ] Confirm: markup order is line, then product rule, then category rule, then the default
+- [ ] Confirm: the default markup is 0% until you set it
+- [ ] Confirm: taxability comes from the purchase order line, which defaults from the product
+- [ ] Confirm: undo delivery is refused once the charge is invoiced, and a credit memo is the fix
