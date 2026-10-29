@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 11 of 13 (planned)
-- **Status**: Phase 11 planned -- 3 plans across 3 waves
-- **Last Activity**: Phase 11 planning (2026-10-29)
+- **Phase**: 11 of 13 (executing)
+- **Status**: Phase 11 executing — Plan 11-01 complete
+- **Last Activity**: Plan 11-01 execution (2026-10-29)
 
 ## Progress
 ```
-[###############.....] 79% — 35/44 plans complete
+[################....] 81% — 36/44 plans complete
 ```
 
 ## Recent Decisions
@@ -115,3 +115,7 @@ Run `/triad:build` to execute Phase 11: Reporting & dashboards
 - Plan 10-02 (Wave 2): Procurement service and API: vendors, POs, receiving, inventory, delivery billing, markup — BLOCKED: The plan requires DELETE routes for PO lines and markup rules, but psa_app has no DELETE grant on those tables (alembic/versions/0031_procurement.py line 171). The fix needs a migration, or a change t
 - Plan 10-02 (Wave 2): Procurement service and API: vendors, POs, receiving, inventory, delivery billing, markup — Complete
 - Plan 10-03 (Wave 3): Procurement UI, client inventory card and docs — Complete with Warnings
+
+## Phase 11 Results
+(build started 2026-10-29)
+- Plan 11-01 (Wave 1): Report metrics: SLA, utilisation, aging, profitability with CSV — Complete
