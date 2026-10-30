@@ -120,3 +120,52 @@ describe("cost rate", () => {
     await waitFor(() => expect(calls.some((c) => c.startsWith("PUT /api/users/2/cost-rate") && c.includes('"cost_rate_cents":9000'))).toBe(true));
   });
 });
+
+describe("report schedule form", () => {
+  const staff = [{ id: 1, email: "a@example.com", display_name: "Una", role: "admin", is_active: true, last_login_at: null }];
+  const sched = (id: number, name: string) => ({ id, name, report: "sla", frequency: "weekly", weekday: 0, day_of_month: null, recipient_user_ids: [1], active: true });
+  const open = () => go("/reports/schedules", "admin", ADMIN, {
+    "/api/reports/schedules": json([sched(1, "Alpha"), sched(2, "Beta")]), "/api/users": json(staff),
+    "PATCH /api/reports/schedules/2": json(sched(2, "Beta")),
+  });
+
+  it("disables other openers, keeps typed text, and keeps toggles working", async () => {
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Alpha" }));
+    const name = await screen.findByDisplayValue("Alpha");
+    expect(name).toHaveFocus();
+    fireEvent.change(name, { target: { value: "Alpha typed" } });
+    const editB = screen.getByRole("button", { name: "Edit Beta" });
+    const add = screen.getByRole("button", { name: "New schedule" });
+    for (const b of [editB, add]) {
+      expect(b).toBeDisabled();
+      expect(b).toHaveAttribute("aria-disabled", "true");
+      expect(b).toHaveAttribute("title", "Save or cancel the open form first");
+      fireEvent.click(b);
+    }
+    expect(screen.getByDisplayValue("Alpha typed")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate Beta" }));
+    await waitFor(() => expect(calls.some((c) => c.startsWith("PATCH /api/reports/schedules/2"))).toBe(true));
+    expect(screen.getByDisplayValue("Alpha typed")).toBeInTheDocument();
+  });
+
+  it("returns focus on cancel and re-enables openers", async () => {
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Beta" }));
+    await screen.findByDisplayValue("Beta");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    const editB = await screen.findByRole("button", { name: "Edit Beta" });
+    await waitFor(() => expect(editB).toHaveFocus());
+    expect(editB).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Edit Alpha" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "New schedule" })).toBeEnabled();
+  });
+
+  it("focuses the name input for a new schedule and returns focus to New schedule on cancel", async () => {
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "New schedule" }));
+    expect(await screen.findByLabelText("Name")).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "New schedule" })).toHaveFocus());
+  });
+});

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { REPORT_NAMES, ReportName, ReportSchedule, ScheduleInput, User, api, reportsApi } from "../../api";
 import { can, useMe } from "../../auth";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../../ui";
@@ -40,7 +40,18 @@ export default function ReportSchedules() {
   const users = useQuery({ queryKey: ["users"], queryFn: () => api<User[]>("/users") });
   const [editing, setEditing] = useState<number | "new" | null>(null);
   const [runsFor, setRunsFor] = useState<number | null>(null);
-  const done = () => { setEditing(null); qc.invalidateQueries({ queryKey: ["report-schedules"] }); };
+  const opener = useRef<string>("sched-new");
+  const refocus = useRef(false);
+  const open = (target: number | "new") => { opener.current = target === "new" ? "sched-new" : `sched-edit-${target}`; setEditing(target); };
+  const close = () => { refocus.current = true; setEditing(null); };
+  const done = () => { close(); qc.invalidateQueries({ queryKey: ["report-schedules"] }); };
+  useEffect(() => {
+    if (editing !== null || !refocus.current) return;
+    refocus.current = false;
+    (document.getElementById(opener.current) ?? document.getElementById("sched-new"))?.focus();
+  }, [editing]);
+  const busy = editing !== null;
+  const lock = busy ? { disabled: true, "aria-disabled": true, title: "Save or cancel the open form first" } : {};
   const toggle = useMutation({
     mutationFn: (s: ReportSchedule) => reportsApi.updateSchedule(s.id, { active: !s.active }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["report-schedules"] }),
@@ -54,8 +65,8 @@ export default function ReportSchedules() {
       </p>
       <ErrorMsg error={list.error ?? toggle.error ?? users.error} />
       {users.isLoading && <p role="status" className="text-sm text-slate-500">Loading users...</p>}
-      {write && editing === null && <Button onClick={() => setEditing("new")}>New schedule</Button>}
-      {write && editing === "new" && <ScheduleForm initial={blank} users={users.data ?? []} onDone={done} onCancel={() => setEditing(null)} />}
+      {write && <Button id="sched-new" {...lock} onClick={() => open("new")}>New schedule</Button>}
+      {write && editing === "new" && <ScheduleForm initial={blank} users={users.data ?? []} onDone={done} onCancel={close} />}
       <Card title="Schedules">
         {list.isLoading && <div role="status" aria-busy="true" className="space-y-2"><div className="h-10 animate-pulse rounded bg-slate-100" /><div className="h-10 animate-pulse rounded bg-slate-100" /><span className="sr-only">Loading schedules...</span></div>}
         {list.data && list.data.length === 0 && <p className="text-sm text-slate-500">No scheduled reports yet.</p>}
@@ -63,7 +74,7 @@ export default function ReportSchedules() {
           {list.data?.map((s) => (
             <li key={s.id} className="py-2">
               {editing === s.id ? (
-                <ScheduleForm id={s.id} initial={toDraft(s)} users={users.data ?? []} onDone={done} onCancel={() => setEditing(null)} />
+                <ScheduleForm id={s.id} initial={toDraft(s)} users={users.data ?? []} onDone={done} onCancel={close} />
               ) : (
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -72,7 +83,7 @@ export default function ReportSchedules() {
                   </div>
                   <div className="flex gap-2">
                     <Button variant="secondary" aria-label={`Runs for ${s.name}`} aria-expanded={runsFor === s.id} aria-controls={`runs-${s.id}`} onClick={() => setRunsFor(runsFor === s.id ? null : s.id)}>Runs</Button>
-                    {write && <Button variant="secondary" aria-label={`Edit ${s.name}`} onClick={() => setEditing(s.id)}>Edit</Button>}
+                    {write && <Button variant="secondary" id={`sched-edit-${s.id}`} aria-label={`Edit ${s.name}`} {...lock} onClick={() => open(s.id)}>Edit</Button>}
                     {write && <Button variant="secondary" aria-label={`${s.active ? "Deactivate" : "Activate"} ${s.name}`} disabled={toggle.isPending} onClick={() => toggle.mutate(s)}>{s.active ? "Deactivate" : "Activate"}</Button>}
                   </div>
                 </div>
@@ -109,6 +120,8 @@ function Runs({ id }: { id: number }) {
 
 function ScheduleForm({ id, initial, users, onDone, onCancel }: { id?: number; initial: Draft; users: User[]; onDone: () => void; onCancel: () => void }) {
   const [d, setD] = useState<Draft>(initial);
+  const nameRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { nameRef.current?.focus(); }, []);
   const save = useMutation({
     mutationFn: () => (id === undefined ? reportsApi.createSchedule(toInput(d)) : reportsApi.updateSchedule(id, toInput(d))),
     onSuccess: onDone,
@@ -118,7 +131,7 @@ function ScheduleForm({ id, initial, users, onDone, onCancel }: { id?: number; i
   return (
     <form className="space-y-3 rounded-lg border border-slate-200 p-3" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
       <div className="flex flex-wrap items-end gap-3">
-        <Field label="Name"><input className={inputCls} required maxLength={200} value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
+        <Field label="Name"><input ref={nameRef} className={inputCls} required maxLength={200} value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
         <Field label="Report">
           <select className={inputCls} value={d.report} onChange={(e) => setD({ ...d, report: e.target.value as ReportName })}>
             {REPORT_NAMES.map((r) => <option key={r} value={r}>{REPORT_LABEL[r]}</option>)}
