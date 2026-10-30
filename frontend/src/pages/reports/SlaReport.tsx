@@ -36,7 +36,13 @@ export function QueryStatus({ q }: { q: { isLoading: boolean; error: unknown; re
 /** Scrollable, named report table; dimmed and aria-busy while a refetch is in flight. */
 export function ReportTable({ caption, busy, minW = "min-w-[40rem]", children }: { caption: string; busy: boolean; minW?: string; children: ReactNode }) {
   return (
-    <div className={`overflow-x-auto ${busy ? "opacity-60" : ""}`} aria-busy={busy}>
+    <div
+      tabIndex={0}
+      role="region"
+      aria-label={caption}
+      className={`overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${busy ? "opacity-60" : ""}`}
+      aria-busy={busy}
+    >
       <table className={`w-full whitespace-nowrap text-left text-sm ${minW}`}>
         <caption className="sr-only">{caption}</caption>
         {children}

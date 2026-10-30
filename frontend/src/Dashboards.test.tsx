@@ -102,7 +102,7 @@ describe("cost rate", () => {
   it("is absent without user:manage", async () => {
     go("/users", "billing", BILLING, { "/api/users": json(users) });
     expect(await screen.findByText("Tom")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit Tom" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cost rate for Tom" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Cost rate (per hour)")).not.toBeInTheDocument();
     expect(calls.some((c) => c.includes("cost-rate"))).toBe(false);
   });
@@ -113,7 +113,7 @@ describe("cost rate", () => {
       "/api/users/2/cost-rate": json({ user_id: 2, cost_rate_cents: 4500 }),
       "PUT /api/users/2/cost-rate": json({ user_id: 2, cost_rate_cents: 9000 }),
     });
-    fireEvent.click(await screen.findByRole("button", { name: "Edit Tom" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cost rate for Tom" }));
     const input = await screen.findByDisplayValue("45.00");
     fireEvent.change(input, { target: { value: "90.00" } });
     fireEvent.click(screen.getByRole("button", { name: "Save cost rate" }));

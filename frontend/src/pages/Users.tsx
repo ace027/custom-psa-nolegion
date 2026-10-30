@@ -43,22 +43,22 @@ export default function Users() {
               <td>{u.email}</td>
               <td>
                 {admin && u.id !== me?.id ? (
-                  <select className={inputCls} value={u.role} onChange={(e) => patch.mutate({ id: u.id, role: e.target.value as Role })}>
+                  <select className={inputCls} aria-label={`Role for ${u.display_name}`} value={u.role} onChange={(e) => patch.mutate({ id: u.id, role: e.target.value as Role })}>
                     {ROLES.map((r) => <option key={r}>{r}</option>)}
                   </select>
                 ) : u.role}
               </td>
               <td>
                 {admin && u.id !== me?.id ? (
-                  <Button variant="secondary" onClick={() => patch.mutate({ id: u.id, is_active: !u.is_active })}>
+                  <Button variant="secondary" aria-label={`${u.is_active ? "Deactivate" : "Activate"} ${u.display_name}`} onClick={() => patch.mutate({ id: u.id, is_active: !u.is_active })}>
                     {u.is_active ? "Deactivate" : "Activate"}
                   </Button>
                 ) : u.is_active ? "yes" : "no"}
               </td>
               {admin && (
                 <td>
-                  <Button variant="secondary" aria-label={`Edit ${u.display_name}`} onClick={() => setRateFor(rateFor === u.id ? null : u.id)}>
-                    {rateFor === u.id ? "Close" : "Edit"}
+                  <Button variant="secondary" aria-label={`Cost rate for ${u.display_name}`} aria-expanded={rateFor === u.id} aria-controls="cost-rate-form" onClick={() => setRateFor(rateFor === u.id ? null : u.id)}>
+                    {rateFor === u.id ? "Close" : "Cost rate"}
                   </Button>
                 </td>
               )}
@@ -97,7 +97,7 @@ function CostRateForm({ userId, name }: { userId: number; name: string }) {
     onSuccess: () => { setText(null); qc.invalidateQueries({ queryKey: ["cost-rate", userId] }); },
   });
   return (
-    <form className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-surface p-3" onSubmit={(e) => { e.preventDefault(); if (!invalid) save.mutate(); }}>
+    <form id="cost-rate-form" className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-surface p-3" onSubmit={(e) => { e.preventDefault(); if (!invalid) save.mutate(); }}>
       <span className="text-sm font-medium">{name}</span>
       <Field label="Cost rate (per hour)">
         <input className={inputCls} inputMode="decimal" placeholder="e.g. 90.00" value={value} onChange={(e) => setText(e.target.value)} aria-invalid={invalid} />
