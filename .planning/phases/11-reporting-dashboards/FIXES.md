@@ -4,26 +4,11 @@ Fixes applied by the review loop, one section per cycle. Re-review decides wheth
 
 ## Cycle 1
 
-**Date**: 2026-10-29
+**Date**: 2026-10-30
 **Checks**: 16/16 passed
-**Files changed**: `frontend/src/pages/Dashboard.tsx`, `frontend/src/pages/reports/AgingReport.tsx`, `frontend/src/pages/reports/ProfitabilityReport.tsx`, `frontend/src/pages/reports/ReportSchedules.tsx`, `frontend/src/pages/reports/SlaReport.tsx`, `frontend/src/pages/reports/UtilisationReport.tsx`
+**Files changed**: `frontend/src/Dashboards.test.tsx`, `frontend/src/pages/Users.tsx`, `frontend/src/pages/reports/SlaReport.tsx`
 
 | Finding | Severity | File | Agent | Status | Notes |
 |---------|----------|------|-------|--------|-------|
-| F-001 | major | `frontend/src/pages/reports/SlaReport.tsx` | engineering-frontend-developer | not fixed | partial |
-| F-002 | major | `frontend/src/pages/reports/ReportSchedules.tsx` | engineering-frontend-developer | not fixed | partial |
-| F-003 | major | `frontend/src/pages/reports/ReportSchedules.tsx` | engineering-frontend-developer | not fixed | partial |
-| F-004 | major | `frontend/src/pages/reports/SlaReport.tsx` | engineering-frontend-developer | not fixed | partial |
-| F-005 | major | `frontend/src/pages/reports/SlaReport.tsx (same pattern in AgingReport.tsx, ProfitabilityReport.tsx and UtilisationReport.tsx)` | engineering-frontend-developer | not fixed | partial |
-| F-006 | major | `frontend/src/pages/reports/SlaReport.tsx (also Aging, Profitability, Utilisation, Dashboard.tsx Business and MyWeek)` | engineering-frontend-developer | not fixed | partial |
-| F-007 | major | `frontend/src/pages/reports/SlaReport.tsx (also Utilisation and Aging tables)` | engineering-frontend-developer | not fixed | partial |
-
-## Cycle 2
-
-**Date**: 2026-10-29
-**Checks**: 16/16 passed
-**Files changed**: `frontend/src/pages/reports/ReportSchedules.tsx`
-
-| Finding | Severity | File | Agent | Status | Notes |
-|---------|----------|------|-------|--------|-------|
-| F-003 | major | `frontend/src/pages/reports/ReportSchedules.tsx` | engineering-frontend-developer | fix applied | F-003 fixed. The toggle mutation now has its own `onSuccess` that only invalidates the `report-schedules` query. Toggling a schedule no longer closes an open edit or new-schedule form. `done` is still used for form saves only. |
+| F-002 | major | `frontend/src/pages/reports/SlaReport.tsx` | engineering-frontend-developer | fix applied | F-002 and F-003 are fixed. The ReportTable scroll wrapper is now a focusable named region with a focus ring. The Users page controls now have accessible names, and the Edit button is renamed to "Cost rate". |
+| F-003 | major | `frontend/src/pages/Users.tsx` | engineering-frontend-developer | fix applied | F-002 and F-003 are fixed. The ReportTable scroll wrapper is now a focusable named region with a focus ring. The Users page controls now have accessible names, and the Edit button is renamed to "Cost rate". |
