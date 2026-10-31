@@ -2,12 +2,12 @@
 
 ## Current Position
 - **Phase**: 12 of 13 (executing)
-- **Status**: Phase 12 executing — Plan 12-01 complete
-- **Last Activity**: Plan 12-01 execution (2026-10-31)
+- **Status**: Phase 12 executing — Plan 12-03 complete
+- **Last Activity**: Plan 12-03 execution (2026-10-31)
 
 ## Progress
 ```
-[################....] 81% — 39/48 plans complete
+[#################...] 85% — 41/48 plans complete
 ```
 
 ## Recent Decisions
@@ -132,3 +132,5 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 (build started 2026-10-31)
 - Plan 12-01 (Wave 1): Integration-readiness schema, models, schemas and writers — PARTIAL: Migration 0033, models, schemas, writers, tests and docs are done. Ruff is clean and the 10 verification test files pass (176 passed, 1 skipped). I did not get a clean full-suite run (see issues). A `
 - Plan 12-01 (Wave 1): Integration-readiness schema, models, schemas and writers — Complete
+- Plan 12-02 (Wave 2): Automation time kept out of billing; reported separately — Complete
+- Plan 12-03 (Wave 2): Frontend: branding config, client scope module, note authors and new fields — Complete
