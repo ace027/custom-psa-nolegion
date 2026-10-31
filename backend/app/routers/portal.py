@@ -359,17 +359,22 @@ def list_ticket_attachments(ticket_id: int, ctx: PortalCtx = portal_required()):
     return pfiles.list_for_ticket(ctx, ticket_id)
 
 
-@router.post(
-    "/tickets/{ticket_id}/attachments",
-    status_code=201,
-    response_model=PortalAttachmentOut,
-    responses={**ERR, 413: {"model": ErrorOut}, 415: {"model": ErrorOut}, 429: {"model": ErrorOut}},
-    summary="Attach a file (base64) to one of your open tickets",
-)
 def upload_ticket_attachment(
     ticket_id: int, body: PortalAttachmentIn, ctx: PortalCtx = portal_required()
 ):
     return pfiles.upload(ctx, ticket_id, body.filename, body.content_base64)
+
+
+router.add_api_route(
+    "/tickets/{ticket_id}/attachments",
+    upload_ticket_attachment,
+    methods=["POST"],
+    status_code=201,
+    response_model=PortalAttachmentOut,
+    responses={**ERR, 413: {"model": ErrorOut}, 415: {"model": ErrorOut}, 429: {"model": ErrorOut}},
+    summary="Attach a file (base64) to one of your open tickets",
+    route_class_override=pfiles.SizeLimitedRoute,
+)
 
 
 @router.get(

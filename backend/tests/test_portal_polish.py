@@ -106,13 +106,28 @@ def test_upload_validation(admin, sign_in, world, monkeypatch):
     assert upload(p, tid, data=b"").status_code == 422
 
 
-def test_upload_schema_caps_base64_length(admin, sign_in, world):
+def test_oversized_body_is_rejected_before_parsing(admin, sign_in, world, monkeypatch):
     p = sign_in("pat@acme.com")
-    r = p.post(
-        f"{API}/tickets/{world['ticket']['id']}/attachments",
-        json={"filename": "a.txt", "content_base64": "A" * (14 * 1024 * 1024)},
-    )
-    assert r.status_code == 422
+    url = f"{API}/tickets/{world['ticket']['id']}/attachments"
+    monkeypatch.setattr(get_settings(), "max_attachment_bytes", 100)
+    big = b'{"filename": "a.txt", "content_base64": "' + b"A" * 5000 + b'"}'
+    hdr = {"content-type": "application/json"}
+    # declared Content-Length over the cap
+    assert p.post(url, content=big, headers=hdr).status_code == 413
+
+    # chunked body (no Content-Length) is counted as it streams
+    def chunks():
+        for i in range(0, len(big), 500):
+            yield big[i : i + 500]
+
+    assert p.post(url, content=chunks(), headers=hdr).status_code == 413
+    assert upload(p, world["ticket"]["id"], data=b"x" * 100).status_code == 201
+
+
+def test_raising_the_setting_raises_the_cap(admin, sign_in, world, monkeypatch):
+    p = sign_in("pat@acme.com")
+    monkeypatch.setattr(get_settings(), "max_attachment_bytes", 20 * 1024 * 1024)
+    assert upload(p, world["ticket"]["id"], data=b"x" * (11 * 1024 * 1024)).status_code == 201
 
 
 def test_closed_ticket_refuses_uploads(admin, sign_in, world):

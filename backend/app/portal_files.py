@@ -10,7 +10,8 @@ import uuid
 from datetime import timedelta
 from pathlib import Path
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
+from fastapi.routing import APIRoute
 from sqlalchemy import func, select
 
 from app import audit
@@ -46,6 +47,40 @@ ALLOWED_EXTENSIONS = frozenset(
 )
 
 
+def max_body_bytes() -> int:
+    """Largest request body the upload route reads: base64 inflation (4/3) plus JSON overhead."""
+    return (get_settings().max_attachment_bytes * 4) // 3 + 1024
+
+
+class SizeLimitedRoute(APIRoute):
+    """Rejects an oversized body with 413 before FastAPI reads it: by Content-Length when the
+    client sent one, and by counting bytes as they arrive (chunked bodies may omit the header)."""
+
+    def get_route_handler(self):
+        original = super().get_route_handler()
+
+        async def handler(request: Request):
+            limit = max_body_bytes()
+            declared = request.headers.get("content-length")
+            if declared and declared.isdigit() and int(declared) > limit:
+                raise HTTPException(413, "That file is too large")
+            received = 0
+            inner = request.receive
+
+            async def receive():
+                nonlocal received
+                message = await inner()
+                if message["type"] == "http.request":
+                    received += len(message.get("body", b""))
+                    if received > limit:
+                        raise HTTPException(413, "That file is too large")
+                return message
+
+            return await original(Request(request.scope, receive))
+
+        return handler
+
+
 def safe_filename(name: str) -> str:
     """Strip any path components, then the same rule the staff download applies."""
     base = re.split(r"[\\/]", name or "")[-1]
@@ -54,7 +89,7 @@ def safe_filename(name: str) -> str:
 
 def _decode(content_base64: str, max_bytes: int) -> bytes:
     # base64 inflates by 4/3: reject an oversized string before spending memory on decoding it.
-    # This runs after the body was parsed; the request-size limit itself is not enforced here.
+    # The body itself is already bounded by SizeLimitedRoute; this is the exact configured cap.
     if len(content_base64) > (max_bytes * 4) // 3 + 8:
         raise HTTPException(413, "That file is too large")
     try:

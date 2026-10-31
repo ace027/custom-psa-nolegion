@@ -106,7 +106,7 @@ function Signed({ me }: { me: PortalMe }) {
       title={me.company_name ? `${me.company_name} client portal` : undefined}
       right={<><span>{me.contact_name} · {me.organization_name}</span><button className="text-blue-700 hover:underline" onClick={() => logout.mutate()}>Sign out</button></>}
     >
-      <nav className="mb-5 flex gap-1">
+      <nav aria-label="Portal sections" className="mb-5 flex flex-wrap gap-1">
         <NavLink to="/portal/tickets" className={tab}>Tickets</NavLink>
         <NavLink to="/portal/appointments" className={tab}>Appointments</NavLink>
         {me.can_see_billing && <NavLink to="/portal/invoices" className={tab}>Invoices</NavLink>}
