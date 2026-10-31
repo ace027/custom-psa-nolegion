@@ -13,9 +13,10 @@
 - [x] Phase 9: CRM & renewals (3 plans)
 - [x] Phase 10: Procurement & inventory (3 plans)
 - [x] Phase 11: Reporting & dashboards (3 plans)
-- [ ] Phase 12: Knowledge base (2 plans)
-- [ ] Phase 13: Portal polish (3 plans)
-- [ ] Phase 14: Verify (owner manual testing) (1 plan)
+- [ ] Phase 12: Integration readiness (3 plans)
+- [ ] Phase 13: Knowledge base (2 plans)
+- [ ] Phase 14: Portal polish (3 plans)
+- [ ] Phase 15: Verify (owner manual testing) (1 plan)
 
 ## Phase Details
 
@@ -56,7 +57,7 @@
 **Requirements**: REQ-04
 **Recommended Agents**: engineering-backend-architect, engineering-security-engineer, engineering-infrastructure-devops
 **Success Criteria**:
-- [ ] Owner approves RBAC-scoped Calendars.ReadWrite (real-tenant spike deferred to Phase 14: Verify)
+- [ ] Owner approves RBAC-scoped Calendars.ReadWrite (real-tenant spike deferred to Phase 15: Verify)
 - [ ] Outbox push is idempotent (create/update/delete/reassign) and tested against fake_graph
 - [ ] getSchedule cache refreshes and renders on the board; failed syncs are visible
 - [ ] MAIL_SETUP/calendar setup docs updated
@@ -133,7 +134,23 @@
 - [ ] Scheduled report emails sent by the worker
 **Plans**: 3
 
-### Phase 12: Knowledge base
+### Phase 12: Integration readiness
+**Goal**: Before first release, add the small forward-compatible hooks the future RMM (Rust) and vCISO modules need (stable UUIDs, external IDs, typed note authors, automation time, a versioned API with a committed OpenAPI spec, Entra tenant IDs and white-label branding), without building any integration.
+**Requirements**: REQ-14
+**Recommended Agents**: engineering-backend-architect, engineering-frontend-developer
+**Success Criteria**:
+- [ ] Organizations, sites and contacts have a backfilled, unique, NOT NULL uuid exposed in every API response; integer ids and routes unchanged
+- [ ] organizations.rmm_client_id (nullable unique UUID); assets.source (manual/rmm/import) and external_id unique per (source, external_id)
+- [ ] tickets.source is manual/email/portal/rmm/api/rule (ui renamed to manual) and tickets.external_ref is unique per (source, external_ref)
+- [ ] ticket_notes.author_type human/system/ai (author-less notes backfilled as system), rendered distinctly and filterable on the ticket page
+- [ ] time_entries.entry_type labour/automation; automation can never be billable or invoiced; reports show automation minutes separately, outside utilisation % and labour cost
+- [ ] Every route under /api/v1 (no /api alias); openapi.json exported and committed, with a test that fails when it is stale
+- [ ] users.entra_tenant_id stored at login beside entra_oid
+- [ ] Product name, logo and colours come from one branding config; client-scoped frontend calls go through one useClientScope hook
+- [ ] Migrations reversible and run cleanly on a seeded copy of current data; full suites pass
+**Plans**: 3
+
+### Phase 13: Knowledge base
 **Goal**: Staff and clients find answers in internal and client-facing articles, suggested on tickets.
 **Requirements**: REQ-12
 **Recommended Agents**: engineering-backend-architect, support-support-responder
@@ -142,7 +159,7 @@
 - [ ] Search and suggestions on the ticket page
 **Plans**: 2
 
-### Phase 13: Portal polish
+### Phase 14: Portal polish
 **Goal**: Client users sign in with Entra SSO, attach files, manage their contact details and export their data.
 **Requirements**: REQ-13
 **Recommended Agents**: engineering-security-engineer, engineering-frontend-developer
@@ -152,8 +169,8 @@
 - [ ] Contact self-service and CSV export, isolation tested
 **Plans**: 3
 
-### Phase 14: Verify (owner manual testing)
-**Goal**: The owner runs every manual check deferred from phases 1-13 in one pass: real-tenant and real-vendor checks, and the docs/verify/ checklists. Failures become fix tasks before release.
+### Phase 15: Verify (owner manual testing)
+**Goal**: The owner runs every manual check deferred from phases 1-14 in one pass: real-tenant and real-vendor checks, and the docs/verify/ checklists. Failures become fix tasks before release.
 **Requirements**: none (verification only)
 **Recommended Agents**: testing-qa-verification-specialist
 **Success Criteria**:
@@ -177,6 +194,7 @@
 | 9 | 3 | 3 | Shipped |
 | 10 | 3 | 3 | Complete |
 | 11 | 3 | 3 | Complete |
-| 12 | 2 | 0 | Pending |
-| 13 | 3 | 0 | Pending |
-| 14 | 1 | 0 | Pending |
+| 12 | 3 | 0 | Pending |
+| 13 | 2 | 0 | Pending |
+| 14 | 3 | 0 | Pending |
+| 15 | 1 | 0 | Pending |

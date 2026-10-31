@@ -1,6 +1,6 @@
 # Verify: NinjaOne alerts to tickets (Phase 6)
 
-Run this once in Phase 14. Mark each item pass or fail with a note.
+Run this once in Phase 15. Mark each item pass or fail with a note.
 
 ## Prerequisites
 - A NinjaOne integration is connected and "Test connection" passes.

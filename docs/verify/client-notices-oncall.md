@@ -1,6 +1,6 @@
 # Verify: client appointment emails, portal appointments and on-call (Phase 5)
 
-Run this once in Phase 14. Use a real mailbox you control as the client contact. The worker must be running
+Run this once in Phase 15. Use a real mailbox you control as the client contact. The worker must be running
 with the mailbox configured. Mark each item pass or fail with a note.
 
 ## Client emails

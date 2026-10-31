@@ -86,7 +86,7 @@ Didn't work:
 | 7 | Stop logging orchestrator edits as manual-edit preferences (recurred) | Medium | D-007..D-012, reverted uncommitted |
 | 8 | Explain or fix the review pass rate metric (0/1 shown for a PASSED review) | Low | Phase 4 metrics |
 | 9 | Triage the 23 deferred findings and 4 INFO security items, starting with the hot-spot files | Low | 04-REVIEW.md, SECURITY-REVIEW.md |
-| 10 | Run the real-tenant spike and the other owner checks in Phase 14: Verify | Low | .planning/VERIFY.md, PRF-001 |
+| 10 | Run the real-tenant spike and the other owner checks in Phase 15: Verify | Low | .planning/VERIFY.md, PRF-001 |
 
 ### Metrics
 - Plans completed: 4

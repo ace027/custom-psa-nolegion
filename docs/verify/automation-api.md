@@ -1,6 +1,6 @@
 # Verify: API keys, webhooks and automation rules (Phase 7)
 
-Run this once in Phase 14. Mark each item pass or fail with a note.
+Run this once in Phase 15. Mark each item pass or fail with a note.
 
 ## Prerequisites
 - You are an admin. The worker is running (it sends webhooks and mail).

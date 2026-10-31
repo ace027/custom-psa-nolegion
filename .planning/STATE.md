@@ -19,10 +19,14 @@
 - Scheduling supports per-tech timezones
 - Calendar board uses an MIT library (react-big-calendar after a spike)
 - Appointments link to tickets only (no SLA or billing effect)
-- Owner manual testing deferred to a final Phase 14: Verify (.planning/VERIFY.md)
+- Owner manual testing deferred to a final Phase 15: Verify (.planning/VERIFY.md)
+- Integration readiness inserted as Phase 12 before release; knowledge base, portal polish and verify renumbered 13-15
+- Ticket sources: manual, email, portal, rmm, api, rule (ui renamed to manual)
+- API moves to /api/v1 with no /api alias; owner updates the Entra redirect URI
+- Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:plan 12` to plan Phase 12: Knowledge base
+Run `/triad:plan 12` to plan Phase 12: Integration readiness (design: .planning/explorations/2026-10-30-integration-readiness.md)
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -67,7 +71,7 @@ Run `/triad:plan 12` to plan Phase 12: Knowledge base
 - Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — PARTIAL: All three tasks are on disk and the plan's checks pass: 65 passed, 1 skipped, and ruff is clean. One caveat is the `GRANT ... DELETE` edit to forbidden `0025_outlook_sync.py`. It is described under is
 - Plan 04-03 (Wave 3): Free/busy cache job and the sync status, retry and availability API — Complete with Warnings
 - Plan 04-04 (Wave 4): Board Outlook busy shading, sync badges, settings card and setup docs — Complete
-- 2026-10-15: owner manual testing moved to a final Phase 14: Verify; deferred checks queued in .planning/VERIFY.md
+- 2026-10-15: owner manual testing moved to a final Phase 15: Verify; deferred checks queued in .planning/VERIFY.md
 
 ## Phase 5 Results
 (build started 2026-10-15)

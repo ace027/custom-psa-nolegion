@@ -1,6 +1,6 @@
 # Reports and dashboards: metric dictionary (Phase 11)
 
-Every rule here is an **assumption** until the owner confirms it in Phase 14 (see `docs/verify/reports.md`). All reports need `report:read` (admin and billing). Technicians see only their own "My week" tiles.
+Every rule here is an **assumption** until the owner confirms it in Phase 15 (see `docs/verify/reports.md`). All reports need `report:read` (admin and billing). Technicians see only their own "My week" tiles.
 
 ## Conventions
 - Money is integer cents; the screen shows dollars, CSV files show dollars.

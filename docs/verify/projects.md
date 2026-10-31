@@ -1,6 +1,6 @@
 # Verify: Projects and project billing (Phase 8)
 
-Run this once in Phase 14. Mark each item pass or fail with a note.
+Run this once in Phase 15. Mark each item pass or fail with a note.
 
 ## Prerequisites
 - Demo data is seeded (`python -m app.seed`): "Office network refresh" (fixed fee $2,500.00, Contoso Dental) and

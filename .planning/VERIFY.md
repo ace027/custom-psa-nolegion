@@ -1,7 +1,7 @@
-# Deferred owner checks (Phase 14: Verify)
+# Deferred owner checks (Phase 15: Verify)
 
 The owner does no manual testing between phases. Each phase adds its manual
-checks here instead of asking for them, and Phase 14 runs the whole list in one
+checks here instead of asking for them, and Phase 15 runs the whole list in one
 pass. Mark each item pass or fail (with a note) when it is run.
 
 ## Phase 1: Block-hour / retainer agreements

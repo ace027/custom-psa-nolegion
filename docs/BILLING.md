@@ -94,7 +94,7 @@ A project is billed in one of two modes, `fixed_fee` or `tm` (time and materials
 2. **T&M is billed at the existing rates and rounding, and the total billed is capped at the project budget.** Time over the cap is written off at our cost.
 3. **Tax and deposits are the same as normal invoices.**
 
-**Assumed, confirm in Phase 14** (stated to the owner, not yet confirmed):
+**Assumed, confirm in Phase 15** (stated to the owner, not yet confirmed):
 - Milestones (project phases) track progress only and are never billed.
 - Project time never draws down block hours.
 
