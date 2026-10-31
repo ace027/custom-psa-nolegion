@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 12 of 13 (planned)
-- **Status**: Phase 12 planned -- 4 plans across 3 waves
-- **Last Activity**: Phase 12 planning (2026-10-31)
+- **Phase**: 12 of 13 (executing)
+- **Status**: Phase 12 executing — Plan 12-01 failed
+- **Last Activity**: Plan 12-01 execution (2026-10-31)
 
 ## Progress
 ```
-[#################...] 86% — 38/44 plans complete
+[###############.....] 79% — 38/48 plans complete
 ```
 
 ## Recent Decisions
@@ -127,3 +127,7 @@ Run `/triad:build` to execute Phase 12: Integration readiness
 - Plan 11-01 (Wave 1): Report metrics: SLA, utilisation, aging, profitability with CSV — Complete
 - Plan 11-02 (Wave 2): Role dashboards API and scheduled report emails — Complete
 - Plan 11-03 (Wave 3): Report pages, role dashboards UI, cost rates and docs — Complete
+
+## Phase 12 Results
+(build started 2026-10-31)
+- Plan 12-01 (Wave 1): Integration-readiness schema, models, schemas and writers — PARTIAL: Migration 0033, models, schemas, writers, tests and docs are done. Ruff is clean and the 10 verification test files pass (176 passed, 1 skipped). I did not get a clean full-suite run (see issues). A `
