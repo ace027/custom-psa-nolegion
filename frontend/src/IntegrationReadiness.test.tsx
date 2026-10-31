@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { BRAND, applyBrand } from "./branding";
 import { ClientScopeProvider, clientApiPath, clientRoute, useClientScope } from "./clientScope";
+import OrganizationDetail from "./pages/OrganizationDetail";
 import UtilisationReport from "./pages/reports/UtilisationReport";
 import { NotesCard } from "./pages/TicketDetail";
 import type { Note, Ticket } from "./api";
@@ -39,14 +40,64 @@ describe("clientScope", () => {
   });
   function Probe() {
     const s = useClientScope();
-    return <p>{String(s.orgId)}|{s.orgId === null ? "" : s.apiPath("sites")}</p>;
+    return <p>{String(s.orgId)}|{s.orgId === null ? "" : `${s.apiPath("sites")}|${s.route("x")}`}</p>;
   }
-  it("falls back to the route param, provider wins", () => {
-    const { unmount } = render(<MemoryRouter initialEntries={["/organizations/4"]}><Routes><Route path="/organizations/:id" element={<Probe />} /></Routes></MemoryRouter>);
-    expect(screen.getByText("4|/organizations/4/sites")).toBeInTheDocument();
+  const at = (path: string, provider?: number) =>
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <ClientScopeProvider value={provider ?? null}>
+          <Routes><Route path="*" element={<Probe />} /></Routes>
+        </ClientScopeProvider>
+      </MemoryRouter>,
+    );
+  it("resolves the id from /organizations/:id and /organizations/:id/*", () => {
+    const { unmount } = at("/organizations/7");
+    expect(screen.getByText("7|/organizations/7/sites|/organizations/7/x")).toBeInTheDocument();
     unmount();
-    render(<MemoryRouter initialEntries={["/organizations/4"]}><ClientScopeProvider value={9}><Routes><Route path="/organizations/:id" element={<Probe />} /></Routes></ClientScopeProvider></MemoryRouter>);
-    expect(screen.getByText("9|/organizations/9/sites")).toBeInTheDocument();
+    at("/organizations/7/anything");
+    expect(screen.getByText("7|/organizations/7/sites|/organizations/7/x")).toBeInTheDocument();
+  });
+  it("is null on ticket and project routes without a provider", () => {
+    const { unmount } = at("/tickets/7");
+    expect(screen.getByText("null|")).toBeInTheDocument();
+    unmount();
+    at("/projects/7");
+    expect(screen.getByText("null|")).toBeInTheDocument();
+  });
+  it("uses the provider value off client routes, even on ticket pages", () => {
+    at("/tickets/7", 9);
+    expect(screen.getByText("9|/organizations/9/sites|/organizations/9/x")).toBeInTheDocument();
+  });
+  it("lets the client route win over the provider", () => {
+    at("/organizations/4", 9);
+    expect(screen.getByText("4|/organizations/4/sites|/organizations/4/x")).toBeInTheDocument();
+  });
+  it("throws from apiPath and route when no client is in scope", () => {
+    let scope!: ReturnType<typeof useClientScope>;
+    function Grab() { scope = useClientScope(); return null; }
+    render(<MemoryRouter initialEntries={["/tickets/7"]}><Grab /></MemoryRouter>);
+    expect(() => scope.apiPath("sites")).toThrow("No client in scope");
+    expect(() => scope.route()).toThrow("No client in scope");
+  });
+});
+
+describe("OrganizationDetail", () => {
+  it("fetches the client from the route id", async () => {
+    const urls: string[] = [];
+    const f = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      urls.push(String(input));
+      return new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/organizations/12"]}>
+          <Routes><Route path="/organizations/:id" element={<OrganizationDetail />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await vi.waitFor(() => expect(urls).toContain("/api/v1/organizations/12"));
+    expect(urls).toContain("/api/v1/organizations/12/sites?include_archived=true");
+    f.mockRestore();
   });
 });
 

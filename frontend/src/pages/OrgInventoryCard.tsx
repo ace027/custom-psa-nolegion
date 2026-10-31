@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { procurement } from "../api";
 import { ErrorMsg, Card } from "../ui";
+import { useClientScope } from "../clientScope";
 import { ITEM_STATUS_LABEL } from "./procurement/Inventory";
 
 
-export default function OrgInventoryCard({ orgId }: { orgId: number }) {
-  const q = useQuery({ queryKey: ["procurement", "org-inventory", orgId], queryFn: () => procurement.orgInventory(orgId) });
+export default function OrgInventoryCard() {
+  const { orgId } = useClientScope();
+  const q = useQuery({ queryKey: ["procurement", "org-inventory", orgId], enabled: orgId !== null, queryFn: () => procurement.orgInventory(orgId!) });
   const rows = q.data ?? [];
   return (
     <Card title="Hardware and inventory">

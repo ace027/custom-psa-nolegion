@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
 import { Contact, Organization, Site, api } from "../api";
 import { can, useMe } from "../auth";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../ui";
@@ -9,23 +8,25 @@ import OrgBillingCard from "./OrgBillingCard";
 import OrgInventoryCard from "./OrgInventoryCard";
 import OrgOpportunitiesCard from "./OrgOpportunitiesCard";
 import OrgProjectsCard from "./OrgProjectsCard";
-import { clientApiPath } from "../clientScope";
+import { useClientScope } from "../clientScope";
 
 export default function OrganizationDetail() {
-  const id = Number(useParams().id);
+  const { orgId: id, apiPath } = useClientScope();
   const { data: me } = useMe();
   const canWrite = can(me, "org:write");
   const qc = useQueryClient();
   const refresh = () => qc.invalidateQueries();
 
-  const org = useQuery({ queryKey: ["org", id], queryFn: () => api<Organization>(clientApiPath(id)) });
+  const org = useQuery({ queryKey: ["org", id], enabled: id !== null, queryFn: () => api<Organization>(apiPath()) });
   const sites = useQuery({
     queryKey: ["sites", id],
-    queryFn: () => api<Site[]>(`${clientApiPath(id, "sites")}?include_archived=true`),
+    enabled: id !== null,
+    queryFn: () => api<Site[]>(`${apiPath("sites")}?include_archived=true`),
   });
   const contacts = useQuery({
     queryKey: ["contacts", id],
-    queryFn: () => api<Contact[]>(`${clientApiPath(id, "contacts")}?include_archived=true`),
+    enabled: id !== null,
+    queryFn: () => api<Contact[]>(`${apiPath("contacts")}?include_archived=true`),
   });
 
   if (org.isLoading) return <p>Loading…</p>;
@@ -37,14 +38,13 @@ export default function OrganizationDetail() {
         {org.data.archived_at && <span className="ml-2 text-sm text-slate-500">(archived)</span>}
       </h1>
       <OrgForm org={org.data} canWrite={canWrite} onDone={refresh} />
-      {can(me, "billing:read") && <OrgBillingCard orgId={id} />}
-      {can(me, "crm:read") && <OrgOpportunitiesCard orgId={id} />}
-      {can(me, "procurement:read") && <OrgInventoryCard orgId={id} />}
-      {can(me, "ticket:read") && <OrgProjectsCard orgId={id} />}
+      {can(me, "billing:read") && <OrgBillingCard />}
+      {can(me, "crm:read") && <OrgOpportunitiesCard orgId={org.data.id} />}
+      {can(me, "procurement:read") && <OrgInventoryCard />}
+      {can(me, "ticket:read") && <OrgProjectsCard orgId={org.data.id} />}
       <OrgAssetsCard org={org.data} />
-      <SitesCard orgId={id} sites={sites.data ?? []} canWrite={canWrite} onDone={refresh} />
+      <SitesCard sites={sites.data ?? []} canWrite={canWrite} onDone={refresh} />
       <ContactsCard
-        orgId={id}
         contacts={contacts.data ?? []}
         sites={sites.data ?? []}
         canWrite={canWrite}
@@ -57,16 +57,17 @@ export default function OrganizationDetail() {
 function OrgForm({ org, canWrite, onDone }: { org: Organization; canWrite: boolean; onDone: () => void }) {
   const [form, setForm] = useState(org);
   useEffect(() => setForm(org), [org]);
+  const { apiPath } = useClientScope();
   const save = useMutation({
     mutationFn: () =>
-      api(clientApiPath(org.id), {
+      api(apiPath(), {
         method: "PATCH",
         json: { name: form.name, status: form.status, billing_address: form.billing_address, notes: form.notes },
       }),
     onSuccess: onDone,
   });
   const archive = useMutation({
-    mutationFn: () => api(clientApiPath(org.id, org.archived_at ? "unarchive" : "archive"), { method: "POST" }),
+    mutationFn: () => api(apiPath(org.archived_at ? "unarchive" : "archive"), { method: "POST" }),
     onSuccess: onDone,
   });
   return (
@@ -110,11 +111,12 @@ function OrgForm({ org, canWrite, onDone }: { org: Organization; canWrite: boole
   );
 }
 
-function SitesCard({ orgId, sites, canWrite, onDone }: { orgId: number; sites: Site[]; canWrite: boolean; onDone: () => void }) {
+function SitesCard({ sites, canWrite, onDone }: { sites: Site[]; canWrite: boolean; onDone: () => void }) {
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  const { apiPath } = useClientScope();
   const add = useMutation({
-    mutationFn: () => api(clientApiPath(orgId, "sites"), { method: "POST", json: { name, city: city || null } }),
+    mutationFn: () => api(apiPath("sites"), { method: "POST", json: { name, city: city || null } }),
     onSuccess: () => {
       setName("");
       setCity("");
@@ -164,12 +166,13 @@ function SitesCard({ orgId, sites, canWrite, onDone }: { orgId: number; sites: S
   );
 }
 
-function ContactsCard({ orgId, contacts, sites, canWrite, onDone }: { orgId: number; contacts: Contact[]; sites: Site[]; canWrite: boolean; onDone: () => void }) {
+function ContactsCard({ contacts, sites, canWrite, onDone }: { contacts: Contact[]; sites: Site[]; canWrite: boolean; onDone: () => void }) {
   const blank = { name: "", email: "", phone: "", title: "", site_id: "", is_primary: false, is_billing_contact: false };
   const [form, setForm] = useState(blank);
+  const { apiPath } = useClientScope();
   const add = useMutation({
     mutationFn: () =>
-      api(clientApiPath(orgId, "contacts"), {
+      api(apiPath("contacts"), {
         method: "POST",
         json: {
           name: form.name,

@@ -6,13 +6,14 @@ import { money, parsePercent, parseMoney, percent } from "../money";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../ui";
 import { useReceivables } from "./billing/Receivables";
 import StatementActions from "./billing/StatementActions";
-import { clientApiPath } from "../clientScope";
+import { useClientScope } from "../clientScope";
 
-export default function OrgBillingCard({ orgId }: { orgId: number }) {
+export default function OrgBillingCard() {
+  const { orgId, apiPath } = useClientScope();
   const { data: me } = useMe();
   const canWrite = can(me, "billing:write");
   const qc = useQueryClient();
-  const b = useQuery({ queryKey: ["org-billing", orgId], queryFn: () => api<OrgBilling>(clientApiPath(orgId, "billing")) });
+  const b = useQuery({ queryKey: ["org-billing", orgId], enabled: orgId !== null, queryFn: () => api<OrgBilling>(apiPath("billing")) });
   const wts = useQuery({ queryKey: ["wt-billing"], queryFn: () => api<WorkTypeBilling[]>("/billing/work-types") });
   const refresh = () => qc.invalidateQueries({ queryKey: ["org-billing", orgId] });
   const [terms, setTerms] = useState<string | null>(null);
@@ -21,24 +22,24 @@ export default function OrgBillingCard({ orgId }: { orgId: number }) {
     mutationFn: () => {
       const bp = tax === null ? undefined : parsePercent(tax);
       if (tax !== null && bp === null) throw new Error("Tax rate must look like 8.25");
-      return api(clientApiPath(orgId, "billing"), { method: "PATCH", json: { ...(terms !== null ? { payment_terms_days: Number(terms) } : {}), ...(bp !== undefined ? { tax_rate_bp: bp } : {}) } });
+      return api(apiPath("billing"), { method: "PATCH", json: { ...(terms !== null ? { payment_terms_days: Number(terms) } : {}), ...(bp !== undefined ? { tax_rate_bp: bp } : {}) } });
     },
     onSuccess: () => { setTerms(null); setTax(null); refresh(); },
   });
   const remind = useMutation({
-    mutationFn: (do_not_remind: boolean) => api(clientApiPath(orgId, "billing"), { method: "PATCH", json: { do_not_remind } }),
+    mutationFn: (do_not_remind: boolean) => api(apiPath("billing"), { method: "PATCH", json: { do_not_remind } }),
     onSuccess: refresh,
   });
   const lateFees = useMutation({
-    mutationFn: (late_fees_enabled: boolean) => api(clientApiPath(orgId, "billing"), { method: "PATCH", json: { late_fees_enabled } }),
+    mutationFn: (late_fees_enabled: boolean) => api(apiPath("billing"), { method: "PATCH", json: { late_fees_enabled } }),
     onSuccess: refresh,
   });
   const setRate = useMutation({
     mutationFn: ({ wt, text }: { wt: number; text: string }) => {
-      if (text.trim() === "") return api(clientApiPath(orgId, "billing", "rates", wt), { method: "DELETE" });
+      if (text.trim() === "") return api(apiPath("billing", "rates", wt), { method: "DELETE" });
       const c = parseMoney(text);
       if (c === null) throw new Error("Enter a valid rate");
-      return api(clientApiPath(orgId, "billing", "rates", wt), { method: "PUT", json: { rate_cents: c } });
+      return api(apiPath("billing", "rates", wt), { method: "PUT", json: { rate_cents: c } });
     },
     onSuccess: refresh,
   });
@@ -54,7 +55,7 @@ export default function OrgBillingCard({ orgId }: { orgId: number }) {
         {acct && acct.credit_cents > 0 && <span> · <b>{money(acct.credit_cents)}</b> unapplied credit</span>}
       </p>
       <div className="mb-3 flex flex-wrap items-center gap-4 text-sm">
-        <StatementActions orgId={orgId} />
+        {orgId !== null && <StatementActions orgId={orgId} />}
         <label className="flex items-center gap-1">
           <input type="checkbox" disabled={!canWrite} checked={b.data.do_not_remind} onChange={(e) => remind.mutate(e.target.checked)} />
           Do not send payment reminders to this client
