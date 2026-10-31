@@ -9,6 +9,7 @@ import { useLookups } from "../lookups";
 import { money } from "../money";
 import { Button, Card, ErrorMsg, Field, SlaBadge, fmt, inputCls } from "../ui";
 import TicketAppointmentsCard from "./TicketAppointmentsCard";
+import { clientApiPath, clientRoute } from "../clientScope";
 
 export default function TicketDetail() {
   const id = Number(useParams().id);
@@ -48,7 +49,7 @@ export default function TicketDetail() {
           <>
             {" · "}Device:{" "}
             {t.organization_id ? (
-              <Link className="text-blue-700 hover:underline" to={`/organizations/${t.organization_id}`}>{t.asset_name}</Link>
+              <Link className="text-blue-700 hover:underline" to={clientRoute(t.organization_id)}>{t.asset_name}</Link>
             ) : (
               t.asset_name
             )}
@@ -282,7 +283,7 @@ function TriagePanel({ ticket: t, onDone }: { ticket: Ticket; onDone: () => void
   const contacts = useQuery({
     queryKey: ["contacts", Number(orgId)],
     enabled: !!orgId,
-    queryFn: () => api<Contact[]>(`/organizations/${orgId}/contacts?include_archived=false`),
+    queryFn: () => api<Contact[]>(`${clientApiPath(Number(orgId), "contacts")}?include_archived=false`),
   });
   const save = useMutation({
     mutationFn: () => api(`/tickets/${t.id}`, { method: "PATCH", json: { organization_id: Number(orgId), contact_id: contactId ? Number(contactId) : null } }),
@@ -319,10 +320,21 @@ export function fillCanned(body: string, vars: Record<string, string>): string {
   return body.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, k: string) => vars[k] ?? m);
 }
 
-function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Ticket; notes: Note[]; canWrite: boolean; onDone: () => void }) {
+type AuthorFilter = "all" | Note["author_type"];
+const AUTHOR_FILTERS: [AuthorFilter, string][] = [["all", "All"], ["human", "Human"], ["system", "System"], ["ai", "AI"]];
+const EMPTY_FILTER: Record<AuthorFilter, string> = { all: "No notes yet.", human: "No human notes", system: "No system notes", ai: "No AI notes" };
+const noteTone = (n: Note) =>
+  n.author_type === "system" ? "border-slate-200 bg-slate-100"
+  : n.author_type === "ai" ? "border-violet-100 bg-violet-100"
+  : n.visibility === "internal" ? "border-amber-200 bg-amber-50"
+  : "border-slate-200 bg-surface";
+
+export function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Ticket; notes: Note[]; canWrite: boolean; onDone: () => void }) {
   const [body, setBody] = useState("");
   const [visibility, setVisibility] = useState<"internal" | "customer">("internal");
   const [email, setEmail] = useState(false);
+  const [filter, setFilter] = useState<AuthorFilter>("all");
+  const shown = filter === "all" ? notes : notes.filter((n) => n.author_type === filter);
   const canned = useQuery({ queryKey: ["canned"], enabled: canWrite, queryFn: () => api<CannedResponse[]>("/canned-responses") });
   const insertCanned = (id: string) => {
     const c = canned.data?.find((x) => String(x.id) === id);
@@ -340,12 +352,31 @@ function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Ticket; not
   });
   return (
     <Card title="Notes">
+      <div role="group" aria-label="Filter notes by author" className="mb-2 flex flex-wrap gap-1">
+        {AUTHOR_FILTERS.map(([key, label]) => {
+          const count = key === "all" ? notes.length : notes.filter((n) => n.author_type === key).length;
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={filter === key}
+              onClick={() => setFilter(key)}
+              className={`rounded-lg border px-2 py-1 text-xs ${filter === key ? "border-blue-600 bg-blue-50 font-semibold text-blue-700" : "border-slate-300 text-slate-600 hover:bg-slate-100"}`}
+            >
+              {label} ({count})
+            </button>
+          );
+        })}
+      </div>
       <ul className="space-y-2">
-        {notes.map((n) => (
-          <li key={n.id} className={`rounded border p-3 text-sm ${n.visibility === "internal" ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-surface"}`}>
+        {shown.map((n) => (
+          <li key={n.id} className={`rounded border p-3 text-sm ${noteTone(n)}`}>
             <div className="mb-1 flex flex-wrap justify-between gap-2 text-xs text-slate-500">
               <span>
-                <b>{n.author_name ?? n.author_email ?? "system"}</b> · {n.source === "email" ? "email from customer" : n.visibility === "internal" ? "internal note" : "visible to customer"}
+                <b>{n.author_name ?? n.author_email ?? "system"}</b>
+                {n.author_type === "system" && <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 font-semibold text-slate-700">System</span>}
+                {n.author_type === "ai" && <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 font-semibold text-violet-800">AI</span>}
+                {" "}· {n.source === "email" ? "email from customer" : n.visibility === "internal" ? "internal note" : "visible to customer"}
                 {n.email_status && n.source !== "email" && ` · email ${n.email_status}`}
               </span>
               <span>{fmt(n.created_at)}</span>
@@ -354,6 +385,7 @@ function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Ticket; not
           </li>
         ))}
         {notes.length === 0 && <li className="text-sm text-slate-500">No notes yet.</li>}
+        {notes.length > 0 && shown.length === 0 && <li className="text-sm text-slate-500">{EMPTY_FILTER[filter]}</li>}
       </ul>
       {canWrite && (
         <form className="mt-3 space-y-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
@@ -404,7 +436,7 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
           {entries.map((e) => (
             <tr key={e.id} className="border-t border-slate-100">
               <td>{e.work_date}</td>
-              <td>{lk.workTypes.find((w) => w.id === e.work_type_id)?.name}</td>
+              <td>{lk.workTypes.find((w) => w.id === e.work_type_id)?.name}{e.entry_type === "automation" && <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-xs font-semibold text-violet-800">Automation</span>}</td>
               <td>{e.minutes_actual} min</td>
               <td>{e.billable ? `${e.minutes_billable} min` : "non-billable"}</td>
               <td>{e.note}</td>

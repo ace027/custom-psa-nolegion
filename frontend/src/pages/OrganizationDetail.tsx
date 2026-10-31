@@ -9,6 +9,7 @@ import OrgBillingCard from "./OrgBillingCard";
 import OrgInventoryCard from "./OrgInventoryCard";
 import OrgOpportunitiesCard from "./OrgOpportunitiesCard";
 import OrgProjectsCard from "./OrgProjectsCard";
+import { clientApiPath } from "../clientScope";
 
 export default function OrganizationDetail() {
   const id = Number(useParams().id);
@@ -17,14 +18,14 @@ export default function OrganizationDetail() {
   const qc = useQueryClient();
   const refresh = () => qc.invalidateQueries();
 
-  const org = useQuery({ queryKey: ["org", id], queryFn: () => api<Organization>(`/organizations/${id}`) });
+  const org = useQuery({ queryKey: ["org", id], queryFn: () => api<Organization>(clientApiPath(id)) });
   const sites = useQuery({
     queryKey: ["sites", id],
-    queryFn: () => api<Site[]>(`/organizations/${id}/sites?include_archived=true`),
+    queryFn: () => api<Site[]>(`${clientApiPath(id, "sites")}?include_archived=true`),
   });
   const contacts = useQuery({
     queryKey: ["contacts", id],
-    queryFn: () => api<Contact[]>(`/organizations/${id}/contacts?include_archived=true`),
+    queryFn: () => api<Contact[]>(`${clientApiPath(id, "contacts")}?include_archived=true`),
   });
 
   if (org.isLoading) return <p>Loading…</p>;
@@ -58,14 +59,14 @@ function OrgForm({ org, canWrite, onDone }: { org: Organization; canWrite: boole
   useEffect(() => setForm(org), [org]);
   const save = useMutation({
     mutationFn: () =>
-      api(`/organizations/${org.id}`, {
+      api(clientApiPath(org.id), {
         method: "PATCH",
         json: { name: form.name, status: form.status, billing_address: form.billing_address, notes: form.notes },
       }),
     onSuccess: onDone,
   });
   const archive = useMutation({
-    mutationFn: () => api(`/organizations/${org.id}/${org.archived_at ? "unarchive" : "archive"}`, { method: "POST" }),
+    mutationFn: () => api(clientApiPath(org.id, org.archived_at ? "unarchive" : "archive"), { method: "POST" }),
     onSuccess: onDone,
   });
   return (
@@ -113,7 +114,7 @@ function SitesCard({ orgId, sites, canWrite, onDone }: { orgId: number; sites: S
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const add = useMutation({
-    mutationFn: () => api(`/organizations/${orgId}/sites`, { method: "POST", json: { name, city: city || null } }),
+    mutationFn: () => api(clientApiPath(orgId, "sites"), { method: "POST", json: { name, city: city || null } }),
     onSuccess: () => {
       setName("");
       setCity("");
@@ -168,7 +169,7 @@ function ContactsCard({ orgId, contacts, sites, canWrite, onDone }: { orgId: num
   const [form, setForm] = useState(blank);
   const add = useMutation({
     mutationFn: () =>
-      api(`/organizations/${orgId}/contacts`, {
+      api(clientApiPath(orgId, "contacts"), {
         method: "POST",
         json: {
           name: form.name,

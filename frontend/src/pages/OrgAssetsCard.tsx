@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Asset, Organization, WARRANTY_LABEL, api } from "../api";
 import { can, useMe } from "../auth";
 import { Button, Card, ErrorMsg, Field, WarrantyBadge, inputCls } from "../ui";
+import { clientApiPath } from "../clientScope";
 
 export default function OrgAssetsCard({ org }: { org: Organization }) {
   const { data: me } = useMe();
@@ -13,7 +14,7 @@ export default function OrgAssetsCard({ org }: { org: Organization }) {
   const [reason, setReason] = useState("");
   const q = useQuery({
     queryKey: ["assets", org.id, retired],
-    queryFn: () => api<Asset[]>(`/organizations/${org.id}/assets?include_retired=${retired}`),
+    queryFn: () => api<Asset[]>(`${clientApiPath(org.id, "assets")}?include_retired=${retired}`),
   });
   const done = () => { setEditing(null); setDate(""); setReason(""); qc.invalidateQueries({ queryKey: ["assets", org.id] }); qc.invalidateQueries({ queryKey: ["org", org.id] }); };
   const override = useMutation({
@@ -22,7 +23,7 @@ export default function OrgAssetsCard({ org }: { org: Organization }) {
   });
   const clear = useMutation({ mutationFn: (a: Asset) => api(`/assets/${a.id}/overrides/warranty_end`, { method: "DELETE" }), onSuccess: done });
   const share = useMutation({
-    mutationFn: () => api(`/organizations/${org.id}/assets-sharing`, { method: "PUT", json: { published: !org.assets_published } }),
+    mutationFn: () => api(clientApiPath(org.id, "assets-sharing"), { method: "PUT", json: { published: !org.assets_published } }),
     onSuccess: done,
   });
   const canEdit = can(me, "org:write");

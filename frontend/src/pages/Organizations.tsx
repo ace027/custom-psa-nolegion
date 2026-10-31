@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Organization, Page, api } from "../api";
 import { can, useMe } from "../auth";
 import { Button, ErrorMsg, Field, inputCls } from "../ui";
+import { clientRoute } from "../clientScope";
 
 export default function Organizations() {
   const { data: me } = useMe();
@@ -61,7 +62,7 @@ export default function Organizations() {
       <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-surface">
         {list.data?.items.map((o) => (
           <li key={o.id} className="px-4 py-2">
-            <Link to={`/organizations/${o.id}`} className="font-medium text-blue-700 hover:underline">
+            <Link to={clientRoute(o.id)} className="font-medium text-blue-700 hover:underline">
               {o.name}
             </Link>
             {o.status === "inactive" && <span className="ml-2 text-xs text-slate-500">inactive</span>}

@@ -6,6 +6,7 @@ import { can, useMe } from "../../auth";
 import { money } from "../../money";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../../ui";
 import { Badge } from "./QuotesList";
+import { clientApiPath } from "../../clientScope";
 
 interface Form {
   user_count: string;
@@ -139,7 +140,7 @@ function PriceIt({ survey }: { survey: Survey }) {
   const { data: me } = useMe();
   const nav = useNavigate();
   const quotes = useQuery({ queryKey: ["quotes", "org", survey.organization_id], queryFn: () => api<Quote[]>(`/quotes?organization_id=${survey.organization_id}`) });
-  const org = useQuery({ queryKey: ["org", survey.organization_id], queryFn: () => api<Organization>(`/organizations/${survey.organization_id}`) });
+  const org = useQuery({ queryKey: ["org", survey.organization_id], queryFn: () => api<Organization>(clientApiPath(survey.organization_id)) });
   const ags = useQuery({ queryKey: ["agreements", "org", survey.organization_id], queryFn: () => api<Agreement[]>(`/agreements?organization_id=${survey.organization_id}`), enabled: can(me, "billing:read") });
   const flat = (ags.data ?? []).filter((a) => a.type === "flat" && !a.end_date);
   const now = new Date();

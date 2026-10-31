@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../api";
 import { Button, ErrorMsg, Field, ThemeToggle, inputCls } from "../ui";
+import { BRAND } from "../branding";
 
 export default function Login() {
   const qc = useQueryClient();
@@ -12,7 +13,7 @@ export default function Login() {
   });
   return (
     <main className="mx-auto mt-24 max-w-sm space-y-4 rounded-xl border border-slate-200 bg-surface p-6 shadow-card">
-      <div className="flex items-center justify-between"><h1 className="text-2xl font-bold tracking-tight">PSA sign in</h1><ThemeToggle /></div>
+      <div className="flex items-center justify-between"><h1 className="text-2xl font-bold tracking-tight">{BRAND.name} sign in</h1><ThemeToggle /></div>
       <a
         href="/api/auth/login"
         className="block rounded-lg bg-blue-600 px-3 py-2 text-center text-sm font-medium text-on-accent hover:bg-blue-700"

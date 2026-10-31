@@ -5,6 +5,7 @@ import { Lead, LeadStatus, User, api, crmApi } from "../../api";
 import { can, useMe } from "../../auth";
 import { money, parseMoney } from "../../money";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../../ui";
+import { clientRoute } from "../../clientScope";
 
 const STATUSES: Exclude<LeadStatus, "converted">[] = ["new", "contacted", "qualified", "disqualified"];
 const STATUS_LABEL: Record<LeadStatus, string> = {
@@ -70,7 +71,7 @@ export default function Leads() {
                 </td>
                 <td className="text-right">
                   {l.converted_organization_id ? (
-                    <Link className="text-blue-700 hover:underline" to={`/organizations/${l.converted_organization_id}`}>View client</Link>
+                    <Link className="text-blue-700 hover:underline" to={clientRoute(l.converted_organization_id)}>View client</Link>
                   ) : write && l.status === "qualified" ? (
                     <Button variant="secondary" onClick={() => setConverting(l)} aria-label={`Convert ${l.name}`}>Convert</Button>
                   ) : null}

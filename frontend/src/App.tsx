@@ -3,6 +3,7 @@ import { Suspense, lazy, useState } from "react";
 import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { api } from "./api";
 import { can, useMe } from "./auth";
+import { BRAND } from "./branding";
 import Audit from "./pages/Audit";
 import Agreements from "./pages/billing/Agreements";
 import BillingLayout from "./pages/billing/BillingLayout";
@@ -83,13 +84,13 @@ function Layout() {
     <div className="min-h-screen md:flex">
       <div className="flex items-center justify-between border-b border-slate-200 bg-surface px-4 py-3 md:hidden">
         <span className="flex items-center gap-2 font-bold">
-          <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-blue-600 text-sm text-on-accent">P</span>PSA
+          <BrandMark />
         </span>
         <button type="button" aria-expanded={open} aria-controls="sidebar" className="rounded-lg border border-slate-300 px-3 py-1 text-sm" onClick={() => setOpen(!open)}>Menu</button>
       </div>
       <aside id="sidebar" className={`${open ? "block" : "hidden"} border-b border-slate-200 bg-surface p-3 md:sticky md:top-0 md:block md:h-screen md:w-56 md:shrink-0 md:overflow-y-auto md:border-b-0 md:border-r`}>
         <div className="mb-4 hidden items-center gap-2 px-3 pt-2 font-bold md:flex">
-          <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-blue-600 text-sm text-on-accent">P</span>PSA
+          <BrandMark />
         </div>
         <form
           role="search"
@@ -150,6 +151,21 @@ function Layout() {
         <div className="mx-auto max-w-6xl">{can(me, "time:write") && <TimerBar />}<Outlet /></div>
       </main>
     </div>
+  );
+}
+
+function BrandMark() {
+  return (
+    <>
+      {BRAND.logoUrl ? (
+        <img src={BRAND.logoUrl} alt={BRAND.name} className="h-7 w-auto" />
+      ) : (
+        <>
+          <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-blue-600 text-sm text-on-accent">{BRAND.mark}</span>
+          {BRAND.name}
+        </>
+      )}
+    </>
   );
 }
 

@@ -5,6 +5,7 @@ import { Organization, Page, Quote, Survey, User, api } from "../../api";
 import { can, useMe } from "../../auth";
 import { money } from "../../money";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../../ui";
+import { clientApiPath } from "../../clientScope";
 
 export const STATUS_STYLE: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700",
@@ -95,7 +96,7 @@ function NewSurvey() {
         const org = await api<Organization>("/organizations", { method: "POST", json: { name: newName, status: "prospect" } });
         id = org.id;
       }
-      return api<Survey>(`/organizations/${id}/surveys`, { method: "POST", json: { scheduled_for: when ? new Date(when).toISOString() : null, tech_id: techId ? Number(techId) : null } });
+      return api<Survey>(clientApiPath(id, "surveys"), { method: "POST", json: { scheduled_for: when ? new Date(when).toISOString() : null, tech_id: techId ? Number(techId) : null } });
     },
     onSuccess: (s) => { qc.invalidateQueries({ queryKey: ["surveys"] }); qc.invalidateQueries({ queryKey: ["orgs"] }); nav(`/quotes/surveys/${s.id}`); },
   });

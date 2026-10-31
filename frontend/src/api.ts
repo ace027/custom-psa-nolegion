@@ -1,3 +1,4 @@
+import { clientApiPath } from "./clientScope";
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -49,9 +50,12 @@ export interface Me {
 export interface User extends Omit<Me, "permissions" | "notify_assigned" | "notify_sla" | "notify_reply"> {
   is_active: boolean;
   last_login_at: string | null;
+  entra_tenant_id: string | null;
 }
 export interface Organization {
   id: number;
+  uuid: string;
+  rmm_client_id: string | null;
   name: string;
   status: "active" | "inactive" | "prospect";
   billing_address: string | null;
@@ -61,6 +65,7 @@ export interface Organization {
 }
 export interface Site {
   id: number;
+  uuid: string;
   organization_id: number;
   name: string;
   address_line1: string | null;
@@ -74,6 +79,7 @@ export interface Contact {
   portal_org_tickets: boolean;
   portal_assets: boolean;
   id: number;
+  uuid: string;
   organization_id: number;
   site_id: number | null;
   name: string;
@@ -153,6 +159,7 @@ export interface CsatSummary {
 }
 export type SlaState = "none" | "ok" | "at_risk" | "breached" | "paused" | "done";
 
+export type TicketSource = "manual" | "email" | "portal" | "rmm" | "api" | "rule";
 export interface Ticket {
   id: number;
   number: number;
@@ -178,7 +185,8 @@ export interface Ticket {
   assignee_name: string | null;
   subject: string;
   description: string | null;
-  source: string;
+  source: TicketSource;
+  external_ref: string | null;
   asset_id?: number | null;
   asset_name?: string | null;
   project_id?: number | null;
@@ -196,6 +204,7 @@ export interface Note {
   id: number;
   author_name: string | null;
   author_email: string | null;
+  author_type: "human" | "system" | "ai";
   visibility: "internal" | "customer";
   source: string;
   body: string;
@@ -210,6 +219,7 @@ export interface TimeEntry {
   minutes_actual: number;
   minutes_billable: number;
   billable: boolean;
+  entry_type: "labour" | "automation";
   note: string | null;
   voided_at: string | null;
 }
@@ -897,6 +907,8 @@ export interface Asset {
   warranty_overridden: boolean;
   conflict: boolean;
   retired_at: string | null;
+  source: string;
+  external_id: string | null;
 }
 export interface WarrantyReport {
   as_of: string;
@@ -1472,7 +1484,7 @@ export const procurement = {
   deliver: (id: number, json: DeliverInput) => api<InventoryItem>(`/procurement/inventory/${id}/deliver`, { method: "POST", json }),
   undoDelivery: (id: number) => api<InventoryItem>(`/procurement/inventory/${id}/undo-delivery`, { method: "POST" }),
   consume: (id: number) => api<InventoryItem>(`/procurement/inventory/${id}/consume`, { method: "POST" }),
-  orgInventory: (orgId: number) => api<InventoryItem[]>(`/procurement/organizations/${orgId}/inventory`),
+  orgInventory: (orgId: number) => api<InventoryItem[]>(`/procurement${clientApiPath(orgId, "inventory")}`),
   markupRules: () => api<MarkupRule[]>("/procurement/markup-rules"),
   createMarkupRule: (json: MarkupRuleInput) => api<MarkupRule>("/procurement/markup-rules", { method: "POST", json }),
   updateMarkupRule: (id: number, markup_bp: number) => api<MarkupRule>(`/procurement/markup-rules/${id}`, { method: "PATCH", json: { markup_bp } }),
@@ -1528,7 +1540,7 @@ export interface UtilisationTotals {
 }
 export interface UtilisationReport {
   range: RangeOut;
-  rows: (UtilisationTotals & { user_id: number; name: string })[];
+  rows: (UtilisationTotals & { automation_minutes: number; user_id: number; name: string })[];
   totals: UtilisationTotals;
 }
 export interface AgingReport {

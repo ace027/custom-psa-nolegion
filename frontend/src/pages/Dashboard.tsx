@@ -7,6 +7,7 @@ import { Card, ErrorMsg } from "../ui";
 import { daysLeft, useOpenRenewals } from "./crm/Renewals";
 import { QueryStatus } from "./reports/SlaReport";
 import TicketTable from "./TicketTable";
+import { clientRoute } from "../clientScope";
 
 export default function Dashboard() {
   const q = useQuery({ queryKey: ["dashboard"], queryFn: () => api<DashboardData>("/dashboard"), refetchInterval: 60_000 });
@@ -80,7 +81,7 @@ function RenewalsCard() {
       <ul className="divide-y divide-slate-100 text-sm">
         {rows.map((r) => (
           <li key={r.id} className="flex flex-wrap justify-between gap-2 py-1.5">
-            <span><Link className="text-blue-700 hover:underline" to={`/organizations/${r.organization_id}`}>{r.organization_name}</Link> · {r.agreement_name}</span>
+            <span><Link className="text-blue-700 hover:underline" to={clientRoute(r.organization_id)}>{r.organization_name}</Link> · {r.agreement_name}</span>
             <span className="text-slate-600">{r.due_on} ({daysLeft(r.due_on)} days)</span>
           </li>
         ))}

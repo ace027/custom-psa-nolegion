@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { SearchHit, api } from "../api";
 import { ErrorMsg, Field, inputCls } from "../ui";
+import { clientRoute } from "../clientScope";
 
 const GROUPS: { kind: SearchHit["kind"]; label: string }[] = [
   { kind: "ticket", label: "Tickets" },
@@ -12,7 +13,7 @@ const GROUPS: { kind: SearchHit["kind"]; label: string }[] = [
 
 function href(h: SearchHit): string {
   if (h.kind === "ticket") return `/tickets/${h.id}`;
-  return `/organizations/${h.organization_id ?? h.id}`;
+  return clientRoute(h.organization_id ?? h.id);
 }
 
 export default function Search() {

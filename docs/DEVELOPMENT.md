@@ -102,3 +102,18 @@ intercepting proxy. To exercise `docker compose`:
    build args, and set `HTTP_PORT=8080` in `.env`:
    `docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d --build`
 This is only needed in that sandbox; on your own VM plain `docker compose up -d --build` is enough.
+
+## White-label branding
+
+The product name, mark, logo and colours come from `frontend/src/branding.ts`, read from build-time variables (set them in `frontend/.env` or the build environment):
+
+| Variable | Meaning | Default |
+| --- | --- | --- |
+| `VITE_BRAND_NAME` | Product name (header, sign-in heading, page title) | `PSA` |
+| `VITE_BRAND_MARK` | Short mark shown in the header badge | First letter of the name |
+| `VITE_BRAND_LOGO_URL` | Logo image; when set it replaces the text mark (alt text is the name) | none |
+| `VITE_BRAND_COLORS` | JSON object mapping existing `@theme` colour token names to values, for example `{"blue-600":"#0a7"}` | none |
+
+Invalid `VITE_BRAND_COLORS` JSON is ignored with a console warning. `frontend/index.html` keeps `PSA` as the static fallback title until the app loads.
+
+Client-scoped API paths and links are built only through `frontend/src/clientScope.ts` (`clientApiPath`, `clientRoute`, `useClientScope`).

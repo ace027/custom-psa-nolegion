@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Statement, api } from "../../api";
 import { can, useMe } from "../../auth";
 import { Button, ErrorMsg } from "../../ui";
+import { clientApiPath } from "../../clientScope";
 
 /** Generate a statement (a frozen snapshot), download its PDF, or queue it for review to email. */
 export default function StatementActions({ orgId }: { orgId: number }) {
   const { data: me } = useMe();
   const qc = useQueryClient();
   const nav = useNavigate();
-  const make = () => api<Statement>(`/organizations/${orgId}/statements`, { method: "POST" });
+  const make = () => api<Statement>(clientApiPath(orgId, "statements"), { method: "POST" });
   const pdf = useMutation({ mutationFn: make, onSuccess: (s) => window.open(`/api/statements/${s.id}/pdf`, "_blank") });
   const email = useMutation({
     mutationFn: async () => {

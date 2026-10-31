@@ -6,6 +6,7 @@ import { can, useMe } from "../../auth";
 import { money } from "../../money";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../../ui";
 import { ProcurementNav } from "./PurchaseOrders";
+import { clientApiPath, clientRoute } from "../../clientScope";
 
 export const ITEM_STATUS_LABEL: Record<InventoryStatus, string> = { in_stock: "In stock", delivered: "Delivered", consumed: "Used internally" };
 
@@ -100,7 +101,7 @@ export default function Inventory() {
                   <td>{i.quantity}</td>
                   <td className="text-right">{money(i.unit_cost_cents)}</td>
                   <td>{i.markup_bp === null ? "—" : bpPercent(i.markup_bp)}</td>
-                  <td>{i.organization_id ? <Link className="text-blue-700 hover:underline" to={`/organizations/${i.organization_id}`}>{i.organization_name}</Link> : "—"}</td>
+                  <td>{i.organization_id ? <Link className="text-blue-700 hover:underline" to={clientRoute(i.organization_id)}>{i.organization_name}</Link> : "—"}</td>
                   <td>{ITEM_STATUS_LABEL[i.status]}</td>
                   <td className="text-right">
                     {write && (
@@ -129,7 +130,7 @@ function DeliverDialog({ item, orgs, onClose, onDone }: { item: InventoryItem; o
   const [bad, setBad] = useState("");
   const assets = useQuery({
     queryKey: ["org-assets", orgId],
-    queryFn: () => api<Asset[]>(`/organizations/${orgId}/assets`),
+    queryFn: () => api<Asset[]>(clientApiPath(Number(orgId), "assets")),
     enabled: assetMode === "link" && orgId !== "",
   });
   const deliver = useMutation({

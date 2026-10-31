@@ -57,7 +57,7 @@ const FIELDS: Record<string, { label: string; kind: Kind; ops: string[] }> = {
 };
 const CHOICES: Record<string, [string, string][]> = {
   status: [["new", "New"], ["open", "Open"], ["waiting_on_customer", "Waiting on customer"], ["resolved", "Resolved"], ["closed", "Closed"]],
-  source: [["ui", "Created by staff"], ["email", "Email"], ["portal", "Portal"], ["rmm", "Monitoring"], ["rule", "Automation"]],
+  source: [["manual", "Created by staff"], ["email", "Email"], ["portal", "Portal"], ["rmm", "Monitoring"], ["api", "Created via API"], ["rule", "Automation"]],
   severity: [["NONE", "None"], ["MINOR", "Minor"], ["MODERATE", "Moderate"], ["MAJOR", "Major"], ["CRITICAL", "Critical"]],
 };
 const ACTION_TYPES: [string, string][] = [

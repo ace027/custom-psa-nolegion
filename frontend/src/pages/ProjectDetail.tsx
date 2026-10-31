@@ -8,6 +8,7 @@ import { money, parseMoney } from "../money";
 import { Button, Card, ErrorMsg, Field, StatTile, inputCls } from "../ui";
 import ProjectBoard from "./ProjectBoard";
 import { MODE_LABEL, hours } from "./Projects";
+import { clientRoute } from "../clientScope";
 
 type Tab = "tasks" | "board" | "budget";
 const TABS: { key: Tab; label: string }[] = [
@@ -53,7 +54,7 @@ export default function ProjectDetail() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-sm"><Link className="text-blue-700 hover:underline" to="/projects">Projects</Link> / <Link className="text-blue-700 hover:underline" to={`/organizations/${p.organization_id}`}>{p.organization_name}</Link></p>
+        <p className="text-sm"><Link className="text-blue-700 hover:underline" to="/projects">Projects</Link> / <Link className="text-blue-700 hover:underline" to={clientRoute(p.organization_id)}>{p.organization_name}</Link></p>
         <h1 className="text-2xl font-bold tracking-tight">{p.name}</h1>
         <p className="text-sm text-slate-600">
           {PROJECT_STATUS_LABEL[p.status]}

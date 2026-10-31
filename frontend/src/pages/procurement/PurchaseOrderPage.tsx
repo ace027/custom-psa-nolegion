@@ -6,6 +6,7 @@ import { can, useMe } from "../../auth";
 import { money } from "../../money";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../../ui";
 import { PO_STATUS_LABEL, ProcurementNav } from "./PurchaseOrders";
+import { clientRoute } from "../../clientScope";
 
 export default function PurchaseOrderPage() {
   const id = useParams().id as string;
@@ -58,7 +59,7 @@ export default function PurchaseOrderPage() {
         <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
           <dt className="text-slate-500">Vendor</dt><dd>{po.vendor_name ?? "—"}</dd>
           <dt className="text-slate-500">Client</dt>
-          <dd>{po.organization_id ? <Link className="text-blue-700 hover:underline" to={`/organizations/${po.organization_id}`}>Client #{po.organization_id}</Link> : "General stock"}</dd>
+          <dd>{po.organization_id ? <Link className="text-blue-700 hover:underline" to={clientRoute(po.organization_id)}>Client #{po.organization_id}</Link> : "General stock"}</dd>
           <dt className="text-slate-500">Ordered on</dt><dd>{po.ordered_on ?? "—"}</dd>
           <dt className="text-slate-500">Expected on</dt><dd>{po.expected_on ?? "—"}</dd>
           <dt className="text-slate-500">Vendor reference</dt><dd>{po.vendor_reference ?? "—"}</dd>

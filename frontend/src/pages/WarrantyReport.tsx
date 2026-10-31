@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Organization, Page, WARRANTY_LABEL, WarrantyReport as Report, WarrantyState, api } from "../api";
 import { Card, ErrorMsg, Field, WarrantyBadge, inputCls } from "../ui";
+import { clientRoute } from "../clientScope";
 
 export default function WarrantyReport() {
   const [org, setOrg] = useState("");
@@ -53,7 +54,7 @@ export default function WarrantyReport() {
                 <tbody>
                   {q.data.rows.map((a) => (
                     <tr key={a.id} className="border-b border-slate-100">
-                      <td className="p-1"><Link className="text-blue-700 hover:underline" to={`/organizations/${a.organization_id}`}>{a.organization_name}</Link></td>
+                      <td className="p-1"><Link className="text-blue-700 hover:underline" to={clientRoute(a.organization_id)}>{a.organization_name}</Link></td>
                       <td>{a.name}</td><td>{a.kind}</td>
                       <td>{[a.manufacturer, a.model].filter(Boolean).join(" ") || "—"}</td>
                       <td>{a.serial ?? "—"}</td>

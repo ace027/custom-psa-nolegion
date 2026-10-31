@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { RenewalReminder, crmApi } from "../../api";
 import { can, useMe } from "../../auth";
 import { Button, ErrorMsg } from "../../ui";
+import { clientRoute } from "../../clientScope";
 
 /** Whole days from today (local) to an ISO date; negative when past. */
 export function daysLeft(iso: string, now = new Date()): number {
@@ -50,7 +51,7 @@ export default function Renewals() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="border-b border-slate-100">
-                <td className="py-1.5"><Link className="text-blue-700 hover:underline" to={`/organizations/${r.organization_id}`}>{r.organization_name}</Link></td>
+                <td className="py-1.5"><Link className="text-blue-700 hover:underline" to={clientRoute(r.organization_id)}>{r.organization_name}</Link></td>
                 <td>{r.agreement_name}</td>
                 <td>{r.due_on}</td>
                 <td className="text-right tabular-nums">{daysLeft(r.due_on)}</td>

@@ -5,6 +5,7 @@ import { Opportunity, Quote, User, api, crmApi } from "../../api";
 import { can, useMe } from "../../auth";
 import { money, parseMoney, percent } from "../../money";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../../ui";
+import { clientRoute } from "../../clientScope";
 
 export default function OpportunityPage() {
   const id = useParams().id as string;
@@ -50,7 +51,7 @@ export default function OpportunityPage() {
       </div>
       <Card title="Details">
         <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-          <dt className="text-slate-500">Client</dt><dd><Link className="text-blue-700 hover:underline" to={`/organizations/${o.organization_id}`}>{o.organization_name}</Link></dd>
+          <dt className="text-slate-500">Client</dt><dd><Link className="text-blue-700 hover:underline" to={clientRoute(o.organization_id)}>{o.organization_name}</Link></dd>
           <dt className="text-slate-500">Quote</dt><dd>{o.quote_id ? <Link className="text-blue-700 hover:underline" to={`/quotes/${o.quote_id}`}>{o.quote_number}</Link> : "None linked"}</dd>
           <dt className="text-slate-500">Agreement</dt><dd>{o.agreement_id ? <Link className="text-blue-700 hover:underline" to="/billing/agreements">{o.agreement_name}</Link> : "None yet"}</dd>
           {o.closed_at && <><dt className="text-slate-500">Closed</dt><dd>{fmt(o.closed_at)}</dd></>}

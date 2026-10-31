@@ -6,12 +6,13 @@ import { money, parsePercent, parseMoney, percent } from "../money";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../ui";
 import { useReceivables } from "./billing/Receivables";
 import StatementActions from "./billing/StatementActions";
+import { clientApiPath } from "../clientScope";
 
 export default function OrgBillingCard({ orgId }: { orgId: number }) {
   const { data: me } = useMe();
   const canWrite = can(me, "billing:write");
   const qc = useQueryClient();
-  const b = useQuery({ queryKey: ["org-billing", orgId], queryFn: () => api<OrgBilling>(`/organizations/${orgId}/billing`) });
+  const b = useQuery({ queryKey: ["org-billing", orgId], queryFn: () => api<OrgBilling>(clientApiPath(orgId, "billing")) });
   const wts = useQuery({ queryKey: ["wt-billing"], queryFn: () => api<WorkTypeBilling[]>("/billing/work-types") });
   const refresh = () => qc.invalidateQueries({ queryKey: ["org-billing", orgId] });
   const [terms, setTerms] = useState<string | null>(null);
@@ -20,24 +21,24 @@ export default function OrgBillingCard({ orgId }: { orgId: number }) {
     mutationFn: () => {
       const bp = tax === null ? undefined : parsePercent(tax);
       if (tax !== null && bp === null) throw new Error("Tax rate must look like 8.25");
-      return api(`/organizations/${orgId}/billing`, { method: "PATCH", json: { ...(terms !== null ? { payment_terms_days: Number(terms) } : {}), ...(bp !== undefined ? { tax_rate_bp: bp } : {}) } });
+      return api(clientApiPath(orgId, "billing"), { method: "PATCH", json: { ...(terms !== null ? { payment_terms_days: Number(terms) } : {}), ...(bp !== undefined ? { tax_rate_bp: bp } : {}) } });
     },
     onSuccess: () => { setTerms(null); setTax(null); refresh(); },
   });
   const remind = useMutation({
-    mutationFn: (do_not_remind: boolean) => api(`/organizations/${orgId}/billing`, { method: "PATCH", json: { do_not_remind } }),
+    mutationFn: (do_not_remind: boolean) => api(clientApiPath(orgId, "billing"), { method: "PATCH", json: { do_not_remind } }),
     onSuccess: refresh,
   });
   const lateFees = useMutation({
-    mutationFn: (late_fees_enabled: boolean) => api(`/organizations/${orgId}/billing`, { method: "PATCH", json: { late_fees_enabled } }),
+    mutationFn: (late_fees_enabled: boolean) => api(clientApiPath(orgId, "billing"), { method: "PATCH", json: { late_fees_enabled } }),
     onSuccess: refresh,
   });
   const setRate = useMutation({
     mutationFn: ({ wt, text }: { wt: number; text: string }) => {
-      if (text.trim() === "") return api(`/organizations/${orgId}/billing/rates/${wt}`, { method: "DELETE" });
+      if (text.trim() === "") return api(clientApiPath(orgId, "billing", "rates", wt), { method: "DELETE" });
       const c = parseMoney(text);
       if (c === null) throw new Error("Enter a valid rate");
-      return api(`/organizations/${orgId}/billing/rates/${wt}`, { method: "PUT", json: { rate_cents: c } });
+      return api(clientApiPath(orgId, "billing", "rates", wt), { method: "PUT", json: { rate_cents: c } });
     },
     onSuccess: refresh,
   });
