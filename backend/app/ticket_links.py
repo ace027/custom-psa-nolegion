@@ -199,6 +199,7 @@ def _pointer_note(ctx: Ctx, ticket: Ticket, body: str) -> None:
             ticket_id=ticket.id,
             organization_id=ticket.organization_id,
             author_user_id=ctx.user.id if ctx.user else None,
+            author_type="human" if ctx.user else "system",
             visibility="internal",
             source="ui",
             body=body,

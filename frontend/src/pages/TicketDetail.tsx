@@ -323,9 +323,10 @@ export function fillCanned(body: string, vars: Record<string, string>): string {
 type AuthorFilter = "all" | Note["author_type"];
 const AUTHOR_FILTERS: [AuthorFilter, string][] = [["all", "All"], ["human", "Human"], ["system", "System"], ["ai", "AI"]];
 const EMPTY_FILTER: Record<AuthorFilter, string> = { all: "No notes yet.", human: "No human notes", system: "No system notes", ai: "No AI notes" };
-const noteTone = (n: Note) =>
+const AI_BADGE = "rounded bg-violet-200 px-1.5 py-0.5 font-semibold text-violet-900";
+const noteTone =(n: Note) =>
   n.author_type === "system" ? "border-slate-200 bg-slate-100"
-  : n.author_type === "ai" ? "border-violet-100 bg-violet-100"
+  : n.author_type === "ai" ? "border-violet-200 bg-violet-50"
   : n.visibility === "internal" ? "border-amber-200 bg-amber-50"
   : "border-slate-200 bg-surface";
 
@@ -347,6 +348,8 @@ export function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Tick
     onSuccess: () => {
       setBody("");
       setEmail(false);
+      // A new note is always human; show it instead of a filtered view that hides it.
+      setFilter((f) => (f === "system" || f === "ai" ? "all" : f));
       onDone();
     },
   });
@@ -375,7 +378,7 @@ export function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Tick
               <span>
                 <b>{n.author_name ?? n.author_email ?? "system"}</b>
                 {n.author_type === "system" && <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 font-semibold text-slate-700">System</span>}
-                {n.author_type === "ai" && <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 font-semibold text-violet-800">AI</span>}
+                {n.author_type === "ai" && <span className={`ml-1 ${AI_BADGE}`}>AI</span>}
                 {" "}· {n.source === "email" ? "email from customer" : n.visibility === "internal" ? "internal note" : "visible to customer"}
                 {n.email_status && n.source !== "email" && ` · email ${n.email_status}`}
               </span>
@@ -384,8 +387,8 @@ export function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Tick
             <p className="whitespace-pre-wrap">{n.body}</p>
           </li>
         ))}
-        {notes.length === 0 && <li className="text-sm text-slate-500">No notes yet.</li>}
-        {notes.length > 0 && shown.length === 0 && <li className="text-sm text-slate-500">{EMPTY_FILTER[filter]}</li>}
+        {notes.length === 0 && <li role="status" className="text-sm text-slate-500">No notes yet.</li>}
+        {notes.length > 0 && shown.length === 0 && <li role="status" className="text-sm text-slate-500">{EMPTY_FILTER[filter]}</li>}
       </ul>
       {canWrite && (
         <form className="mt-3 space-y-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
@@ -436,7 +439,7 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
           {entries.map((e) => (
             <tr key={e.id} className="border-t border-slate-100">
               <td>{e.work_date}</td>
-              <td>{lk.workTypes.find((w) => w.id === e.work_type_id)?.name}{e.entry_type === "automation" && <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-xs font-semibold text-violet-800">Automation</span>}</td>
+              <td>{lk.workTypes.find((w) => w.id === e.work_type_id)?.name}{e.entry_type === "automation" && <span className={`ml-1 text-xs ${AI_BADGE}`}>Automation</span>}</td>
               <td>{e.minutes_actual} min</td>
               <td>{e.billable ? `${e.minutes_billable} min` : "non-billable"}</td>
               <td>{e.note}</td>

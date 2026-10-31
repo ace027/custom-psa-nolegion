@@ -251,6 +251,7 @@ def timesheet(ctx: Ctx, week_start: date, user_id: int | None) -> dict:
                 label=f"#{t.number} {t.subject}" if t else f"Ticket {e.ticket_id}",
                 detail=work_types.get(e.work_type_id),
                 ticket_id=e.ticket_id,
+                entry_type=e.entry_type,
                 minutes_actual=e.minutes_actual,
                 minutes_billable=e.minutes_billable,
                 billable=e.billable,
@@ -276,6 +277,7 @@ def timesheet(ctx: Ctx, week_start: date, user_id: int | None) -> dict:
                 label=i.category.name,
                 detail=None,
                 ticket_id=None,
+                entry_type="labour",
                 minutes_actual=i.minutes,
                 minutes_billable=0,
                 billable=False,
@@ -287,7 +289,8 @@ def timesheet(ctx: Ctx, week_start: date, user_id: int | None) -> dict:
     days = []
     for n in range(7):
         d = week_start + timedelta(days=n)
-        day_rows = [r for r in rows if r["work_date"] == d]
+        # automation time is reported separately, never as human labour hours
+        day_rows = [r for r in rows if r["work_date"] == d and r["entry_type"] == "labour"]
         days.append(
             dict(
                 date=d,
@@ -306,6 +309,9 @@ def timesheet(ctx: Ctx, week_start: date, user_id: int | None) -> dict:
         total_minutes=sum(d["minutes"] for d in days),
         billable_minutes=sum(d["billable_minutes"] for d in days),
         internal_minutes=sum(r["minutes_actual"] for r in rows if r["kind"] == "internal"),
+        automation_minutes=sum(
+            r["minutes_actual"] for r in rows if r["entry_type"] == "automation"
+        ),
         days=days,
         entries=rows,
     )

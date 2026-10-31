@@ -28,6 +28,7 @@ export function ClientScopeProvider({ value = null, children }: { value?: number
   return createElement(ScopeContext.Provider, { value }, children);
 }
 
+/** Callers must check `orgId !== null` before calling `apiPath`/`route`, which throw when no client is in scope. */
 /** Active client: the :id of an /organizations/:id[/*] route (a client page always shows its own client), else the provider value. */
 export function useClientScope(): { orgId: number | null; apiPath: (...parts: Part[]) => string; route: (...parts: Part[]) => string } {
   const fromProvider = useContext(ScopeContext);

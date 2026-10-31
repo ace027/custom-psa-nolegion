@@ -566,7 +566,11 @@ def _minutes_by_ticket(ctx: Ctx, project_id: int) -> dict[int, int]:
     rows = ctx.db.execute(
         select(TimeEntry.ticket_id, func.sum(TimeEntry.minutes_actual))
         .join(Ticket, Ticket.id == TimeEntry.ticket_id)
-        .where(Ticket.project_id == project_id, TimeEntry.voided_at.is_(None))
+        .where(
+            Ticket.project_id == project_id,
+            TimeEntry.voided_at.is_(None),
+            TimeEntry.entry_type == "labour",
+        )
         .group_by(TimeEntry.ticket_id)
     )
     return {ticket_id: int(total) for ticket_id, total in rows}
