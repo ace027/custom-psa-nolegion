@@ -2050,7 +2050,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,4}0*$",
                 "type": "string"
               }
             ],
@@ -2141,7 +2140,6 @@
             "title": "Product Id"
           },
           "quantity": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Quantity",
             "type": "string"
           },
@@ -2968,7 +2966,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -3009,7 +3006,6 @@
             "type": "integer"
           },
           "quantity": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Quantity",
             "type": "string"
           },
@@ -3739,7 +3735,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
                 "type": "string"
               },
               {
@@ -3877,7 +3872,6 @@
           "miles": {
             "anyOf": [
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -4070,7 +4064,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
                 "type": "string"
               },
               {
@@ -6208,7 +6201,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,4}0*$",
                 "type": "string"
               }
             ],
@@ -6293,7 +6285,6 @@
             "type": "integer"
           },
           "quantity": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Quantity",
             "type": "string"
           },
@@ -6350,7 +6341,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,4}0*$",
                 "type": "string"
               },
               {
@@ -20690,7 +20680,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Create a recurring agreement (per user, per device, flat fee, or block hours)",
@@ -20822,7 +20812,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Edit an agreement; quantity changes are logged with an optional reason",
@@ -21249,7 +21239,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Appointments overlapping from/to (required unless ticket_id is given); with_conflicts=true adds conflicts per item and needs from/to of at most 8 days",
@@ -21318,7 +21308,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Book a tech on a ticket; conflicts are returned as warnings, never blocking",
@@ -21390,7 +21380,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "One appointment, with its current conflicts",
@@ -21470,7 +21460,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Move, reassign or annotate a scheduled appointment (conflicts recomputed)",
@@ -21552,7 +21542,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Cancel a scheduled appointment (kept for the record)",
@@ -21624,7 +21614,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Retry a failed Outlook push (409 when the sync is not failed)",
@@ -22717,7 +22707,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Working hours, approved time off, appointments and free windows per tech (user_ids is comma-separated; omit for every active admin and tech)",
@@ -23842,7 +23832,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Outlook sync health: pending and failed pushes, newest failures, busy-cache age",
@@ -29550,7 +29540,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Who is on call right now, per active rotation",
@@ -29605,7 +29595,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Remove an on-call override",
@@ -29660,7 +29650,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "On-call rotations",
@@ -29719,7 +29709,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Create a weekly on-call rotation with its ordered members",
@@ -29791,7 +29781,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Edit a rotation; member_ids replaces the ordered member list",
@@ -29857,7 +29847,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Overrides of a rotation, by start",
@@ -29927,7 +29917,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Cover a period with someone else; wins over the rotation",
@@ -30004,7 +29994,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "On-call shifts between start and end (at most 31 days)",
@@ -42099,7 +42089,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Time off overlapping a range, by start (reasons only for the owner and admins)",
@@ -42168,7 +42158,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Request time off (pending until an admin approves; an admin's entry is approved)",
@@ -42250,7 +42240,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Approve a pending time-off request",
@@ -42322,7 +42312,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Cancel time off: pending, or approved and not yet over (owner or admin)",
@@ -42404,7 +42394,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Reject a pending time-off request",
@@ -43399,7 +43389,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "A user's timezone and weekly working hours (yourself, or anyone for admins)",
@@ -43479,7 +43469,7 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Set a user's timezone and weekly working hours (null = the org defaults)",

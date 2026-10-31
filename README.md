@@ -63,7 +63,7 @@ docker-compose.yml, .env.example
 ## Quick start (development)
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Short version:
 ```sh
-cd backend && python -m venv .venv && . .venv/bin/activate && pip install -e ".[dev]"
+cd backend && python -m venv .venv && . .venv/bin/activate && pip install -e ".[dev]" -c constraints.txt
 alembic upgrade head && python -m app.seed
 uvicorn app.main:app --reload            # API on :8000
 cd ../frontend && npm ci && npm run dev  # UI on :5173, dev login enabled
