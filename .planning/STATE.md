@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 14 of 13 (partial — 1 plan(s) failed)
-- **Status**: Phase 14 partial — 14-03 failed, stopped after wave 3, review needed
+- **Phase**: 14 of 13 (executing)
+- **Status**: Phase 14 executing — Plan 14-03 complete
 - **Last Activity**: Plan 14-03 execution (2026-10-31)
 
 ## Progress
 ```
-[###################.] 95% — 46/48 plans complete
+[###################.] 97% — 47/48 plans complete
 ```
 
 ## Recent Decisions
@@ -151,3 +151,4 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 - Plan 14-01 (Wave 1): Portal Entra SSO and the phase 14 schema — Complete with Warnings
 - Plan 14-02 (Wave 2): Portal attachments, contact self-service and CSV export (backend) — Complete
 - Plan 14-03 (Wave 3): Portal polish frontend and manual checks — PARTIAL: All three tasks are built and the frontend verification passes (typecheck, 333 tests, build). One gap: the My details page can't prefill phone and title, because `GET /portal/me` doesn't return them. 
+- Plan 14-03 (Wave 3): Portal polish frontend and manual checks — Complete
