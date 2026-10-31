@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 12 of 13 (complete)
-- **Status**: Phase 12 shipped (2026-10-31)
-- **Last Activity**: Phase 12 shipped (2026-10-31)
+- **Phase**: 13 of 13 (planned)
+- **Status**: Phase 13 planned -- 2 plans across 2 waves
+- **Last Activity**: Phase 13 planning (2026-10-31)
 
 ## Progress
 ```
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:plan 13` to plan Phase 13: Knowledge base
+Run `/triad:build` to execute Phase 13: Knowledge base
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -43,6 +43,7 @@ Run `/triad:plan 13` to plan Phase 13: Knowledge base
 - Phase 8 issue: #13
 - Phase 9 issue: #14
 - Phase 12 issue: #17
+- Phase 13 issue: #18
 
 ## Phase 2 Results
 (build started 2026-10-09)
