@@ -162,3 +162,5 @@ verification: 6/6 passed
 | O-097 | 2026-10-30 | dev | 11 | 11-00 | engineering-frontend-developer | quality-review | success | 4 | review, engineering | Phase 11 review PASSED in 2 cycle(s), 5 finding(s) |
 | O-098 | 2026-10-30 | dev | 11 | 11-00 | design-ux-architect | quality-review | success | 4 | review, design | Phase 11 review PASSED in 2 cycle(s), 5 finding(s) |
 | O-099 | 2026-10-30 | dev | 11 | 11-00 | engineering-senior-developer | quality-review | success | 4 | review, engineering | Phase 11 review PASSED in 2 cycle(s), 5 finding(s) |
+| O-100 | 2026-10-31 | dev | 12 | 12-01 | engineering-backend-architect | implementation | failed | 5 | integration-readiness, engineering | Integration-readiness schema, models, schemas and writers: Partial |
+| O-101 | 2026-10-31 | dev | 12 | 12-01 | engineering-backend-architect | implementation | success | 2 | integration-readiness, engineering | Integration-readiness schema, models, schemas and writers: Complete |
