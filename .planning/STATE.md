@@ -2,12 +2,12 @@
 
 ## Current Position
 - **Phase**: 12 of 13 (executing)
-- **Status**: Phase 12 executing — Plan 12-03 complete
-- **Last Activity**: Plan 12-03 execution (2026-10-31)
+- **Status**: Phase 12 executing — Plan 12-04 complete
+- **Last Activity**: Plan 12-04 execution (2026-10-31)
 
 ## Progress
 ```
-[#################...] 85% — 41/48 plans complete
+[#################...] 87% — 42/48 plans complete
 ```
 
 ## Recent Decisions
@@ -134,3 +134,4 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 - Plan 12-01 (Wave 1): Integration-readiness schema, models, schemas and writers — Complete
 - Plan 12-02 (Wave 2): Automation time kept out of billing; reported separately — Complete
 - Plan 12-03 (Wave 2): Frontend: branding config, client scope module, note authors and new fields — Complete
+- Plan 12-04 (Wave 3): /api/v1 everywhere and the committed OpenAPI spec — Complete
