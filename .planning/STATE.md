@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Phase**: 14 of 13 (executed, pending review)
-- **Status**: Phase 14 review escalated — 1 unresolved finding(s) (0 blocker/critical) after 3 cycles
+- **Phase**: 14 of 13 (complete)
+- **Status**: Phase 14 complete — review passed (1 cycle(s))
 - **Last Activity**: Phase 14 review (2026-10-31)
 
 ## Progress
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Fix the unresolved findings in 14-REVIEW.md, accept the phase as is, or re-plan; then run `/triad:review --phase 14`
+Run `/triad:plan 15` to plan Phase 15: Verify (owner manual testing)
 
 ## Phase 1 Results
 (build started 2026-10-09)
