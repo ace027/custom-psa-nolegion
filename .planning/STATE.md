@@ -2,8 +2,8 @@
 
 ## Current Position
 - **Phase**: 14 of 13 (executing)
-- **Status**: Phase 14 executing — Plan 14-02 complete
-- **Last Activity**: Plan 14-02 execution (2026-10-31)
+- **Status**: Phase 14 executing — Plan 14-03 failed
+- **Last Activity**: Plan 14-03 execution (2026-10-31)
 
 ## Progress
 ```
@@ -150,3 +150,4 @@ Run `/triad:build` to execute Phase 14: Portal polish
 (build started 2026-10-31)
 - Plan 14-01 (Wave 1): Portal Entra SSO and the phase 14 schema — Complete with Warnings
 - Plan 14-02 (Wave 2): Portal attachments, contact self-service and CSV export (backend) — Complete
+- Plan 14-03 (Wave 3): Portal polish frontend and manual checks — PARTIAL: All three tasks are built and the frontend verification passes (typecheck, 333 tests, build). One gap: the My details page can't prefill phone and title, because `GET /portal/me` doesn't return them. 
