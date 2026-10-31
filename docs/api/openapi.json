@@ -18502,6 +18502,14 @@
             ],
             "title": "Detail"
           },
+          "entry_type": {
+            "enum": [
+              "labour",
+              "automation"
+            ],
+            "title": "Entry Type",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -18565,6 +18573,7 @@
           "label",
           "detail",
           "ticket_id",
+          "entry_type",
           "minutes_actual",
           "minutes_billable",
           "billable",
@@ -18576,6 +18585,10 @@
       },
       "TimesheetOut": {
         "properties": {
+          "automation_minutes": {
+            "title": "Automation Minutes",
+            "type": "integer"
+          },
           "billable_minutes": {
             "title": "Billable Minutes",
             "type": "integer"
@@ -18652,6 +18665,7 @@
           "total_minutes",
           "billable_minutes",
           "internal_minutes",
+          "automation_minutes",
           "days",
           "entries"
         ],

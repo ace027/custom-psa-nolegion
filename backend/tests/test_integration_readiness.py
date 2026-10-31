@@ -186,6 +186,18 @@ def test_note_author_type_human_system_and_check(admin, make_ticket, owner_engin
         _sql(owner_engine, "UPDATE ticket_notes SET author_type='bot'")
 
 
+def test_add_note_without_user_or_email_is_system(admin, make_ticket):
+    t = make_ticket()
+    with new_session() as db:
+        dbmod.set_org_scope(db, "all")
+        ctx = Ctx(db=db, user=None, scope=Scope.all())
+        note = tsvc.add_note(ctx, t["id"], "automated", "internal")
+        assert (note.author_user_id, note.author_type) == (None, "system")
+        db.commit()
+    staff = admin.post(f"/api/v1/tickets/{t['id']}/notes", json={"body": "hi"}).json()
+    assert staff["author_type"] == "human"
+
+
 # ---- time ----
 def test_automation_time_is_forced_non_billable(admin, make_ticket, wt):
     t = make_ticket()

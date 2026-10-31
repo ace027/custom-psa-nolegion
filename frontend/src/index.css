@@ -28,6 +28,15 @@
   --color-blue-600: #4f46e5;
   --color-blue-700: #4338ca;
   --color-blue-800: #3730a3;
+
+  /* Note authors. `bg`/`border` tint the note; the badge reuses `border` as its fill, `fg` as its text.
+     System follows the slate theme (so dark needs no override); AI has its own dark values. */
+  --color-note-system-bg: var(--color-slate-100);
+  --color-note-system-fg: var(--color-slate-700);
+  --color-note-system-border: var(--color-slate-200);
+  --color-note-ai-bg: #f5f3ff;
+  --color-note-ai-fg: #4c1d95;
+  --color-note-ai-border: #ddd6fe;
 }
 
 :root {
@@ -77,6 +86,9 @@
   --color-green-100: #10331f;
   --color-green-700: #5be28f;
   --color-green-800: #5be28f;
+  --color-note-ai-bg: #1d1840;
+  --color-note-ai-fg: #c4b5fd;
+  --color-note-ai-border: #2a2150;
   --color-violet-100: #2a2150;
   --color-violet-800: #c4b5fd;
   --color-purple-700: #d8b4fe;

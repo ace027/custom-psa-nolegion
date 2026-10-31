@@ -133,7 +133,39 @@ describe("notes by author", () => {
       </QueryClientProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Human (0)" }));
-    expect(screen.getByText("No human notes")).toBeInTheDocument();
+    expect(within(screen.getByRole("list")).getByText("No human notes")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("No human notes");
+  });
+  it("renders author badges with the semantic token classes", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <NotesCard ticket={ticket} notes={[note(2, "system", "auto closed"), note(3, "ai", "summary")]} canWrite={false} onDone={() => {}} />
+      </QueryClientProvider>,
+    );
+    const list = screen.getByRole("list");
+    const sys = within(list).getByText("System");
+    const ai = within(list).getByText("AI");
+    expect(sys).toHaveClass("bg-note-system-border", "text-note-system-fg", "px-1.5");
+    expect(ai).toHaveClass("bg-note-ai-border", "text-note-ai-fg", "px-1.5");
+    expect(screen.getByText("auto closed").closest("li")).toHaveClass("bg-note-system-bg", "border-note-system-border");
+    expect(screen.getByText("summary").closest("li")).toHaveClass("bg-note-ai-bg", "border-note-ai-border");
+  });
+  it("announces filter results in a persistent live region", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <NotesCard ticket={ticket} notes={[note(1, "human", "hello"), note(2, "system", "a"), note(3, "system", "b")]} canWrite={false} onDone={() => {}} />
+      </QueryClientProvider>,
+    );
+    const live = screen.getByRole("status");
+    expect(live).toHaveAttribute("aria-live", "polite");
+    expect(live).toHaveClass("sr-only");
+    expect(live).toHaveTextContent("Showing 3 notes");
+    fireEvent.click(screen.getByRole("button", { name: "System (2)" }));
+    expect(screen.getByRole("status")).toBe(live);
+    expect(live).toHaveTextContent("Showing 2 system notes");
+    fireEvent.click(screen.getByRole("button", { name: "AI (0)" }));
+    expect(live).toHaveTextContent("No AI notes");
+    expect(within(screen.getByRole("list")).getByText("No AI notes")).not.toHaveAttribute("role");
   });
 });
 

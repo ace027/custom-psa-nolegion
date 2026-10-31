@@ -186,3 +186,40 @@ def test_a_tech_without_a_cost_rate_still_reports_automation_minutes(
     assert all(
         r["labour_cost_cents"] == 0 for r in p["rows"] if r["organization_name"] == "Rateless Co"
     )
+
+
+def test_timesheet_returns_automation_entry_and_minutes(admin, make_org_with_ticket, wt, log):
+    _, t = make_org_with_ticket("Acme")
+    log(t["id"], wt["Remote"], 60, work_date="2026-07-07")
+    a = auto(admin, t["id"], wt["Remote"], 45, "2026-07-08")["id"]
+    ts = admin.get("/api/v1/timesheet", params={"week_start": "2026-07-06"}).json()
+    row = next(e for e in ts["entries"] if e["id"] == a and e["kind"] == "ticket")
+    assert row["entry_type"] == "automation"
+    assert ts["automation_minutes"] == 45
+    assert ts["total_minutes"] == 60
+    labour = [e for e in ts["entries"] if e["id"] != a]
+    assert all(e["entry_type"] == "labour" for e in labour)
+
+
+def test_project_ticket_and_budget_minutes_agree_and_exclude_automation(
+    admin, biller, client_org, wt, log
+):
+    r = admin.post(
+        "/api/v1/projects",
+        json={
+            "organization_id": client_org,
+            "name": "Rollout",
+            "billing_mode": "tm",
+            "budget_cents": 100000,
+        },
+    )
+    assert r.status_code == 201, r.text
+    pid = r.json()["id"]
+    assert admin.post(f"/api/v1/projects/{pid}/approve").status_code == 200
+    tid = admin.post(f"/api/v1/projects/{pid}/tasks", json={"title": "Build"}).json()["ticket_id"]
+    log(tid, wt["Remote"], 90, work_date="2026-07-10")
+    auto(admin, tid, wt["Remote"], 500, "2026-07-11")
+    tasks = admin.get(f"/api/v1/projects/{pid}").json()["tasks"]
+    task = next(x for x in tasks if x["ticket_id"] == tid)
+    b = biller.get(f"/api/v1/projects/{pid}/budget").json()
+    assert task["actual_minutes"] == b["actual_minutes"] == 90

@@ -442,6 +442,7 @@ class TimesheetEntryOut(BaseModel):
     label: str
     detail: str | None
     ticket_id: int | None
+    entry_type: TimeEntryType
     minutes_actual: int
     minutes_billable: int
     billable: bool
@@ -465,6 +466,7 @@ class TimesheetOut(BaseModel):
     total_minutes: int
     billable_minutes: int
     internal_minutes: int
+    automation_minutes: int
     days: list[TimesheetDayOut]
     entries: list[TimesheetEntryOut]
 

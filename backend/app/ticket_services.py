@@ -364,6 +364,8 @@ def add_note(
         ticket_id=ticket.id,
         organization_id=ticket.organization_id,
         author_user_id=ctx.user.id if ctx.user else None,
+        # no author user and no author_email (add_note has none) means the system wrote it
+        author_type="human" if ctx.user else "system",
         visibility=visibility,
         source="ui",
         body=body,

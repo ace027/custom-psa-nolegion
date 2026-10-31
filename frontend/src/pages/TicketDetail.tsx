@@ -323,10 +323,12 @@ export function fillCanned(body: string, vars: Record<string, string>): string {
 type AuthorFilter = "all" | Note["author_type"];
 const AUTHOR_FILTERS: [AuthorFilter, string][] = [["all", "All"], ["human", "Human"], ["system", "System"], ["ai", "AI"]];
 const EMPTY_FILTER: Record<AuthorFilter, string> = { all: "No notes yet.", human: "No human notes", system: "No system notes", ai: "No AI notes" };
-const AI_BADGE = "rounded bg-violet-200 px-1.5 py-0.5 font-semibold text-violet-900";
+const BADGE_BASE = "rounded px-1.5 py-0.5 font-semibold";
+const SYSTEM_BADGE = `${BADGE_BASE} bg-note-system-border text-note-system-fg`;
+const AI_BADGE = `${BADGE_BASE} bg-note-ai-border text-note-ai-fg`;
 const noteTone =(n: Note) =>
-  n.author_type === "system" ? "border-slate-200 bg-slate-100"
-  : n.author_type === "ai" ? "border-violet-200 bg-violet-50"
+  n.author_type === "system" ? "border-note-system-border bg-note-system-bg"
+  : n.author_type === "ai" ? "border-note-ai-border bg-note-ai-bg"
   : n.visibility === "internal" ? "border-amber-200 bg-amber-50"
   : "border-slate-200 bg-surface";
 
@@ -336,6 +338,8 @@ export function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Tick
   const [email, setEmail] = useState(false);
   const [filter, setFilter] = useState<AuthorFilter>("all");
   const shown = filter === "all" ? notes : notes.filter((n) => n.author_type === filter);
+  const label = filter === "all" ? "" : `${filter === "ai" ? "AI" : filter} `;
+  const announcement = shown.length === 0 ? EMPTY_FILTER[filter].replace(/\.$/, "") : `Showing ${shown.length} ${label}${shown.length === 1 ? "note" : "notes"}`;
   const canned = useQuery({ queryKey: ["canned"], enabled: canWrite, queryFn: () => api<CannedResponse[]>("/canned-responses") });
   const insertCanned = (id: string) => {
     const c = canned.data?.find((x) => String(x.id) === id);
@@ -371,13 +375,14 @@ export function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Tick
           );
         })}
       </div>
+      <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
       <ul className="space-y-2">
         {shown.map((n) => (
           <li key={n.id} className={`rounded border p-3 text-sm ${noteTone(n)}`}>
             <div className="mb-1 flex flex-wrap justify-between gap-2 text-xs text-slate-500">
               <span>
                 <b>{n.author_name ?? n.author_email ?? "system"}</b>
-                {n.author_type === "system" && <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 font-semibold text-slate-700">System</span>}
+                {n.author_type === "system" && <span className={`ml-1 ${SYSTEM_BADGE}`}>System</span>}
                 {n.author_type === "ai" && <span className={`ml-1 ${AI_BADGE}`}>AI</span>}
                 {" "}· {n.source === "email" ? "email from customer" : n.visibility === "internal" ? "internal note" : "visible to customer"}
                 {n.email_status && n.source !== "email" && ` · email ${n.email_status}`}
@@ -387,8 +392,8 @@ export function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Tick
             <p className="whitespace-pre-wrap">{n.body}</p>
           </li>
         ))}
-        {notes.length === 0 && <li role="status" className="text-sm text-slate-500">No notes yet.</li>}
-        {notes.length > 0 && shown.length === 0 && <li role="status" className="text-sm text-slate-500">{EMPTY_FILTER[filter]}</li>}
+        {notes.length === 0 && <li className="text-sm text-slate-500">No notes yet.</li>}
+        {notes.length > 0 && shown.length === 0 && <li className="text-sm text-slate-500">{EMPTY_FILTER[filter]}</li>}
       </ul>
       {canWrite && (
         <form className="mt-3 space-y-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>

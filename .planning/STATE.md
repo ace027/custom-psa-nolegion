@@ -64,6 +64,7 @@ Run `/triad:plan 13` to plan Phase 13: Knowledge base
 - 2026-10-24: Node.js October 2026 security releases: frontend build requires patched Node 22.23.4 (Dockerfile, CI via .nvmrc, engines), c24004a; npm audit fix for dev-only vite, vitest, undici and source-map-js advisories
 - 2026-10-29: report schedules form no longer loses unsaved input (other Edit buttons and New schedule are disabled while a form is open; focus moves into the form and back to its opener)
 - 2026-10-31: F-002, the client page and its cards take the current client from useClientScope (route /organizations/:id wins, else the provider); explicit-client links keep clientRoute(id)
+- 2026-10-31: phase 12 minor findings: add_note marks author-less notes system, timesheet API returns entry_type and automation_minutes, note-system/note-ai colour tokens, a persistent live region for note filters (F-005 and F-007 left for a design decision)
 
 ## Phase 4 Results
 (build started 2026-10-10)
