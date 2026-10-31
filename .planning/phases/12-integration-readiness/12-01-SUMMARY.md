@@ -74,7 +74,7 @@
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | warning | schema | Should `project` stay a valid ticket source? The owner-approved list is manual, email, portal, rmm, api, rule. | pending |  |
+| 1 | warning | schema | Should `project` stay a valid ticket source? The owner-approved list is manual, email, portal, rmm, api, rule. | approved | Auto-run default: keep 'project' as a ticket source. It already exists and is used by app/projects.py. The owner's list was drawn up from a survey that missed it. Keeping it is additive and changes no behaviour. The owner is told in the run report. |
 
 - #1 context: The CHECK and the `TicketSource` Literal currently include `project`, because `app/projects.py` sets it and the project tests and the `ck_tickets_source` check in test_projects_schema depend on it. Dropping it needs edits to `app/projects.py` and `tests/test_projects*.py`, which are outside this plan's file list. The alternative is to map project tickets to `manual`.
 
