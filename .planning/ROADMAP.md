@@ -195,6 +195,6 @@
 | 10 | 3 | 3 | Shipped |
 | 11 | 3 | 3 | Shipped |
 | 12 | 4 | 4 | Shipped |
-| 13 | 2 | 1 | In Progress |
+| 13 | 2 | 2 | Executed |
 | 14 | 3 | 0 | Pending |
 | 15 | 1 | 0 | Pending |
