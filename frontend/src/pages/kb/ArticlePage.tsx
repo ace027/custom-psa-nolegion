@@ -20,6 +20,7 @@ export default function ArticlePage() {
       ) : (
         <>
           <ErrorMsg error={q.error} />
+          {q.isLoading && <p className="text-sm text-slate-500">Loading…</p>}
           {q.data && <Article key={`${q.data.id}-${q.data.updated_at}`} article={q.data} canWrite={canWrite} />}
         </>
       )}
@@ -32,7 +33,7 @@ function Article({ article, canWrite }: { article: KbArticle; canWrite: boolean 
   const qc = useQueryClient();
   const archive = useMutation({
     mutationFn: () => api<KbArticle>(`/kb/articles/${article.id}`, { method: "PATCH", json: { status: "archived" } }),
-    onSuccess: (a) => { qc.setQueryData(["kb", "article", String(a.id)], a); qc.invalidateQueries({ queryKey: ["kb", "articles"] }); },
+    onSuccess: (a) => { qc.setQueryData(["kb", "article", String(a.id)], a); qc.invalidateQueries({ queryKey: ["kb"] }); },
   });
   if (editing) return <Editor article={article} onDone={() => setEditing(false)} />;
   return (
@@ -41,7 +42,7 @@ function Article({ article, canWrite }: { article: KbArticle; canWrite: boolean 
       actions={canWrite && (
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setEditing(true)}>Edit</Button>
-          {article.status !== "archived" && <Button variant="danger" disabled={archive.isPending} onClick={() => archive.mutate()}>Archive</Button>}
+          {article.status !== "archived" && <Button variant="danger" disabled={archive.isPending} onClick={() => { if (window.confirm("Archive this article? It will no longer be suggested or shown in the portal.")) archive.mutate(); }}>Archive</Button>}
         </div>
       )}
     >
@@ -79,7 +80,7 @@ function Editor({ article, onDone }: { article: KbArticle | null; onDone?: () =>
     },
     onSuccess: (a) => {
       qc.setQueryData(["kb", "article", String(a.id)], a);
-      qc.invalidateQueries({ queryKey: ["kb", "articles"] });
+      qc.invalidateQueries({ queryKey: ["kb"] });
       if (article) onDone?.();
       else nav(`/kb/${a.id}`);
     },

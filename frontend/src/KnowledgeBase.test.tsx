@@ -73,6 +73,7 @@ describe("staff knowledge base", () => {
       "PATCH /api/v1/kb/articles/5": json(article({ status: "archived" })),
     });
     expect(await screen.findByText(/Step 2 <b>x<\/b>/)).toBeInTheDocument();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
     await waitFor(() => expect(called("PATCH /api/v1/kb/articles/5", '"status":"archived"')).toBe(true));
   });

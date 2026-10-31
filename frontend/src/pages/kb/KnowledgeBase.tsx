@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { KbArticleSummary, KbStatus, KbVisibility, Page, api } from "../../api";
@@ -44,6 +44,7 @@ export default function KnowledgeBase() {
   params.set("offset", String(offset));
   const list = useQuery({
     queryKey: ["kb", "articles", q, status, visibility, offset],
+    placeholderData: keepPreviousData,
     queryFn: () => api<Page<KbArticleSummary>>(`/kb/articles?${params}`),
   });
   const d = list.data;
@@ -71,6 +72,7 @@ export default function KnowledgeBase() {
         </div>
         {text.trim().length === 1 && <p className="mb-2 text-xs text-slate-500">Type at least 2 characters to search.</p>}
         <ErrorMsg error={list.error} />
+        {list.isLoading && <p className="mb-2 text-sm text-slate-500">Loading…</p>}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[34rem] text-left text-sm">
             <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Title</th><th>Visibility</th><th>Status</th><th>Tags</th><th>Updated</th></tr></thead>
