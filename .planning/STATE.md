@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 13 of 13 (complete)
-- **Status**: Phase 13 complete — review passed (1 cycle(s))
-- **Last Activity**: Phase 13 review (2026-10-31)
+- **Phase**: 14 of 13 (planned)
+- **Status**: Phase 14 planned -- 3 plans across 3 waves
+- **Last Activity**: Phase 14 planning (2026-10-31)
 
 ## Progress
 ```
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:plan 14` to plan Phase 14: Portal polish
+Run `/triad:build` to execute Phase 14: Portal polish
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -44,6 +44,7 @@ Run `/triad:plan 14` to plan Phase 14: Portal polish
 - Phase 9 issue: #14
 - Phase 12 issue: #17
 - Phase 13 issue: #18
+- Phase 14 issue: #19
 
 ## Phase 2 Results
 (build started 2026-10-09)
