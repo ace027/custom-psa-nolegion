@@ -45,6 +45,7 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 
 **Phase 13: knowledge base**
 - Knowledge base: staff write, search and archive plain-text articles (internal or client-visible, draft/published), tickets suggest matching published articles, and portal contacts browse published client articles only. See [docs/verify/kb.md](docs/verify/kb.md)
+- Portal polish: clients can sign in with Microsoft (per-client Entra tenant), attach files to their tickets, edit their own details and export tickets, invoices and devices as CSV. See [docs/verify/portal-polish.md](docs/verify/portal-polish.md)
 
 **Phase 1: foundation**
 - Organizations, sites and contacts (soft-delete/archive, no hard deletes)

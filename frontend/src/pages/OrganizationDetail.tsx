@@ -58,11 +58,14 @@ function OrgForm({ org, canWrite, onDone }: { org: Organization; canWrite: boole
   const [form, setForm] = useState(org);
   useEffect(() => setForm(org), [org]);
   const { apiPath } = useClientScope();
+  const { data: me } = useMe();
+  const canTenant = can(me, "portal:manage");
   const save = useMutation({
     mutationFn: () =>
       api(apiPath(), {
         method: "PATCH",
-        json: { name: form.name, status: form.status, billing_address: form.billing_address, notes: form.notes },
+        // only admins may set the tenant id; others must not send it or the API refuses the save
+        json: { name: form.name, status: form.status, billing_address: form.billing_address, notes: form.notes, ...(canTenant ? { entra_tenant_id: form.entra_tenant_id || null } : {}) },
       }),
     onSuccess: onDone,
   });
@@ -95,6 +98,12 @@ function OrgForm({ org, canWrite, onDone }: { org: Organization; canWrite: boole
         <Field label="Notes">
           <textarea className={inputCls} disabled={!canWrite} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </Field>
+        <div>
+          <Field label="Client Entra tenant ID">
+            <input className={inputCls} disabled={!canWrite || !canTenant} readOnly={!canTenant} value={form.entra_tenant_id ?? ""} onChange={(e) => setForm({ ...form, entra_tenant_id: e.target.value })} aria-describedby="entra-tenant-help" />
+          </Field>
+          <p id="entra-tenant-help" className="mt-1 text-xs text-slate-500">From the client's Entra admin centre, enables portal Microsoft sign-in{!canTenant && ". Only an admin can change it."}</p>
+        </div>
         <div className="col-span-full space-y-2">
           <ErrorMsg error={save.error ?? archive.error} />
           {canWrite && (
@@ -194,7 +203,7 @@ function ContactsCard({ contacts, sites, canWrite, onDone }: { contacts: Contact
     onSuccess: onDone,
   });
   const portal = useMutation({
-    mutationFn: ({ c, patch }: { c: Contact; patch: Partial<Pick<Contact, "portal_access" | "portal_org_tickets" | "portal_assets">> }) => api(`/contacts/${c.id}`, { method: "PATCH", json: patch }),
+    mutationFn: ({ c, patch }: { c: Contact; patch: Partial<Pick<Contact, "portal_access" | "portal_org_tickets" | "portal_assets">> & { unlink_entra?: boolean } }) => api(`/contacts/${c.id}`, { method: "PATCH", json: patch }),
     onSuccess: onDone,
   });
   const { data: me } = useMe();
@@ -214,6 +223,7 @@ function ContactsCard({ contacts, sites, canWrite, onDone }: { contacts: Contact
               {c.email ? ` <${c.email}>` : ""}
               {c.is_primary && <b className="ml-2 text-xs text-blue-700">primary</b>}
               {c.is_billing_contact && <b className="ml-2 text-xs text-green-700">billing</b>}
+              {c.entra_linked && <b className="ml-2 text-xs text-sky-700">Microsoft linked</b>}
               {c.portal_access && <b className="ml-2 text-xs text-purple-700">portal{c.portal_org_tickets ? " (all company tickets)" : ""}{c.portal_assets ? " (devices)" : ""}</b>}
             </span>
             {canWrite && (
@@ -232,6 +242,9 @@ function ContactsCard({ contacts, sites, canWrite, onDone }: { contacts: Contact
                 )}
                 {c.portal_access && isAdmin && (
                   <Button variant="secondary" onClick={() => portal.mutate({ c, patch: { portal_assets: !c.portal_assets } })}>{c.portal_assets ? "Hide devices" : "Show devices"}</Button>
+                )}
+                {c.entra_linked && (
+                  <Button variant="secondary" onClick={() => portal.mutate({ c, patch: { unlink_entra: true } })}>Unlink Microsoft</Button>
                 )}
                 <Button variant="secondary" onClick={() => toggle.mutate(c)}>
                   {c.archived_at ? "Restore" : "Archive"}

@@ -5,7 +5,11 @@ import { WARRANTY_LABEL, ApiError, PortalAssets, PortalInvoice, PortalInvoiceDet
 import { money } from "../money";
 import { Button, Card, ErrorMsg, Field, StatTile, ThemeToggle, WarrantyBadge, fmt, inputCls } from "../ui";
 import AppointmentsPage from "./AppointmentsPage";
+import ExportButton from "./ExportButton";
 import { KbArticlePage, KbList } from "./KbPages";
+import MyDetailsPage from "./MyDetailsPage";
+import PortalAttachments from "./PortalAttachments";
+import PortalLogin from "./PortalLogin";
 
 function usePortalMe() {
   return useQuery({
@@ -58,19 +62,9 @@ function Gate() {
 }
 
 function SignIn() {
-  const [email, setEmail] = useState("");
-  const ask = useMutation({ mutationFn: () => api<{ detail: string }>("/portal/login-link", { method: "POST", json: { email } }) });
   return (
     <Shell>
-      <Card title="Sign in">
-        <p className="mb-3 text-sm text-slate-600">Enter your email address and we will send you a one-time sign-in link. There is no password.</p>
-        <form className="space-y-3" onSubmit={(e: FormEvent) => { e.preventDefault(); ask.mutate(); }}>
-          <Field label="Email address"><input className={inputCls} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-          <Button type="submit" disabled={ask.isPending}>Email me a link</Button>
-        </form>
-        <ErrorMsg error={ask.error} />
-        {ask.data && <p role="status" className="mt-3 rounded bg-green-50 p-2 text-sm text-green-800">{ask.data.detail} Check your inbox; the link expires in a few minutes.</p>}
-      </Card>
+      <PortalLogin />
     </Shell>
   );
 }
@@ -116,6 +110,7 @@ function Signed({ me }: { me: PortalMe }) {
         {me.can_see_billing && <NavLink to="/portal/invoices" className={tab}>Invoices</NavLink>}
         {me.can_see_devices && <NavLink to="/portal/devices" className={tab}>Devices</NavLink>}
         <NavLink to="/portal/kb" className={tab}>Help articles</NavLink>
+        <NavLink to="/portal/me" className={tab}>My details</NavLink>
       </nav>
       <Routes>
         <Route index element={<Navigate to="/portal/tickets" replace />} />
@@ -124,6 +119,7 @@ function Signed({ me }: { me: PortalMe }) {
         <Route path="appointments" element={<AppointmentsPage />} />
         <Route path="kb" element={<KbList />} />
         <Route path="kb/:id" element={<KbArticlePage />} />
+        <Route path="me" element={<MyDetailsPage me={me} />} />
         {me.can_see_billing && <Route path="invoices" element={<Invoices />} />}
         {me.can_see_billing && <Route path="invoices/:id" element={<InvoicePage />} />}
         {me.can_see_devices && <Route path="devices" element={<Devices />} />}
@@ -152,7 +148,7 @@ function Tickets() {
         </form>
         <ErrorMsg error={open.error} />
       </Card>
-      <Card title="Your tickets">
+      <Card title="Your tickets" actions={<ExportButton kind="tickets" label="Export tickets (CSV)" />}>
         <ErrorMsg error={list.error} />
         <ul className="divide-y divide-slate-100 text-sm">
           {list.data?.map((t) => (
@@ -204,6 +200,7 @@ function TicketPage() {
               <p className="whitespace-pre-wrap">{n.body}</p>
             </div>
           ))}
+          <PortalAttachments ticketId={t.id} closed={t.status === "closed"} />
           <form className="space-y-2" onSubmit={(e: FormEvent) => { e.preventDefault(); reply.mutate(); }}>
             <Field label="Add a reply"><textarea className={inputCls} required rows={4} maxLength={10000} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
             <Button type="submit" disabled={reply.isPending || !body.trim()}>Send reply</Button>
@@ -220,7 +217,7 @@ const STATUS: Record<PortalInvoice["status"], string> = { paid: "Paid", partial:
 function Invoices() {
   const q = useQuery({ queryKey: ["portal", "invoices"], queryFn: () => api<PortalInvoice[]>("/portal/invoices") });
   return (
-    <Card title="Invoices" actions={<a className="text-sm text-blue-700 hover:underline" href="/api/v1/portal/statement/pdf">Download account statement</a>}>
+    <Card title="Invoices" actions={<span className="flex gap-3"><ExportButton kind="invoices" label="Export invoices (CSV)" /><a className="text-sm text-blue-700 hover:underline" href="/api/v1/portal/statement/pdf">Download account statement</a></span>}>
       <ErrorMsg error={q.error} />
       <table className="w-full text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-1">Invoice</th><th>Date</th><th>Due</th><th className="text-right">Total</th><th className="text-right">Balance</th><th /></tr></thead>
@@ -289,7 +286,7 @@ function Devices() {
               <p className="mt-2 text-xs text-slate-500">Devices without a warranty date are shown as unknown, never guessed.</p>
             </Card>
           )}
-          <Card title="Devices and warranty">
+          <Card title="Devices and warranty" actions={<ExportButton kind="devices" label="Export devices (CSV)" />}>
             <p className="mb-3 text-sm text-slate-600">
               {d.total} device(s) as of {d.as_of}: <b>{soon}</b> with warranty ending in the next 90 days and <b>{d.counts.expired}</b> out of warranty.
             </p>

@@ -81,6 +81,12 @@ export default function TicketDetail() {
                   {a.filename}
                 </a>{" "}
                 <span className="text-slate-500">({Math.ceil(a.size_bytes / 1024)} KB)</span>
+                {a.source === "portal" && (
+                  <>
+                    {" "}<span className="rounded bg-purple-50 px-1.5 py-0.5 text-xs text-purple-700">Portal</span>
+                    {a.uploaded_by_name && <span className="ml-1 text-slate-500">{a.uploaded_by_name}</span>}
+                  </>
+                )}
               </li>
             ))}
           </ul>

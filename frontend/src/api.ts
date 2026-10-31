@@ -61,6 +61,7 @@ export interface Organization {
   billing_address: string | null;
   notes: string | null;
   assets_published: boolean;
+  entra_tenant_id?: string | null;
   archived_at: string | null;
 }
 export interface Site {
@@ -88,6 +89,7 @@ export interface Contact {
   title: string | null;
   is_primary: boolean;
   is_billing_contact: boolean;
+  entra_linked?: boolean;
   archived_at: string | null;
 }
 export interface Page<T> {
@@ -306,6 +308,8 @@ export interface Attachment {
   id: number;
   filename: string;
   size_bytes: number;
+  source?: string;
+  uploaded_by_name?: string | null;
 }
 export interface Lookup {
   id: number;
@@ -699,7 +703,21 @@ export interface PortalMe {
   can_see_billing: boolean;
   can_see_all_tickets: boolean;
   can_see_devices: boolean;
+  // prefill My details so saving never clears them
+  phone?: string | null;
+  title?: string | null;
 }
+export interface PortalLoginOptions {
+  sso: boolean;
+}
+export interface PortalAttachment {
+  id: number;
+  filename: string;
+  size_bytes: number;
+  created_at: string;
+}
+export const PORTAL_MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const PORTAL_UPLOAD_EXTENSIONS = ["txt", "log", "csv", "pdf", "png", "jpg", "jpeg", "gif", "webp", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "zip", "eml", "msg"];
 export interface PortalInvoice {
   id: number;
   number: string;

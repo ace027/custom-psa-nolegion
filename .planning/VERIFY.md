@@ -86,3 +86,8 @@ pass. Mark each item pass or fail (with a note) when it is run.
 ## Phase 13: Knowledge base
 - [ ] Walk through docs/verify/kb.md
 - [ ] Confirm: kb:write for admin and tech only (assumed default)
+
+## Phase 14: Portal polish
+- [ ] Walk through docs/verify/portal-polish.md
+- [ ] Real-tenant check: register the multi-tenant portal app per docs/PORTAL_SSO.md and sign in from a client tenant
+- [ ] Confirm: uploads limited to 10 MB and the extension allowlist (assumed default)
