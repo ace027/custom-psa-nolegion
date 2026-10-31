@@ -1,11 +1,10 @@
 # Plan 13-01 Summary: Knowledge base backend: schema, permissions, staff, suggestion and portal APIs
 
 ## Result
-**Status**: Partial
+**Status**: Complete
 **Wave**: 1
 **Agent**: engineering-backend-architect
 **Completed**: 2026-10-31
-**Failure Class**: BLOCKER — tests/test_seed_and_migrations.py:49: AssertionError
 
 ## Agent Selection Rationale
 
@@ -23,120 +22,42 @@
 ## Completed Tasks
 - [x] Task 1: Migration, model and permissions (done)
 - [x] Task 2: Service, schemas and staff + portal routes (done)
-- [ ] Task 3: Tests, seed and OpenAPI spec (partial)
+- [x] Task 3: Tests, seed and OpenAPI spec (done)
 
 ## Files Modified
-- `backend/alembic/versions/0034_knowledge_base.py`
-- `backend/app/kb.py`
-- `backend/app/kb_schemas.py`
-- `backend/app/main.py`
-- `backend/app/models.py`
-- `backend/app/permissions.py`
-- `backend/app/routers/kb.py`
-- `backend/app/routers/portal.py`
-- `backend/app/seed.py`
-- `backend/tests/test_kb.py`
-- `backend/tests/test_kb_portal.py`
-- `backend/tests/test_permissions.py`
-- `docs/api/openapi.json`
+- `backend/tests/test_seed_and_migrations.py`
 
 ## Verification Results
-3/6 verification commands passed (run by Triad after the agent finished).
+6/6 verification commands passed (run by Triad after the agent finished).
 
 ## Verification Commands
 | Command | Exit Code | Result |
 |---------|-----------|--------|
-| `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -m pytest -q tests/test_kb.py tests/test_kb_portal.py tests/test_permissions.py tests/test_isolation.py tests/test_backup_restore.py tests/test_seed_and_migrations.py tests/test_portal.py tests/test_api_v1_and_openapi.py tests/test_zz_api_contract.py` | 1 | FAIL |
+| `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -m pytest -q tests/test_kb.py tests/test_kb_portal.py tests/test_permissions.py tests/test_isolation.py tests/test_backup_restore.py tests/test_seed_and_migrations.py tests/test_portal.py tests/test_api_v1_and_openapi.py tests/test_zz_api_contract.py` | 0 | PASS |
 | `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -m app.openapi_export --check` | 0 | PASS |
 | `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/ruff check app tests && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/ruff format --check app tests` | 0 | PASS |
-| `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -m pytest -q tests/test_permissions.py tests/test_isolation.py tests/test_seed_and_migrations.py` | 1 | FAIL |
-| `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -c "from app.main import app; ps={r.path for r in app.routes}; assert '/api/v1/kb/articles' in ps and '/api/v1/kb/suggestions' in ps and '/api/v1/portal/kb' in ps"` | 1 | FAIL |
+| `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -m pytest -q tests/test_permissions.py tests/test_isolation.py tests/test_seed_and_migrations.py` | 0 | PASS |
+| `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -W ignore -c "from app.main import app; ps=app.openapi()['paths']; assert '/api/v1/kb/articles' in ps and '/api/v1/kb/suggestions' in ps and '/api/v1/portal/kb' in ps"` | 0 | PASS |
 | `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -m pytest -q tests/test_kb.py tests/test_kb_portal.py` | 0 | PASS |
 
 ## Key Decisions
-- `search` is popped from audit snapshots because it is a derived tsvector.
-- A tag list over 10 items is rejected before de-duplication, so 11 raw tags give 422.
-- `seed_knowledge` runs in both seed branches and skips when articles already exist.
-- Null values for non-null fields in a PATCH are ignored.
+- I kept the earlier on-disk implementation instead of rewriting it. I spot-read `kb.py`, and it matches the context decisions.
+- `test_seed_and_migrations.py` was in the plan's files_modified list, so I edited it.
 
 ## Issues Encountered
-- The `"0033"` assertion described above is a stale test outside my write list.
-- The plan's route-check one-liner is broken for this FastAPI version, as noted above.
-- BLOCKER: tests/test_seed_and_migrations.py:49: AssertionError
+- none beyond the stale head assertion, now fixed.
 
 ## Escalations
-| # | Severity | Type | Decision | Status | Resolution |
-|---|----------|------|----------|--------|------------|
-| 1 | blocker | out-of-scope file | Allow a one-line edit in backend/tests/test_seed_and_migrations.py (line 49, `"0033"` to `"0034"`), or give another way to satisfy that test | approved | Auto default: plan amended to allow tests/test_seed_and_migrations.py; bump the head assertion to "0034". |
-| 2 | blocker | schema | Resolve: tests/test_seed_and_migrations.py:49: AssertionError | approved | Auto default: same fix as #1; the route-check command was also corrected in the plan (uses app.openapi() paths). |
-
-- #1 context: Adding migration 0034 as required makes the existing head-version assertion fail. The file is not in files_modified, so I left it unchanged. The plan's verification command cannot reach exit 0 without this edit.
-- #2 context: Verification failed (cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -m pytest -q tests/test_kb.py tests/test_kb_portal.py tests/test_permissions.py tests/test_isolation.py tests/test_backup_restore.py tests/test_seed_and_migrations.py tests/test_portal.py tests/test_api_v1_and_openapi.py tests/test_zz_api_contract.py; cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -m pytest -q tests/test_permissions.py tests/test_isolation.py tests/test_seed_and_migrations.py; cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -c "from app.main import app; ps={r.path for r in app.routes}; assert '/api/v1/kb/articles' in ps and '/api/v1/kb/suggestions' in ps and '/api/v1/portal/kb' in ps"); a BLOCKER is not auto-fixed.
+(none)
 
 ## Handoff Context
-- **Key outputs**: backend/alembic/versions/0034_knowledge_base.py; backend/app/kb.py; backend/app/kb_schemas.py; backend/app/main.py; backend/app/models.py; backend/app/permissions.py; backend/app/routers/kb.py; backend/app/routers/portal.py; backend/app/seed.py; backend/tests/test_kb.py; backend/tests/test_kb_portal.py; backend/tests/test_permissions.py; docs/api/openapi.json
-- **Decisions made**: `search` is popped from audit snapshots because it is a derived tsvector.; A tag list over 10 items is rejected before de-duplication, so 11 raw tags give 422.; `seed_knowledge` runs in both seed branches and skips when articles already exist.; Null values for non-null fields in a PATCH are ignored.
+- **Key outputs**: backend/tests/test_seed_and_migrations.py
+- **Decisions made**: I kept the earlier on-disk implementation instead of rewriting it. I spot-read `kb.py`, and it matches the context decisions.; `test_seed_and_migrations.py` was in the plan's files_modified list, so I edited it.
 - **Open questions**: (none)
-- **Conventions established**: Frontend routes: `GET/POST /api/v1/kb/articles`, `GET/PATCH /api/v1/kb/articles/{id}`, `GET /api/v1/kb/suggestions?ticket_id=`, `GET /api/v1/portal/kb?q=` and `GET /api/v1/portal/kb/{id}`.; `q` must be 2 to 100 characters. Staff list returns `Page[KbArticleSummary]` with `limit` 1 to 100, default 25.; Portal responses omit status, visibility and author names. Hidden articles return 404.; Suggestions return published articles of either visibility, at most 5.
+- **Conventions established**: The routes the frontend plan builds on are `/api/v1/kb/articles`, `/api/v1/kb/articles/{id}`, `/api/v1/kb/suggestions?ticket_id=`, `/api/v1/portal/kb` and `/api/v1/portal/kb/{id}`.; Any later migration must bump the head assertion in `test_seed_and_migrations.py`, now "0034".; Portal responses omit status, visibility and author names. Internal, draft and archived articles return 404 from the portal.; `.planning/STATE.md` and `.planning/memory/OUTCOMES.md` show as modified in git status. I did not touch them; they predate this run.
 
 ## Requirements Covered
 - REQ-12
 
-### Failed verification output
-`cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -m pytest -q tests/test_kb.py tests/test_kb_portal.py tests/test_permissions.py tests/test_isolation.py tests/test_backup_restore.py tests/test_seed_and_migrations.py tests/test_portal.py tests/test_api_v1_and_openapi.py tests/test_zz_api_contract.py`
-```
-^
-E             + 0034
-E             ?    ^
-
-tests/test_seed_and_migrations.py:49: AssertionError
-=============================== warnings summary ===============================
-../../../../tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/lib/python3.12/site-packages/fastapi/testclient.py:1
-  /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
-    from starlette.testclient import TestClient as TestClient  # noqa
-
-../../../../tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/lib/python3.12/site-packages/authlib/integrations/httpx_client/assertion_client.py:5
-  /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/lib/python3.12/site-packages/authlib/integrations/httpx_client/assertion_client.py:5: AuthlibDeprecationWarning: The httpx module is deprecated; please use httpx2 instead.
-    from ._compat import httpx2
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ============================
-FAILED tests/test_seed_and_migrations.py::test_migration_0032_reporting_tables_and_constraints
-1 failed, 88 passed, 1 skipped, 2 warnings in 73.95s (0:01:13)
-
-```
-`cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -m pytest -q tests/test_permissions.py tests/test_isolation.py tests/test_seed_and_migrations.py`
-```
-3
-E             ?    ^
-E             + 0034
-E             ?    ^
-
-tests/test_seed_and_migrations.py:49: AssertionError
-=============================== warnings summary ===============================
-../../../../tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/lib/python3.12/site-packages/fastapi/testclient.py:1
-  /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
-    from starlette.testclient import TestClient as TestClient  # noqa
-
-../../../../tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/lib/python3.12/site-packages/authlib/integrations/httpx_client/assertion_client.py:5
-  /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/lib/python3.12/site-packages/authlib/integrations/httpx_client/assertion_client.py:5: AuthlibDeprecationWarning: The httpx module is deprecated; please use httpx2 instead.
-    from ._compat import httpx2
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ============================
-FAILED tests/test_seed_and_migrations.py::test_migration_0032_reporting_tables_and_constraints
-1 failed, 32 passed, 2 warnings in 29.45s
-
-```
-`cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -c "from app.main import app; ps={r.path for r in app.routes}; assert '/api/v1/kb/articles' in ps and '/api/v1/kb/suggestions' in ps and '/api/v1/portal/kb' in ps"`
-```
-/tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/lib/python3.12/site-packages/authlib/integrations/httpx_client/assertion_client.py:5: AuthlibDeprecationWarning: The httpx module is deprecated; please use httpx2 instead.
-  from ._compat import httpx2
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-AttributeError: '_IncludedRouter' object has no attribute 'path'
-
-```
-
 ## Token Usage
-17 requests, 785527 input tokens (718692 cached), 21279 output tokens, $0.5236
+6 requests, 164155 input tokens (136275 cached), 3297 output tokens, $0.1299
