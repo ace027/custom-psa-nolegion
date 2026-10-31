@@ -1560,6 +1560,8 @@ class PortalMeOut(BaseModel):
     can_see_billing: bool
     can_see_all_tickets: bool
     can_see_devices: bool = False
+    phone: str | None = None
+    title: str | None = None
 
 
 class PortalNoticeOut(BaseModel):

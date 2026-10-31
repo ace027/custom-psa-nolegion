@@ -208,6 +208,21 @@ def test_contact_patch_rejects_email_and_bad_values(admin, sign_in, world):
     assert p.get(f"{API}/me").json()["email"] == "pat@acme.com"
 
 
+def test_me_returns_phone_and_title_and_name_only_patch_keeps_them(admin, sign_in, world):
+    p = sign_in("pat@acme.com")
+    r = p.patch(f"{API}/me/contact", json={"name": "Pat", "phone": "555-0100", "title": "CFO"})
+    assert r.status_code == 200
+    me = p.get(f"{API}/me").json()
+    assert (me["phone"], me["title"]) == ("555-0100", "CFO")
+    # the My details page sends back what /me returned, so a name-only change keeps them
+    r = p.patch(
+        f"{API}/me/contact", json={"name": "Patricia", "phone": me["phone"], "title": me["title"]}
+    )
+    assert r.status_code == 200
+    me = p.get(f"{API}/me").json()
+    assert (me["contact_name"], me["phone"], me["title"]) == ("Patricia", "555-0100", "CFO")
+
+
 # ---- exports ----
 def test_ticket_export_is_own_org_only_and_neutralises_formulas(admin, sign_in, world):
     mk_ticket(admin, world["a"], world["pat"]["id"], subject="=HYPERLINK(1)")

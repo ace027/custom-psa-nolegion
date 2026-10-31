@@ -93,6 +93,8 @@ def me(ctx: PortalCtx) -> dict:
         can_see_billing=ctx.contact.is_billing_contact,
         can_see_all_tickets=ctx.contact.portal_org_tickets,
         can_see_devices=devices_visible(ctx, org),
+        phone=ctx.contact.phone,
+        title=ctx.contact.title,
     )
 
 

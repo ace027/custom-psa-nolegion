@@ -203,3 +203,5 @@ verification: 13/13 passed
 | O-117 | 2026-10-31 | dev | 13 | 13-00 | engineering-frontend-developer | quality-review | success | 3 | review, engineering | Phase 13 review PASSED in 1 cycle(s), 2 finding(s) |
 | O-118 | 2026-10-31 | dev | 14 | 14-01 | engineering-security-engineer | implementation | partial | 3 | portal-polish, engineering | Portal Entra SSO and the phase 14 schema: Complete with Warnings |
 | O-119 | 2026-10-31 | dev | 14 | 14-02 | engineering-backend-architect | implementation | success | 2 | portal-polish, engineering | Portal attachments, contact self-service and CSV export (backend): Complete |
+| O-120 | 2026-10-31 | dev | 14 | 14-03 | engineering-frontend-developer | implementation | failed | 5 | portal-polish, engineering | Portal polish frontend and manual checks: Partial |
+| O-121 | 2026-10-31 | dev | 14 | 14-03 | engineering-frontend-developer | implementation | success | 2 | portal-polish, engineering | Portal polish frontend and manual checks: Complete |
