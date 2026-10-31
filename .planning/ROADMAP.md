@@ -193,7 +193,7 @@
 | 8 | 4 | 4 | Shipped |
 | 9 | 3 | 3 | Shipped |
 | 10 | 3 | 3 | Shipped |
-| 11 | 3 | 3 | Complete |
+| 11 | 3 | 3 | Shipped |
 | 12 | 4 | 4 | Complete |
 | 13 | 2 | 0 | Pending |
 | 14 | 3 | 0 | Pending |
