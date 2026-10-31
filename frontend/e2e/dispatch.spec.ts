@@ -2,7 +2,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 
 // Requires seeded data (python -m app.seed) and DEV_LOGIN_ENABLED=true on the API: run it with scripts/e2e.sh.
 // The clock is pinned to Tuesday 2030-01-08 15:00 UTC, which is 09:00 in America/Chicago (the seeded org zone;
-// the tests read the zone from /api/settings and never assume it). Bookings are on that day, in the future.
+// the tests read the zone from /api/v1/settings and never assume it). Bookings are on that day, in the future.
 const DAY = "2030-01-08";
 const NOW = new Date(`${DAY}T15:00:00Z`);
 const HEADERS = { "X-Requested-With": "psa" };
@@ -40,12 +40,12 @@ interface Staff { id: number; email: string; display_name: string }
 interface Appt { id: number; tech_id: number; starts_at: string; ends_at: string; status: string }
 
 async function get<T>(request: APIRequestContext, path: string): Promise<T> {
-  const res = await request.get(`/api${path}`);
+  const res = await request.get(`/api/v1${path}`);
   expect(res.ok(), `${path}: ${res.status()}`).toBeTruthy();
   return res.json();
 }
 async function post<T>(request: APIRequestContext, path: string, data: unknown): Promise<T> {
-  const res = await request.post(`/api${path}`, { data, headers: HEADERS });
+  const res = await request.post(`/api/v1${path}`, { data, headers: HEADERS });
   expect(res.ok(), `${path}: ${res.status()} ${await res.text()}`).toBeTruthy();
   return res.json();
 }
@@ -67,7 +67,7 @@ async function setup(page: Page) {
 
 /** Cancel what a test booked, so repeated runs on the same database start from the same board. */
 async function cancelAll(request: APIRequestContext, ids: number[]): Promise<void> {
-  for (const id of ids) await request.post(`/api/appointments/${id}/cancel`, { data: { reason: "e2e cleanup" }, headers: HEADERS });
+  for (const id of ids) await request.post(`/api/v1/appointments/${id}/cancel`, { data: { reason: "e2e cleanup" }, headers: HEADERS });
 }
 
 const event = (page: Page, number: number) => page.locator(".rbc-event", { hasText: `#${number}` });
@@ -185,7 +185,7 @@ test("drag an event one hour later", async ({ page }) => {
 test("Outlook legend shows with sync off; enabling it shows the not-loaded caption", async ({ page }) => {
   await login(page, "admin@example.com");
   const request = page.request;
-  const patch = (on: boolean) => request.patch("/api/settings", { data: { outlook_sync_enabled: on }, headers: HEADERS });
+  const patch = (on: boolean) => request.patch("/api/v1/settings", { data: { outlook_sync_enabled: on }, headers: HEADERS });
   try {
     await page.goto(`/dispatch?view=day&date=${DAY}`);
     await expect(page.locator(".rbc-time-view")).toBeVisible();

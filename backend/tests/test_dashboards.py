@@ -96,7 +96,7 @@ def two_techs(owner, login, make_org, utc_always_open):
 
 def test_tech_sees_only_their_own_numbers(two_techs):
     mine, other = two_techs
-    d = mine.get("/api/dashboard/me").json()
+    d = mine.get("/api/v1/dashboard/me").json()
     assert (d["open_tickets"], d["sla_breached"], d["sla_at_risk"]) == (3, 1, 1)
     assert d["appointments_today"] == 1
     w = d["week"]
@@ -104,15 +104,15 @@ def test_tech_sees_only_their_own_numbers(two_techs):
     assert w["capacity_minutes"] > 0
     assert w["utilisation_bp"] == rm.bp(90, w["capacity_minutes"])
 
-    o = other.get("/api/dashboard/me").json()
+    o = other.get("/api/v1/dashboard/me").json()
     assert (o["open_tickets"], o["sla_breached"], o["sla_at_risk"]) == (1, 1, 0)
     assert o["appointments_today"] == 1
     assert (o["week"]["logged_minutes"], o["week"]["billable_minutes"]) == (300, 300)
 
 
 def test_dashboard_me_is_for_staff_with_ticket_read_only(anon, login):
-    assert anon.get("/api/dashboard/me").status_code == 401
-    d = login("admin").get("/api/dashboard/me").json()
+    assert anon.get("/api/v1/dashboard/me").status_code == 401
+    d = login("admin").get("/api/v1/dashboard/me").json()
     assert d["open_tickets"] == 0 and d["week"]["logged_minutes"] == 0
 
 
@@ -126,15 +126,15 @@ def test_manager_payload_equals_the_report_totals(biller, company, make_org, wt,
     log(t["id"], wt["Remote"], 60)  # unbilled time
     month_start = today.replace(day=1)
 
-    dash = biller.get("/api/reports/dashboard").json()
+    dash = biller.get("/api/v1/reports/dashboard").json()
     prof = biller.get(
-        "/api/reports/profitability", params={"from": month_start, "to": today}
+        "/api/v1/reports/profitability", params={"from": month_start, "to": today}
     ).json()["totals"]
     assert dash["revenue_mtd_cents"] == prof["revenue_cents"] >= 5000
     assert dash["margin_mtd_cents"] == prof["margin_cents"]
     assert dash["margin_mtd_bp"] == prof["margin_bp"]
 
-    aging = biller.get("/api/reports/aging").json()["totals"]
+    aging = biller.get("/api/v1/reports/aging").json()["totals"]
     assert dash["ar_total_cents"] == aging["total_open_cents"] == 35000
     assert dash["ar_buckets"] == {
         k: aging[k]
@@ -142,12 +142,12 @@ def test_manager_payload_equals_the_report_totals(biller, company, make_org, wt,
     }
     assert (
         dash["unbilled_cents"]
-        == biller.get("/api/reports/unbilled").json()["totals"]["total_cents"]
+        == biller.get("/api/v1/reports/unbilled").json()["totals"]["total_cents"]
         > 0
     )
 
     sla = biller.get(
-        "/api/reports/sla", params={"from": today - timedelta(days=29), "to": today}
+        "/api/v1/reports/sla", params={"from": today - timedelta(days=29), "to": today}
     ).json()["totals"]
     assert dash["sla_30d"] == {
         "first_response_met_bp": sla["first_response"]["met_bp"],
@@ -158,7 +158,7 @@ def test_manager_payload_equals_the_report_totals(biller, company, make_org, wt,
 
     monday = today - timedelta(days=today.weekday() + 7)
     util = biller.get(
-        "/api/reports/utilisation", params={"from": monday, "to": monday + timedelta(days=6)}
+        "/api/v1/reports/utilisation", params={"from": monday, "to": monday + timedelta(days=6)}
     ).json()["totals"]
     assert dash["team_utilisation_last_week_bp"] == util["utilisation_bp"]
     assert set(dash) == {
@@ -168,11 +168,11 @@ def test_manager_payload_equals_the_report_totals(biller, company, make_org, wt,
 
 
 def test_manager_dashboard_is_empty_safe(biller):
-    d = biller.get("/api/reports/dashboard").json()
+    d = biller.get("/api/v1/reports/dashboard").json()
     assert d["revenue_mtd_cents"] == 0 and d["margin_mtd_bp"] is None
     assert d["sla_30d"] == {"first_response_met_bp": None, "resolution_met_bp": None, "n": 0}
 
 
 @pytest.mark.parametrize("role", ["tech", "read_only"])
 def test_manager_dashboard_is_refused_without_report_read(login, role):
-    assert login(role).get("/api/reports/dashboard").status_code == 403
+    assert login(role).get("/api/v1/reports/dashboard").status_code == 403

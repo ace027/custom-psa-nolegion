@@ -27,7 +27,7 @@ const delivered = (over = {}) => item({ status: "delivered", organization_id: 3,
 
 let calls: string[] = [];
 function go(path: string, role: string, perms: string[], h: Record<string, () => Response>) {
-  const handlers: Record<string, () => Response> = { "/api/auth/me": json(me(role, perms)), ...h };
+  const handlers: Record<string, () => Response> = { "/api/v1/auth/me": json(me(role, perms)), ...h };
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
     const key = init?.method && init.method !== "GET" ? `${init.method} ${url}` : url;
     calls.push(`${key} ${init?.body ?? ""}`);
@@ -41,10 +41,10 @@ beforeEach(() => { calls = []; });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("receive dialog", () => {
-  const page = (extra: Record<string, () => Response> = {}) => ({ "/api/procurement/purchase-orders/7": json(po()), ...extra });
+  const page = (extra: Record<string, () => Response> = {}) => ({ "/api/v1/procurement/purchase-orders/7": json(po()), ...extra });
 
   it("renders one serial input per unit and posts the serials", async () => {
-    go("/procurement/purchase-orders/7", "admin", WRITE, page({ "POST /api/procurement/purchase-orders/7/receive": json([item(), item({ id: 22 })], 201) }));
+    go("/procurement/purchase-orders/7", "admin", WRITE, page({ "POST /api/v1/procurement/purchase-orders/7/receive": json([item(), item({ id: 22 })], 201) }));
     fireEvent.click(await screen.findByRole("button", { name: "Receive Laptop" }));
     expect(await screen.findByLabelText("Serial number 1")).toBeInTheDocument();
     expect(screen.getByLabelText("Serial number 2")).toBeInTheDocument();
@@ -55,12 +55,12 @@ describe("receive dialog", () => {
     expect(called("POST")).toBe(false);
     fireEvent.change(screen.getByLabelText("Serial number 2"), { target: { value: "SN-2" } });
     fireEvent.click(screen.getByRole("button", { name: "Receive stock" }));
-    await waitFor(() => expect(called("POST /api/procurement/purchase-orders/7/receive", '"serials":["SN-1","SN-2"]')).toBe(true));
-    expect(called("POST /api/procurement/purchase-orders/7/receive", '"line_id":11')).toBe(true);
+    await waitFor(() => expect(called("POST /api/v1/procurement/purchase-orders/7/receive", '"serials":["SN-1","SN-2"]')).toBe(true));
+    expect(called("POST /api/v1/procurement/purchase-orders/7/receive", '"line_id":11')).toBe(true);
   });
 
   it("shows a duplicate serial error from the server inline", async () => {
-    go("/procurement/purchase-orders/7", "admin", WRITE, page({ "POST /api/procurement/purchase-orders/7/receive": json({ detail: "Serial number SN-1 is already in inventory" }, 409) }));
+    go("/procurement/purchase-orders/7", "admin", WRITE, page({ "POST /api/v1/procurement/purchase-orders/7/receive": json({ detail: "Serial number SN-1 is already in inventory" }, 409) }));
     fireEvent.click(await screen.findByRole("button", { name: "Receive Laptop" }));
     fireEvent.change(await screen.findByLabelText("Serial number 1"), { target: { value: "SN-1" } });
     fireEvent.change(screen.getByLabelText("Serial number 2"), { target: { value: "SN-2" } });
@@ -72,11 +72,11 @@ describe("receive dialog", () => {
 describe("new purchase order", () => {
   it("sends a markup of 15 percent as 1500 basis points", async () => {
     go("/procurement", "admin", WRITE, {
-      "/api/procurement/purchase-orders": json([]),
-      "/api/procurement/vendors": json([{ id: 1, name: "Acme Supply", account_number: null, email: null, phone: null, website: null, notes: null, archived_at: null, created_at: TS, updated_at: TS }]),
-      "/api/organizations": json([]),
-      "POST /api/procurement/purchase-orders": json(po({ id: 8, status: "draft", number: null }), 201),
-      "/api/procurement/purchase-orders/8": json(po({ id: 8, status: "draft", number: null })),
+      "/api/v1/procurement/purchase-orders": json([]),
+      "/api/v1/procurement/vendors": json([{ id: 1, name: "Acme Supply", account_number: null, email: null, phone: null, website: null, notes: null, archived_at: null, created_at: TS, updated_at: TS }]),
+      "/api/v1/organizations": json([]),
+      "POST /api/v1/procurement/purchase-orders": json(po({ id: 8, status: "draft", number: null }), 201),
+      "/api/v1/procurement/purchase-orders/8": json(po({ id: 8, status: "draft", number: null })),
     });
     expect(await screen.findByText("No purchase orders yet.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "New purchase order" }));
@@ -86,14 +86,14 @@ describe("new purchase order", () => {
     fireEvent.change(screen.getByLabelText("Line 1 unit cost ($)"), { target: { value: "123.45" } });
     fireEvent.change(screen.getByLabelText("Line 1 markup (%)"), { target: { value: "15" } });
     fireEvent.click(screen.getByRole("button", { name: "Create purchase order" }));
-    await waitFor(() => expect(called("POST /api/procurement/purchase-orders", '"markup_bp":1500')).toBe(true));
-    expect(called("POST /api/procurement/purchase-orders", '"unit_cost_cents":12345')).toBe(true);
+    await waitFor(() => expect(called("POST /api/v1/procurement/purchase-orders", '"markup_bp":1500')).toBe(true));
+    expect(called("POST /api/v1/procurement/purchase-orders", '"unit_cost_cents":12345')).toBe(true);
   });
 });
 
 describe("read-only user", () => {
   it("hides write actions on the order page", async () => {
-    go("/procurement/purchase-orders/7", "read_only", READ, { "/api/procurement/purchase-orders/7": json(po({ status: "draft" })) });
+    go("/procurement/purchase-orders/7", "read_only", READ, { "/api/v1/procurement/purchase-orders/7": json(po({ status: "draft" })) });
     expect(await screen.findByText("Laptop")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Order" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Receive/ })).not.toBeInTheDocument();
@@ -102,7 +102,7 @@ describe("read-only user", () => {
 
   it("hides deliver, consume and undo on the inventory page", async () => {
     go("/procurement/inventory", "read_only", READ, {
-      "/api/procurement/inventory": json([item(), delivered({ id: 22, serial_number: "SN-2" })]), "/api/organizations": json([]),
+      "/api/v1/procurement/inventory": json([item(), delivered({ id: 22, serial_number: "SN-2" })]), "/api/v1/organizations": json([]),
     });
     expect(await screen.findByText("SN-1")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Deliver/ })).not.toBeInTheDocument();
@@ -112,8 +112,8 @@ describe("read-only user", () => {
 
   it("shows the markup rules without edit controls", async () => {
     go("/procurement/markup", "read_only", READ, {
-      "/api/procurement/markup-rules": json([{ id: 1, product_id: null, category: "hardware", markup_bp: 1500, created_at: TS, updated_at: TS }]),
-      "/api/settings": json({ default_markup_bp: 0 }),
+      "/api/v1/procurement/markup-rules": json([{ id: 1, product_id: null, category: "hardware", markup_bp: 1500, created_at: TS, updated_at: TS }]),
+      "/api/v1/settings": json({ default_markup_bp: 0 }),
     });
     expect(await screen.findByText("15.00%")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Edit/ })).not.toBeInTheDocument();
@@ -124,17 +124,17 @@ describe("read-only user", () => {
 describe("inventory", () => {
   it("shows the already invoiced error when an undo is refused", async () => {
     go("/procurement/inventory", "admin", WRITE, {
-      "/api/procurement/inventory": json([delivered()]), "/api/organizations": json([]),
-      "POST /api/procurement/inventory/21/undo-delivery": json({ detail: "The charge is already invoiced; issue a credit memo instead" }, 409),
+      "/api/v1/procurement/inventory": json([delivered()]), "/api/v1/organizations": json([]),
+      "POST /api/v1/procurement/inventory/21/undo-delivery": json({ detail: "The charge is already invoiced; issue a credit memo instead" }, 409),
     });
     fireEvent.click(await screen.findByRole("button", { name: "Undo delivery of Laptop SN-1" }));
     fireEvent.click(await screen.findByRole("button", { name: "Confirm undo" }));
     expect(await screen.findByText(/already invoiced/)).toBeInTheDocument();
-    expect(called("POST /api/procurement/inventory/21/undo-delivery")).toBe(true);
+    expect(called("POST /api/v1/procurement/inventory/21/undo-delivery")).toBe(true);
   });
 
   it("shows an empty state", async () => {
-    go("/procurement/inventory", "admin", WRITE, { "/api/procurement/inventory": json([]), "/api/organizations": json([]) });
+    go("/procurement/inventory", "admin", WRITE, { "/api/v1/procurement/inventory": json([]), "/api/v1/organizations": json([]) });
     expect(await screen.findByText(/No inventory matches/)).toBeInTheDocument();
   });
 });
@@ -142,10 +142,10 @@ describe("inventory", () => {
 describe("client inventory card", () => {
   it("lists the client's items on the organization page", async () => {
     go("/organizations/3", "read_only", READ, {
-      "/api/organizations/3": json({ id: 3, name: "Acme", status: "active", billing_address: null, notes: null, assets_published: false, archived_at: null }),
-      "/api/organizations/3/sites?include_archived=true": json([]),
-      "/api/organizations/3/contacts?include_archived=true": json([]),
-      "/api/procurement/organizations/3/inventory": json([delivered(), delivered({ id: 22, description: "Dock", serial_number: null, status: "in_stock", delivered_on: null, asset_id: null })]),
+      "/api/v1/organizations/3": json({ id: 3, name: "Acme", status: "active", billing_address: null, notes: null, assets_published: false, archived_at: null }),
+      "/api/v1/organizations/3/sites?include_archived=true": json([]),
+      "/api/v1/organizations/3/contacts?include_archived=true": json([]),
+      "/api/v1/procurement/organizations/3/inventory": json([delivered(), delivered({ id: 22, description: "Dock", serial_number: null, status: "in_stock", delivered_on: null, asset_id: null })]),
     });
     expect(await screen.findByText("Hardware and inventory")).toBeInTheDocument();
     expect(await screen.findByText("SN-1")).toBeInTheDocument();

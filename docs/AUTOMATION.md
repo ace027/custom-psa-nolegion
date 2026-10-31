@@ -2,9 +2,9 @@
 
 Rules do routine dispatch and escalation work: **when** something happens, **if** every condition is true,
 **then** run the actions. Manage them under **Automation** in the sidebar (admins, permission
-`automation:manage`). API: `GET/POST /api/automation/rules`, `PATCH /api/automation/rules/{id}`,
-`POST /api/automation/rules/{id}/archive`, `POST /api/automation/rules/test`,
-`GET /api/automation/rules/{id}/runs`.
+`automation:manage`). API: `GET/POST /api/v1/automation/rules`, `PATCH /api/v1/automation/rules/{id}`,
+`POST /api/v1/automation/rules/{id}/archive`, `POST /api/v1/automation/rules/test`,
+`GET /api/v1/automation/rules/{id}/runs`.
 
 ## Triggers
 
@@ -66,7 +66,7 @@ status done|skipped|failed, detail}]}`. Runs that did not match are kept too, so
 
 ## Dry run
 
-**Test against ticket #** (or `POST /api/automation/rules/test` with `rule_id` or an unsaved `rule`, plus
+**Test against ticket #** (or `POST /api/v1/automation/rules/test` with `rule_id` or an unsaved `rule`, plus
 `ticket_id`) evaluates the conditions against the ticket's current values and lists what would run. It
 writes nothing: no run, no audit, no ticket change.
 

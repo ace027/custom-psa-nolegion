@@ -11,11 +11,11 @@ from tests.test_payments import final_invoice, pay
 
 def invoice_with_tax(biller, org, cents=14197, taxable=True):
     """INV with one manual line; 14,197 c taxed at 8.25% -> tax 1,171, total 15,368."""
-    biller.patch(f"/api/organizations/{org}/billing", json={"tax_rate_bp": 825})
-    inv = biller.post("/api/invoices", json={"organization_id": org, "include_unbilled": False})
+    biller.patch(f"/api/v1/organizations/{org}/billing", json={"tax_rate_bp": 825})
+    inv = biller.post("/api/v1/invoices", json={"organization_id": org, "include_unbilled": False})
     inv = inv.json()
     biller.post(
-        f"/api/invoices/{inv['id']}/lines",
+        f"/api/v1/invoices/{inv['id']}/lines",
         json={
             "description": "Overbilled",
             "quantity": "1",
@@ -23,7 +23,7 @@ def invoice_with_tax(biller, org, cents=14197, taxable=True):
             "taxable": taxable,
         },
     )
-    r = biller.post(f"/api/invoices/{inv['id']}/finalize", json={})
+    r = biller.post(f"/api/v1/invoices/{inv['id']}/finalize", json={})
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -35,11 +35,11 @@ def memo(client, org, cents=10000, taxable=False, **kw):
         "lines": [{"description": "Correction", "unit_price_cents": cents, "taxable": taxable}],
         **kw,
     }
-    return client.post("/api/credit-memos", json=body)
+    return client.post("/api/v1/credit-memos", json=body)
 
 
 def invoice(client, invoice_id):
-    return client.get(f"/api/invoices/{invoice_id}").json()
+    return client.get(f"/api/v1/invoices/{invoice_id}").json()
 
 
 @pytest.fixture
@@ -84,9 +84,9 @@ def test_memo_date_sets_the_number_year_and_cannot_be_future(biller, org, compan
 
 
 def test_lines_round_per_line_and_zero_lines_are_refused(biller, org, company):
-    biller.patch(f"/api/organizations/{org}/billing", json={"tax_rate_bp": 825})
+    biller.patch(f"/api/v1/organizations/{org}/billing", json={"tax_rate_bp": 825})
     r = biller.post(
-        "/api/credit-memos",
+        "/api/v1/credit-memos",
         json={
             "organization_id": org,
             "reason": "Two lines",
@@ -101,7 +101,7 @@ def test_lines_round_per_line_and_zero_lines_are_refused(biller, org, company):
     assert [(ln["amount_cents"], ln["tax_cents"]) for ln in m["lines"]] == [(1502, 124), (333, 27)]
     assert m["total_cents"] == 1502 + 124 + 333 + 27
     tiny = biller.post(
-        "/api/credit-memos",
+        "/api/v1/credit-memos",
         json={
             "organization_id": org,
             "reason": "Rounds to nothing",
@@ -119,12 +119,12 @@ def test_partial_apply_leaves_client_credit_that_can_be_applied_later(biller, or
     assert m["unapplied_cents"] == 4000 and invoice(biller, inv["id"])["balance_cents"] == 0
     credit = {
         r["organization_id"]: r["credit_cents"]
-        for r in biller.get("/api/receivables").json()["rows"]
+        for r in biller.get("/api/v1/receivables").json()["rows"]
     }
     assert credit[org] == 4000
     later = final_invoice(biller, org, 5000)
     r = biller.post(
-        f"/api/credit-memos/{m['id']}/apply",
+        f"/api/v1/credit-memos/{m['id']}/apply",
         json={"invoice_id": later["id"], "amount_cents": 4000},
     )
     assert r.status_code == 200 and r.json()["unapplied_cents"] == 0
@@ -138,20 +138,22 @@ def test_apply_rules(biller, make_org, org, company):
 
     def apply(i, a):
         return biller.post(
-            f"/api/credit-memos/{m['id']}/apply", json={"invoice_id": i, "amount_cents": a}
+            f"/api/v1/credit-memos/{m['id']}/apply", json={"invoice_id": i, "amount_cents": a}
         )
 
     assert apply(inv["id"], 3001).status_code == 409  # more than the memo
     other = make_org("Other Co")["id"]
     other_inv = final_invoice(biller, other, 5000)
     assert apply(other_inv["id"], 100).status_code == 409  # different client
-    draft = biller.post("/api/invoices", json={"organization_id": org, "include_unbilled": False})
+    draft = biller.post(
+        "/api/v1/invoices", json={"organization_id": org, "include_unbilled": False}
+    )
     assert apply(draft.json()["id"], 100).status_code == 409  # not finalized
     assert apply(inv["id"], 3000).status_code == 200
     assert apply(inv["id"], 1).status_code == 409  # memo used up
     small = memo(biller, org, 9000).json()
     r = biller.post(
-        f"/api/credit-memos/{small['id']}/apply",
+        f"/api/v1/credit-memos/{small['id']}/apply",
         json={"invoice_id": inv["id"], "amount_cents": 2001},
     )
     assert r.status_code == 409  # invoice balance is 2,000
@@ -164,7 +166,9 @@ def test_payments_writeoffs_and_memos_share_the_invoice_balance(biller, org, com
     now = invoice(biller, inv["id"])
     assert (now["paid_cents"], now["credited_cents"], now["balance_cents"]) == (4000, 3000, 3000)
     assert (
-        biller.post(f"/api/invoices/{inv['id']}/write-off", json={"reason": "bad debt"}).status_code
+        biller.post(
+            f"/api/v1/invoices/{inv['id']}/write-off", json={"reason": "bad debt"}
+        ).status_code
         == 201
     )
     assert invoice(biller, inv["id"])["balance_cents"] == 0
@@ -178,23 +182,25 @@ def test_voiding_a_memo_undoes_its_applications(biller, org, company):
     m = memo(
         biller, org, 8000, applications=[{"invoice_id": inv["id"], "amount_cents": 8000}]
     ).json()
-    assert biller.post(f"/api/credit-memos/{m['id']}/void", json={"reason": "x"}).status_code == 422
-    r = biller.post(f"/api/credit-memos/{m['id']}/void", json={"reason": "Issued by mistake"})
+    assert (
+        biller.post(f"/api/v1/credit-memos/{m['id']}/void", json={"reason": "x"}).status_code == 422
+    )
+    r = biller.post(f"/api/v1/credit-memos/{m['id']}/void", json={"reason": "Issued by mistake"})
     assert (
         r.status_code == 200 and r.json()["status"] == "void" and r.json()["unapplied_cents"] == 0
     )
     assert invoice(biller, inv["id"])["balance_cents"] == 8000
     assert (
-        biller.post(f"/api/credit-memos/{m['id']}/void", json={"reason": "again"}).status_code
+        biller.post(f"/api/v1/credit-memos/{m['id']}/void", json={"reason": "again"}).status_code
         == 409
     )
     again = biller.post(
-        f"/api/credit-memos/{m['id']}/apply", json={"invoice_id": inv["id"], "amount_cents": 1}
+        f"/api/v1/credit-memos/{m['id']}/apply", json={"invoice_id": inv["id"], "amount_cents": 1}
     )
     assert again.status_code == 409
     assert {
         r["organization_id"]: r["credit_cents"]
-        for r in biller.get("/api/receivables").json()["rows"]
+        for r in biller.get("/api/v1/receivables").json()["rows"]
     }.get(org, 0) == 0
 
 
@@ -205,11 +211,11 @@ def test_unapplying_returns_value_to_the_memo(biller, org, company):
     ).json()
     app_id = m["applications"][0]["id"]
     r = biller.post(
-        f"/api/credit-memo-applications/{app_id}/void", json={"reason": "wrong invoice"}
+        f"/api/v1/credit-memo-applications/{app_id}/void", json={"reason": "wrong invoice"}
     )
     assert r.status_code == 200
     assert invoice(biller, inv["id"])["balance_cents"] == 8000
-    got = biller.get(f"/api/credit-memos/{m['id']}").json()
+    got = biller.get(f"/api/v1/credit-memos/{m['id']}").json()
     assert (
         got["unapplied_cents"] == 5000 and got["applications"][0]["void_reason"] == "wrong invoice"
     )
@@ -220,11 +226,13 @@ def test_an_invoice_with_memo_applied_cannot_be_voided(biller, org, company):
     m = memo(
         biller, org, 1000, applications=[{"invoice_id": inv["id"], "amount_cents": 1000}]
     ).json()
-    r = biller.post(f"/api/invoices/{inv['id']}/void", json={"reason": "wrong client"})
+    r = biller.post(f"/api/v1/invoices/{inv['id']}/void", json={"reason": "wrong client"})
     assert r.status_code == 409 and "credit memos" in r.json()["detail"]
-    biller.post(f"/api/credit-memos/{m['id']}/void", json={"reason": "undo first"})
+    biller.post(f"/api/v1/credit-memos/{m['id']}/void", json={"reason": "undo first"})
     assert (
-        biller.post(f"/api/invoices/{inv['id']}/void", json={"reason": "wrong client"}).status_code
+        biller.post(
+            f"/api/v1/invoices/{inv['id']}/void", json={"reason": "wrong client"}
+        ).status_code
         == 200
     )
 
@@ -232,15 +240,16 @@ def test_an_invoice_with_memo_applied_cannot_be_voided(biller, org, company):
 def test_memo_listing_filters_and_statement_credit(biller, org, make_org, company):
     other = make_org("Other Co")["id"]
     a, b = memo(biller, org).json(), memo(biller, other).json()
-    biller.post(f"/api/credit-memos/{b['id']}/void", json={"reason": "not needed"})
+    biller.post(f"/api/v1/credit-memos/{b['id']}/void", json={"reason": "not needed"})
     assert [
         m["id"]
-        for m in biller.get("/api/credit-memos", params={"organization_id": org}).json()["items"]
+        for m in biller.get("/api/v1/credit-memos", params={"organization_id": org}).json()["items"]
     ] == [a["id"]]
     assert [
-        m["id"] for m in biller.get("/api/credit-memos", params={"status": "void"}).json()["items"]
+        m["id"]
+        for m in biller.get("/api/v1/credit-memos", params={"status": "void"}).json()["items"]
     ] == [b["id"]]
-    assert biller.get("/api/credit-memos/999999").status_code == 404
+    assert biller.get("/api/v1/credit-memos/999999").status_code == 404
 
 
 # ---- database guards (runtime role, API bypassed) ----
@@ -334,7 +343,7 @@ def test_database_numbers_are_unique(world, owner):
 # ---- refunds ----
 def refund(client, payment_id, amount, **kw):
     return client.post(
-        f"/api/payments/{payment_id}/refunds",
+        f"/api/v1/payments/{payment_id}/refunds",
         json={"amount_cents": amount, "method": "check", "reason": "Client overpaid", **kw},
     )
 
@@ -345,7 +354,7 @@ def test_refund_comes_only_from_the_unapplied_part(biller, org, company):
     assert refund(biller, p["id"], 6001).status_code == 409  # 6,000 is unapplied
     r = refund(biller, p["id"], 2500, reference="chk 77")
     assert r.status_code == 201 and r.json()["amount_cents"] == 2500
-    detail = biller.get(f"/api/payments/{p['id']}").json()
+    detail = biller.get(f"/api/v1/payments/{p['id']}").json()
     assert (detail["applied_cents"], detail["refunded_cents"], detail["unapplied_cents"]) == (
         4000,
         2500,
@@ -354,7 +363,7 @@ def test_refund_comes_only_from_the_unapplied_part(biller, org, company):
     assert detail["refunds"][0]["reference"] == "chk 77"
     assert refund(biller, p["id"], 3501).status_code == 409
     assert refund(biller, p["id"], 3500).status_code == 201
-    assert biller.get(f"/api/payments/{p['id']}").json()["unapplied_cents"] == 0
+    assert biller.get(f"/api/v1/payments/{p['id']}").json()["unapplied_cents"] == 0
 
 
 def test_applied_money_must_be_unapplied_before_it_can_be_refunded(biller, org, company):
@@ -362,12 +371,12 @@ def test_applied_money_must_be_unapplied_before_it_can_be_refunded(biller, org, 
     p = pay(biller, org, 5000, [{"invoice_id": inv["id"], "amount_cents": 5000}]).json()
     assert refund(biller, p["id"], 100).status_code == 409
     app_id = p["applications"][0]["id"]
-    biller.post(f"/api/payment-applications/{app_id}/void", json={"reason": "refunding instead"})
+    biller.post(f"/api/v1/payment-applications/{app_id}/void", json={"reason": "refunding instead"})
     assert invoice(biller, inv["id"])["balance_cents"] == 5000  # the invoice is open again
     assert refund(biller, p["id"], 5000).status_code == 201
     # the refunded money can no longer be applied
     r = biller.post(
-        f"/api/payments/{p['id']}/apply", json={"invoice_id": inv["id"], "amount_cents": 1}
+        f"/api/v1/payments/{p['id']}/apply", json={"invoice_id": inv["id"], "amount_cents": 1}
     )
     assert r.status_code == 409
 
@@ -376,27 +385,31 @@ def test_refunds_reduce_client_credit_and_voiding_one_restores_it(biller, org, c
     p = pay(biller, org, 7000).json()
 
     def credit():
-        rows = biller.get("/api/receivables").json()["rows"]
+        rows = biller.get("/api/v1/receivables").json()["rows"]
         return {r["organization_id"]: r["credit_cents"] for r in rows}.get(org, 0)
 
     assert credit() == 7000
     r = refund(biller, p["id"], 3000).json()
     assert credit() == 4000
-    assert biller.post(f"/api/refunds/{r['id']}/void", json={"reason": "x"}).status_code == 422
-    v = biller.post(f"/api/refunds/{r['id']}/void", json={"reason": "check never sent"})
+    assert biller.post(f"/api/v1/refunds/{r['id']}/void", json={"reason": "x"}).status_code == 422
+    v = biller.post(f"/api/v1/refunds/{r['id']}/void", json={"reason": "check never sent"})
     assert v.status_code == 200 and v.json()["void_reason"] == "check never sent"
     assert credit() == 7000
-    assert biller.post(f"/api/refunds/{r['id']}/void", json={"reason": "again"}).status_code == 409
+    assert (
+        biller.post(f"/api/v1/refunds/{r['id']}/void", json={"reason": "again"}).status_code == 409
+    )
 
 
 def test_a_payment_with_a_live_refund_cannot_be_voided(biller, org, company):
     p = pay(biller, org, 3000).json()
     r = refund(biller, p["id"], 1000).json()
-    v = biller.post(f"/api/payments/{p['id']}/void", json={"reason": "recorded twice"})
+    v = biller.post(f"/api/v1/payments/{p['id']}/void", json={"reason": "recorded twice"})
     assert v.status_code == 409 and "refunds" in v.json()["detail"]
-    biller.post(f"/api/refunds/{r['id']}/void", json={"reason": "undo"})
+    biller.post(f"/api/v1/refunds/{r['id']}/void", json={"reason": "undo"})
     assert (
-        biller.post(f"/api/payments/{p['id']}/void", json={"reason": "recorded twice"}).status_code
+        biller.post(
+            f"/api/v1/payments/{p['id']}/void", json={"reason": "recorded twice"}
+        ).status_code
         == 200
     )
     assert refund(biller, p["id"], 10).status_code == 409  # a voided payment cannot be refunded
@@ -408,7 +421,7 @@ def test_refund_validation(biller, org, company):
     assert refund(biller, p["id"], 10, reason="x").status_code == 422
     assert refund(biller, p["id"], 10, refunded_on="2999-01-01").status_code == 409
     assert refund(biller, 999999, 10).status_code == 404
-    assert biller.post("/api/refunds/999999/void", json={"reason": "nope"}).status_code == 404
+    assert biller.post("/api/v1/refunds/999999/void", json={"reason": "nope"}).status_code == 404
 
 
 def test_database_guards_refunds(biller, org, company):
@@ -432,23 +445,25 @@ def test_permissions(login, biller, org, company):
     m = memo(biller, org).json()
     p = pay(biller, org, 1000).json()
     for client in (tech, ro):
-        assert client.get("/api/credit-memos").status_code == 200
+        assert client.get("/api/v1/credit-memos").status_code == 200
         assert memo(client, org).status_code == 403
         assert (
-            client.post(f"/api/credit-memos/{m['id']}/void", json={"reason": "no way"}).status_code
+            client.post(
+                f"/api/v1/credit-memos/{m['id']}/void", json={"reason": "no way"}
+            ).status_code
             == 403
         )
         assert refund(client, p["id"], 10).status_code == 403
-        assert client.post("/api/refunds/1/void", json={"reason": "no way"}).status_code == 403
+        assert client.post("/api/v1/refunds/1/void", json={"reason": "no way"}).status_code == 403
         assert (
             client.post(
-                "/api/credit-memo-applications/1/void", json={"reason": "no way"}
+                "/api/v1/credit-memo-applications/1/void", json={"reason": "no way"}
             ).status_code
             == 403
         )
         assert (
             client.post(
-                f"/api/credit-memos/{m['id']}/apply", json={"invoice_id": 1, "amount_cents": 1}
+                f"/api/v1/credit-memos/{m['id']}/apply", json={"invoice_id": 1, "amount_cents": 1}
             ).status_code
             == 403
         )
@@ -459,11 +474,11 @@ def test_every_money_change_is_audited(admin, biller, org, company):
     m = memo(
         biller, org, 5000, applications=[{"invoice_id": inv["id"], "amount_cents": 1000}]
     ).json()
-    biller.post(f"/api/credit-memos/{m['id']}/void", json={"reason": "audit me"})
+    biller.post(f"/api/v1/credit-memos/{m['id']}/void", json={"reason": "audit me"})
     p = pay(biller, org, 2000).json()
     r = refund(biller, p["id"], 500).json()
-    biller.post(f"/api/refunds/{r['id']}/void", json={"reason": "audit me too"})
-    log = admin.get("/api/audit", params={"limit": 200}).json()
+    biller.post(f"/api/v1/refunds/{r['id']}/void", json={"reason": "audit me too"})
+    log = admin.get("/api/v1/audit", params={"limit": 200}).json()
     actions = {e["action"] for e in (log["items"] if isinstance(log, dict) else log)}
     assert {
         "credit_memo.create",

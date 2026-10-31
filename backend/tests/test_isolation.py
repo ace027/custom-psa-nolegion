@@ -13,9 +13,9 @@ from app.scope import Scope
 def two_orgs(admin, make_org):
     a, b = make_org("Org A"), make_org("Org B")
     for org in (a, b):
-        admin.post(f"/api/organizations/{org['id']}/sites", json={"name": f"Site {org['id']}"})
+        admin.post(f"/api/v1/organizations/{org['id']}/sites", json={"name": f"Site {org['id']}"})
         admin.post(
-            f"/api/organizations/{org['id']}/contacts",
+            f"/api/v1/organizations/{org['id']}/contacts",
             json={"name": f"Contact {org['id']}", "email": f"c{org['id']}@x.com"},
         )
     return a["id"], b["id"]
@@ -119,10 +119,12 @@ def two_org_tickets(admin, make_org, owner):
     ids = []
     for name in ("Org A", "Org B"):
         org = make_org(name)
-        t = admin.post("/api/tickets", json={"organization_id": org["id"], "subject": name}).json()
-        admin.post(f"/api/tickets/{t['id']}/notes", json={"body": "n"})
-        wt = admin.get("/api/work-types").json()[0]["id"]
-        admin.post(f"/api/tickets/{t['id']}/time", json={"work_type_id": wt, "minutes": 5})
+        t = admin.post(
+            "/api/v1/tickets", json={"organization_id": org["id"], "subject": name}
+        ).json()
+        admin.post(f"/api/v1/tickets/{t['id']}/notes", json={"body": "n"})
+        wt = admin.get("/api/v1/work-types").json()[0]["id"]
+        admin.post(f"/api/v1/tickets/{t['id']}/time", json={"work_type_id": wt, "minutes": 5})
         ids.append((org["id"], t["id"]))
     owner.execute(
         text(
@@ -221,7 +223,7 @@ def test_notes_are_immutable_and_time_entries_cannot_be_deleted(two_org_tickets)
 
 # audit_log carries organization_id for filtering but is deliberately NOT under RLS: it is written
 # by auth events that have no org scope, is append-only at the grant level, and is only ever
-# exposed through the admin-only /api/audit endpoint.
+# exposed through the admin-only /api/v1/audit endpoint.
 RLS_EXEMPT = {"audit_log"}
 
 

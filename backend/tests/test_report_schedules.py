@@ -92,7 +92,7 @@ def body(staff, **kw):
 
 
 def create(admin, staff, **kw):
-    r = admin.post("/api/reports/schedules", json=body(staff, **kw))
+    r = admin.post("/api/v1/reports/schedules", json=body(staff, **kw))
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -216,14 +216,14 @@ def test_worker_report_jobs_runs_due_schedules(admin, owner, staff):
 # ---- validation ----
 def test_saving_a_schedule_with_a_tech_recipient_is_refused(admin, staff):
     r = admin.post(
-        "/api/reports/schedules", json=body(staff, recipient_user_ids=[staff["tech"]["id"]])
+        "/api/v1/reports/schedules", json=body(staff, recipient_user_ids=[staff["tech"]["id"]])
     )
     assert r.status_code == 409 and "tech user" in r.json()["detail"]
-    assert admin.get("/api/reports/schedules").json() == []
+    assert admin.get("/api/v1/reports/schedules").json() == []
 
 
 def test_recipient_rules(admin, owner, staff):
-    path = "/api/reports/schedules"
+    path = "/api/v1/reports/schedules"
     missing = admin.post(path, json=body(staff, recipient_user_ids=[999999]))
     assert missing.status_code == 409 and "999999" in missing.json()["detail"]
     owner.execute(
@@ -235,7 +235,7 @@ def test_recipient_rules(admin, owner, staff):
 
 
 def test_timing_rules(admin, staff):
-    path = "/api/reports/schedules"
+    path = "/api/v1/reports/schedules"
     assert admin.post(path, json=body(staff, weekday=None)).status_code == 409
     monthly = body(staff, frequency="monthly", weekday=None)
     assert admin.post(path, json=monthly).status_code == 409  # no day_of_month
@@ -254,32 +254,32 @@ def test_every_route_and_its_permissions(admin, login, staff):
     s = create(admin, staff)
     sid = s["id"]
     billing = login("billing", "bill1@example.com")
-    assert [x["id"] for x in billing.get("/api/reports/schedules").json()] == [sid]
-    assert billing.get(f"/api/reports/schedules/{sid}/runs").json() == []
+    assert [x["id"] for x in billing.get("/api/v1/reports/schedules").json()] == [sid]
+    assert billing.get(f"/api/v1/reports/schedules/{sid}/runs").json() == []
     # billing may read but not manage
-    assert billing.post("/api/reports/schedules", json=body(staff)).status_code == 403
-    assert billing.patch(f"/api/reports/schedules/{sid}", json={"name": "x"}).status_code == 403
+    assert billing.post("/api/v1/reports/schedules", json=body(staff)).status_code == 403
+    assert billing.patch(f"/api/v1/reports/schedules/{sid}", json={"name": "x"}).status_code == 403
     for role in ("tech", "read_only"):
         c = login(role)
-        assert c.get("/api/reports/schedules").status_code == 403
-        assert c.get(f"/api/reports/schedules/{sid}/runs").status_code == 403
-        assert c.post("/api/reports/schedules", json=body(staff)).status_code == 403
+        assert c.get("/api/v1/reports/schedules").status_code == 403
+        assert c.get(f"/api/v1/reports/schedules/{sid}/runs").status_code == 403
+        assert c.post("/api/v1/reports/schedules", json=body(staff)).status_code == 403
     run_due()
-    runs_ = billing.get(f"/api/reports/schedules/{sid}/runs").json()
+    runs_ = billing.get(f"/api/v1/reports/schedules/{sid}/runs").json()
     assert [r["status"] for r in runs_] == ["sent"] and runs_[0]["period_start"] == "2026-03-02"
-    got = admin.patch(f"/api/reports/schedules/{sid}", json={"name": "Renamed", "weekday": 3})
+    got = admin.patch(f"/api/v1/reports/schedules/{sid}", json={"name": "Renamed", "weekday": 3})
     assert got.status_code == 200 and got.json()["name"] == "Renamed" and got.json()["weekday"] == 3
 
 
 def test_unknown_ids_are_404_and_there_is_no_delete(admin):
-    assert admin.patch("/api/reports/schedules/999", json={"name": "x"}).status_code == 404
-    assert admin.get("/api/reports/schedules/999/runs").status_code == 404
-    assert admin.delete("/api/reports/schedules/999").status_code == 405
+    assert admin.patch("/api/v1/reports/schedules/999", json={"name": "x"}).status_code == 404
+    assert admin.get("/api/v1/reports/schedules/999/runs").status_code == 404
+    assert admin.delete("/api/v1/reports/schedules/999").status_code == 405
 
 
 def test_patch_rules(admin, staff):
     sid = create(admin, staff)["id"]
-    url = f"/api/reports/schedules/{sid}"
+    url = f"/api/v1/reports/schedules/{sid}"
     to_monthly = admin.patch(url, json={"frequency": "monthly"})
     assert to_monthly.status_code == 409  # needs a day_of_month
     ok = admin.patch(url, json={"frequency": "monthly", "day_of_month": 15})
@@ -294,25 +294,27 @@ def test_patch_rules(admin, staff):
 
 def test_deactivating_a_schedule_stops_the_worker(admin, owner, staff):
     s = create(admin, staff)
-    off = admin.patch(f"/api/reports/schedules/{s['id']}", json={"active": False})
+    off = admin.patch(f"/api/v1/reports/schedules/{s['id']}", json={"active": False})
     assert off.status_code == 200 and off.json()["active"] is False
     assert run_due() == {"sent": 0, "skipped": 0, "failed": 0}
     assert emails(owner) == [] and runs(owner, s["id"]) == []
     # a deactivated schedule can still be saved without re-checking its recipients
     owner.execute(text("UPDATE users SET role = 'tech' WHERE id = :i"), {"i": staff["b2"]["id"]})
-    assert admin.patch(f"/api/reports/schedules/{s['id']}", json={"name": "Old"}).status_code == 200
-    admin.patch(f"/api/reports/schedules/{s['id']}", json={"active": True})
+    assert (
+        admin.patch(f"/api/v1/reports/schedules/{s['id']}", json={"name": "Old"}).status_code == 200
+    )
+    admin.patch(f"/api/v1/reports/schedules/{s['id']}", json={"active": True})
     assert run_due()["sent"] == 1
 
 
 def test_changes_and_sends_are_audited(admin, staff):
     sid = create(admin, staff)["id"]
-    admin.patch(f"/api/reports/schedules/{sid}", json={"active": False})
-    items = admin.get("/api/audit", params={"action": "report_schedule.create"}).json()["items"]
+    admin.patch(f"/api/v1/reports/schedules/{sid}", json={"active": False})
+    items = admin.get("/api/v1/audit", params={"action": "report_schedule.create"}).json()["items"]
     assert len(items) == 1
-    items = admin.get("/api/audit", params={"action": "report_schedule.update"}).json()["items"]
+    items = admin.get("/api/v1/audit", params={"action": "report_schedule.update"}).json()["items"]
     assert len(items) == 1
-    admin.patch(f"/api/reports/schedules/{sid}", json={"active": True})
+    admin.patch(f"/api/v1/reports/schedules/{sid}", json={"active": True})
     run_due()
-    sends = admin.get("/api/audit", params={"action": "report_schedule.send"}).json()["items"]
+    sends = admin.get("/api/v1/audit", params={"action": "report_schedule.send"}).json()["items"]
     assert len(sends) == 1

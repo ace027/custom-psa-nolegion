@@ -9,16 +9,16 @@ from app.db import new_session
 
 
 def auth_events(admin, prefix="auth."):
-    return admin.get("/api/audit", params={"action": prefix, "limit": 200}).json()["items"]
+    return admin.get("/api/v1/audit", params={"action": prefix, "limit": 200}).json()["items"]
 
 
 # ---- sessions & dev login ----
 def test_login_me_logout(admin):
-    me = admin.get("/api/auth/me").json()
+    me = admin.get("/api/v1/auth/me").json()
     assert me["email"] == "admin@example.com" and "audit:read" in me["permissions"]
     assert me["last_login_at"]
-    assert admin.post("/api/auth/logout").status_code == 204
-    assert admin.get("/api/auth/me").status_code == 401
+    assert admin.post("/api/v1/auth/logout").status_code == 204
+    assert admin.get("/api/v1/auth/me").status_code == 401
 
 
 def test_session_token_is_stored_hashed(admin, owner):
@@ -31,16 +31,16 @@ def test_expired_session_is_rejected(admin, owner):
     owner.execute(
         text("UPDATE sessions SET expires_at = :t"), {"t": datetime.now(UTC) - timedelta(minutes=1)}
     )
-    assert admin.get("/api/auth/me").status_code == 401
+    assert admin.get("/api/v1/auth/me").status_code == 401
 
 
 def test_garbage_cookie_is_rejected(anon):
     anon.cookies.set("psa_session", "nope")
-    assert anon.get("/api/auth/me").status_code == 401
+    assert anon.get("/api/v1/auth/me").status_code == 401
 
 
 def test_login_and_failure_events_are_recorded(admin, anon):
-    r = anon.post("/api/auth/dev-login", json={"email": "ghost@example.com"})
+    r = anon.post("/api/v1/auth/dev-login", json={"email": "ghost@example.com"})
     assert r.status_code == 403
     events = auth_events(admin)
     actions = [e["action"] for e in events]
@@ -51,11 +51,11 @@ def test_login_and_failure_events_are_recorded(admin, anon):
 
 def test_inactive_user_cannot_dev_login(admin, make_user, anon):
     u = make_user("tech", "gone@example.com", active=False)
-    assert anon.post("/api/auth/dev-login", json={"email": u["email"]}).status_code == 403
+    assert anon.post("/api/v1/auth/dev-login", json={"email": u["email"]}).status_code == 403
 
 
 def test_logout_is_audited(admin):
-    admin.post("/api/auth/logout")
+    admin.post("/api/v1/auth/logout")
     from tests.conftest import RouteRecorder  # noqa: F401  (import keeps recorder wired)
 
     with new_session() as db:
@@ -73,10 +73,10 @@ def test_dev_login_disabled_in_production_or_when_flag_off(anon, make_user, monk
     user = make_user("admin", "p@example.com")
     s = get_settings()
     monkeypatch.setattr(s, "environment", "production")
-    assert anon.post("/api/auth/dev-login", json={"email": user["email"]}).status_code == 404
+    assert anon.post("/api/v1/auth/dev-login", json={"email": user["email"]}).status_code == 404
     monkeypatch.setattr(s, "environment", "development")
     monkeypatch.setattr(s, "dev_login_enabled", False)
-    assert anon.post("/api/auth/dev-login", json={"email": user["email"]}).status_code == 404
+    assert anon.post("/api/v1/auth/dev-login", json={"email": user["email"]}).status_code == 404
 
 
 # ---- OIDC claim mapping ----
@@ -155,9 +155,9 @@ class FakeOAuth:
 def test_callback_success_creates_session_and_audit(anon, admin, make_user, monkeypatch):
     make_user("tech", "tech@example.com")
     monkeypatch.setattr(oidc, "get_oauth", lambda: FakeOAuth(FakeEntra(CLAIMS)))
-    r = anon.get("/api/auth/callback", follow_redirects=False)
+    r = anon.get("/api/v1/auth/callback", follow_redirects=False)
     assert r.status_code == 303 and "psa_session" in r.cookies
-    assert anon.get("/api/auth/me").json()["email"] == "tech@example.com"
+    assert anon.get("/api/v1/auth/me").json()["email"] == "tech@example.com"
     assert any(
         e["detail"] is None and e["action"] == "auth.login" and e["actor_id"]
         for e in auth_events(admin)
@@ -166,7 +166,7 @@ def test_callback_success_creates_session_and_audit(anon, admin, make_user, monk
 
 def test_callback_denied_logs_failure(anon, admin, monkeypatch):
     monkeypatch.setattr(oidc, "get_oauth", lambda: FakeOAuth(FakeEntra(CLAIMS)))
-    r = anon.get("/api/auth/callback", follow_redirects=False)
+    r = anon.get("/api/v1/auth/callback", follow_redirects=False)
     assert r.status_code == 403 and "psa_session" not in r.cookies
     failed = [e for e in auth_events(admin) if e["action"] == "auth.login_failed"]
     assert failed[0]["detail"]["reason"] == "not_provisioned"
@@ -174,7 +174,7 @@ def test_callback_denied_logs_failure(anon, admin, monkeypatch):
 
 def test_callback_token_exchange_failure(anon, admin, monkeypatch):
     monkeypatch.setattr(oidc, "get_oauth", lambda: FakeOAuth(FakeEntra(boom=True)))
-    assert anon.get("/api/auth/callback", follow_redirects=False).status_code == 403
+    assert anon.get("/api/v1/auth/callback", follow_redirects=False).status_code == 403
     failed = [e for e in auth_events(admin) if e["action"] == "auth.login_failed"]
     assert failed[0]["detail"]["reason"] == "token_exchange"
 
@@ -184,11 +184,11 @@ def test_login_redirects_to_entra(anon, monkeypatch):
 
     class E:
         async def authorize_redirect(self, request, redirect_uri):
-            assert redirect_uri.endswith("/api/auth/callback")
+            assert redirect_uri.endswith("/api/v1/auth/callback")
             return RedirectResponse("https://login.microsoftonline.com/x", status_code=302)
 
     monkeypatch.setattr(oidc, "get_oauth", lambda: FakeOAuth(E()))
-    r = anon.get("/api/auth/login", follow_redirects=False)
+    r = anon.get("/api/v1/auth/login", follow_redirects=False)
     assert r.status_code == 302 and "login.microsoftonline.com" in r.headers["location"]
 
 
@@ -196,8 +196,8 @@ def test_login_and_callback_503_when_entra_unconfigured(anon, monkeypatch):
     from app.config import get_settings
 
     monkeypatch.setattr(get_settings(), "entra_tenant_id", "")
-    assert anon.get("/api/auth/login", follow_redirects=False).status_code == 503
-    assert anon.get("/api/auth/callback", follow_redirects=False).status_code == 503
+    assert anon.get("/api/v1/auth/login", follow_redirects=False).status_code == 503
+    assert anon.get("/api/v1/auth/callback", follow_redirects=False).status_code == 503
 
 
 def test_repo_user_lookup_helpers(make_user, db):

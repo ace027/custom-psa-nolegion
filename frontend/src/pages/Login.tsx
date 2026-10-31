@@ -15,7 +15,7 @@ export default function Login() {
     <main className="mx-auto mt-24 max-w-sm space-y-4 rounded-xl border border-slate-200 bg-surface p-6 shadow-card">
       <div className="flex items-center justify-between"><h1 className="text-2xl font-bold tracking-tight">{BRAND.name} sign in</h1><ThemeToggle /></div>
       <a
-        href="/api/auth/login"
+        href="/api/v1/auth/login"
         className="block rounded-lg bg-blue-600 px-3 py-2 text-center text-sm font-medium text-on-accent hover:bg-blue-700"
       >
         Sign in with Microsoft

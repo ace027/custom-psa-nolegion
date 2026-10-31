@@ -32,7 +32,7 @@ const survey = (over: object = {}) => ({
 
 let calls: { url: string; init?: RequestInit }[] = [];
 function go(path: string, role: keyof typeof PERMS, h: Record<string, () => Response>) {
-  const handlers: Record<string, () => Response> = { "/api/auth/me": json(me(role)), ...h };
+  const handlers: Record<string, () => Response> = { "/api/v1/auth/me": json(me(role)), ...h };
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
     calls.push({ url, init });
     return Promise.resolve(handlers[`${init?.method ?? "GET"} ${url}`]?.() ?? handlers[url]?.() ?? new Response("{}", { status: 404 }));
@@ -45,7 +45,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("quotes", () => {
   it("shows the price with every number and reason behind it", async () => {
-    go("/quotes/7", "tech", { "/api/quotes/7": json(quote()) });
+    go("/quotes/7", "tech", { "/api/v1/quotes/7": json(quote()) });
     expect(await screen.findByTestId("price")).toHaveTextContent("$1,575.00");
     expect(screen.getByText(/5 of 9 priced devices \(56%\) are out of warranty/)).toBeInTheDocument();
     expect(screen.getByText("+25%")).toBeInTheDocument();
@@ -54,35 +54,35 @@ describe("quotes", () => {
   });
 
   it("an adjusted draft is submitted for approval and a tech cannot approve it", async () => {
-    go("/quotes/7", "tech", { "/api/quotes/7": json(quote({ final_price_cents: 140000, adjustment_reason: "Referral" })) });
+    go("/quotes/7", "tech", { "/api/v1/quotes/7": json(quote({ final_price_cents: 140000, adjustment_reason: "Referral" })) });
     expect(await screen.findByText(/Adjusted from the computed \$1,575.00: Referral/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Submit for approval" })).toBeInTheDocument();
   });
 
   it("only an admin sees Approve while waiting for approval", async () => {
-    const h = { "/api/quotes/7": json(quote({ status: "needs_approval", final_price_cents: 140000, adjustment_reason: "x" })) };
+    const h = { "/api/v1/quotes/7": json(quote({ status: "needs_approval", final_price_cents: 140000, adjustment_reason: "x" })) };
     const { unmount } = go("/quotes/7", "tech", h);
     expect(await screen.findByText(/Waiting for an admin/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
     unmount();
     go("/quotes/7", "admin", h);
     fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(calls.some((c) => c.url === "/api/quotes/7/approve" && c.init?.method === "POST")).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.url === "/api/v1/quotes/7/approve" && c.init?.method === "POST")).toBe(true));
   });
 
   it("read-only users see the quote but no actions", async () => {
-    go("/quotes/7", "read_only", { "/api/quotes/7": json(quote({ status: "approved" })) });
+    go("/quotes/7", "read_only", { "/api/v1/quotes/7": json(quote({ status: "approved" })) });
     await screen.findByTestId("price");
     expect(screen.queryByRole("button", { name: /Mark as sent/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Submit for approval" })).toBeNull();
   });
 
   it("a sent quote can be accepted by an admin, with a start date", async () => {
-    go("/quotes/7", "admin", { "/api/quotes/7": json(quote({ status: "sent" })), "POST /api/quotes/7/accept": json(quote({ status: "accepted", resulting_agreement_id: 9 })) });
+    go("/quotes/7", "admin", { "/api/v1/quotes/7": json(quote({ status: "sent" })), "POST /api/v1/quotes/7/accept": json(quote({ status: "accepted", resulting_agreement_id: 9 })) });
     fireEvent.change(await screen.findByLabelText("Contract starts"), { target: { value: "2026-11-01" } });
     fireEvent.click(screen.getByRole("button", { name: "Client accepted" }));
     await waitFor(() => {
-      const c = calls.find((x) => x.url === "/api/quotes/7/accept");
+      const c = calls.find((x) => x.url === "/api/v1/quotes/7/accept");
       expect(JSON.parse(String(c?.init?.body))).toEqual({ start_date: "2026-11-01" });
     });
   });
@@ -91,13 +91,13 @@ describe("quotes", () => {
 describe("survey form", () => {
   it("keeps unsaved answers on the device and restores them", async () => {
     localStorage.setItem("psa-survey-draft-5", JSON.stringify({ user_count: "42", site_count: "2", notes: "", devices: [], apps: [] }));
-    go("/quotes/surveys/5", "tech", { "/api/surveys/5": json(survey()) });
+    go("/quotes/surveys/5", "tech", { "/api/v1/surveys/5": json(survey()) });
     expect(await screen.findByText(/Restored unsaved changes/)).toBeInTheDocument();
     expect(screen.getByLabelText("Users")).toHaveValue("42");
   });
 
   it("saves the whole survey with a warranty-date device and clears the local draft", async () => {
-    go("/quotes/surveys/5", "tech", { "/api/surveys/5": json(survey()), "PUT /api/surveys/5": json(survey({ user_count: 11 })) });
+    go("/quotes/surveys/5", "tech", { "/api/v1/surveys/5": json(survey()), "PUT /api/v1/surveys/5": json(survey({ user_count: 11 })) });
     fireEvent.change(await screen.findByLabelText("Users"), { target: { value: "11" } });
     expect(localStorage.getItem("psa-survey-draft-5")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "+ Server" }));
@@ -113,10 +113,10 @@ describe("survey form", () => {
 
   it("a completed survey is read-only and offers to price it", async () => {
     go("/quotes/surveys/5", "tech", {
-      "/api/surveys/5": json(survey({ status: "completed" })),
-      "/api/quotes?organization_id=3": json([]),
-      "/api/organizations/3": json({ id: 3, name: "Newco", status: "prospect" }),
-      "/api/agreements?organization_id=3": json([]),
+      "/api/v1/surveys/5": json(survey({ status: "completed" })),
+      "/api/v1/quotes?organization_id=3": json([]),
+      "/api/v1/organizations/3": json({ id: 3, name: "Newco", status: "prospect" }),
+      "/api/v1/agreements?organization_id=3": json([]),
     });
     expect(await screen.findByRole("button", { name: "Create quote" })).toBeInTheDocument();
     expect(screen.getByLabelText("Users")).toBeDisabled();
@@ -127,14 +127,14 @@ describe("survey form", () => {
 describe("rate card", () => {
   const settings = { per_user_rate_cents: 10000, workstation_rate_cents: 2000, server_rate_cents: 10000, network_rate_cents: 0, other_rate_cents: 0, hardware_uplift_bp: 2500, server_uplift_bp: 0, legacy_app_uplift_bp: 1500, term_months: 12, valid_days: 30, agreement_taxable: false, intro_text: null };
   it("shows percentages and is read-only for non-admins", async () => {
-    go("/quotes/rates", "tech", { "/api/quotes/settings": json(settings) });
+    go("/quotes/rates", "tech", { "/api/v1/quotes/settings": json(settings) });
     expect(await screen.findByLabelText("Hardware uplift")).toHaveValue("25");
     expect(screen.getByLabelText("Legacy application uplift")).toHaveValue("15");
     expect(screen.getByLabelText("Hardware uplift")).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Save rate card" })).toBeNull();
   });
   it("an admin saves dollars and percentages as cents and basis points", async () => {
-    go("/quotes/rates", "admin", { "/api/quotes/settings": json(settings), "PATCH /api/quotes/settings": json(settings) });
+    go("/quotes/rates", "admin", { "/api/v1/quotes/settings": json(settings), "PATCH /api/v1/quotes/settings": json(settings) });
     fireEvent.change(await screen.findByLabelText("Hardware uplift"), { target: { value: "30" } });
     fireEvent.click(screen.getByRole("button", { name: "Save rate card" }));
     await waitFor(() => {

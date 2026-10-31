@@ -54,9 +54,9 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="PSA API",
         version="0.1.0",
-        description="Custom PSA for a small MSP. Interactive docs at /api/docs.",
-        docs_url="/api/docs",
-        openapi_url="/api/openapi.json",
+        description="Custom PSA for a small MSP. Interactive docs at /api/v1/docs.",
+        docs_url="/api/v1/docs",
+        openapi_url="/api/v1/openapi.json",
         redoc_url=None,
     )
 
@@ -138,7 +138,7 @@ def create_app() -> FastAPI:
         crm.router,
         procurement.router,
     ):
-        app.include_router(r, prefix="/api")
+        app.include_router(r, prefix="/api/v1")
     return app
 
 

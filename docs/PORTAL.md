@@ -15,7 +15,7 @@ on** (Settings > Client portal) and needs the mailbox configured, because sign-i
   voided invoices are never shown.
 
 ## Appointments page
-Signed-in contacts get an **Appointments** tab (`/portal/appointments`, backed by `GET /api/portal/appointments`).
+Signed-in contacts get an **Appointments** tab (`/portal/appointments`, backed by `GET /api/v1/portal/appointments`).
 It lists upcoming appointments first (soonest first), then past ones from the last 30 days, each with the
 date, the time range, the technician's **first name** and a link to the ticket. With none it says "No
 appointments scheduled".

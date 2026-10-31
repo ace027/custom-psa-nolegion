@@ -16,7 +16,7 @@ export default function WarrantyReport() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold tracking-tight">Warranty</h1>
-      <Card title="Devices by warranty" actions={<a className="text-sm text-blue-700 hover:underline" href={`/api/reports/warranty.csv${suffix}`}>Download CSV</a>}>
+      <Card title="Devices by warranty" actions={<a className="text-sm text-blue-700 hover:underline" href={`/api/v1/reports/warranty.csv${suffix}`}>Download CSV</a>}>
         <div className="flex flex-wrap gap-3">
           <Field label="Client">
             <select className={inputCls} value={org} onChange={(e) => setOrg(e.target.value)}>

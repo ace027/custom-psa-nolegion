@@ -14,7 +14,7 @@ from tests.test_payments import final_invoice, pay
 
 
 def statement(biller, org):
-    r = biller.post(f"/api/organizations/{org}/statements")
+    r = biller.post(f"/api/v1/organizations/{org}/statements")
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -71,7 +71,7 @@ def test_next_statement_lists_payments_since_the_previous_one(biller, client_org
     statement(biller, client_org)
     day2 = biz_today() + timedelta(days=10)
     monkeypatch.setattr(nsvc, "today", lambda ctx: day2)
-    later = biller.post(f"/api/organizations/{client_org}/statements").json()["snapshot"]
+    later = biller.post(f"/api/v1/organizations/{client_org}/statements").json()["snapshot"]
     assert later["payments_since"] == biz_today().isoformat() and later["as_of"] == day2.isoformat()
 
 
@@ -79,10 +79,10 @@ def test_a_statement_is_a_frozen_snapshot(biller, client_org):
     inv = final_invoice(biller, client_org, 5000)
     s = statement(biller, client_org)
     pay(biller, client_org, 5000, [{"invoice_id": inv["id"], "amount_cents": 5000}])
-    again = biller.get(f"/api/statements/{s['id']}").json()
+    again = biller.get(f"/api/v1/statements/{s['id']}").json()
     assert again["snapshot"] == s["snapshot"] and again["total_due_cents"] == 5000
     assert statement(biller, client_org)["total_due_cents"] == 0  # a new one sees the payment
-    ids = [x["id"] for x in biller.get(f"/api/organizations/{client_org}/statements").json()]
+    ids = [x["id"] for x in biller.get(f"/api/v1/organizations/{client_org}/statements").json()]
     assert ids == sorted(ids, reverse=True) and s["id"] in ids
 
 
@@ -90,7 +90,7 @@ def test_statement_pdf(biller, client_org, company):
     inv = final_invoice(biller, client_org, 123456)
     pay(biller, client_org, 1000, reference="CHK-77")
     s = statement(biller, client_org)
-    r = biller.get(f"/api/statements/{s['id']}/pdf")
+    r = biller.get(f"/api/v1/statements/{s['id']}/pdf")
     assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
     assert r.headers["content-disposition"] == f'attachment; filename="Statement-{s["as_of"]}.pdf"'
     for needle in (
@@ -103,17 +103,17 @@ def test_statement_pdf(biller, client_org, company):
         b"$10.00",
     ):
         assert needle in r.content, needle
-    assert biller.get("/api/statements/999/pdf").status_code == 404
-    assert biller.get("/api/statements/999").status_code == 404
-    assert biller.post("/api/organizations/999/statements").status_code == 404
-    assert biller.get("/api/organizations/999/statements").json() == []
+    assert biller.get("/api/v1/statements/999/pdf").status_code == 404
+    assert biller.get("/api/v1/statements/999").status_code == 404
+    assert biller.post("/api/v1/organizations/999/statements").status_code == 404
+    assert biller.get("/api/v1/organizations/999/statements").json() == []
 
 
 def test_statement_pdf_escapes_markup(admin, biller, make_org, company):
     org = make_org("<b>Evil & Co</b>")["id"]
     final_invoice(biller, org, 100)
     s = statement(biller, org)
-    pdf = biller.get(f"/api/statements/{s['id']}/pdf").content
+    pdf = biller.get(f"/api/v1/statements/{s['id']}/pdf").content
     assert b"(<) Tj (b) Tj (>) Tj" in pdf  # shown literally, never interpreted as markup
 
 
@@ -121,7 +121,7 @@ def test_statement_pdf_escapes_markup(admin, biller, make_org, company):
 def test_email_statement_prepare_then_send(admin, biller, client_org, mail_ready):
     final_invoice(biller, client_org, 5000)
     s = statement(biller, client_org)
-    r = biller.post(f"/api/statements/{s['id']}/email", json={"send": False})
+    r = biller.post(f"/api/v1/statements/{s['id']}/email", json={"send": False})
     assert r.status_code == 201
     n = r.json()
     assert (n["kind"], n["status"], n["manual"], n["statement_id"]) == (
@@ -132,7 +132,7 @@ def test_email_statement_prepare_then_send(admin, biller, client_org, mail_ready
     )
     assert n["subject"] == f"Account statement from Acme MSP LLC as of {s['as_of']}"
     assert n["total_due_cents"] == 5000 and "Balance due: $50.00" in n["body_text"]
-    assert biller.post(f"/api/billing-notices/{n['id']}/send").status_code == 200
+    assert biller.post(f"/api/v1/billing-notices/{n['id']}/send").status_code == 200
     [msg] = worker_sends().sent
     assert msg["to"] == ["pat@acme.com"]
     [(name, _, data)] = msg["attachments"]
@@ -142,10 +142,10 @@ def test_email_statement_prepare_then_send(admin, biller, client_org, mail_ready
 def test_email_statement_with_send_true_queues_immediately(biller, client_org, mail_ready):
     final_invoice(biller, client_org, 5000)
     s = statement(biller, client_org)
-    n = biller.post(f"/api/statements/{s['id']}/email", json={"send": True}).json()
+    n = biller.post(f"/api/v1/statements/{s['id']}/email", json={"send": True}).json()
     assert n["status"] == "sent" and n["email_status"] == "pending"
     assert len(worker_sends().sent) == 1
-    assert biller.post("/api/statements/999/email", json={"send": False}).status_code == 404
+    assert biller.post("/api/v1/statements/999/email", json={"send": False}).status_code == 404
 
 
 def test_email_statement_send_is_refused_without_mail_config_or_a_recipient(
@@ -153,12 +153,12 @@ def test_email_statement_send_is_refused_without_mail_config_or_a_recipient(
 ):
     final_invoice(biller, client_org, 5000)
     s = statement(biller, client_org)
-    r = biller.post(f"/api/statements/{s['id']}/email", json={"send": True})
+    r = biller.post(f"/api/v1/statements/{s['id']}/email", json={"send": True})
     assert r.status_code == 409 and "not configured" in r.json()["detail"]
     bare = make_org("Bare")["id"]
     final_invoice(biller, bare, 100)
     n = biller.post(
-        f"/api/statements/{statement(biller, bare)['id']}/email", json={"send": False}
+        f"/api/v1/statements/{statement(biller, bare)['id']}/email", json={"send": False}
     ).json()
     assert n["blocked_reason"] and n["to_emails"] == []
 
@@ -166,17 +166,17 @@ def test_email_statement_send_is_refused_without_mail_config_or_a_recipient(
 def test_a_stale_statement_notice_must_be_refreshed(biller, client_org, mail_ready):
     inv = final_invoice(biller, client_org, 5000)
     s = statement(biller, client_org)
-    n = biller.post(f"/api/statements/{s['id']}/email", json={"send": False}).json()
+    n = biller.post(f"/api/v1/statements/{s['id']}/email", json={"send": False}).json()
     pay(biller, client_org, 5000, [{"invoice_id": inv["id"], "amount_cents": 5000}])
-    assert biller.get(f"/api/billing-notices/{n['id']}").json()["stale"] is True
-    assert biller.post(f"/api/billing-notices/{n['id']}/send").status_code == 409
-    fresh = biller.post(f"/api/billing-notices/{n['id']}/refresh").json()
+    assert biller.get(f"/api/v1/billing-notices/{n['id']}").json()["stale"] is True
+    assert biller.post(f"/api/v1/billing-notices/{n['id']}/send").status_code == 409
+    fresh = biller.post(f"/api/v1/billing-notices/{n['id']}/refresh").json()
     assert (
         fresh["stale"] is False
         and fresh["total_due_cents"] == 0
         and fresh["statement_id"] != s["id"]
     )
-    assert biller.post(f"/api/billing-notices/{n['id']}/send").status_code == 200
+    assert biller.post(f"/api/v1/billing-notices/{n['id']}/send").status_code == 200
 
 
 # ---- monthly batch ----
@@ -190,8 +190,8 @@ def test_monthly_batch_prepares_one_statement_per_client_with_a_balance(
     make_org("Credit Only")
     gone = make_org("Gone Co")["id"]
     final_invoice(biller, gone, 900)
-    admin.post(f"/api/organizations/{gone}/archive")
-    r = biller.post("/api/billing-notices/prepare-statements")
+    admin.post(f"/api/v1/organizations/{gone}/archive")
+    r = biller.post("/api/v1/billing-notices/prepare-statements")
     assert r.status_code == 200 and r.json()["created"] == 1
     [n] = notices(biller, kind="statement")
     assert (
@@ -199,20 +199,20 @@ def test_monthly_batch_prepares_one_statement_per_client_with_a_balance(
     )
     assert n["total_due_cents"] == owed["total_cents"]
     assert (
-        biller.post("/api/billing-notices/prepare-statements").json()["created"] == 0
+        biller.post("/api/v1/billing-notices/prepare-statements").json()["created"] == 0
     )  # idempotent
-    biller.post(f"/api/billing-notices/{n['id']}/dismiss", json={"reason": "sending manually"})
+    biller.post(f"/api/v1/billing-notices/{n['id']}/dismiss", json={"reason": "sending manually"})
     assert (
-        biller.post("/api/billing-notices/prepare-statements").json()["created"] == 0
+        biller.post("/api/v1/billing-notices/prepare-statements").json()["created"] == 0
     )  # not again
 
 
 def test_next_month_gets_a_new_batch(biller, client_org, monkeypatch):
     final_invoice(biller, client_org, 5000)
-    assert biller.post("/api/billing-notices/prepare-statements").json()["created"] == 1
+    assert biller.post("/api/v1/billing-notices/prepare-statements").json()["created"] == 1
     later = biz_today().replace(day=1) + timedelta(days=35)
     monkeypatch.setattr(nsvc, "today", lambda ctx: later)
-    assert biller.post("/api/billing-notices/prepare-statements").json()["created"] == 1
+    assert biller.post("/api/v1/billing-notices/prepare-statements").json()["created"] == 1
 
 
 # ---- scheduled preparation (what the worker runs) ----
@@ -224,20 +224,20 @@ def test_scheduled_preparation_runs_once_a_day_and_once_a_month(admin, biller, c
     assert kinds == ["reminder", "statement"]
     worker.billing_jobs()
     assert len(notices(biller)) == 2  # nothing new the same day
-    s = admin.get("/api/settings").json()
+    s = admin.get("/api/v1/settings").json()
     assert s["auto_prepare_reminders"] and s["auto_prepare_statements"]
 
 
 def test_automatic_preparation_can_be_switched_off(admin, biller, client_org, clock):
     admin.patch(
-        "/api/settings", json={"auto_prepare_reminders": False, "auto_prepare_statements": False}
+        "/api/v1/settings", json={"auto_prepare_reminders": False, "auto_prepare_statements": False}
     )
     overdue(biller, client_org)
     clock(3)
     worker.billing_jobs()
     assert notices(biller) == []
     assert (
-        biller.post("/api/billing-notices/prepare-reminders").json()["created"] == 1
+        biller.post("/api/v1/billing-notices/prepare-reminders").json()["created"] == 1
     )  # manual still works
 
 
@@ -251,16 +251,17 @@ def test_scheduled_preparation_never_sends_anything(biller, client_org, clock, m
 
 def test_settings_validate_statement_templates_and_gap(admin):
     assert (
-        admin.patch("/api/settings", json={"statement_subject": "Hello {nope}"}).status_code == 409
+        admin.patch("/api/v1/settings", json={"statement_subject": "Hello {nope}"}).status_code
+        == 409
     )
     assert (
         admin.patch(
-            "/api/settings", json={"statement_body": "{client} owes {total_due}"}
+            "/api/v1/settings", json={"statement_body": "{client} owes {total_due}"}
         ).status_code
         == 200
     )
-    assert admin.patch("/api/settings", json={"reminder_min_gap_days": 91}).status_code == 422
-    assert admin.get("/api/settings").json()["statement_body"] == "{client} owes {total_due}"
+    assert admin.patch("/api/v1/settings", json={"reminder_min_gap_days": 91}).status_code == 422
+    assert admin.get("/api/v1/settings").json()["statement_body"] == "{client} owes {total_due}"
 
 
 # ---- database guards: what we told a client is a record ----
@@ -297,9 +298,9 @@ def test_sent_and_dismissed_notices_cannot_be_changed_or_deleted(
     for _ in range(2):
         overdue(biller, client_org)
     clock(2)
-    biller.post("/api/billing-notices/prepare-reminders")
+    biller.post("/api/v1/billing-notices/prepare-reminders")
     n = notices(biller)[0]
-    biller.post(f"/api/billing-notices/{n['id']}/send")
+    biller.post(f"/api/v1/billing-notices/{n['id']}/send")
     refuses(
         "UPDATE billing_notices SET body_text = 'rewritten' WHERE id = :i",
         "cannot be changed",
@@ -320,8 +321,8 @@ def test_sent_and_dismissed_notices_cannot_be_changed_or_deleted(
 def test_outbound_attachments_are_immutable(biller, client_org, clock, mail_ready):
     overdue(biller, client_org)
     clock(2)
-    biller.post("/api/billing-notices/prepare-reminders")
-    biller.post(f"/api/billing-notices/{notices(biller)[0]['id']}/send")
+    biller.post("/api/v1/billing-notices/prepare-reminders")
+    biller.post(f"/api/v1/billing-notices/{notices(biller)[0]['id']}/send")
     refuses("UPDATE outbound_attachments SET data = 'x'::bytea", "permission denied|immutable")
     with pytest.raises(DBAPIError):
         run_sql("DELETE FROM outbound_attachments")
@@ -330,7 +331,7 @@ def test_outbound_attachments_are_immutable(biller, client_org, clock, mail_read
 def test_database_refuses_a_second_issue_of_the_same_stage(owner, biller, client_org, clock):
     overdue(biller, client_org)
     clock(2)
-    biller.post("/api/billing-notices/prepare-reminders")
+    biller.post("/api/v1/billing-notices/prepare-reminders")
     row = owner.execute(
         text(
             "SELECT notice_id, invoice_id, organization_id, stage_id "
@@ -351,7 +352,7 @@ def test_database_refuses_a_second_issue_of_the_same_stage(owner, biller, client
 def test_a_sent_notice_must_point_at_its_email(owner, biller, client_org, clock):
     overdue(biller, client_org)
     clock(2)
-    biller.post("/api/billing-notices/prepare-reminders")
+    biller.post("/api/v1/billing-notices/prepare-reminders")
     with pytest.raises(Exception, match="ck_notices_sent_has_email"):
         owner.execute(text("UPDATE billing_notices SET status = 'sent'"))
 
@@ -359,7 +360,7 @@ def test_a_sent_notice_must_point_at_its_email(owner, biller, client_org, clock)
 def test_client_data_is_isolated_by_row_level_security(biller, client_org, clock):
     overdue(biller, client_org)
     clock(2)
-    biller.post("/api/billing-notices/prepare-reminders")
+    biller.post("/api/v1/billing-notices/prepare-reminders")
     statement(biller, client_org)
     for table in ("billing_notices", "billing_notice_invoices", "statements"):
         with new_session() as db:

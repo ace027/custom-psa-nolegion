@@ -8,7 +8,7 @@ from tests.vendorfakes import HUDU, NINJA, dev, run_sync, vendors  # noqa: F401
 
 
 def connect(admin, body=NINJA):
-    r = admin.post("/api/integrations", json=body)
+    r = admin.post("/api/v1/integrations", json=body)
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -20,14 +20,14 @@ def test_credentials_are_encrypted_at_rest_and_never_returned(admin, owner):
     stored = owner.execute(text("SELECT credentials FROM integrations")).scalar()
     assert "super-secret-value" not in stored and "cid-123" not in stored
     assert crypto.decrypt_credentials(stored)["client_secret"] == "super-secret-value"
-    for r in (admin.get("/api/integrations"), admin.get(f"/api/integrations/{i['id']}/runs")):
+    for r in (admin.get("/api/v1/integrations"), admin.get(f"/api/v1/integrations/{i['id']}/runs")):
         assert "super-secret-value" not in r.text
 
 
 def test_secrets_never_reach_the_audit_log(admin, owner):
     i = connect(admin)
     admin.patch(
-        f"/api/integrations/{i['id']}",
+        f"/api/v1/integrations/{i['id']}",
         json={"credentials": {"client_id": "new-id-999", "client_secret": "rotated-secret-777"}},
     )
     dump = str(owner.execute(text("SELECT before, after, detail FROM audit_log")).all())
@@ -40,7 +40,7 @@ def test_secrets_never_reach_the_audit_log(admin, owner):
 def test_replacing_credentials_overwrites_the_old_value(admin, owner):
     i = connect(admin)
     admin.patch(
-        f"/api/integrations/{i['id']}",
+        f"/api/v1/integrations/{i['id']}",
         json={"credentials": {"client_id": "b", "client_secret": "second"}},
     )
     stored = owner.execute(text("SELECT credentials FROM integrations")).scalar()
@@ -48,12 +48,12 @@ def test_replacing_credentials_overwrites_the_old_value(admin, owner):
 
 
 def test_incomplete_credentials_are_refused(admin):
-    r = admin.post("/api/integrations", json={**NINJA, "credentials": {"client_id": "x"}})
+    r = admin.post("/api/v1/integrations", json={**NINJA, "credentials": {"client_id": "x"}})
     assert r.status_code == 409
 
 
 def test_vendor_url_must_be_https(admin):
-    r = admin.post("/api/integrations", json={**NINJA, "base_url": "http://app.ninjarmm.com"})
+    r = admin.post("/api/v1/integrations", json={**NINJA, "base_url": "http://app.ninjarmm.com"})
     assert r.status_code == 422
 
 
@@ -69,41 +69,45 @@ def test_vendor_url_must_be_https(admin):
     ],
 )
 def test_ninjaone_url_must_be_a_plain_ninjaone_host(admin, url):
-    r = admin.post("/api/integrations", json={**NINJA, "base_url": url})
+    r = admin.post("/api/v1/integrations", json={**NINJA, "base_url": url})
     assert r.status_code == 409
 
 
 @pytest.mark.parametrize("url", ["https://eu.ninjarmm.com/", "https://app.ninjaone.com"])
 def test_regional_ninjaone_hosts_are_accepted(admin, url):
-    r = admin.post("/api/integrations", json={**NINJA, "base_url": url})
+    r = admin.post("/api/v1/integrations", json={**NINJA, "base_url": url})
     assert r.status_code == 201 and r.json()["base_url"] == url.rstrip("/")
 
 
 def test_hudu_keeps_any_https_host(admin):
-    r = admin.post("/api/integrations", json={**HUDU, "base_url": "https://docs.msp.example"})
+    r = admin.post("/api/v1/integrations", json={**HUDU, "base_url": "https://docs.msp.example"})
     assert r.status_code == 201
 
 
 def test_changing_the_host_needs_the_credentials_again(admin, owner):
     i = connect(admin)
-    r = admin.patch(f"/api/integrations/{i['id']}", json={"base_url": "https://eu.ninjarmm.com"})
+    r = admin.patch(f"/api/v1/integrations/{i['id']}", json={"base_url": "https://eu.ninjarmm.com"})
     assert r.status_code == 409
     stored = owner.execute(text("SELECT base_url FROM integrations")).scalar()
     assert stored == NINJA["base_url"]
     r = admin.patch(
-        f"/api/integrations/{i['id']}",
+        f"/api/v1/integrations/{i['id']}",
         json={
             "base_url": "https://eu.ninjarmm.com",
             "credentials": {"client_id": "a", "client_secret": "b"},
         },
     )
     assert r.status_code == 200 and r.json()["base_url"] == "https://eu.ninjarmm.com"
-    r = admin.patch(f"/api/integrations/{i['id']}", json={"base_url": "https://eu.ninjarmm.com/"})
+    r = admin.patch(
+        f"/api/v1/integrations/{i['id']}", json={"base_url": "https://eu.ninjarmm.com/"}
+    )
     assert r.status_code == 200
 
 
 def test_hudu_layout_config_is_validated(admin):
-    r = admin.post("/api/integrations", json={**HUDU, "config": {"layouts": {"Switches": "gizmo"}}})
+    r = admin.post(
+        "/api/v1/integrations", json={**HUDU, "config": {"layouts": {"Switches": "gizmo"}}}
+    )
     assert r.status_code == 409
 
 
@@ -113,7 +117,7 @@ def test_missing_key_is_a_clear_error_not_a_crash(admin, monkeypatch):
     monkeypatch.setenv("CREDENTIALS_KEY", "")
     get_settings.cache_clear()
     try:
-        r = admin.post("/api/integrations", json=NINJA)
+        r = admin.post("/api/v1/integrations", json=NINJA)
         assert r.status_code == 409 and "CREDENTIALS_KEY" in r.json()["detail"]
     finally:
         monkeypatch.undo()
@@ -145,11 +149,11 @@ def test_key_rotation_decrypts_with_old_key_and_reencrypts(monkeypatch):
 
 def test_test_connection_reports_ok_and_failure(admin, vendors):  # noqa: F811
     i = connect(admin)
-    assert admin.post(f"/api/integrations/{i['id']}/test").json() == {"ok": True, "error": None}
+    assert admin.post(f"/api/v1/integrations/{i['id']}/test").json() == {"ok": True, "error": None}
     vendors[i["id"]].fail_test = True
-    r = admin.post(f"/api/integrations/{i['id']}/test").json()
+    r = admin.post(f"/api/v1/integrations/{i['id']}/test").json()
     assert r["ok"] is False and "401" in r["error"]
-    assert admin.get("/api/integrations").json()[0]["status"] == "error"
+    assert admin.get("/api/v1/integrations").json()[0]["status"] == "error"
 
 
 def test_clients_start_unmapped_with_name_suggestions_never_applied(
@@ -160,7 +164,7 @@ def test_clients_start_unmapped_with_name_suggestions_never_applied(
     acme = make_org("Acme Corp")
     i = connect(admin)
     vendors[i["id"]].clients = {"7": "acme corp", "8": "Globex"}
-    rows = admin.post(f"/api/integrations/{i['id']}/clients/refresh").json()
+    rows = admin.post(f"/api/v1/integrations/{i['id']}/clients/refresh").json()
     by = {r["external_name"]: r for r in rows}
     assert by["acme corp"]["suggested_organization_id"] == acme["id"]
     assert by["acme corp"]["organization_id"] is None  # suggested, never guessed
@@ -172,47 +176,49 @@ def test_map_and_ignore_a_vendor_client(admin, make_org, vendors):  # noqa: F811
     acme = make_org("Acme Corp")
     i = connect(admin)
     vendors[i["id"]].clients = {"7": "Acme", "8": "Globex"}
-    rows = admin.post(f"/api/integrations/{i['id']}/clients/refresh").json()
+    rows = admin.post(f"/api/v1/integrations/{i['id']}/clients/refresh").json()
     a, g = rows[0], rows[1]
     r = admin.put(
-        f"/api/integrations/{i['id']}/clients/{a['id']}", json={"organization_id": acme["id"]}
+        f"/api/v1/integrations/{i['id']}/clients/{a['id']}", json={"organization_id": acme["id"]}
     )
     assert r.status_code == 200 and r.json()["needs_mapping"] is False
-    r = admin.put(f"/api/integrations/{i['id']}/clients/{g['id']}", json={"ignored": True})
+    r = admin.put(f"/api/v1/integrations/{i['id']}/clients/{g['id']}", json={"ignored": True})
     assert r.json()["ignored"] and not r.json()["needs_mapping"]
     both = admin.put(
-        f"/api/integrations/{i['id']}/clients/{g['id']}",
+        f"/api/v1/integrations/{i['id']}/clients/{g['id']}",
         json={"organization_id": acme["id"], "ignored": True},
     )
     assert both.status_code == 409
     nope = admin.put(
-        f"/api/integrations/{i['id']}/clients/{g['id']}", json={"organization_id": 999}
+        f"/api/v1/integrations/{i['id']}/clients/{g['id']}", json={"organization_id": 999}
     )
     assert nope.status_code == 404
 
 
 def test_sync_now_only_flags_the_request_for_the_worker(admin, vendors):  # noqa: F811
     i = connect(admin)
-    assert admin.post(f"/api/integrations/{i['id']}/sync").json()["sync_requested"] is True
-    admin.patch(f"/api/integrations/{i['id']}", json={"enabled": False})
-    assert admin.post(f"/api/integrations/{i['id']}/sync").status_code == 409
+    assert admin.post(f"/api/v1/integrations/{i['id']}/sync").json()["sync_requested"] is True
+    admin.patch(f"/api/v1/integrations/{i['id']}", json={"enabled": False})
+    assert admin.post(f"/api/v1/integrations/{i['id']}/sync").status_code == 409
 
 
 def test_only_admins_manage_integrations(login, admin):
     i = connect(admin)
     for role in ("tech", "billing", "read_only"):
         c = login(role)
-        assert c.get("/api/integrations").status_code == 403
-        assert c.post("/api/integrations", json=NINJA).status_code == 403
-        assert c.patch(f"/api/integrations/{i['id']}", json={"enabled": False}).status_code == 403
-        assert c.post(f"/api/integrations/{i['id']}/test").status_code == 403
-        assert c.get(f"/api/integrations/{i['id']}/clients").status_code == 403
+        assert c.get("/api/v1/integrations").status_code == 403
+        assert c.post("/api/v1/integrations", json=NINJA).status_code == 403
+        assert (
+            c.patch(f"/api/v1/integrations/{i['id']}", json={"enabled": False}).status_code == 403
+        )
+        assert c.post(f"/api/v1/integrations/{i['id']}/test").status_code == 403
+        assert c.get(f"/api/v1/integrations/{i['id']}/clients").status_code == 403
 
 
 def test_unknown_integration_is_404(admin):
-    assert admin.post("/api/integrations/999/test").status_code == 404
-    assert admin.get("/api/integrations/999/runs").status_code == 404
-    assert admin.get("/api/integrations/999/clients").status_code == 404
+    assert admin.post("/api/v1/integrations/999/test").status_code == 404
+    assert admin.get("/api/v1/integrations/999/runs").status_code == 404
+    assert admin.get("/api/v1/integrations/999/clients").status_code == 404
 
 
 def test_rekey_job_reencrypts_every_stored_credential(admin, owner, monkeypatch):

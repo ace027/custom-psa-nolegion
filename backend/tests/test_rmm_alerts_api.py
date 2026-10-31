@@ -10,7 +10,7 @@ from tests.vendorfakes import HUDU, NINJA, alert, dev, run_sync, vendors  # noqa
 
 
 def patch(admin, iid, **cfg):
-    return admin.patch(f"/api/integrations/{iid}", json={"config": cfg})
+    return admin.patch(f"/api/v1/integrations/{iid}", json={"config": cfg})
 
 
 @pytest.fixture
@@ -58,7 +58,7 @@ def test_alert_keys_on_hudu_are_refused(admin):
     r = patch(admin, h["id"], alerts_enabled=True)
     assert r.status_code == 409 and "only available for NinjaOne" in r.json()["detail"]
     bad = admin.post(
-        "/api/integrations",
+        "/api/v1/integrations",
         json={**HUDU, "config": {**HUDU["config"], "alert_clear_rule": "note_only"}},
     )
     assert bad.status_code == 409
@@ -67,54 +67,58 @@ def test_alert_keys_on_hudu_are_refused(admin):
 @pytest.mark.parametrize("role", ["tech", "read_only"])
 def test_non_admins_cannot_use_the_alert_routes(login, env, role):
     c = login(role)
-    assert c.get(f"/api/integrations/{env.iid}/alerts").status_code == 403
-    assert c.post(f"/api/integrations/{env.iid}/alerts/poll").status_code == 403
+    assert c.get(f"/api/v1/integrations/{env.iid}/alerts").status_code == 403
+    assert c.post(f"/api/v1/integrations/{env.iid}/alerts/poll").status_code == 403
 
 
 def test_alert_list_has_names_and_filters_by_state(admin, env):
     env.vendor.alerts = [alert("1", "disk"), alert("1", "cpu")]
     worker.alert_jobs()
     env.vendor.alerts = [alert("1", "cpu")]
-    admin.post(f"/api/integrations/{env.iid}/alerts/poll")
+    admin.post(f"/api/v1/integrations/{env.iid}/alerts/poll")
     worker.alert_jobs()
-    admin.post(f"/api/integrations/{env.iid}/alerts/poll")
+    admin.post(f"/api/v1/integrations/{env.iid}/alerts/poll")
     worker.alert_jobs()  # a clear needs two polls
-    openr = admin.get(f"/api/integrations/{env.iid}/alerts").json()
+    openr = admin.get(f"/api/v1/integrations/{env.iid}/alerts").json()
     assert len(openr) == 1
     a = openr[0]
     assert a["asset_name"] == "PC-1" and a["organization_name"] == env.org["name"]
     assert a["ticket_number"] and a["state"] == "open" and a["severity"] == "MAJOR"
-    cleared = admin.get(f"/api/integrations/{env.iid}/alerts", params={"state": "cleared"}).json()
+    cleared = admin.get(
+        f"/api/v1/integrations/{env.iid}/alerts", params={"state": "cleared"}
+    ).json()
     assert len(cleared) == 1 and cleared[0]["resolution"] == "resolved"
-    everything = admin.get(f"/api/integrations/{env.iid}/alerts", params={"state": "all"}).json()
+    everything = admin.get(f"/api/v1/integrations/{env.iid}/alerts", params={"state": "all"}).json()
     assert len(everything) == 2 and everything[0]["id"] > everything[1]["id"]
     assert (
         len(
             admin.get(
-                f"/api/integrations/{env.iid}/alerts", params={"state": "all", "limit": 1}
+                f"/api/v1/integrations/{env.iid}/alerts", params={"state": "all", "limit": 1}
             ).json()
         )
         == 1
     )
-    assert admin.get(f"/api/integrations/{env.iid}/alerts", params={"limit": 0}).status_code == 422
-    assert admin.get("/api/integrations/9999/alerts").status_code == 404
+    assert (
+        admin.get(f"/api/v1/integrations/{env.iid}/alerts", params={"limit": 0}).status_code == 422
+    )
+    assert admin.get("/api/v1/integrations/9999/alerts").status_code == 404
 
 
 def test_poll_request_rules(admin, env):
-    r = admin.post(f"/api/integrations/{env.iid}/alerts/poll")
+    r = admin.post(f"/api/v1/integrations/{env.iid}/alerts/poll")
     assert r.status_code == 202 and r.json()["alerts_requested"] is True
-    assert admin.post("/api/integrations/9999/alerts/poll").status_code == 404
+    assert admin.post("/api/v1/integrations/9999/alerts/poll").status_code == 404
     patch(admin, env.iid, alerts_enabled=False)
-    assert admin.post(f"/api/integrations/{env.iid}/alerts/poll").status_code == 409
+    assert admin.post(f"/api/v1/integrations/{env.iid}/alerts/poll").status_code == 409
     h = connect(admin, HUDU)
-    assert admin.post(f"/api/integrations/{h['id']}/alerts/poll").status_code == 409
+    assert admin.post(f"/api/v1/integrations/{h['id']}/alerts/poll").status_code == 409
 
 
 def test_worker_job_creates_the_ticket_end_to_end_and_is_idempotent(admin, env, owner):
     env.vendor.alerts = [alert("1", severity="CRITICAL")]
     worker.alert_jobs()
     assert owner.execute(text("SELECT count(*) FROM tickets WHERE source = 'rmm'")).scalar() == 1
-    row = admin.get("/api/integrations").json()[0]
+    row = admin.get("/api/v1/integrations").json()[0]
     assert row["alerts_polled_at"] and row["alerts_last_error"] is None
     worker.alert_jobs()  # nothing due now
     assert owner.execute(text("SELECT count(*) FROM tickets")).scalar() == 1
@@ -129,22 +133,22 @@ def test_worker_job_is_a_no_op_when_nothing_is_due(admin, owner, vendors):  # no
 def test_worker_job_records_a_vendor_failure(admin, env, owner):
     env.vendor.fail_alerts = True
     worker.alert_jobs()
-    err = admin.get("/api/integrations").json()[0]["alerts_last_error"]
+    err = admin.get("/api/v1/integrations").json()[0]["alerts_last_error"]
     assert err and "HTTP 500" in err
 
 
 def test_tickets_expose_the_linked_asset(admin, env):
     env.vendor.alerts = [alert("1")]
     worker.alert_jobs()
-    listed = [t for t in admin.get("/api/tickets").json()["items"] if t["source"] == "rmm"]
+    listed = [t for t in admin.get("/api/v1/tickets").json()["items"] if t["source"] == "rmm"]
     assert len(listed) == 1 and listed[0]["asset_name"] == "PC-1"
-    t = admin.get(f"/api/tickets/{listed[0]['id']}").json()
+    t = admin.get(f"/api/v1/tickets/{listed[0]['id']}").json()
     assert t["source"] == "rmm" and t["asset_id"] and t["asset_name"] == "PC-1"
-    r = admin.post("/api/tickets", json={"organization_id": env.org["id"], "subject": "Hi"})
+    r = admin.post("/api/v1/tickets", json={"organization_id": env.org["id"], "subject": "Hi"})
     assert r.status_code == 201, r.text
     plain = r.json()
     assert plain["asset_id"] is None and plain["asset_name"] is None
-    got = admin.get(f"/api/tickets/{plain['id']}").json()
+    got = admin.get(f"/api/v1/tickets/{plain['id']}").json()
     assert got["asset_id"] is None and got["asset_name"] is None
 
 
@@ -165,5 +169,5 @@ def test_worker_one_failing_integration_does_not_stop_the_next(admin, env, owner
     monkeypatch.setattr(rmm_alerts, "poll", flaky)
     worker.alert_jobs()
     assert len(seen) == 2
-    rows = admin.get("/api/integrations").json()
+    rows = admin.get("/api/v1/integrations").json()
     assert sum(1 for r in rows if r["alerts_polled_at"]) == 1

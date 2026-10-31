@@ -4,7 +4,7 @@ API keys let scripts and tools such as n8n call the API without a browser sessio
 
 ## Creating a key
 
-An admin opens **API keys** in the navigation (or calls `POST /api/api-keys`), gives the key a name,
+An admin opens **API keys** in the navigation (or calls `POST /api/v1/api-keys`), gives the key a name,
 ticks the permissions it needs and chooses an expiry (1 to 730 days, default 365).
 
 The token is shown **once**, in the create response and on screen. Only its SHA-256 hash is stored,
@@ -28,12 +28,12 @@ owner therefore narrows the key at once (403 on routes it no longer reaches). A 
 given permissions the creating admin holds.
 
 Keys can never hold `user:manage`, `apikey:manage` or `portal:manage`. Endpoints that need only a
-login (such as `/api/auth/me`) and the API key routes themselves refuse keys with 403.
+login (such as `/api/v1/auth/me`) and the API key routes themselves refuse keys with 403.
 
 ## Expiry, revocation and owner status
 
 A key stops working (401) when it expires, is revoked, or its owner is deactivated.
-Revoke from the page or `POST /api/api-keys/{id}/revoke`. Revoking twice returns 409.
+Revoke from the page or `POST /api/v1/api-keys/{id}/revoke`. Revoking twice returns 409.
 
 ## Audit
 
@@ -41,3 +41,5 @@ Key creation and revocation are audited without the token or hash. Changes made 
 audited as the owner with `api_key_id` in the entry detail. Failed attempts are recorded as
 `auth.api_key_rejected` (with the 8-character prefix only), and scope failures as `auth.denied`.
 `last_used_at` is updated at most once every 5 minutes.
+
+See [API.md](API.md) for the `/api/v1` base path, versioning policy and the committed OpenAPI spec.

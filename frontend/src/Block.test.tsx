@@ -11,11 +11,11 @@ afterEach(() => vi.unstubAllGlobals());
 
 function mount(path: string, handlers: Record<string, (init?: RequestInit) => Response>) {
   const all: Record<string, (init?: RequestInit) => Response> = {
-    "/api/auth/me": json(me),
-    "/api/agreements": json([]),
-    "/api/receivables": json({ as_of: "2026-10-08", rows: [], totals: { overdue_invoice_count: 0 } }),
-    "/api/billing-notices": json({ items: [], total: 0 }),
-    "/api/organizations": json({ items: [{ id: 1, name: "Acme" }], total: 1 }),
+    "/api/v1/auth/me": json(me),
+    "/api/v1/agreements": json([]),
+    "/api/v1/receivables": json({ as_of: "2026-10-08", rows: [], totals: { overdue_invoice_count: 0 } }),
+    "/api/v1/billing-notices": json({ items: [], total: 0 }),
+    "/api/v1/organizations": json({ items: [{ id: 1, name: "Acme" }], total: 1 }),
     ...handlers,
   };
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => Promise.resolve(all[url.split("?")[0]]?.(init) ?? new Response("[]", { status: 200 }))));
@@ -44,7 +44,7 @@ describe("block agreements", () => {
   it("posts block_minutes 600 and quantity 1 for 10 hours", async () => {
     const posts: string[] = [];
     mount("/billing/agreements", {
-      "/api/agreements": (init) => { if (init?.method === "POST") { posts.push(String(init.body)); return new Response("{}", { status: 201 }); } return new Response("[]"); },
+      "/api/v1/agreements": (init) => { if (init?.method === "POST") { posts.push(String(init.body)); return new Response("{}", { status: 201 }); } return new Response("[]"); },
     });
     await fillBlock();
     fireEvent.change(screen.getByLabelText("Included hours"), { target: { value: "10" } });
@@ -58,7 +58,7 @@ describe("block agreements", () => {
 
   it("shows the 409 detail inline", async () => {
     mount("/billing/agreements", {
-      "/api/agreements": (init) => init?.method === "POST" ? new Response(JSON.stringify({ detail: "Overlaps an existing block agreement" }), { status: 409 }) : new Response("[]"),
+      "/api/v1/agreements": (init) => init?.method === "POST" ? new Response(JSON.stringify({ detail: "Overlaps an existing block agreement" }), { status: 409 }) : new Response("[]"),
     });
     await fillBlock();
     fireEvent.change(screen.getByLabelText("Included hours"), { target: { value: "7.5" } });
@@ -70,8 +70,8 @@ describe("block agreements", () => {
     const patches: string[] = [];
     const wt = { id: 3, name: "Onsite", rate_cents: 20000, taxable: true, block_covered: true, archived_at: null };
     mount("/billing/rates", {
-      "/api/billing/work-types": json([wt]),
-      "/api/billing/work-types/3": (init) => { patches.push(String(init?.body)); return new Response(JSON.stringify(wt)); },
+      "/api/v1/billing/work-types": json([wt]),
+      "/api/v1/billing/work-types/3": (init) => { patches.push(String(init?.body)); return new Response(JSON.stringify(wt)); },
     });
     fireEvent.click(await screen.findByLabelText("Onsite not covered by blocks"));
     await waitFor(() => expect(patches).toHaveLength(1));

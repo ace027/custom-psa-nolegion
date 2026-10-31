@@ -17,7 +17,7 @@ def poll(mail):
 
 
 def tickets(admin):
-    return admin.get("/api/tickets", params={"limit": 200}).json()["items"]
+    return admin.get("/api/v1/tickets", params={"limit": 200}).json()["items"]
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def test_known_contact_creates_a_matched_ticket(mail, admin, known):
     assert t["subject"] == "Printer is broken" and t["status"] == "new"
     assert t["description"] == "Printer on floor 2 is jammed"  # quoted history dropped
     assert m.id in mail.read  # marked read only after commit
-    audit = admin.get("/api/audit", params={"action": "ticket.create"}).json()["items"][0]
+    audit = admin.get("/api/v1/audit", params={"action": "ticket.create"}).json()["items"][0]
     assert audit["actor_type"] == "system" and audit["detail"] == {"source": "email"}
 
 
@@ -60,12 +60,12 @@ def test_unknown_sender_goes_to_triage(mail, admin, known):
     assert poll(mail) == {"ticket_created": 1}
     t = tickets(admin)[0]
     assert t["needs_triage"] and t["organization_id"] is None
-    assert admin.get("/api/dashboard").json()["counts"]["needs_triage"] == 1
+    assert admin.get("/api/v1/dashboard").json()["counts"]["needs_triage"] == 1
 
 
 def test_freemail_domains_never_match_an_organization(mail, admin, org_ctx):
     admin.post(
-        f"/api/organizations/{org_ctx['org']}/contacts",
+        f"/api/v1/organizations/{org_ctx['org']}/contacts",
         json={"name": "Owner", "email": "owner@gmail.com"},
     )
     mail.add(msg(sender="someone.else@gmail.com"))
@@ -76,7 +76,7 @@ def test_freemail_domains_never_match_an_organization(mail, admin, org_ctx):
 def test_ambiguous_sender_goes_to_triage(mail, admin, org_ctx, make_org):
     other = make_org("Other Co")
     admin.post(
-        f"/api/organizations/{other['id']}/contacts",
+        f"/api/v1/organizations/{other['id']}/contacts",
         json={"name": "Pat again", "email": "pat@acme.com"},
     )
     mail.add(msg())
@@ -87,7 +87,7 @@ def test_ambiguous_sender_goes_to_triage(mail, admin, org_ctx, make_org):
 def test_domain_shared_by_two_orgs_is_not_guessed(mail, admin, org_ctx, make_org):
     other = make_org("Other Co")
     admin.post(
-        f"/api/organizations/{other['id']}/contacts",
+        f"/api/v1/organizations/{other['id']}/contacts",
         json={"name": "Second", "email": "second@acme.com"},
     )
     mail.add(msg(sender="new@acme.com"))
@@ -106,13 +106,13 @@ def test_missing_subject_and_long_subject(mail, admin, known):
 # ---- threading ----
 def test_reply_with_ticket_token_appends_and_reopens(mail, admin, known, make_ticket):
     t = make_ticket(contact_id=known["contact"])
-    admin.patch(f"/api/tickets/{t['id']}", json={"status": "resolved"})
+    admin.patch(f"/api/v1/tickets/{t['id']}", json={"status": "resolved"})
     mail.add(msg(subject=f"RE: [#{t['number']}] Printer down", body="Still broken!"))
     assert poll(mail) == {"appended": 1}
     assert len(tickets(admin)) == 1
-    after = admin.get(f"/api/tickets/{t['id']}").json()
+    after = admin.get(f"/api/v1/tickets/{t['id']}").json()
     assert after["status"] == "open" and after["resolved_at"] is None
-    note = admin.get(f"/api/tickets/{t['id']}/notes").json()[0]
+    note = admin.get(f"/api/v1/tickets/{t['id']}/notes").json()[0]
     assert note["body"] == "Still broken!" and note["source"] == "email"
     assert note["visibility"] == "customer" and note["author_email"] == "pat@acme.com"
     assert note["email_status"] == "received"
@@ -120,11 +120,11 @@ def test_reply_with_ticket_token_appends_and_reopens(mail, admin, known, make_ti
 
 def test_customer_reply_resumes_a_paused_sla(mail, admin, known, make_ticket):
     t = make_ticket(contact_id=known["contact"])
-    admin.patch(f"/api/tickets/{t['id']}", json={"status": "waiting_on_customer"})
-    assert admin.get(f"/api/tickets/{t['id']}").json()["sla_state"] == "paused"
+    admin.patch(f"/api/v1/tickets/{t['id']}", json={"status": "waiting_on_customer"})
+    assert admin.get(f"/api/v1/tickets/{t['id']}").json()["sla_state"] == "paused"
     mail.add(msg(subject=f"[#{t['number']}] Printer down"))
     poll(mail)
-    after = admin.get(f"/api/tickets/{t['id']}").json()
+    after = admin.get(f"/api/v1/tickets/{t['id']}").json()
     assert after["status"] == "open" and after["sla_state"] != "paused"
 
 
@@ -152,7 +152,7 @@ def test_token_from_a_stranger_does_not_touch_the_ticket(mail, admin, known, mak
         )
     )
     assert poll(mail) == {"ticket_created": 1}
-    assert admin.get(f"/api/tickets/{t['id']}/notes").json() == []
+    assert admin.get(f"/api/v1/tickets/{t['id']}/notes").json() == []
     new = next(x for x in tickets(admin) if x["id"] != t["id"])
     assert new["needs_triage"] and f"#{t['number']}" in new["description"]
     assert "not attached automatically" in new["description"]
@@ -250,9 +250,9 @@ def test_attachments_are_stored_and_downloadable(mail, admin, owner, known, tmp_
     mail.add(msg(), [InboundAttachment("a1", "report.pdf", "application/pdf", 5, b"%PDF-")])
     poll(mail)
     t = tickets(admin)[0]
-    [att] = admin.get(f"/api/tickets/{t['id']}/attachments").json()
+    [att] = admin.get(f"/api/v1/tickets/{t['id']}/attachments").json()
     assert att["filename"] == "report.pdf" and att["size_bytes"] == 5
-    r = admin.get(f"/api/attachments/{att['id']}/download")
+    r = admin.get(f"/api/v1/attachments/{att['id']}/download")
     assert r.status_code == 200 and r.content == b"%PDF-"
     key = owner.execute(text("SELECT storage_key, sha256 FROM attachments")).one()
     assert key.storage_key.startswith(f"{t['id']}/") and len(key.sha256) == 64
@@ -269,7 +269,7 @@ def test_oversized_attachments_are_skipped(mail, admin, known, tmp_path, monkeyp
         ],
     )
     poll(mail)
-    atts = admin.get(f"/api/tickets/{tickets(admin)[0]['id']}/attachments").json()
+    atts = admin.get(f"/api/v1/tickets/{tickets(admin)[0]['id']}/attachments").json()
     assert [a["filename"] for a in atts] == ["ok.bin"]
 
 
@@ -280,7 +280,7 @@ def test_attachments_on_a_reply_are_attached_to_the_ticket(
     t = make_ticket(contact_id=known["contact"])
     mail.add(msg(subject=f"[#{t['number']}] x"), [InboundAttachment("a", "s.png", None, 2, b"ab")])
     poll(mail)
-    assert len(admin.get(f"/api/tickets/{t['id']}/attachments").json()) == 1
+    assert len(admin.get(f"/api/v1/tickets/{t['id']}/attachments").json()) == 1
 
 
 # ---- quoted-text stripping ----
@@ -311,7 +311,7 @@ def test_strip_quoted(raw, expected):
 # ---- outbound queue ----
 def queue_email(admin, ticket, contact=True):
     r = admin.post(
-        f"/api/tickets/{ticket['id']}/notes",
+        f"/api/v1/tickets/{ticket['id']}/notes",
         json={"body": "All fixed", "visibility": "customer", "send_email": True},
     )
     assert r.status_code == 201, r.text
@@ -330,7 +330,7 @@ def test_pending_outbound_mail_is_sent_and_marked(mail, admin, known, make_ticke
             "attachments": [],
         }
     ]
-    assert admin.get(f"/api/tickets/{t['id']}/notes").json()[0]["email_status"] == "sent"
+    assert admin.get(f"/api/v1/tickets/{t['id']}/notes").json()[0]["email_status"] == "sent"
     assert ingest.send_pending(mail, MAILBOX)["sent"] == 0  # not sent twice
 
 
@@ -340,11 +340,11 @@ def test_failed_sends_retry_then_give_up_and_are_audited(mail, admin, known, mak
     mail.fail_send = True
     for _ in range(ingest.MAX_SEND_ATTEMPTS - 1):
         assert ingest.send_pending(mail, MAILBOX)["retry"] == 1
-    assert admin.get(f"/api/tickets/{t['id']}/notes").json()[0]["email_status"] == "pending"
+    assert admin.get(f"/api/v1/tickets/{t['id']}/notes").json()[0]["email_status"] == "pending"
     assert ingest.send_pending(mail, MAILBOX)["failed"] == 1
-    assert admin.get(f"/api/tickets/{t['id']}/notes").json()[0]["email_status"] == "failed"
-    assert admin.get("/api/mail/status").json()["outbound_failed"] == 1
-    ev = admin.get("/api/audit", params={"action": "email.send_failed"}).json()["items"]
+    assert admin.get(f"/api/v1/tickets/{t['id']}/notes").json()[0]["email_status"] == "failed"
+    assert admin.get("/api/v1/mail/status").json()["outbound_failed"] == 1
+    ev = admin.get("/api/v1/audit", params={"action": "email.send_failed"}).json()["items"]
     assert ev and "send failed" in ev[0]["detail"]["error"]
     mail.fail_send = False
     assert ingest.send_pending(mail, MAILBOX) == {"sent": 0, "failed": 0, "retry": 0}
@@ -377,7 +377,7 @@ def test_roundtrip_customer_reply_to_our_email(mail, admin, known, make_ticket):
         msg(subject=f"RE: {subject}", body="Thank you!\n\nOn Tue, Support wrote:\n> All fixed")
     )
     assert poll(mail) == {"appended": 1}
-    notes = admin.get(f"/api/tickets/{t['id']}/notes").json()
+    notes = admin.get(f"/api/v1/tickets/{t['id']}/notes").json()
     assert [n["body"] for n in notes] == ["All fixed", "Thank you!"]
 
 
@@ -385,22 +385,22 @@ def test_roundtrip_customer_reply_to_our_email(mail, admin, known, make_ticket):
 def test_run_cycle_records_health(mail, admin, known):
     mail.add(msg())
     ingest.run_cycle(mail, MAILBOX)
-    s = admin.get("/api/mail/status").json()
+    s = admin.get("/api/v1/mail/status").json()
     assert s["last_success_at"] and s["last_error"] is None and s["messages_ingested"] == 1
 
 
 def test_run_cycle_records_errors_without_crashing(mail, admin):
     mail.fail_list = True
     ingest.run_cycle(mail, MAILBOX)
-    s = admin.get("/api/mail/status").json()
+    s = admin.get("/api/v1/mail/status").json()
     assert "graph down" in s["last_error"] and s["last_error_at"] and s["last_success_at"] is None
     mail.fail_list = False
     ingest.run_cycle(mail, MAILBOX)
-    assert admin.get("/api/mail/status").json()["last_error"] is None
+    assert admin.get("/api/v1/mail/status").json()["last_error"] is None
 
 
 def test_partial_failures_are_reported_as_errors(mail, admin, known):
     mail.add(msg(), [InboundAttachment("a", "a", None, 1, b"x")])
     mail.fail_attachments = True
     ingest.run_cycle(mail, MAILBOX)
-    assert "could not be ingested" in admin.get("/api/mail/status").json()["last_error"]
+    assert "could not be ingested" in admin.get("/api/v1/mail/status").json()["last_error"]

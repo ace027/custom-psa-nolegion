@@ -7,7 +7,7 @@ from tests.test_automation import mkrule, queue
 from tests.test_events import pri
 from tests.test_webhooks import add_endpoint
 
-URL = "/api/automation/rules"
+URL = "/api/v1/automation/rules"
 
 
 @pytest.fixture
@@ -214,7 +214,7 @@ def test_dry_run_saved_and_unsaved_write_nothing(admin, owner, make_ticket):
     )
     before = writes(owner)
     r = admin.post(
-        "/api/automation/rules/test", json={"rule_id": saved["id"], "ticket_id": t["id"]}
+        "/api/v1/automation/rules/test", json={"rule_id": saved["id"], "ticket_id": t["id"]}
     )
     assert r.status_code == 200, r.text
     body = r.json()
@@ -239,7 +239,7 @@ def test_dry_run_saved_and_unsaved_write_nothing(admin, owner, make_ticket):
             {"type": "assign", "user_id": admin.user["id"]},
         ],
     }
-    r = admin.post("/api/automation/rules/test", json={"rule": unsaved, "ticket_id": t["id"]})
+    r = admin.post("/api/v1/automation/rules/test", json={"rule": unsaved, "ticket_id": t["id"]})
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["matched"] is True and body["conditions"][0]["actual"] == "new"
@@ -252,13 +252,13 @@ def test_dry_run_saved_and_unsaved_write_nothing(admin, owner, make_ticket):
     assert body["actions"][1]["detail"] == "Move to queue Security"
     assert body["actions"][2]["detail"] == "Assign to admin user"
     assert writes(owner) == before
-    assert admin.get(f"/api/tickets/{t['id']}").json()["priority_id"] == t["priority_id"]
+    assert admin.get(f"/api/v1/tickets/{t['id']}").json()["priority_id"] == t["priority_id"]
 
 
 def test_dry_run_on_the_most_urgent_ticket_would_skip(admin, make_ticket):
     t = make_ticket(priority_id=pri(admin, "Urgent"))
     r = admin.post(
-        "/api/automation/rules/test",
+        "/api/v1/automation/rules/test",
         json={
             "rule": good(admin, conditions=[], actions=[{"type": "escalate"}]),
             "ticket_id": t["id"],
@@ -270,7 +270,7 @@ def test_dry_run_on_the_most_urgent_ticket_would_skip(admin, make_ticket):
 
 def test_dry_run_errors(admin, make_ticket):
     t = make_ticket()
-    post = lambda body: admin.post("/api/automation/rules/test", json=body)  # noqa: E731
+    post = lambda body: admin.post("/api/v1/automation/rules/test", json=body)  # noqa: E731
     rule = good(admin)
     assert post({"ticket_id": t["id"]}).status_code == 409  # neither
     assert post({"rule_id": 1, "rule": rule, "ticket_id": t["id"]}).status_code == 409  # both

@@ -49,13 +49,13 @@ describe("timer", () => {
   it("shows the running timer on every page and stops it", async () => {
     const calls: string[] = [];
     mount("/timesheet", {
-      "/api/auth/me": json(me),
-      "/api/timesheet": json(sheet),
-      "/api/timer": (init) => {
+      "/api/v1/auth/me": json(me),
+      "/api/v1/timesheet": json(sheet),
+      "/api/v1/timer": (init) => {
         if (init?.method === "DELETE") { calls.push("discard"); return new Response(null, { status: 204 }); }
         return new Response(JSON.stringify(timer));
       },
-      "/api/timer/stop": () => { calls.push("stop"); return new Response(JSON.stringify({ kind: "ticket", id: 1, minutes: 3 })); },
+      "/api/v1/timer/stop": () => { calls.push("stop"); return new Response(JSON.stringify({ kind: "ticket", id: 1, minutes: 3 })); },
     });
     const bar = await screen.findByRole("status", { name: "Running timer" });
     expect(bar).toHaveTextContent("#10005 New starter");
@@ -64,7 +64,7 @@ describe("timer", () => {
   });
 
   it("is hidden without a running timer or without time permission", async () => {
-    mount("/dashboard", { "/api/auth/me": json({ ...me, permissions: ["org:read", "ticket:read"] }), "/api/timer": json(timer) });
+    mount("/dashboard", { "/api/v1/auth/me": json({ ...me, permissions: ["org:read", "ticket:read"] }), "/api/v1/timer": json(timer) });
     await screen.findByRole("link", { name: "Dashboard" });
     expect(screen.queryByRole("status", { name: "Running timer" })).toBeNull();
     expect(screen.queryByText("My timesheet")).toBeNull();
@@ -80,10 +80,10 @@ describe("timesheet", () => {
   it("shows ticket and internal time and logs internal time", async () => {
     const posts: string[] = [];
     mount("/timesheet", {
-      "/api/auth/me": json(me),
-      "/api/timesheet": json(sheet),
-      "/api/time-categories": json([{ id: 4, name: "Training", archived_at: null, is_default: false }]),
-      "/api/internal-time": (init) => { posts.push(String(init?.body)); return new Response("{}", { status: 201 }); },
+      "/api/v1/auth/me": json(me),
+      "/api/v1/timesheet": json(sheet),
+      "/api/v1/time-categories": json([{ id: 4, name: "Training", archived_at: null, is_default: false }]),
+      "/api/v1/internal-time": (init) => { posts.push(String(init?.body)); return new Response("{}", { status: 201 }); },
     });
     expect(await screen.findByText("#10005 New starter")).toBeInTheDocument();
     expect(screen.getByText("SC-900")).toBeInTheDocument();
@@ -105,9 +105,9 @@ describe("timesheet approval", () => {
     const posts: string[] = [];
     vi.spyOn(window, "confirm").mockReturnValue(true);
     mount("/timesheet", {
-      "/api/auth/me": json(me),
-      "/api/timesheet": json(sheet),
-      "/api/timesheet/submit": (init) => { posts.push(String(init?.body)); return new Response("{}"); },
+      "/api/v1/auth/me": json(me),
+      "/api/v1/timesheet": json(sheet),
+      "/api/v1/timesheet/submit": (init) => { posts.push(String(init?.body)); return new Response("{}"); },
     });
     fireEvent.click(await screen.findByRole("button", { name: "Submit week" }));
     await waitFor(() => expect(posts).toHaveLength(1));
@@ -115,7 +115,7 @@ describe("timesheet approval", () => {
   });
 
   it("shows a submitted week as locked and a returned week with its reason", async () => {
-    mount("/timesheet", { "/api/auth/me": json(me), "/api/timesheet": json({ ...sheet, status: "submitted" }) });
+    mount("/timesheet", { "/api/v1/auth/me": json(me), "/api/v1/timesheet": json({ ...sheet, status: "submitted" }) });
     await screen.findByText("#10005 New starter");
     expect(screen.queryByRole("button", { name: "Submit week" })).toBeNull();
     expect(screen.queryByText("Void")).toBeNull();
@@ -123,7 +123,7 @@ describe("timesheet approval", () => {
   });
 
   it("shows why a week was returned", async () => {
-    mount("/timesheet", { "/api/auth/me": json(me), "/api/timesheet": json({ ...sheet, status: "returned", return_reason: "Missing Tuesday" }) });
+    mount("/timesheet", { "/api/v1/auth/me": json(me), "/api/v1/timesheet": json({ ...sheet, status: "returned", return_reason: "Missing Tuesday" }) });
     expect(await screen.findByRole("alert")).toHaveTextContent("Missing Tuesday");
     expect(screen.getByRole("button", { name: "Submit week" })).toBeInTheDocument();
   });
@@ -131,20 +131,20 @@ describe("timesheet approval", () => {
   it("gives admins the approval queue", async () => {
     const posts: string[] = [];
     mount("/timesheet", {
-      "/api/auth/me": json(admin),
-      "/api/timesheet": json(sheet),
-      "/api/timesheets": json([row]),
-      "/api/timesheet/approve": (init) => { posts.push(String(init?.body)); return new Response("{}"); },
+      "/api/v1/auth/me": json(admin),
+      "/api/v1/timesheet": json(sheet),
+      "/api/v1/timesheets": json([row]),
+      "/api/v1/timesheet/approve": (init) => { posts.push(String(init?.body)); return new Response("{}"); },
     });
     expect(await screen.findByText("Tess Tech")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(JSON.parse(posts[0])).toEqual({ user_id: 2, week_start: "2026-10-05" });
-    expect(screen.getByRole("link", { name: /Download hours CSV/ })).toHaveAttribute("href", expect.stringContaining("/api/timesheets/export.csv?from="));
+    expect(screen.getByRole("link", { name: /Download hours CSV/ })).toHaveAttribute("href", expect.stringContaining("/api/v1/timesheets/export.csv?from="));
   });
 
   it("hides approvals from people without the permission", async () => {
-    mount("/timesheet", { "/api/auth/me": json(me), "/api/timesheet": json(sheet) });
+    mount("/timesheet", { "/api/v1/auth/me": json(me), "/api/v1/timesheet": json(sheet) });
     await screen.findByText("#10005 New starter");
     expect(screen.queryByText("Timesheet approvals")).toBeNull();
   });
@@ -159,23 +159,23 @@ describe("expenses", () => {
   };
 
   it("lists expenses with cost, billed price, markup and receipts", async () => {
-    mount("/expenses", { "/api/auth/me": json(me), "/api/expenses": json([expense]), "/api/expense-categories": json([]), "/api/organizations": json([]) });
+    mount("/expenses", { "/api/v1/auth/me": json(me), "/api/v1/expenses": json([expense]), "/api/v1/expense-categories": json([]), "/api/v1/organizations": json([]) });
     expect(await screen.findByText("$123.45")).toBeInTheDocument();
     expect(screen.getByText(/\$141\.97/)).toBeInTheDocument();
     expect(screen.getByText(/\+15%/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "p.png" })).toHaveAttribute("href", "/api/expense-receipts/8/download");
+    expect(screen.getByRole("link", { name: "p.png" })).toHaveAttribute("href", "/api/v1/expense-receipts/8/download");
   });
 
   it("sends the amount in cents and the markup in basis points", async () => {
     const posts: string[] = [];
     mount("/expenses", {
-      "/api/auth/me": json(me),
-      "/api/expenses": (init) => {
+      "/api/v1/auth/me": json(me),
+      "/api/v1/expenses": (init) => {
         if (init?.method === "POST") { posts.push(String(init.body)); return new Response(JSON.stringify(expense), { status: 201 }); }
         return new Response("[]");
       },
-      "/api/expense-categories": json([{ id: 1, name: "Travel", archived_at: null, is_default: false }]),
-      "/api/organizations": json([{ id: 1, name: "Acme" }]),
+      "/api/v1/expense-categories": json([{ id: 1, name: "Travel", archived_at: null, is_default: false }]),
+      "/api/v1/organizations": json([{ id: 1, name: "Acme" }]),
     });
     await screen.findByRole("option", { name: "Acme" });
     await screen.findByRole("option", { name: "Travel" });
@@ -193,10 +193,10 @@ describe("expenses", () => {
   it("refuses a bad amount before calling the API", async () => {
     const posts: string[] = [];
     mount("/expenses", {
-      "/api/auth/me": json(me),
-      "/api/expenses": (init) => { if (init?.method === "POST") posts.push("x"); return new Response("[]"); },
-      "/api/expense-categories": json([{ id: 1, name: "Travel", archived_at: null, is_default: false }]),
-      "/api/organizations": json([]),
+      "/api/v1/auth/me": json(me),
+      "/api/v1/expenses": (init) => { if (init?.method === "POST") posts.push("x"); return new Response("[]"); },
+      "/api/v1/expense-categories": json([{ id: 1, name: "Travel", archived_at: null, is_default: false }]),
+      "/api/v1/organizations": json([]),
     });
     await screen.findByRole("option", { name: "Travel" });
     fireEvent.change(screen.getByLabelText("Amount ($)"), { target: { value: "abc" } });
@@ -208,7 +208,7 @@ describe("expenses", () => {
   });
 
   it("hides the page from people who cannot log time", async () => {
-    mount("/dashboard", { "/api/auth/me": json({ ...me, permissions: ["org:read", "ticket:read"] }) });
+    mount("/dashboard", { "/api/v1/auth/me": json({ ...me, permissions: ["org:read", "ticket:read"] }) });
     await screen.findByRole("link", { name: "Dashboard" });
     expect(screen.queryByText("My expenses")).toBeNull();
   });

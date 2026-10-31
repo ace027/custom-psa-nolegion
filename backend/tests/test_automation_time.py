@@ -17,7 +17,7 @@ MAR_LO, MAR_HI = "2026-03-01", "2026-03-31"
 
 def auto(admin, ticket, wt, minutes, work_date, **kw):
     r = admin.post(
-        f"/api/tickets/{ticket}/time",
+        f"/api/v1/tickets/{ticket}/time",
         json={
             "work_type_id": wt,
             "minutes": minutes,
@@ -33,10 +33,10 @@ def auto(admin, ticket, wt, minutes, work_date, **kw):
 
 
 def run(client, org_name):
-    r = client.post("/api/billing-runs", json={"period": JUL})
+    r = client.post("/api/v1/billing-runs", json={"period": JUL})
     assert r.status_code == 201, r.text
     inv = next((i for i in r.json()["invoices"] if i["organization_name"] == org_name), None)
-    return None if inv is None else client.get(f"/api/invoices/{inv['id']}").json()
+    return None if inv is None else client.get(f"/api/v1/invoices/{inv['id']}").json()
 
 
 def lines(inv):
@@ -79,7 +79,7 @@ def test_block_agreement_draws_down_only_labour(
 ):
     org, t = make_org_with_ticket("Acme")
     r = biller.post(
-        "/api/agreements",
+        "/api/v1/agreements",
         json={
             "organization_id": org["id"],
             "name": "Retainer",
@@ -103,7 +103,7 @@ def test_block_agreement_draws_down_only_labour(
 
 def test_tm_project_bills_only_labour(admin, biller, client_org, wt, log, owner):
     r = admin.post(
-        "/api/projects",
+        "/api/v1/projects",
         json={
             "organization_id": client_org,
             "name": "Rollout",
@@ -113,8 +113,8 @@ def test_tm_project_bills_only_labour(admin, biller, client_org, wt, log, owner)
     )
     assert r.status_code == 201, r.text
     pid = r.json()["id"]
-    assert admin.post(f"/api/projects/{pid}/approve").status_code == 200
-    tid = admin.post(f"/api/projects/{pid}/tasks", json={"title": "Build"}).json()["ticket_id"]
+    assert admin.post(f"/api/v1/projects/{pid}/approve").status_code == 200
+    tid = admin.post(f"/api/v1/projects/{pid}/tasks", json={"title": "Build"}).json()["ticket_id"]
     lab = log(tid, wt["Remote"], 240, work_date="2026-07-10")["id"]
     a = auto(admin, tid, wt["Remote"], 600, "2026-07-11")["id"]
     inv = run(biller, "Acme Corp")
@@ -122,7 +122,7 @@ def test_tm_project_bills_only_labour(admin, biller, client_org, wt, log, owner)
     assert inv["total_cents"] == 60000
     assert linked(owner, [a])[a] == (None, 0)
     assert linked(owner, [lab])[lab][0] == inv["lines"][0]["id"]
-    b = biller.get(f"/api/projects/{pid}/budget").json()
+    b = biller.get(f"/api/v1/projects/{pid}/budget").json()
     assert (b["actual_minutes"], b["billable_minutes"]) == (240, 240)
     assert b["billed_cents"] == 60000
 
@@ -144,10 +144,10 @@ def test_utilisation_and_profitability_keep_automation_separate(
     auto(admin, t["id"], wt["Remote"], 200, "2026-03-05")
     auto(admin, t["id"], wt["Remote"], 45, "2026-03-06")
     voided = auto(admin, t["id"], wt["Remote"], 999, "2026-03-06")["id"]
-    assert admin.post(f"/api/time-entries/{voided}/void").status_code == 200
+    assert admin.post(f"/api/v1/time-entries/{voided}/void").status_code == 200
     params = {"from": MAR_LO, "to": MAR_HI}
 
-    d = biller.get("/api/reports/utilisation", params=params).json()
+    d = biller.get("/api/v1/reports/utilisation", params=params).json()
     row = next(r for r in d["rows"] if r["user_id"] == uid)
     assert row["automation_minutes"] == 200 + 45  # voided entry excluded
     assert (row["logged_minutes"], row["billable_minutes"]) == (90, 60)  # labour only
@@ -155,12 +155,12 @@ def test_utilisation_and_profitability_keep_automation_separate(
     assert d["totals"]["automation_minutes"] == sum(r["automation_minutes"] for r in d["rows"])
     assert d["totals"]["logged_minutes"] == sum(r["logged_minutes"] for r in d["rows"])
 
-    p = biller.get("/api/reports/profitability", params=params).json()
+    p = biller.get("/api/v1/reports/profitability", params=params).json()
     main = next(r for r in p["rows"] if r["organization_name"] == "Main Co")
     assert main["labour_cost_cents"] == 9000 + 4500  # 60 + 30 minutes at 90.00/h only
     assert main["minutes_without_cost_rate"] == 0
 
-    resp = biller.get("/api/reports/utilisation.csv", params=params)
+    resp = biller.get("/api/v1/reports/utilisation.csv", params=params)
     assert resp.status_code == 200
     table = list(csv.reader(io.StringIO(resp.text)))
     assert table[0][-1] == "automation_minutes"
@@ -177,11 +177,11 @@ def test_a_tech_without_a_cost_rate_still_reports_automation_minutes(
     _set_cost_rate(owner, uid, None)
     auto(admin, t["id"], wt["Remote"], 50, "2026-03-10")
     params = {"from": MAR_LO, "to": MAR_HI}
-    d = biller.get("/api/reports/utilisation", params=params).json()
+    d = biller.get("/api/v1/reports/utilisation", params=params).json()
     row = next(r for r in d["rows"] if r["user_id"] == uid)
     assert row["automation_minutes"] == 50 and row["logged_minutes"] == 0
     assert row["utilisation_bp"] in (0, None)  # unchanged: zero labour
-    p = biller.get("/api/reports/profitability", params=params).json()
+    p = biller.get("/api/v1/reports/profitability", params=params).json()
     assert all(r["minutes_without_cost_rate"] == 0 for r in p["rows"])
     assert all(
         r["labour_cost_cents"] == 0 for r in p["rows"] if r["organization_name"] == "Rateless Co"

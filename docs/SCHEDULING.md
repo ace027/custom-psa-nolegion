@@ -108,7 +108,7 @@ Intervals are half-open, so back-to-back slots (10:00-11:00 and 11:00-12:00) do 
 
 ## API
 
-All routes are under `/api`, tagged `scheduling`. Errors use `{detail}` with 403, 404, 409 or 422.
+All routes are under `/api/v1`, tagged `scheduling`. Errors use `{detail}` with 403, 404, 409 or 422.
 
 | Method and path | Permission | Notes |
 |---|---|---|
@@ -185,9 +185,9 @@ On-call is **display only**: no alerts, paging or SLA escalation.
   still applies.
 - **Permissions.** Manage with `schedule:write`, read with `schedule:read`. The tables are staff-internal
   (no organization, no RLS), like time off.
-- **API.** `GET/POST /api/oncall/rotations`, `PATCH /api/oncall/rotations/{id}`,
-  `GET/POST /api/oncall/rotations/{id}/overrides`, `DELETE /api/oncall/overrides/{id}`,
-  `GET /api/oncall/now` and `GET /api/oncall/schedule` (window of at most 31 days; `start` and `end` need a
+- **API.** `GET/POST /api/v1/oncall/rotations`, `PATCH /api/v1/oncall/rotations/{id}`,
+  `GET/POST /api/v1/oncall/rotations/{id}/overrides`, `DELETE /api/v1/oncall/overrides/{id}`,
+  `GET /api/v1/oncall/now` and `GET /api/v1/oncall/schedule` (window of at most 31 days; `start` and `end` need a
   timezone offset). Invalid input is 422. `now` and `schedule` cover active rotations only.
 - **Where it appears.** The On-call page, the sidebar widget ("who is on call now") and shading on the
   dispatch board.

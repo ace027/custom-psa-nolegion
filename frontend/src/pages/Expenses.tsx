@@ -116,7 +116,7 @@ export default function Expenses() {
                 <td>{e.organization_name ?? "—"}</td>
                 <td className="tabular-nums">{money(e.amount_cents)}</td>
                 <td className="tabular-nums">{e.billable ? <>{money(e.client_price_cents)}{e.markup_bp > 0 && <span className="text-xs text-slate-500"> (+{percent(e.markup_bp)})</span>}{e.invoiced && " · invoiced"}</> : "—"}</td>
-                <td>{e.receipts.map((r) => <a key={r.id} className="mr-2 text-blue-700 hover:underline" href={`/api/expense-receipts/${r.id}/download`}>{r.filename}</a>)}</td>
+                <td>{e.receipts.map((r) => <a key={r.id} className="mr-2 text-blue-700 hover:underline" href={`/api/v1/expense-receipts/${r.id}/download`}>{r.filename}</a>)}</td>
                 <td>{!e.invoiced && <button className="text-red-700 hover:underline" onClick={() => voidIt.mutate(e.id)}>Void</button>}</td>
               </tr>
             ))}

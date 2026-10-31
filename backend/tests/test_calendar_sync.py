@@ -82,7 +82,7 @@ def tech2(login):
 
 def book(admin, ticket_id, tech, start=None, end=None):
     r = admin.post(
-        "/api/appointments",
+        "/api/v1/appointments",
         json={
             "ticket_id": ticket_id,
             "tech_id": tech.user["id"],
@@ -118,13 +118,13 @@ def appt(admin, make_ticket, tech):
 def test_api_writes_leave_a_pending_row(admin, owner, make_ticket, tech, tech2):
     a = book(admin, make_ticket()["id"], tech)
     assert tuple(sync(owner, a))[:3] == ("pending", 1, 0)
-    admin.patch(f"/api/appointments/{a}", json={"notes": "just a note"})
+    admin.patch(f"/api/v1/appointments/{a}", json={"notes": "just a note"})
     assert sync(owner, a).desired_version == 1  # notes are not pushed
-    admin.patch(f"/api/appointments/{a}", json={"ends_at": at(17)})
+    admin.patch(f"/api/v1/appointments/{a}", json={"ends_at": at(17)})
     assert sync(owner, a).desired_version == 2
-    admin.patch(f"/api/appointments/{a}", json={"tech_id": tech2.user["id"]})
+    admin.patch(f"/api/v1/appointments/{a}", json={"tech_id": tech2.user["id"]})
     assert sync(owner, a).desired_version == 3
-    admin.post(f"/api/appointments/{a}/cancel", json={})
+    admin.post(f"/api/v1/appointments/{a}/cancel", json={})
     assert tuple(sync(owner, a))[:3] == ("pending", 4, 0)
 
 
@@ -163,7 +163,7 @@ def test_retried_create_makes_no_duplicate(owner, fake, enabled, appt):
 def test_move_updates_the_same_event(admin, owner, fake, enabled, appt):
     push(fake)
     event_id = sync(owner, appt).graph_event_id
-    admin.patch(f"/api/appointments/{appt}", json={"starts_at": at(14), "ends_at": at(15)})
+    admin.patch(f"/api/v1/appointments/{appt}", json={"starts_at": at(14), "ends_at": at(15)})
     push(fake)
     assert fake.calls[-1] == ("update", "tech1@example.com", event_id)
     assert len(fake.events) == 1
@@ -174,7 +174,7 @@ def test_move_updates_the_same_event(admin, owner, fake, enabled, appt):
 def test_reassign_deletes_old_and_creates_new(admin, owner, fake, enabled, appt, tech2):
     push(fake)
     old_id = sync(owner, appt).graph_event_id
-    admin.patch(f"/api/appointments/{appt}", json={"tech_id": tech2.user["id"]})
+    admin.patch(f"/api/v1/appointments/{appt}", json={"tech_id": tech2.user["id"]})
     push(fake)
     assert fake.calls[-2] == ("delete", "tech1@example.com", old_id)
     assert fake.calls[-1][:2] == ("create", "tech2@example.com")
@@ -187,7 +187,7 @@ def test_reassign_with_failing_delete_waits_without_creating(
     admin, owner, fake, enabled, appt, tech2
 ):
     push(fake)
-    admin.patch(f"/api/appointments/{appt}", json={"tech_id": tech2.user["id"]})
+    admin.patch(f"/api/v1/appointments/{appt}", json={"tech_id": tech2.user["id"]})
     fake.fail.append(("delete", GraphError("busy", 503, True)))
     push(fake)
     assert [c[0] for c in fake.calls] == ["create", "delete"]
@@ -204,7 +204,7 @@ def test_cancel_deletes_and_a_missing_event_is_fine(admin, owner, fake, enabled,
     push(fake)
     event_id = sync(owner, appt).graph_event_id
     fake.events.clear()  # the event was already removed by hand
-    admin.post(f"/api/appointments/{appt}/cancel", json={})
+    admin.post(f"/api/v1/appointments/{appt}/cancel", json={})
     push(fake)
     assert fake.calls[-1] == ("delete", "tech1@example.com", event_id)
     row = sync(owner, appt)
@@ -212,7 +212,7 @@ def test_cancel_deletes_and_a_missing_event_is_fine(admin, owner, fake, enabled,
 
 
 def test_cancel_before_the_first_push_has_nothing_to_delete(admin, owner, fake, enabled, appt):
-    admin.post(f"/api/appointments/{appt}/cancel", json={})
+    admin.post(f"/api/v1/appointments/{appt}/cancel", json={})
     assert push(fake) == 1
     assert fake.calls == []
     assert sync(owner, appt).state == "synced"
@@ -221,7 +221,7 @@ def test_cancel_before_the_first_push_has_nothing_to_delete(admin, owner, fake, 
 def test_404_on_update_recreates(owner, fake, enabled, admin, appt):
     push(fake)
     fake.events.clear()  # deleted in Outlook by hand
-    admin.patch(f"/api/appointments/{appt}", json={"ends_at": at(17)})
+    admin.patch(f"/api/v1/appointments/{appt}", json={"ends_at": at(17)})
     push(fake)
     assert [c[0] for c in fake.calls] == ["create", "update", "create"]
     assert len(fake.events) == 1
@@ -271,7 +271,7 @@ def test_tech_without_an_email_fails(owner, fake, enabled, appt):
 
 def test_a_write_during_a_push_leaves_the_row_pending(admin, owner, fake, enabled, appt):
     fake.on_create = lambda: admin.patch(
-        f"/api/appointments/{appt}", json={"starts_at": at(14), "ends_at": at(15)}
+        f"/api/v1/appointments/{appt}", json={"starts_at": at(14), "ends_at": at(15)}
     )
     push(fake)
     row = sync(owner, appt)

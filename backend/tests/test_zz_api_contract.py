@@ -9,12 +9,12 @@ from tests.conftest import HIT_ROUTES
 PUBLIC = {  # deliberately unauthenticated
     ("GET", "/healthz"),
     ("GET", "/readyz"),
-    ("GET", "/api/auth/login"),
-    ("GET", "/api/auth/callback"),
-    ("POST", "/api/auth/dev-login"),
-    ("POST", "/api/portal/login-link"),
-    ("POST", "/api/portal/verify"),
-    ("POST", "/api/csat/respond"),
+    ("GET", "/api/v1/auth/login"),
+    ("GET", "/api/v1/auth/callback"),
+    ("POST", "/api/v1/auth/dev-login"),
+    ("POST", "/api/v1/portal/login-link"),
+    ("POST", "/api/v1/portal/verify"),
+    ("POST", "/api/v1/csat/respond"),
 }
 
 

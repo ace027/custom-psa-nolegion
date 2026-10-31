@@ -16,18 +16,18 @@ const ticket = (id: number, over = {}) => ({
   first_responded_at: null, created_at: "2026-09-30T12:00:00Z", updated_at: "2026-09-30T12:00:00Z", ...over,
 });
 const base: Record<string, () => Response> = {
-  "/api/auth/me": json(me),
-  "/api/queues": json([{ id: 1, name: "Support", archived_at: null, is_default: true }]),
-  "/api/categories": json([]),
-  "/api/priorities": json([{ id: 3, name: "Normal", rank: 3, archived_at: null, is_default: true, first_response_minutes: 1, resolution_minutes: 1 }]),
-  "/api/work-types": json([]),
-  "/api/users": json([]),
-  "/api/ticket-statuses": json([
+  "/api/v1/auth/me": json(me),
+  "/api/v1/queues": json([{ id: 1, name: "Support", archived_at: null, is_default: true }]),
+  "/api/v1/categories": json([]),
+  "/api/v1/priorities": json([{ id: 3, name: "Normal", rank: 3, archived_at: null, is_default: true, first_response_minutes: 1, resolution_minutes: 1 }]),
+  "/api/v1/work-types": json([]),
+  "/api/v1/users": json([]),
+  "/api/v1/ticket-statuses": json([
     { id: 1, name: "Open", behavior: "open", position: 20, archived_at: null },
     { id: 4, name: "Resolved", behavior: "resolved", position: 40, archived_at: null },
   ]),
-  "/api/settings": json({}),
-  "/api/organizations?limit=200&include_archived=false&q=": json({ items: [], total: 0, limit: 200, offset: 0 }),
+  "/api/v1/settings": json({}),
+  "/api/v1/organizations?limit=200&include_archived=false&q=": json({ items: [], total: 0, limit: 200, offset: 0 }),
 };
 
 function run(path: string, handlers: Record<string, (init?: RequestInit) => Response>, calls: string[] = []) {
@@ -67,8 +67,8 @@ describe("ticket list", () => {
       "/tickets",
       {
         ...base,
-        "/api/tickets/bulk": (init) => { bodies.push(String(init?.body)); return new Response(JSON.stringify({ updated: 2, failed: [] })); },
-        "/api/tickets?*": json({ items: [ticket(1), ticket(2)], total: 2, limit: 50, offset: 0 }),
+        "/api/v1/tickets/bulk": (init) => { bodies.push(String(init?.body)); return new Response(JSON.stringify({ updated: 2, failed: [] })); },
+        "/api/v1/tickets?*": json({ items: [ticket(1), ticket(2)], total: 2, limit: 50, offset: 0 }),
       },
       calls,
     );
@@ -84,7 +84,7 @@ describe("ticket list", () => {
 
   it("asks the server to sort when a header is clicked", async () => {
     const calls: string[] = [];
-    run("/tickets", { ...base, "/api/tickets?*": json({ items: [ticket(1)], total: 1, limit: 50, offset: 0 }) }, calls);
+    run("/tickets", { ...base, "/api/v1/tickets?*": json({ items: [ticket(1)], total: 1, limit: 50, offset: 0 }) }, calls);
     await screen.findByText("Subject 1");
     fireEvent.click(screen.getByRole("button", { name: "Priority" }));
     await waitFor(() => expect(calls.some((c) => c.includes("sort=priority") && c.includes("descending=false"))).toBe(true));
@@ -95,7 +95,7 @@ describe("search page", () => {
   it("groups results by kind", async () => {
     run("/search?q=acme", {
       ...base,
-      "/api/search?q=acme": json({ q: "acme", hits: [
+      "/api/v1/search?q=acme": json({ q: "acme", hits: [
         { kind: "ticket", id: 1, title: "#10001 Acme printer", subtitle: "open", organization_id: 1 },
         { kind: "organization", id: 1, title: "Acme Corp", subtitle: null, organization_id: 1 },
       ] }),
@@ -117,10 +117,10 @@ describe("settings: holidays and email automation (slice B)", () => {
     const bodies: string[] = [];
     run("/settings", {
       ...base,
-      "/api/auth/me": json(admin),
-      "/api/settings": json(settings),
-      "/api/mail/status": json({ configured: false }),
-      "/api/holidays": (init) => {
+      "/api/v1/auth/me": json(admin),
+      "/api/v1/settings": json(settings),
+      "/api/v1/mail/status": json({ configured: false }),
+      "/api/v1/holidays": (init) => {
         if (init?.method === "POST") { bodies.push(String(init.body)); return new Response("{}", { status: 201 }); }
         return new Response(JSON.stringify([{ id: 1, on_date: "2026-12-25", name: "Christmas", open_minute: null, close_minute: null }]));
       },

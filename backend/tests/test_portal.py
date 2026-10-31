@@ -19,7 +19,7 @@ def anon_client():
 
 @pytest.fixture
 def portal_on(admin):
-    assert admin.patch("/api/settings", json={"portal_enabled": True}).status_code == 200
+    assert admin.patch("/api/v1/settings", json={"portal_enabled": True}).status_code == 200
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def token_for(link_emails, email):
 
 def add_contact(admin, org, name, email, *, portal=True, billing=False, all_tickets=False):
     r = admin.post(
-        f"/api/organizations/{org}/contacts",
+        f"/api/v1/organizations/{org}/contacts",
         json={
             "name": name,
             "email": email,
@@ -61,8 +61,8 @@ def add_contact(admin, org, name, email, *, portal=True, billing=False, all_tick
 def sign_in(admin, portal_on, mail_ready, link_emails):
     def _sign_in(email):
         c = anon_client()
-        assert c.post("/api/portal/login-link", json={"email": email}).status_code == 202
-        r = c.post("/api/portal/verify", json={"token": token_for(link_emails, email)})
+        assert c.post("/api/v1/portal/login-link", json={"email": email}).status_code == 202
+        r = c.post("/api/v1/portal/verify", json={"token": token_for(link_emails, email)})
         assert r.status_code == 200, r.text
         return c
 
@@ -84,7 +84,7 @@ def test_link_request_answers_identically_for_everyone(
     add_contact(admin, a, "Nope", "nope@acme.com", portal=False)
     c = anon_client()
     answers = [
-        c.post("/api/portal/login-link", json={"email": e})
+        c.post("/api/v1/portal/login-link", json={"email": e})
         for e in ("pat@acme.com", "nope@acme.com", "stranger@example.org")
     ]
     assert [r.status_code for r in answers] == [202, 202, 202]
@@ -96,7 +96,7 @@ def test_the_link_is_in_the_fragment_and_says_it_is_single_use(
     admin, portal_on, mail_ready, link_emails, two_clients
 ):
     add_contact(admin, two_clients[0], "Pat", "PAT@Acme.com")
-    anon_client().post("/api/portal/login-link", json={"email": "pat@acme.com"})
+    anon_client().post("/api/v1/portal/login-link", json={"email": "pat@acme.com"})
     body = link_emails()[0].body_text
     assert re.search(r"/portal/verify#token=[\w-]{30,}", body) and "?token" not in body
     assert "works once" in body and "15 minutes" in body
@@ -107,22 +107,22 @@ def test_nothing_is_sent_while_the_portal_is_off_or_mail_is_not_configured(
 ):
     add_contact(admin, two_clients[0], "Pat", "pat@acme.com")
     c = anon_client()
-    assert c.post("/api/portal/login-link", json={"email": "pat@acme.com"}).status_code == 202
+    assert c.post("/api/v1/portal/login-link", json={"email": "pat@acme.com"}).status_code == 202
     assert link_emails() == []  # portal is off by default
-    admin.patch("/api/settings", json={"portal_enabled": True})
+    admin.patch("/api/v1/settings", json={"portal_enabled": True})
     with new_session() as db:
         db.execute(text("UPDATE mailbox_status SET mailbox = NULL"))
         db.commit()
-    assert c.post("/api/portal/login-link", json={"email": "pat@acme.com"}).status_code == 202
+    assert c.post("/api/v1/portal/login-link", json={"email": "pat@acme.com"}).status_code == 202
     assert link_emails() == []
 
 
 def test_link_works_once(admin, sign_in, link_emails, two_clients):
     add_contact(admin, two_clients[0], "Pat", "pat@acme.com")
     c = sign_in("pat@acme.com")
-    assert c.get("/api/portal/me").json()["contact_name"] == "Pat"
+    assert c.get("/api/v1/portal/me").json()["contact_name"] == "Pat"
     again = anon_client().post(
-        "/api/portal/verify", json={"token": token_for(link_emails, "pat@acme.com")}
+        "/api/v1/portal/verify", json={"token": token_for(link_emails, "pat@acme.com")}
     )
     assert again.status_code == 401
 
@@ -132,26 +132,26 @@ def test_expired_and_made_up_links_are_refused(
 ):
     add_contact(admin, two_clients[0], "Pat", "pat@acme.com")
     c = anon_client()
-    c.post("/api/portal/login-link", json={"email": "pat@acme.com"})
+    c.post("/api/v1/portal/login-link", json={"email": "pat@acme.com"})
     with owner_engine.begin() as conn:
         conn.execute(
             text("UPDATE portal_login_tokens SET expires_at = now() - interval '1 second'")
         )
     assert (
         c.post(
-            "/api/portal/verify", json={"token": token_for(link_emails, "pat@acme.com")}
+            "/api/v1/portal/verify", json={"token": token_for(link_emails, "pat@acme.com")}
         ).status_code
         == 401
     )
-    assert c.post("/api/portal/verify", json={"token": "x" * 40}).status_code == 401
-    assert c.post("/api/portal/verify", json={"token": "short"}).status_code == 422
+    assert c.post("/api/v1/portal/verify", json={"token": "x" * 40}).status_code == 401
+    assert c.post("/api/v1/portal/verify", json={"token": "short"}).status_code == 422
 
 
 def test_tokens_are_stored_hashed(
     admin, portal_on, mail_ready, link_emails, two_clients, owner_engine
 ):
     add_contact(admin, two_clients[0], "Pat", "pat@acme.com")
-    anon_client().post("/api/portal/login-link", json={"email": "pat@acme.com"})
+    anon_client().post("/api/v1/portal/login-link", json={"email": "pat@acme.com"})
     token = token_for(link_emails, "pat@acme.com")
     with owner_engine.connect() as c:
         stored = c.execute(text("SELECT token_hash FROM portal_login_tokens")).scalar_one()
@@ -164,7 +164,7 @@ def test_link_requests_are_rate_limited_per_contact(
     add_contact(admin, two_clients[0], "Pat", "pat@acme.com")
     c = anon_client()
     codes = [
-        c.post("/api/portal/login-link", json={"email": "pat@acme.com"}).status_code
+        c.post("/api/v1/portal/login-link", json={"email": "pat@acme.com"}).status_code
         for _ in range(6)
     ]
     assert codes == [202] * 6 and len(link_emails()) == 3
@@ -175,11 +175,11 @@ def test_a_link_cannot_be_redeemed_when_the_portal_is_switched_off(
 ):
     add_contact(admin, two_clients[0], "Pat", "pat@acme.com")
     c = anon_client()
-    c.post("/api/portal/login-link", json={"email": "pat@acme.com"})
-    admin.patch("/api/settings", json={"portal_enabled": False})
+    c.post("/api/v1/portal/login-link", json={"email": "pat@acme.com"})
+    admin.patch("/api/v1/settings", json={"portal_enabled": False})
     assert (
         c.post(
-            "/api/portal/verify", json={"token": token_for(link_emails, "pat@acme.com")}
+            "/api/v1/portal/verify", json={"token": token_for(link_emails, "pat@acme.com")}
         ).status_code
         == 401
     )
@@ -188,15 +188,15 @@ def test_a_link_cannot_be_redeemed_when_the_portal_is_switched_off(
 def test_logout_ends_the_session(admin, sign_in, two_clients):
     add_contact(admin, two_clients[0], "Pat", "pat@acme.com")
     c = sign_in("pat@acme.com")
-    assert c.post("/api/portal/logout").status_code == 204
-    assert c.get("/api/portal/me").status_code == 401
+    assert c.post("/api/v1/portal/logout").status_code == 204
+    assert c.get("/api/v1/portal/me").status_code == 401
 
 
 def test_the_session_cookie_is_locked_down(admin, portal_on, mail_ready, link_emails, two_clients):
     add_contact(admin, two_clients[0], "Pat", "pat@acme.com")
     c = anon_client()
-    c.post("/api/portal/login-link", json={"email": "pat@acme.com"})
-    r = c.post("/api/portal/verify", json={"token": token_for(link_emails, "pat@acme.com")})
+    c.post("/api/v1/portal/login-link", json={"email": "pat@acme.com"})
+    r = c.post("/api/v1/portal/verify", json={"token": token_for(link_emails, "pat@acme.com")})
     cookie = r.headers["set-cookie"].lower()
     assert "psa_portal=" in cookie and "httponly" in cookie and "samesite=lax" in cookie
 
@@ -205,25 +205,25 @@ def test_the_session_cookie_is_locked_down(admin, portal_on, mail_ready, link_em
 def test_access_needs_an_email_and_an_admin_and_one_client_per_address(admin, login, two_clients):
     a, b = two_clients
     no_email = admin.post(
-        f"/api/organizations/{a}/contacts", json={"name": "X", "portal_access": True}
+        f"/api/v1/organizations/{a}/contacts", json={"name": "X", "portal_access": True}
     )
     assert no_email.status_code == 409
     tech = login("tech")
     denied = tech.post(
-        f"/api/organizations/{a}/contacts",
+        f"/api/v1/organizations/{a}/contacts",
         json={"name": "Pat", "email": "pat@acme.com", "portal_access": True},
     )
     assert denied.status_code == 403
     add_contact(admin, a, "Pat", "pat@acme.com")
     clash = admin.post(
-        f"/api/organizations/{b}/contacts",
+        f"/api/v1/organizations/{b}/contacts",
         json={"name": "Pat B", "email": "PAT@acme.com", "portal_access": True},
     )
     assert clash.status_code == 409
     # the same address may exist on the other client without portal access
     assert (
         admin.post(
-            f"/api/organizations/{b}/contacts", json={"name": "Pat B", "email": "PAT@acme.com"}
+            f"/api/v1/organizations/{b}/contacts", json={"name": "Pat B", "email": "PAT@acme.com"}
         ).status_code
         == 201
     )
@@ -234,14 +234,17 @@ def test_a_tech_can_switch_access_off_but_not_on(admin, login, sign_in, two_clie
     tech = login("tech")
     assert (
         tech.patch(
-            f"/api/contacts/{c['id']}", json={"portal_access": True, "name": "P"}
+            f"/api/v1/contacts/{c['id']}", json={"portal_access": True, "name": "P"}
         ).status_code
         == 200
         or True
     )
-    assert tech.patch(f"/api/contacts/{c['id']}", json={"portal_access": False}).status_code == 200
     assert (
-        tech.patch(f"/api/contacts/{c['id']}", json={"portal_org_tickets": True}).status_code == 403
+        tech.patch(f"/api/v1/contacts/{c['id']}", json={"portal_access": False}).status_code == 200
+    )
+    assert (
+        tech.patch(f"/api/v1/contacts/{c['id']}", json={"portal_org_tickets": True}).status_code
+        == 403
     )
 
 
@@ -251,10 +254,10 @@ def test_revoking_access_ends_open_sessions_immediately(admin, sign_in, two_clie
     c2 = add_contact(admin, a, "Sam", "sam@acme.com")
     c3 = add_contact(admin, a, "Lee", "lee@acme.com")
     s1, s2, s3 = (sign_in(e) for e in ("pat@acme.com", "sam@acme.com", "lee@acme.com"))
-    admin.patch(f"/api/contacts/{c1['id']}", json={"portal_access": False})
-    admin.post(f"/api/contacts/{c2['id']}/archive")
-    admin.post(f"/api/organizations/{a}/archive")
-    assert [s.get("/api/portal/me").status_code for s in (s1, s2, s3)] == [401, 401, 401]
+    admin.patch(f"/api/v1/contacts/{c1['id']}", json={"portal_access": False})
+    admin.post(f"/api/v1/contacts/{c2['id']}/archive")
+    admin.post(f"/api/v1/organizations/{a}/archive")
+    assert [s.get("/api/v1/portal/me").status_code for s in (s1, s2, s3)] == [401, 401, 401]
     _ = c3
 
 
@@ -267,35 +270,36 @@ def test_tickets_are_limited_to_the_contact_or_the_whole_client_if_allowed(
     boss = add_contact(admin, a, "Boss", "boss@acme.com", all_tickets=True)
     other_client = add_contact(admin, b, "Bea", "bea@beta.com")
     mine = admin.post(
-        "/api/tickets", json={"organization_id": a, "contact_id": pat["id"], "subject": "Mine"}
+        "/api/v1/tickets", json={"organization_id": a, "contact_id": pat["id"], "subject": "Mine"}
     ).json()
     colleague = admin.post(
-        "/api/tickets", json={"organization_id": a, "contact_id": boss["id"], "subject": "Boss's"}
+        "/api/v1/tickets",
+        json={"organization_id": a, "contact_id": boss["id"], "subject": "Boss's"},
     ).json()
     theirs = admin.post(
-        "/api/tickets",
+        "/api/v1/tickets",
         json={"organization_id": b, "contact_id": other_client["id"], "subject": "Beta only"},
     ).json()
 
     p = sign_in("pat@acme.com")
-    assert [t["subject"] for t in p.get("/api/portal/tickets").json()] == ["Mine"]
-    assert p.get(f"/api/portal/tickets/{mine['id']}").status_code == 200
+    assert [t["subject"] for t in p.get("/api/v1/portal/tickets").json()] == ["Mine"]
+    assert p.get(f"/api/v1/portal/tickets/{mine['id']}").status_code == 200
     for hidden in (colleague, theirs):
-        assert p.get(f"/api/portal/tickets/{hidden['id']}").status_code == 404
+        assert p.get(f"/api/v1/portal/tickets/{hidden['id']}").status_code == 404
         assert (
-            p.post(f"/api/portal/tickets/{hidden['id']}/reply", json={"body": "hi"}).status_code
+            p.post(f"/api/v1/portal/tickets/{hidden['id']}/reply", json={"body": "hi"}).status_code
             == 404
         )
     m = sign_in("boss@acme.com")
-    assert {t["subject"] for t in m.get("/api/portal/tickets").json()} == {"Mine", "Boss's"}
-    assert m.get(f"/api/portal/tickets/{theirs['id']}").status_code == 404
+    assert {t["subject"] for t in m.get("/api/v1/portal/tickets").json()} == {"Mine", "Boss's"}
+    assert m.get(f"/api/v1/portal/tickets/{theirs['id']}").status_code == 404
 
 
 def test_only_customer_visible_facts_are_exposed(admin, sign_in, two_clients):
     a, _ = two_clients
     pat = add_contact(admin, a, "Pat", "pat@acme.com")
     t = admin.post(
-        "/api/tickets",
+        "/api/v1/tickets",
         json={
             "organization_id": a,
             "contact_id": pat["id"],
@@ -304,13 +308,14 @@ def test_only_customer_visible_facts_are_exposed(admin, sign_in, two_clients):
         },
     ).json()
     admin.post(
-        f"/api/tickets/{t['id']}/notes", json={"body": "INTERNAL SECRET", "visibility": "internal"}
+        f"/api/v1/tickets/{t['id']}/notes",
+        json={"body": "INTERNAL SECRET", "visibility": "internal"},
     )
     admin.post(
-        f"/api/tickets/{t['id']}/notes",
+        f"/api/v1/tickets/{t['id']}/notes",
         json={"body": "We are looking into it", "visibility": "customer"},
     )
-    d = sign_in("pat@acme.com").get(f"/api/portal/tickets/{t['id']}")
+    d = sign_in("pat@acme.com").get(f"/api/v1/portal/tickets/{t['id']}")
     assert "INTERNAL SECRET" not in d.text
     body = d.json()
     assert [n["body"] for n in body["notes"]] == ["We are looking into it"]
@@ -339,42 +344,44 @@ def test_billing_is_for_billing_contacts_only_and_shows_only_final_invoices(
     paid = final_invoice(biller, a, 10000)
     open_ = final_invoice(biller, a, 5000)
     voided = final_invoice(biller, a, 700)
-    biller.post(f"/api/invoices/{voided['id']}/void", json={"reason": "mistake"})
-    biller.post("/api/invoices", json={"organization_id": a, "include_unbilled": False})  # a draft
+    biller.post(f"/api/v1/invoices/{voided['id']}/void", json={"reason": "mistake"})
+    biller.post(
+        "/api/v1/invoices", json={"organization_id": a, "include_unbilled": False}
+    )  # a draft
     other = final_invoice(biller, b, 99900)
     pay(biller, a, 10000, [{"invoice_id": paid["id"], "amount_cents": 10000}])
 
     pat = sign_in("pat@acme.com")
     for path in (
-        "/api/portal/invoices",
-        f"/api/portal/invoices/{paid['id']}",
-        "/api/portal/statement/pdf",
-        f"/api/portal/invoices/{paid['id']}/pdf",
+        "/api/v1/portal/invoices",
+        f"/api/v1/portal/invoices/{paid['id']}",
+        "/api/v1/portal/statement/pdf",
+        f"/api/v1/portal/invoices/{paid['id']}/pdf",
     ):
         assert pat.get(path).status_code == 403, path
 
     bill = sign_in("bill@acme.com")
-    rows = bill.get("/api/portal/invoices").json()
+    rows = bill.get("/api/v1/portal/invoices").json()
     assert {r["number"]: (r["status"], r["balance_cents"]) for r in rows} == {
         paid["number"]: ("paid", 0),
         open_["number"]: ("unpaid", 5000),
     }
-    assert bill.get(f"/api/portal/invoices/{voided['id']}").status_code == 404
-    assert bill.get(f"/api/portal/invoices/{other['id']}").status_code == 404
-    assert bill.get(f"/api/portal/invoices/{other['id']}/pdf").status_code == 404
-    d = bill.get(f"/api/portal/invoices/{paid['id']}").json()
+    assert bill.get(f"/api/v1/portal/invoices/{voided['id']}").status_code == 404
+    assert bill.get(f"/api/v1/portal/invoices/{other['id']}").status_code == 404
+    assert bill.get(f"/api/v1/portal/invoices/{other['id']}/pdf").status_code == 404
+    d = bill.get(f"/api/v1/portal/invoices/{paid['id']}").json()
     assert d["total_cents"] == 10000 and d["lines"][0]["description"] == "Consulting"
-    pdf = bill.get(f"/api/portal/invoices/{open_['id']}/pdf")
+    pdf = bill.get(f"/api/v1/portal/invoices/{open_['id']}/pdf")
     assert pdf.headers["content-type"] == "application/pdf" and pdf.content.startswith(b"%PDF")
-    st = bill.get("/api/portal/statement/pdf")
+    st = bill.get("/api/v1/portal/statement/pdf")
     assert st.content.startswith(b"%PDF") and open_["number"].encode() in st.content
     assert other["number"].encode() not in st.content
 
 
 def test_postgres_row_level_security_backs_up_the_scope(admin, two_clients):
     a, b = two_clients
-    admin.post("/api/tickets", json={"organization_id": a, "subject": "A"})
-    admin.post("/api/tickets", json={"organization_id": b, "subject": "B"})
+    admin.post("/api/v1/tickets", json={"organization_id": a, "subject": "A"})
+    admin.post("/api/v1/tickets", json={"organization_id": b, "subject": "B"})
     with new_session() as db:
         set_org_scope(db, str(a))
         assert [r[0] for r in db.execute(text("SELECT subject FROM tickets"))] == ["A"]
@@ -389,19 +396,19 @@ def test_postgres_row_level_security_backs_up_the_scope(admin, two_clients):
 def test_staff_and_portal_sessions_do_not_mix(admin, sign_in, two_clients):
     add_contact(admin, two_clients[0], "Pat", "pat@acme.com")
     p = sign_in("pat@acme.com")
-    for path in ("/api/tickets", "/api/organizations", "/api/invoices", "/api/auth/me"):
+    for path in ("/api/v1/tickets", "/api/v1/organizations", "/api/v1/invoices", "/api/v1/auth/me"):
         assert p.get(path).status_code == 401, path
-    assert admin.get("/api/portal/me").status_code == 401
+    assert admin.get("/api/v1/portal/me").status_code == 401
 
 
 def test_anonymous_requests_get_401_on_every_signed_in_endpoint(anon):
     for method, path in (
-        ("GET", "/api/portal/me"),
-        ("POST", "/api/portal/logout"),
-        ("GET", "/api/portal/invoices"),
-        ("GET", "/api/portal/tickets"),
-        ("POST", "/api/portal/tickets"),
-        ("GET", "/api/portal/statement/pdf"),
+        ("GET", "/api/v1/portal/me"),
+        ("POST", "/api/v1/portal/logout"),
+        ("GET", "/api/v1/portal/invoices"),
+        ("GET", "/api/v1/portal/tickets"),
+        ("POST", "/api/v1/portal/tickets"),
+        ("GET", "/api/v1/portal/statement/pdf"),
     ):
         assert (
             anon.request(method, path, json={} if method == "POST" else None).status_code == 401
@@ -414,12 +421,12 @@ def test_opening_a_ticket_from_the_portal(admin, sign_in, two_clients):
     pat = add_contact(admin, a, "Pat", "pat@acme.com")
     p = sign_in("pat@acme.com")
     r = p.post(
-        "/api/portal/tickets", json={"subject": "  Printer   jam ", "description": "Floor 2"}
+        "/api/v1/portal/tickets", json={"subject": "  Printer   jam ", "description": "Floor 2"}
     )
     assert (
         r.status_code == 201 and r.json()["subject"] == "Printer jam" and r.json()["mine"] is True
     )
-    staff = admin.get(f"/api/tickets/{r.json()['id']}").json()
+    staff = admin.get(f"/api/v1/tickets/{r.json()['id']}").json()
     assert (staff["source"], staff["organization_id"], staff["contact_id"]) == (
         "portal",
         a,
@@ -427,7 +434,8 @@ def test_opening_a_ticket_from_the_portal(admin, sign_in, two_clients):
     )
     assert staff["requester_email"] == "pat@acme.com" and staff["status"] == "new"
     assert (
-        p.post("/api/portal/tickets", json={"subject": "x", "description": "y"}).status_code == 422
+        p.post("/api/v1/portal/tickets", json={"subject": "x", "description": "y"}).status_code
+        == 422
     )
 
 
@@ -436,7 +444,7 @@ def test_daily_ticket_limit(admin, sign_in, two_clients):
     p = sign_in("pat@acme.com")
     codes = [
         p.post(
-            "/api/portal/tickets", json={"subject": f"Issue {i}", "description": "d"}
+            "/api/v1/portal/tickets", json={"subject": f"Issue {i}", "description": "d"}
         ).status_code
         for i in range(22)
     ]
@@ -450,7 +458,7 @@ def test_reply_reopens_notifies_the_assignee_and_is_audited(
     pat = add_contact(admin, a, "Pat", "pat@acme.com")
     tech = login("tech")
     t = admin.post(
-        "/api/tickets",
+        "/api/v1/tickets",
         json={
             "organization_id": a,
             "contact_id": pat["id"],
@@ -458,13 +466,15 @@ def test_reply_reopens_notifies_the_assignee_and_is_audited(
             "assignee_id": tech.user["id"],
         },
     ).json()
-    admin.patch(f"/api/tickets/{t['id']}", json={"status": "waiting_on_customer"})
+    admin.patch(f"/api/v1/tickets/{t['id']}", json={"status": "waiting_on_customer"})
     p = sign_in("pat@acme.com")
-    r = p.post(f"/api/portal/tickets/{t['id']}/reply", json={"body": "Still broken PRIVATE-WORDS"})
+    r = p.post(
+        f"/api/v1/portal/tickets/{t['id']}/reply", json={"body": "Still broken PRIVATE-WORDS"}
+    )
     assert r.status_code == 201
     body = r.json()
     assert body["status"] == "open" and body["notes"][-1]["from_you"] is True
-    staff_notes = admin.get(f"/api/tickets/{t['id']}/notes").json()
+    staff_notes = admin.get(f"/api/v1/tickets/{t['id']}/notes").json()
     assert staff_notes[-1]["source"] == "portal" and staff_notes[-1]["visibility"] == "customer"
     with owner_engine.connect() as c:
         mails = c.execute(
@@ -475,9 +485,11 @@ def test_reply_reopens_notifies_the_assignee_and_is_audited(
     assert any(m[0] == tech.user["email"] for m in mails) and not any(
         "PRIVATE-WORDS" in m[1] for m in mails
     )
-    actions = {i["action"] for i in admin.get("/api/audit", params={"limit": 100}).json()["items"]}
+    actions = {
+        i["action"] for i in admin.get("/api/v1/audit", params={"limit": 100}).json()["items"]
+    }
     assert {"portal.ticket_reply", "portal.login"} <= actions
-    login_rows = admin.get("/api/audit", params={"action": "portal.login"}).json()["items"]
+    login_rows = admin.get("/api/v1/audit", params={"action": "portal.login"}).json()["items"]
     assert login_rows[0]["detail"]["contact_id"] == pat["id"]
 
 
@@ -485,16 +497,16 @@ def test_reply_validation_and_daily_limit(admin, sign_in, two_clients):
     a, _ = two_clients
     pat = add_contact(admin, a, "Pat", "pat@acme.com")
     t = admin.post(
-        "/api/tickets", json={"organization_id": a, "contact_id": pat["id"], "subject": "VPN"}
+        "/api/v1/tickets", json={"organization_id": a, "contact_id": pat["id"], "subject": "VPN"}
     ).json()
     p = sign_in("pat@acme.com")
-    assert p.post(f"/api/portal/tickets/{t['id']}/reply", json={"body": ""}).status_code == 422
+    assert p.post(f"/api/v1/portal/tickets/{t['id']}/reply", json={"body": ""}).status_code == 422
     assert (
-        p.post(f"/api/portal/tickets/{t['id']}/reply", json={"body": "x" * 10001}).status_code
+        p.post(f"/api/v1/portal/tickets/{t['id']}/reply", json={"body": "x" * 10001}).status_code
         == 422
     )
     codes = [
-        p.post(f"/api/portal/tickets/{t['id']}/reply", json={"body": f"m{i}"}).status_code
+        p.post(f"/api/v1/portal/tickets/{t['id']}/reply", json={"body": f"m{i}"}).status_code
         for i in range(52)
     ]
     assert codes[:50] == [201] * 50 and codes[50:] == [409, 409]
@@ -504,7 +516,7 @@ def test_portal_actions_need_the_csrf_header(admin, sign_in, two_clients):
     add_contact(admin, two_clients[0], "Pat", "pat@acme.com")
     p = sign_in("pat@acme.com")
     r = p.post(
-        "/api/portal/tickets",
+        "/api/v1/portal/tickets",
         json={"subject": "abc", "description": "d"},
         headers={"X-Requested-With": ""},
     )
@@ -518,7 +530,7 @@ def test_monitoring_ticket_shows_contacts_a_plain_description(admin, sign_in, tw
 
     def make(subject, description):
         return admin.post(
-            "/api/tickets",
+            "/api/v1/tickets",
             json={
                 "organization_id": a,
                 "contact_id": pat["id"],
@@ -542,9 +554,9 @@ def test_monitoring_ticket_shows_contacts_a_plain_description(admin, sign_in, tw
     )
     owner.execute(text("UPDATE tickets SET source = 'rmm' WHERE id = :t"), {"t": bare["id"]})
     c = sign_in("pat@acme.com")
-    d = c.get(f"/api/portal/tickets/{rmm['id']}")
+    d = c.get(f"/api/v1/portal/tickets/{rmm['id']}")
     assert d.json()["description"] == "Monitoring alert on PC-1"
     assert d.json()["subject"] == "[RMM] PC-1: Disk"
     assert "4242" not in d.text and "cfg-secret-key" not in d.text
-    assert c.get(f"/api/portal/tickets/{bare['id']}").json()["description"] == "Monitoring alert"
-    assert c.get(f"/api/portal/tickets/{plain['id']}").json()["description"] == "It is slow"
+    assert c.get(f"/api/v1/portal/tickets/{bare['id']}").json()["description"] == "Monitoring alert"
+    assert c.get(f"/api/v1/portal/tickets/{plain['id']}").json()["description"] == "It is slow"

@@ -24,8 +24,8 @@ const manager = {
 let calls: string[] = [];
 function go(path: string, role: string, perms: string[], h: Record<string, () => Response> = {}) {
   const handlers: Record<string, () => Response> = {
-    "/api/auth/me": json(me(role, perms)), "/api/dashboard": json(board), "/api/dashboard/me": json(mine),
-    "/api/csat/summary?days=90": json({ days: 90, requested: 0, responses: 0, average: null, distribution: {} }), ...h,
+    "/api/v1/auth/me": json(me(role, perms)), "/api/v1/dashboard": json(board), "/api/v1/dashboard/me": json(mine),
+    "/api/v1/csat/summary?days=90": json({ days: 90, requested: 0, responses: 0, average: null, distribution: {} }), ...h,
   };
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
     const key = init?.method && init.method !== "GET" ? `${init.method} ${url}` : url;
@@ -45,11 +45,11 @@ describe("role dashboards", () => {
     expect(await screen.findByText("62.50%")).toBeInTheDocument();
     expect(screen.getByText("25h 00m")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Business" })).not.toBeInTheDocument();
-    expect(calls.some((c) => c.startsWith("/api/reports/dashboard"))).toBe(false);
+    expect(calls.some((c) => c.startsWith("/api/v1/reports/dashboard"))).toBe(false);
   });
 
   it("shows a billing user the Business section with percentages and n", async () => {
-    go("/dashboard", "billing", BILLING, { "/api/reports/dashboard": json(manager) });
+    go("/dashboard", "billing", BILLING, { "/api/v1/reports/dashboard": json(manager) });
     expect(await screen.findByRole("heading", { name: "Business" })).toBeInTheDocument();
     expect(await screen.findByText("92.50% (n=40)")).toBeInTheDocument();
     expect(screen.getByText("$12,345.00")).toBeInTheDocument();
@@ -62,7 +62,7 @@ describe("role dashboards", () => {
   });
 
   it("shows the Reports nav group only with report:read", async () => {
-    const { unmount } = go("/dashboard", "billing", BILLING, { "/api/reports/dashboard": json(manager) });
+    const { unmount } = go("/dashboard", "billing", BILLING, { "/api/v1/reports/dashboard": json(manager) });
     expect(await screen.findByRole("link", { name: "SLA report" })).toBeInTheDocument();
     unmount();
     go("/dashboard", "tech", TECH);
@@ -75,19 +75,19 @@ describe("report pages", () => {
   it("renders an SLA row with n and a dash for a null percentage, and a matching CSV link", async () => {
     const clock = (over = {}) => ({ met: 9, breached: 1, pending: 0, no_sla: 0, met_bp: 9000, p50_minutes: 125, p90_minutes: 300, ...over });
     go("/reports/sla", "billing", BILLING, {
-      "/api/reports/dashboard": json(manager),
-      "/api/reports/sla": json({ range: { start: "2026-10-01", end: "2026-10-29" }, group: "priority", rows: [{ key: 1, label: "High", n: 10, first_response: clock(), resolution: clock({ met: 0, breached: 0, met_bp: null, p50_minutes: null, p90_minutes: null }) }], totals: { n: 10, first_response: clock(), resolution: clock({ met_bp: null }) } }),
+      "/api/v1/reports/dashboard": json(manager),
+      "/api/v1/reports/sla": json({ range: { start: "2026-10-01", end: "2026-10-29" }, group: "priority", rows: [{ key: 1, label: "High", n: 10, first_response: clock(), resolution: clock({ met: 0, breached: 0, met_bp: null, p50_minutes: null, p90_minutes: null }) }], totals: { n: 10, first_response: clock(), resolution: clock({ met_bp: null }) } }),
     });
     expect(await screen.findByText("High")).toBeInTheDocument();
     expect(screen.getAllByText("90.00% (n=10)").length).toBeGreaterThan(0);
     expect(screen.getAllByText("2h 05m").length).toBeGreaterThan(0);
     expect(screen.getAllByText("-").length).toBeGreaterThan(0);
     const href = screen.getByRole("link", { name: "Download CSV" }).getAttribute("href") ?? "";
-    expect(href).toMatch(/^\/api\/reports\/sla\.csv\?from=\d{4}-\d{2}-01&to=\d{4}-\d{2}-\d{2}&group=priority$/);
+    expect(href).toMatch(/^\/api\/v1\/reports\/sla\.csv\?from=\d{4}-\d{2}-01&to=\d{4}-\d{2}-\d{2}&group=priority$/);
   });
 
   it("shows an empty message and the schedule form only with config:manage", async () => {
-    go("/reports/schedules", "billing", BILLING, { "/api/reports/schedules": json([]), "/api/users": json([]) });
+    go("/reports/schedules", "billing", BILLING, { "/api/v1/reports/schedules": json([]), "/api/v1/users": json([]) });
     expect(await screen.findByText("No scheduled reports yet.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New schedule" })).not.toBeInTheDocument();
   });
@@ -100,7 +100,7 @@ describe("cost rate", () => {
   ];
 
   it("is absent without user:manage", async () => {
-    go("/users", "billing", BILLING, { "/api/users": json(users) });
+    go("/users", "billing", BILLING, { "/api/v1/users": json(users) });
     expect(await screen.findByText("Tom")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cost rate for Tom" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Cost rate (per hour)")).not.toBeInTheDocument();
@@ -109,15 +109,15 @@ describe("cost rate", () => {
 
   it("loads and saves cents for an admin", async () => {
     go("/users", "admin", ADMIN, {
-      "/api/users": json(users),
-      "/api/users/2/cost-rate": json({ user_id: 2, cost_rate_cents: 4500 }),
-      "PUT /api/users/2/cost-rate": json({ user_id: 2, cost_rate_cents: 9000 }),
+      "/api/v1/users": json(users),
+      "/api/v1/users/2/cost-rate": json({ user_id: 2, cost_rate_cents: 4500 }),
+      "PUT /api/v1/users/2/cost-rate": json({ user_id: 2, cost_rate_cents: 9000 }),
     });
     fireEvent.click(await screen.findByRole("button", { name: "Cost rate for Tom" }));
     const input = await screen.findByDisplayValue("45.00");
     fireEvent.change(input, { target: { value: "90.00" } });
     fireEvent.click(screen.getByRole("button", { name: "Save cost rate" }));
-    await waitFor(() => expect(calls.some((c) => c.startsWith("PUT /api/users/2/cost-rate") && c.includes('"cost_rate_cents":9000'))).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.startsWith("PUT /api/v1/users/2/cost-rate") && c.includes('"cost_rate_cents":9000'))).toBe(true));
   });
 });
 
@@ -125,8 +125,8 @@ describe("report schedule form", () => {
   const staff = [{ id: 1, email: "a@example.com", display_name: "Una", role: "admin", is_active: true, last_login_at: null }];
   const sched = (id: number, name: string) => ({ id, name, report: "sla", frequency: "weekly", weekday: 0, day_of_month: null, recipient_user_ids: [1], active: true });
   const open = () => go("/reports/schedules", "admin", ADMIN, {
-    "/api/reports/schedules": json([sched(1, "Alpha"), sched(2, "Beta")]), "/api/users": json(staff),
-    "PATCH /api/reports/schedules/2": json(sched(2, "Beta")),
+    "/api/v1/reports/schedules": json([sched(1, "Alpha"), sched(2, "Beta")]), "/api/v1/users": json(staff),
+    "PATCH /api/v1/reports/schedules/2": json(sched(2, "Beta")),
   });
 
   it("disables other openers, keeps typed text, and keeps toggles working", async () => {
@@ -145,7 +145,7 @@ describe("report schedule form", () => {
     }
     expect(screen.getByDisplayValue("Alpha typed")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Deactivate Beta" }));
-    await waitFor(() => expect(calls.some((c) => c.startsWith("PATCH /api/reports/schedules/2"))).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.startsWith("PATCH /api/v1/reports/schedules/2"))).toBe(true));
     expect(screen.getByDisplayValue("Alpha typed")).toBeInTheDocument();
   });
 

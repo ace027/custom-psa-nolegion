@@ -14,23 +14,23 @@ from app.scope import Scope
 @pytest.fixture
 def final_invoice(biller, org_ctx, company):
     inv = biller.post(
-        "/api/invoices", json={"organization_id": org_ctx["org"], "include_unbilled": False}
+        "/api/v1/invoices", json={"organization_id": org_ctx["org"], "include_unbilled": False}
     ).json()
     biller.post(
-        f"/api/invoices/{inv['id']}/lines",
+        f"/api/v1/invoices/{inv['id']}/lines",
         json={"description": "Consulting", "quantity": "1", "unit_price_cents": 10000},
     )
-    done = biller.post(f"/api/invoices/{inv['id']}/finalize", json={}).json()
+    done = biller.post(f"/api/v1/invoices/{inv['id']}/finalize", json={}).json()
     return done["id"]
 
 
 @pytest.fixture
 def draft_invoice(biller, org_ctx):
     inv = biller.post(
-        "/api/invoices", json={"organization_id": org_ctx["org"], "include_unbilled": False}
+        "/api/v1/invoices", json={"organization_id": org_ctx["org"], "include_unbilled": False}
     ).json()
     biller.post(
-        f"/api/invoices/{inv['id']}/lines",
+        f"/api/v1/invoices/{inv['id']}/lines",
         json={"description": "Consulting", "quantity": "1", "unit_price_cents": 10000},
     )
     return inv["id"]
@@ -174,13 +174,14 @@ def two_orgs_with_invoices(admin, biller, make_org, company):
     for name in ("Org A", "Org B"):
         org = make_org(name)
         inv = biller.post(
-            "/api/invoices", json={"organization_id": org["id"], "include_unbilled": False}
+            "/api/v1/invoices", json={"organization_id": org["id"], "include_unbilled": False}
         ).json()
         biller.post(
-            f"/api/invoices/{inv['id']}/lines", json={"description": "x", "unit_price_cents": 100}
+            f"/api/v1/invoices/{inv['id']}/lines",
+            json={"description": "x", "unit_price_cents": 100},
         )
         biller.post(
-            "/api/agreements",
+            "/api/v1/agreements",
             json={
                 "organization_id": org["id"],
                 "name": "MS",

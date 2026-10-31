@@ -17,13 +17,13 @@ describe("NinjaOne device count suggestion", () => {
   it("shows the difference and only changes the quantity after a click, with a reason", async () => {
     const patches: string[] = [];
     const handlers: Record<string, (init?: RequestInit) => Response> = {
-      "/api/auth/me": json(me),
-      "/api/agreements": json([agreement]),
-      "/api/organizations": json({ items: [], total: 0 }),
-      "/api/receivables": json({ as_of: "2026-10-08", rows: [], totals: { overdue_invoice_count: 0 } }),
-      "/api/billing-notices": json({ items: [], total: 0 }),
-      "/api/agreements/4/device-count": json({ ninjaone_devices: 42, agreement_quantity: 40, differs: true }),
-      "/api/agreements/4": (init) => { patches.push(String(init?.body)); return new Response(JSON.stringify(agreement)); },
+      "/api/v1/auth/me": json(me),
+      "/api/v1/agreements": json([agreement]),
+      "/api/v1/organizations": json({ items: [], total: 0 }),
+      "/api/v1/receivables": json({ as_of: "2026-10-08", rows: [], totals: { overdue_invoice_count: 0 } }),
+      "/api/v1/billing-notices": json({ items: [], total: 0 }),
+      "/api/v1/agreements/4/device-count": json({ ninjaone_devices: 42, agreement_quantity: 40, differs: true }),
+      "/api/v1/agreements/4": (init) => { patches.push(String(init?.body)); return new Response(JSON.stringify(agreement)); },
     };
     vi.stubGlobal(
       "fetch",

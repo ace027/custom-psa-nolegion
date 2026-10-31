@@ -33,7 +33,7 @@ const reminder = (over = {}) => ({
 
 let calls: string[] = [];
 function go(path: string, role: string, perms: string[], h: Record<string, () => Response>) {
-  const handlers: Record<string, () => Response> = { "/api/auth/me": json(me(role, perms)), "/api/crm/stages": json(stages), ...h };
+  const handlers: Record<string, () => Response> = { "/api/v1/auth/me": json(me(role, perms)), "/api/v1/crm/stages": json(stages), ...h };
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
     const key = init?.method && init.method !== "GET" ? `${init.method} ${url}` : url;
     calls.push(`${key} ${init?.body ?? ""}`);
@@ -48,7 +48,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("sales navigation", () => {
   it("shows the Sales link and tabs for crm:read", async () => {
-    go("/crm", "read_only", READ, { "/api/crm/opportunities": json([]) });
+    go("/crm", "read_only", READ, { "/api/v1/crm/opportunities": json([]) });
     expect(await screen.findByRole("link", { name: "Sales" })).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "Forecast" })).toBeInTheDocument();
     expect(await screen.findByText(/No opportunities yet/)).toBeInTheDocument();
@@ -60,9 +60,9 @@ describe("leads", () => {
 
   it("lists leads and converts one with a prefilled form", async () => {
     go("/crm/leads", "admin", WRITE, {
-      "/api/crm/leads": leads(), "/api/users": json([]),
-      "POST /api/crm/leads/9/convert": json(opp({ id: 77 }), 201),
-      "/api/crm/opportunities/77": json(opp({ id: 77 })),
+      "/api/v1/crm/leads": leads(), "/api/v1/users": json([]),
+      "POST /api/v1/crm/leads/9/convert": json(opp({ id: 77 }), 201),
+      "/api/v1/crm/opportunities/77": json(opp({ id: 77 })),
     });
     expect(await screen.findByText("Pat Smith")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View client" })).toBeInTheDocument();
@@ -71,15 +71,15 @@ describe("leads", () => {
     expect(screen.getByDisplayValue("Wants managed IT")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Monthly ($)"), { target: { value: "1500.00" } });
     fireEvent.click(screen.getByRole("button", { name: /Convert lead/ }));
-    await waitFor(() => expect(called("POST /api/crm/leads/9/convert", '"monthly_cents":150000')).toBe(true));
-    expect(called("POST /api/crm/leads/9/convert", '"term_months":12')).toBe(true);
+    await waitFor(() => expect(called("POST /api/v1/crm/leads/9/convert", '"monthly_cents":150000')).toBe(true));
+    expect(called("POST /api/v1/crm/leads/9/convert", '"term_months":12')).toBe(true);
     expect(await screen.findByRole("heading", { name: "Acme managed IT" })).toBeInTheDocument();
   });
 
   it("shows an API 409 inline and rejects a bad amount client-side", async () => {
     go("/crm/leads", "admin", WRITE, {
-      "/api/crm/leads": leads(), "/api/users": json([]),
-      "POST /api/crm/leads/9/convert": json({ detail: "Lead is already converted" }, 409),
+      "/api/v1/crm/leads": leads(), "/api/v1/users": json([]),
+      "POST /api/v1/crm/leads/9/convert": json({ detail: "Lead is already converted" }, 409),
     });
     fireEvent.click(await screen.findByRole("button", { name: "Convert Pat Smith" }));
     fireEvent.change(await screen.findByLabelText("Monthly ($)"), { target: { value: "abc" } });
@@ -92,16 +92,16 @@ describe("leads", () => {
   });
 
   it("shows an empty state", async () => {
-    go("/crm/leads", "admin", WRITE, { "/api/crm/leads": json([]), "/api/users": json([]) });
+    go("/crm/leads", "admin", WRITE, { "/api/v1/crm/leads": json([]), "/api/v1/users": json([]) });
     expect(await screen.findByText("No leads yet.")).toBeInTheDocument();
   });
 });
 
 describe("pipeline", () => {
-  const board = (extra: Record<string, () => Response> = {}) => ({ "/api/crm/opportunities": json([opp(), opp({ id: 6, name: "Beta deal", stage_id: 2, stage_name: "Proposal" })]), ...extra });
+  const board = (extra: Record<string, () => Response> = {}) => ({ "/api/v1/crm/opportunities": json([opp(), opp({ id: 6, name: "Beta deal", stage_id: 2, stage_name: "Proposal" })]), ...extra });
 
   it("renders a column per stage with cards and moves a card", async () => {
-    go("/crm/pipeline", "admin", WRITE, board({ "POST /api/crm/opportunities/5/stage": json(opp({ stage_id: 2 })) }));
+    go("/crm/pipeline", "admin", WRITE, board({ "POST /api/v1/crm/opportunities/5/stage": json(opp({ stage_id: 2 })) }));
     const col = await screen.findByRole("region", { name: "Prospecting" });
     expect(within(col).getByText("Acme managed IT")).toBeInTheDocument();
     expect(within(col).getByText("$1,500.00/mo")).toBeInTheDocument();
@@ -109,11 +109,11 @@ describe("pipeline", () => {
     expect(within(col).getByText("Dana")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Proposal" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Move Acme managed IT to stage"), { target: { value: "2" } });
-    await waitFor(() => expect(called("POST /api/crm/opportunities/5/stage", '"stage_id":2')).toBe(true));
+    await waitFor(() => expect(called("POST /api/v1/crm/opportunities/5/stage", '"stage_id":2')).toBe(true));
   });
 
   it("blocks lost without a reason, then sends it and shows API errors", async () => {
-    go("/crm/pipeline", "admin", WRITE, board({ "POST /api/crm/opportunities/5/stage": json({ detail: "Stage is inactive" }, 409) }));
+    go("/crm/pipeline", "admin", WRITE, board({ "POST /api/v1/crm/opportunities/5/stage": json({ detail: "Stage is inactive" }, 409) }));
     await screen.findByRole("region", { name: "Prospecting" });
     fireEvent.change(screen.getByLabelText("Move Acme managed IT to stage"), { target: { value: "4" } });
     fireEvent.click(await screen.findByRole("button", { name: "Mark lost" }));
@@ -121,7 +121,7 @@ describe("pipeline", () => {
     expect(called("POST")).toBe(false);
     fireEvent.change(screen.getByLabelText("Lost reason"), { target: { value: "Went with competitor" } });
     fireEvent.click(screen.getByRole("button", { name: "Mark lost" }));
-    await waitFor(() => expect(called("POST /api/crm/opportunities/5/stage", "Went with competitor")).toBe(true));
+    await waitFor(() => expect(called("POST /api/v1/crm/opportunities/5/stage", "Went with competitor")).toBe(true));
     expect(await screen.findByText("Stage is inactive")).toBeInTheDocument();
   });
 
@@ -132,7 +132,7 @@ describe("pipeline", () => {
   });
 
   it("shows an empty state", async () => {
-    go("/crm/pipeline", "admin", WRITE, { "/api/crm/opportunities": json([]) });
+    go("/crm/pipeline", "admin", WRITE, { "/api/v1/crm/opportunities": json([]) });
     expect(await screen.findByText(/No opportunities yet/)).toBeInTheDocument();
   });
 });
@@ -140,7 +140,7 @@ describe("pipeline", () => {
 describe("forecast", () => {
   it("renders buckets, total and the won tiles", async () => {
     go("/crm/forecast", "read_only", READ, {
-      "/api/crm/forecast": json({
+      "/api/v1/crm/forecast": json({
         buckets: [bucket()], total: bucket({ key: "total", label: "Total" }),
         won_this_month: bucket({ key: "m", count: 1, monthly_cents: 50000, contract_value_cents: 600000 }),
         won_this_quarter: bucket({ key: "q", count: 3, monthly_cents: 120000, contract_value_cents: 1440000 }),
@@ -158,24 +158,24 @@ describe("forecast", () => {
 describe("renewals", () => {
   it("lists open reminders and dismisses one", async () => {
     go("/crm/renewals", "admin", WRITE, {
-      "/api/crm/renewals?status=open": json([reminder({ id: 5, due_on: "2027-03-01", agreement_name: "Later" }), reminder()]),
-      "POST /api/crm/renewals/4/dismiss": json(reminder({ status: "dismissed" })),
+      "/api/v1/crm/renewals?status=open": json([reminder({ id: 5, due_on: "2027-03-01", agreement_name: "Later" }), reminder()]),
+      "POST /api/v1/crm/renewals/4/dismiss": json(reminder({ status: "dismissed" })),
     });
     const row = (await screen.findByText("Managed services")).closest("tr")!;
     expect(within(row).getByRole("link", { name: "Renewal opportunity" })).toHaveAttribute("href", "/crm/opportunities/5");
     const order = screen.getAllByRole("row").map((r) => r.textContent ?? "");
     expect(order.findIndex((t) => t.includes("Managed services"))).toBeLessThan(order.findIndex((t) => t.includes("Later")));
     fireEvent.click(within(row).getByRole("button", { name: /Dismiss/ }));
-    await waitFor(() => expect(called("POST /api/crm/renewals/4/dismiss")).toBe(true));
+    await waitFor(() => expect(called("POST /api/v1/crm/renewals/4/dismiss")).toBe(true));
   });
 
   it("shows an empty state and hides Dismiss without crm:write", async () => {
-    go("/crm/renewals", "read_only", READ, { "/api/crm/renewals?status=open": json([]) });
+    go("/crm/renewals", "read_only", READ, { "/api/v1/crm/renewals?status=open": json([]) });
     expect(await screen.findByText(/No renewals are due/)).toBeInTheDocument();
   });
 
   it("hides Dismiss from a read-only user", async () => {
-    go("/crm/renewals", "read_only", READ, { "/api/crm/renewals?status=open": json([reminder()]) });
+    go("/crm/renewals", "read_only", READ, { "/api/v1/crm/renewals?status=open": json([reminder()]) });
     await screen.findByText("Managed services");
     expect(screen.queryByRole("button", { name: /Dismiss/ })).not.toBeInTheDocument();
   });
@@ -183,7 +183,7 @@ describe("renewals", () => {
 
 describe("opportunity page", () => {
   it("moves to lost only with a reason and hides controls for read-only", async () => {
-    go("/crm/opportunities/5", "read_only", READ, { "/api/crm/opportunities/5": json(opp({ quote_id: 2, quote_number: "Q-2" })) });
+    go("/crm/opportunities/5", "read_only", READ, { "/api/v1/crm/opportunities/5": json(opp({ quote_id: 2, quote_number: "Q-2" })) });
     expect(await screen.findByRole("heading", { name: "Acme managed IT" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Q-2" })).toHaveAttribute("href", "/quotes/2");
     expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();

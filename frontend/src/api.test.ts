@@ -14,7 +14,7 @@ describe("api()", () => {
     mockFetch(200, { ok: true });
     await api("/organizations", { method: "POST", json: { name: "x" } });
     const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toBe("/api/organizations");
+    expect(url).toBe("/api/v1/organizations");
     expect(init.headers["X-Requested-With"]).toBe("psa");
     expect(init.headers["Content-Type"]).toBe("application/json");
     expect(init.body).toBe('{"name":"x"}');

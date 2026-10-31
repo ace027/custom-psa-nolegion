@@ -7,25 +7,25 @@ ROLES = ["admin", "tech", "billing", "read_only"]
 ALLOWED = {"read": set(ROLES), "write": {"admin", "billing"}, "finalize": {"admin", "billing"}}
 
 CALLS = [
-    ("GET", "/api/billing/reminder-stages", None, "read"),
-    ("PATCH", "/api/billing/reminder-stages/1", {"subject": "Hello"}, "write"),
-    ("POST", "/api/organizations/1/statements", None, "write"),
-    ("GET", "/api/organizations/1/statements", None, "read"),
-    ("GET", "/api/statements/1", None, "read"),
-    ("GET", "/api/statements/1/pdf", None, "read"),
-    ("POST", "/api/statements/1/email", {"send": False}, "write"),
-    ("POST", "/api/statements/1/email", {"send": True}, "finalize"),
-    ("GET", "/api/billing-notices", None, "read"),
-    ("GET", "/api/billing-notices/1", None, "read"),
-    ("PATCH", "/api/billing-notices/1", {"subject": "x"}, "write"),
-    ("POST", "/api/billing-notices/1/refresh", None, "write"),
-    ("POST", "/api/billing-notices/1/send", None, "finalize"),
-    ("POST", "/api/billing-notices/1/dismiss", {"reason": "because"}, "finalize"),
-    ("POST", "/api/billing-notices/send", {"ids": [1]}, "finalize"),
-    ("POST", "/api/billing-notices/prepare-reminders", None, "write"),
-    ("POST", "/api/billing-notices/prepare-statements", None, "write"),
-    ("POST", "/api/organizations/1/reminders", {}, "write"),
-    ("POST", "/api/invoices/1/email", None, "write"),
+    ("GET", "/api/v1/billing/reminder-stages", None, "read"),
+    ("PATCH", "/api/v1/billing/reminder-stages/1", {"subject": "Hello"}, "write"),
+    ("POST", "/api/v1/organizations/1/statements", None, "write"),
+    ("GET", "/api/v1/organizations/1/statements", None, "read"),
+    ("GET", "/api/v1/statements/1", None, "read"),
+    ("GET", "/api/v1/statements/1/pdf", None, "read"),
+    ("POST", "/api/v1/statements/1/email", {"send": False}, "write"),
+    ("POST", "/api/v1/statements/1/email", {"send": True}, "finalize"),
+    ("GET", "/api/v1/billing-notices", None, "read"),
+    ("GET", "/api/v1/billing-notices/1", None, "read"),
+    ("PATCH", "/api/v1/billing-notices/1", {"subject": "x"}, "write"),
+    ("POST", "/api/v1/billing-notices/1/refresh", None, "write"),
+    ("POST", "/api/v1/billing-notices/1/send", None, "finalize"),
+    ("POST", "/api/v1/billing-notices/1/dismiss", {"reason": "because"}, "finalize"),
+    ("POST", "/api/v1/billing-notices/send", {"ids": [1]}, "finalize"),
+    ("POST", "/api/v1/billing-notices/prepare-reminders", None, "write"),
+    ("POST", "/api/v1/billing-notices/prepare-statements", None, "write"),
+    ("POST", "/api/v1/organizations/1/reminders", {}, "write"),
+    ("POST", "/api/v1/invoices/1/email", None, "write"),
 ]
 
 
@@ -47,12 +47,12 @@ def test_unauthenticated_notice_requests_get_401(anon):
 
 def test_every_notice_write_is_audited(admin, biller, client_org, clock, mail_ready):
     def audited(action):
-        return admin.get("/api/audit", params={"action": action}).json()["total"]
+        return admin.get("/api/v1/audit", params={"action": action}).json()["total"]
 
-    stage = biller.get("/api/billing/reminder-stages").json()[0]
+    stage = biller.get("/api/v1/billing/reminder-stages").json()[0]
     assert (
         biller.patch(
-            f"/api/billing/reminder-stages/{stage['id']}", json={"subject": "Hi"}
+            f"/api/v1/billing/reminder-stages/{stage['id']}", json={"subject": "Hi"}
         ).status_code
         == 200
     )
@@ -65,13 +65,13 @@ def test_every_notice_write_is_audited(admin, biller, client_org, clock, mail_re
     assert audited("notice.create") == 1
 
     assert (
-        biller.patch(f"/api/billing-notices/{n['id']}", json={"subject": "Edited"}).status_code
+        biller.patch(f"/api/v1/billing-notices/{n['id']}", json={"subject": "Edited"}).status_code
         == 200
     )
     assert audited("notice.edit") == 1
-    assert biller.post(f"/api/billing-notices/{n['id']}/refresh").status_code == 200
+    assert biller.post(f"/api/v1/billing-notices/{n['id']}/refresh").status_code == 200
     assert audited("notice.refresh") == 1
-    assert biller.post(f"/api/billing-notices/{n['id']}/send").status_code == 200
+    assert biller.post(f"/api/v1/billing-notices/{n['id']}/send").status_code == 200
     assert audited("notice.send") == 1
 
     statement(biller, client_org)
@@ -83,7 +83,7 @@ def test_every_notice_write_is_audited(admin, biller, client_org, clock, mail_re
     n2 = notices(biller, status="pending")[0]
     assert (
         biller.post(
-            f"/api/billing-notices/{n2['id']}/dismiss", json={"reason": "called them"}
+            f"/api/v1/billing-notices/{n2['id']}/dismiss", json={"reason": "called them"}
         ).status_code
         == 200
     )

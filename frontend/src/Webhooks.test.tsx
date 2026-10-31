@@ -19,7 +19,7 @@ const delivery = (over = {}) => ({
 
 let calls: string[] = [];
 function go(path: string, role: string, perms: string[], h: Record<string, () => Response>) {
-  const handlers: Record<string, () => Response> = { "/api/auth/me": json(me(role, perms)), ...h };
+  const handlers: Record<string, () => Response> = { "/api/v1/auth/me": json(me(role, perms)), ...h };
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
     const k = init?.method && init.method !== "GET" ? `${init.method} ${url}` : url;
     calls.push(`${k} ${init?.body ?? ""}`);
@@ -33,7 +33,7 @@ afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("webhooks page", () => {
   it("lists endpoints with host preview, events and a failures badge", async () => {
-    go("/webhooks", "admin", ADMIN, { "/api/webhooks": json([hook({ consecutive_failures: 2 })]) });
+    go("/webhooks", "admin", ADMIN, { "/api/v1/webhooks": json([hook({ consecutive_failures: 2 })]) });
     expect(await screen.findByText("Ops channel")).toBeInTheDocument();
     expect(screen.getByText("https://hooks.example.com/workflows/…")).toBeInTheDocument();
     expect(screen.getAllByText("Microsoft Teams").length).toBeGreaterThan(1); // row label and the type option
@@ -42,14 +42,14 @@ describe("webhooks page", () => {
   });
 
   it("is hidden from people without automation:manage", async () => {
-    go("/webhooks", "tech", ["ticket:read"], { "/api/webhooks": json([]) });
+    go("/webhooks", "tech", ["ticket:read"], { "/api/v1/webhooks": json([]) });
     await waitFor(() => expect(screen.queryByText("Webhooks")).toBeNull());
   });
 
   it("shows the signing secret once after create", async () => {
     go("/webhooks", "admin", ADMIN, {
-      "/api/webhooks": json([]),
-      "POST /api/webhooks": json({ endpoint: hook(), secret: "SIGNSECRETSIGNSECRETSIGNSECRET" }, 201),
+      "/api/v1/webhooks": json([]),
+      "POST /api/v1/webhooks": json({ endpoint: hook(), secret: "SIGNSECRETSIGNSECRETSIGNSECRET" }, 201),
     });
     fireEvent.change(await screen.findByLabelText("Name"), { target: { value: "Ops channel" } });
     fireEvent.change(screen.getByLabelText("Type"), { target: { value: "teams" } });
@@ -60,40 +60,40 @@ describe("webhooks page", () => {
     expect(await screen.findByDisplayValue("SIGNSECRETSIGNSECRETSIGNSECRET")).toHaveAttribute("readonly");
     expect(screen.getByText("Store this secret now. It will not be shown again.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy" })).toBeInTheDocument();
-    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/webhooks ") && c.includes('"kind":"teams"') && c.includes('"ticket.created"'))).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/v1/webhooks ") && c.includes('"kind":"teams"') && c.includes('"ticket.created"'))).toBe(true));
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(screen.queryByDisplayValue(/SIGNSECRET/)).toBeNull();
   });
 
   it("toggles enabled with a patch", async () => {
     go("/webhooks", "admin", ADMIN, {
-      "/api/webhooks": json([hook()]),
-      "PATCH /api/webhooks/3": json(hook({ enabled: false })),
+      "/api/v1/webhooks": json([hook()]),
+      "PATCH /api/v1/webhooks/3": json(hook({ enabled: false })),
     });
     fireEvent.click(await screen.findByLabelText("Enabled Ops channel"));
-    await waitFor(() => expect(calls.some((c) => c.startsWith("PATCH /api/webhooks/3 ") && c.includes('"enabled":false'))).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.startsWith("PATCH /api/v1/webhooks/3 ") && c.includes('"enabled":false'))).toBe(true));
   });
 
   it("the test button posts", async () => {
     go("/webhooks", "admin", ADMIN, {
-      "/api/webhooks": json([hook()]),
-      "POST /api/webhooks/3/test": json({ queued: 1 }, 202),
+      "/api/v1/webhooks": json([hook()]),
+      "POST /api/v1/webhooks/3/test": json({ queued: 1 }, 202),
     });
     fireEvent.click(await screen.findByRole("button", { name: "Send test to Ops channel" }));
-    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/webhooks/3/test"))).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/v1/webhooks/3/test"))).toBe(true));
     expect(await screen.findByRole("status")).toHaveTextContent("Test sent");
   });
 
   it("shows the delivery log and retries a failed delivery", async () => {
     go("/webhooks", "admin", ADMIN, {
-      "/api/webhooks": json([hook()]),
-      "/api/webhooks/3/deliveries?limit=50": json([delivery(), delivery({ id: 10, status: "delivered", attempts: 1, last_error: null, last_status_code: 200 })]),
-      "POST /api/webhooks/deliveries/9/retry": json(delivery({ status: "pending", attempts: 0 })),
+      "/api/v1/webhooks": json([hook()]),
+      "/api/v1/webhooks/3/deliveries?limit=50": json([delivery(), delivery({ id: 10, status: "delivered", attempts: 1, last_error: null, last_status_code: 200 })]),
+      "POST /api/v1/webhooks/deliveries/9/retry": json(delivery({ status: "pending", attempts: 0 })),
     });
     fireEvent.click(await screen.findByRole("button", { name: "Deliveries for Ops channel" }));
     expect(await screen.findByText("HTTP 500")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^Retry delivery/ }).length).toBe(1);
     fireEvent.click(screen.getByRole("button", { name: "Retry delivery 9" }));
-    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/webhooks/deliveries/9/retry"))).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/v1/webhooks/deliveries/9/retry"))).toBe(true));
   });
 });

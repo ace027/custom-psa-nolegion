@@ -19,7 +19,7 @@ Run the stack (`docker compose up`), sign in as an admin (or tech), then:
 10. Use Previous / Next / This week; weeks always begin on Monday.
 
 ## Permissions
-11. A read-only user has no "My timesheet" link and the timer bar never shows. A tech cannot read another tech's sheet; an admin can (`GET /api/timesheet?week_start=YYYY-MM-DD&user_id=N`).
+11. A read-only user has no "My timesheet" link and the timer bar never shows. A tech cannot read another tech's sheet; an admin can (`GET /api/v1/timesheet?week_start=YYYY-MM-DD&user_id=N`).
 
 ## Audit
 12. Audit log shows `timer.start`, `timer.stop`, `timer.discard`, `internal_time.create/update/void`.

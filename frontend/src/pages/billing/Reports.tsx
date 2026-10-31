@@ -39,7 +39,7 @@ function RevenueCard() {
   const q = useQuery({ queryKey: ["report", "revenue", qs], queryFn: () => api<RevenueReport>(`/reports/revenue${qs}`) });
   const d = q.data;
   return (
-    <Card title="Revenue" actions={<a className={dl} href={`/api/reports/revenue.csv${qs}`}>Download CSV</a>}>
+    <Card title="Revenue" actions={<a className={dl} href={`/api/v1/reports/revenue.csv${qs}`}>Download CSV</a>}>
       {inputs}
       <ErrorMsg error={q.error} />
       {d && (
@@ -83,7 +83,7 @@ function UnbilledCard() {
   const q = useQuery({ queryKey: ["report", "unbilled"], queryFn: () => api<UnbilledReport>("/reports/unbilled") });
   const d = q.data;
   return (
-    <Card title="Unbilled work" actions={<a className={dl} href="/api/reports/unbilled.csv">Download CSV</a>}>
+    <Card title="Unbilled work" actions={<a className={dl} href="/api/v1/reports/unbilled.csv">Download CSV</a>}>
       <ErrorMsg error={q.error} />
       {d && (
         <>
@@ -108,7 +108,7 @@ function RecurringCard() {
   const [months, setMonths] = useState(12);
   const q = useQuery({ queryKey: ["report", "recurring", months], queryFn: () => api<RecurringReport>(`/reports/recurring?months=${months}`) });
   return (
-    <Card title="Recurring revenue" actions={<a className={dl} href={`/api/reports/recurring.csv?months=${months}`}>Download CSV</a>}>
+    <Card title="Recurring revenue" actions={<a className={dl} href={`/api/v1/reports/recurring.csv?months=${months}`}>Download CSV</a>}>
       <div className="w-32"><Field label="Months"><input className={inputCls} type="number" min={1} max={36} value={months} onChange={(e) => setMonths(Math.min(36, Math.max(1, Number(e.target.value) || 1)))} /></Field></div>
       <ErrorMsg error={q.error} />
       <p className="my-2 text-xs text-slate-500"><b>Contracted</b> applies today's quantity and price to every month (what the monthly run would bill); <b>invoiced</b> is what agreement lines were actually billed for that month.</p>
@@ -125,7 +125,7 @@ function RecurringCard() {
 function InvoiceExport() {
   const { qs, inputs } = useRange();
   return (
-    <Card title="Invoice export for your accountant" actions={<a className={dl} href={`/api/reports/invoices.csv${qs}`}>Download CSV</a>}>
+    <Card title="Invoice export for your accountant" actions={<a className={dl} href={`/api/v1/reports/invoices.csv${qs}`}>Download CSV</a>}>
       {inputs}
       <p className="mt-2 text-xs text-slate-500">One row per finalized or voided invoice by invoice date: totals, tax, paid, written off, balance and status, in dollars. Blank dates use the last 12 months.</p>
     </Card>

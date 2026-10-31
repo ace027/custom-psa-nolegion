@@ -25,20 +25,20 @@ describe("ticket type and custom fields", () => {
   it("shows the type's fields and saves the type with its values together", async () => {
     const bodies: string[] = [];
     const handlers: Record<string, (init?: RequestInit) => Response> = {
-      "/api/auth/me": json(me),
-      "/api/queues": json([{ id: 1, name: "Support", archived_at: null, is_default: true }]),
-      "/api/priorities": json([{ id: 3, name: "Normal", rank: 3, archived_at: null, is_default: true, first_response_minutes: 1, resolution_minutes: 1 }]),
-      "/api/ticket-statuses": json([{ id: 1, name: "Open", behavior: "open", position: 20, archived_at: null }]),
-      "/api/ticket-types": json([{ id: 7, name: "New hire", archived_at: null }]),
-      "/api/ticket-types/7/fields": json([
+      "/api/v1/auth/me": json(me),
+      "/api/v1/queues": json([{ id: 1, name: "Support", archived_at: null, is_default: true }]),
+      "/api/v1/priorities": json([{ id: 3, name: "Normal", rank: 3, archived_at: null, is_default: true, first_response_minutes: 1, resolution_minutes: 1 }]),
+      "/api/v1/ticket-statuses": json([{ id: 1, name: "Open", behavior: "open", position: 20, archived_at: null }]),
+      "/api/v1/ticket-types": json([{ id: 7, name: "New hire", archived_at: null }]),
+      "/api/v1/ticket-types/7/fields": json([
         field(1, "Start date", "date", { required: true }),
         field(2, "Laptop", "dropdown", { options: ["Dell", "HP"] }),
       ]),
-      "/api/tickets/5": (init) => {
+      "/api/v1/tickets/5": (init) => {
         if (init?.method === "PATCH") { bodies.push(String(init.body)); return new Response(JSON.stringify(ticket)); }
         return new Response(JSON.stringify(ticket));
       },
-      "/api/tickets/5/notes": json([]),
+      "/api/v1/tickets/5/notes": json([]),
     };
     vi.stubGlobal(
       "fetch",
@@ -65,13 +65,13 @@ describe("linked tickets", () => {
   it("lists links, adds one by number, and closes as a duplicate", async () => {
     const posts: string[] = [];
     const handlers: Record<string, (init?: RequestInit) => Response> = {
-      "/api/auth/me": json(me),
-      "/api/tickets/5": json(ticket),
-      "/api/tickets/5/links": (init) => {
+      "/api/v1/auth/me": json(me),
+      "/api/v1/tickets/5": json(ticket),
+      "/api/v1/tickets/5/links": (init) => {
         if (init?.method === "POST") { posts.push(`links ${init.body}`); return new Response("[]", { status: 201 }); }
         return new Response(JSON.stringify([{ id: 3, relation: "parent", ticket_id: 9, number: 10009, subject: "Big job", status: "open", status_name: "Open" }]));
       },
-      "/api/tickets/5/close-as-duplicate": (init) => { posts.push(`dup ${init?.body}`); return new Response(JSON.stringify(ticket)); },
+      "/api/v1/tickets/5/close-as-duplicate": (init) => { posts.push(`dup ${init?.body}`); return new Response(JSON.stringify(ticket)); },
     };
     vi.stubGlobal(
       "fetch",

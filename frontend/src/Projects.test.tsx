@@ -9,7 +9,7 @@ const STAFF = ["org:read", "ticket:read", "project:write", "billing:read", "bill
 const TECH = ["org:read", "ticket:read", "project:write"];
 const READ_ONLY = ["org:read", "ticket:read"];
 const me = (role: string, permissions: string[]) => ({ id: 1, email: "u@example.com", display_name: "Una", role, permissions });
-const ORGS = "/api/organizations?limit=200&include_archived=false&q=";
+const ORGS = "/api/v1/organizations?limit=200&include_archived=false&q=";
 const orgs = json({ items: [{ id: 3, name: "Acme", status: "active" }], total: 1, limit: 200, offset: 0 });
 const STATUSES = json([
   { id: 1, name: "New", behavior: "new", position: 1, archived_at: null },
@@ -40,7 +40,7 @@ const project = (over = {}) => ({
 
 let calls: string[] = [];
 function go(path: string, role: string, perms: string[], h: Record<string, () => Response>) {
-  const handlers: Record<string, () => Response> = { "/api/auth/me": json(me(role, perms)), ...h };
+  const handlers: Record<string, () => Response> = { "/api/v1/auth/me": json(me(role, perms)), ...h };
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
     const key = init?.method && init.method !== "GET" ? `${init.method} ${url}` : url;
     calls.push(`${key} ${init?.body ?? ""}`);
@@ -57,10 +57,10 @@ describe("projects list", () => {
   it("shows budget columns, over-budget warning and filters by status", async () => {
     go("/projects", "admin", STAFF, {
       [ORGS]: orgs,
-      "/api/projects": json([summary(), summary({ id: 2, name: "Fixed job", billing_mode: "fixed_fee", fixed_fee_cents: 250000, budget_cents: null })]),
-      "/api/projects?status=draft": json([]),
-      "/api/projects/1/budget": json(budget()),
-      "/api/projects/2/budget": json(budget({ remaining_cents: null, over_budget: true })),
+      "/api/v1/projects": json([summary(), summary({ id: 2, name: "Fixed job", billing_mode: "fixed_fee", fixed_fee_cents: 250000, budget_cents: null })]),
+      "/api/v1/projects?status=draft": json([]),
+      "/api/v1/projects/1/budget": json(budget()),
+      "/api/v1/projects/2/budget": json(budget({ remaining_cents: null, over_budget: true })),
     });
     const row = (await screen.findByRole("link", { name: "Office move" })).closest("tr")!;
     expect(await within(row).findByText("5.0 h")).toBeInTheDocument();
@@ -76,9 +76,9 @@ describe("projects list", () => {
   it("creates a project with billing fields for someone who can bill", async () => {
     go("/projects", "admin", STAFF, {
       [ORGS]: orgs,
-      "/api/projects": json([]),
-      "POST /api/projects": json(project({ tasks: [], phases: [], task_count: 0 }), 201),
-      "/api/projects/1": json(project({ tasks: [], phases: [], task_count: 0 })),
+      "/api/v1/projects": json([]),
+      "POST /api/v1/projects": json(project({ tasks: [], phases: [], task_count: 0 }), 201),
+      "/api/v1/projects/1": json(project({ tasks: [], phases: [], task_count: 0 })),
     });
     await screen.findByText("New project");
     await screen.findAllByRole("option", { name: "Acme" });
@@ -87,17 +87,17 @@ describe("projects list", () => {
     fireEvent.change(screen.getByLabelText("Billing mode"), { target: { value: "fixed_fee" } });
     fireEvent.change(screen.getByLabelText("Fixed fee ($)"), { target: { value: "2500.00" } });
     fireEvent.click(screen.getByRole("button", { name: "Create project" }));
-    await waitFor(() => expect(called("POST /api/projects ", '"fixed_fee_cents":250000')).toBe(true));
-    expect(called("POST /api/projects ", '"organization_id":3')).toBe(true);
+    await waitFor(() => expect(called("POST /api/v1/projects ", '"fixed_fee_cents":250000')).toBe(true));
+    expect(called("POST /api/v1/projects ", '"organization_id":3')).toBe(true);
     expect(await screen.findByRole("heading", { name: "Office move" })).toBeInTheDocument();
   });
 
   it("hides billing fields from a tech and the form from read-only users", async () => {
-    const view = go("/projects", "tech", TECH, { [ORGS]: orgs, "/api/projects": json([]) });
+    const view = go("/projects", "tech", TECH, { [ORGS]: orgs, "/api/v1/projects": json([]) });
     await screen.findByText("New project");
     expect(screen.queryByLabelText("Billing mode")).toBeNull();
     view.unmount();
-    go("/projects", "read_only", READ_ONLY, { [ORGS]: orgs, "/api/projects": json([]) });
+    go("/projects", "read_only", READ_ONLY, { [ORGS]: orgs, "/api/v1/projects": json([]) });
     await screen.findByText("No projects yet.");
     expect(screen.queryByText("New project")).toBeNull();
   });
@@ -106,23 +106,23 @@ describe("projects list", () => {
 describe("project detail", () => {
   it("shows an empty state and adds a task", async () => {
     go("/projects/1", "admin", STAFF, {
-      "/api/projects/1": json(project({ tasks: [], phases: [], task_count: 0 })),
-      "POST /api/projects/1/tasks": json(task(), 201),
+      "/api/v1/projects/1": json(project({ tasks: [], phases: [], task_count: 0 })),
+      "POST /api/v1/projects/1/tasks": json(task(), 201),
     });
     expect(await screen.findByText(/no phases or tasks yet/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add task" }));
     fireEvent.change(screen.getByLabelText("Task title"), { target: { value: "Rack servers" } });
     fireEvent.change(screen.getByLabelText("Estimate (hours)"), { target: { value: "2.5" } });
     fireEvent.click(screen.getByRole("button", { name: "Add task to project" }));
-    await waitFor(() => expect(called("POST /api/projects/1/tasks ", '"estimate_minutes":150')).toBe(true));
-    expect(called("POST /api/projects/1/tasks ", '"title":"Rack servers"')).toBe(true);
+    await waitFor(() => expect(called("POST /api/v1/projects/1/tasks ", '"estimate_minutes":150')).toBe(true));
+    expect(called("POST /api/v1/projects/1/tasks ", '"title":"Rack servers"')).toBe(true);
   });
 
   it("shows blocked tasks and a dependency loop error inline", async () => {
     go("/projects/1", "admin", STAFF, {
-      "/api/projects/1": json(project()),
-      "PATCH /api/projects/1/tasks/10": json(t1),
-      "POST /api/projects/1/tasks/10/dependencies/11": json({ detail: "That dependency would make a loop" }, 409),
+      "/api/v1/projects/1": json(project()),
+      "PATCH /api/v1/projects/1/tasks/10": json(t1),
+      "POST /api/v1/projects/1/tasks/10/dependencies/11": json({ detail: "That dependency would make a loop" }, 409),
     });
     expect(await screen.findByText("Blocked")).toBeInTheDocument();
     expect(screen.getByText("Depends on #501")).toBeInTheDocument();
@@ -135,9 +135,9 @@ describe("project detail", () => {
 
   it("moves a board card by patching the ticket status", async () => {
     go("/projects/1", "admin", STAFF, {
-      "/api/projects/1": json(project()),
-      "/api/ticket-statuses": STATUSES,
-      "PATCH /api/tickets/101": json({}),
+      "/api/v1/projects/1": json(project()),
+      "/api/v1/ticket-statuses": STATUSES,
+      "PATCH /api/v1/tickets/101": json({}),
     });
     fireEvent.click(await screen.findByRole("tab", { name: "Board" }));
     const newCol = screen.getByRole("region", { name: "New" });
@@ -145,14 +145,14 @@ describe("project detail", () => {
     expect(within(screen.getByRole("region", { name: "Open" })).getByText("Blocked")).toBeInTheDocument();
     expect(within(newCol).getByText("Due 2026-11-01")).toBeInTheDocument();
     await screen.findByRole("region", { name: "Resolved" });
-    await waitFor(() => expect(called("/api/ticket-statuses")).toBe(true));
+    await waitFor(() => expect(called("/api/v1/ticket-statuses")).toBe(true));
     fireEvent.change(within(newCol).getByLabelText("Move #501 to column"), { target: { value: "resolved" } });
-    await waitFor(() => expect(called("PATCH /api/tickets/101 ", '"status_id":4')).toBe(true));
+    await waitFor(() => expect(called("PATCH /api/v1/tickets/101 ", '"status_id":4')).toBe(true));
   });
 
   it("budget tab warns when over budget", async () => {
     go("/projects/1", "admin", STAFF, {
-      "/api/projects/1": json(project({ budget: budget({ over_budget: true, remaining_cents: 0, cost_at_rates_cents: 130000, billed_cents: 100000 }) })),
+      "/api/v1/projects/1": json(project({ budget: budget({ over_budget: true, remaining_cents: 0, cost_at_rates_cents: 130000, billed_cents: 100000 }) })),
     });
     fireEvent.click(await screen.findByRole("tab", { name: "Budget" }));
     expect(screen.getByRole("alert")).toHaveTextContent(/Over budget/);
@@ -163,31 +163,31 @@ describe("project detail", () => {
   it("offers Bill fixed fee now until billed, then says it was billed", async () => {
     const fixed = { billing_mode: "fixed_fee", fixed_fee_cents: 250000, budget_cents: null };
     const view = go("/projects/1", "admin", STAFF, {
-      "/api/projects/1": json(project(fixed)),
-      "POST /api/projects/1/bill-fixed-fee": json({}),
+      "/api/v1/projects/1": json(project(fixed)),
+      "POST /api/v1/projects/1/bill-fixed-fee": json({}),
     });
     fireEvent.click(await screen.findByRole("button", { name: "Bill fixed fee now" }));
-    await waitFor(() => expect(called("POST /api/projects/1/bill-fixed-fee")).toBe(true));
+    await waitFor(() => expect(called("POST /api/v1/projects/1/bill-fixed-fee")).toBe(true));
     view.unmount();
-    go("/projects/1", "admin", STAFF, { "/api/projects/1": json(project({ ...fixed, fixed_fee_billed: true })) });
+    go("/projects/1", "admin", STAFF, { "/api/v1/projects/1": json(project({ ...fixed, fixed_fee_billed: true })) });
     expect(await screen.findByText("Fixed fee billed")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Bill fixed fee now" })).toBeNull();
   });
 
   it("draft projects need billing:write to approve", async () => {
     const draft = project({ status: "draft", approved_at: null });
-    const view = go("/projects/1", "admin", STAFF, { "/api/projects/1": json(draft), "POST /api/projects/1/approve": json(project()) });
+    const view = go("/projects/1", "admin", STAFF, { "/api/v1/projects/1": json(draft), "POST /api/v1/projects/1/approve": json(project()) });
     fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(called("POST /api/projects/1/approve")).toBe(true));
+    await waitFor(() => expect(called("POST /api/v1/projects/1/approve")).toBe(true));
     view.unmount();
-    go("/projects/1", "tech", TECH, { "/api/projects/1": json(draft) });
+    go("/projects/1", "tech", TECH, { "/api/v1/projects/1": json(draft) });
     await screen.findByRole("heading", { name: "Office move" });
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
     expect(screen.getByRole("button", { name: "Add task" })).toBeInTheDocument();
   });
 
   it("read-only users see no write controls", async () => {
-    go("/projects/1", "read_only", READ_ONLY, { "/api/projects/1": json(project()), "/api/ticket-statuses": STATUSES });
+    go("/projects/1", "read_only", READ_ONLY, { "/api/v1/projects/1": json(project()), "/api/v1/ticket-statuses": STATUSES });
     await screen.findByRole("heading", { name: "Office move" });
     expect(screen.queryByRole("button", { name: "Add task" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit #501" })).toBeNull();
@@ -201,9 +201,9 @@ describe("project detail", () => {
 describe("links to projects", () => {
   it("the client page lists its projects with remaining budget", async () => {
     go("/organizations/3", "admin", STAFF, {
-      "/api/organizations/3": json({ id: 3, name: "Acme", status: "active", billing_address: null, notes: null, assets_published: false, archived_at: null }),
-      "/api/projects?organization_id=3": json([summary()]),
-      "/api/projects/1/budget": json(budget()),
+      "/api/v1/organizations/3": json({ id: 3, name: "Acme", status: "active", billing_address: null, notes: null, assets_published: false, archived_at: null }),
+      "/api/v1/projects?organization_id=3": json([summary()]),
+      "/api/v1/projects/1/budget": json(budget()),
     });
     const link = await screen.findByRole("link", { name: "Office move" });
     expect(link).toHaveAttribute("href", "/projects/1");
@@ -212,7 +212,7 @@ describe("links to projects", () => {
 
   it("a ticket in a project links to it", async () => {
     go("/tickets/101", "admin", STAFF, {
-      "/api/tickets/101": json({
+      "/api/v1/tickets/101": json({
         id: 101, number: 501, organization_id: 3, organization_name: "Acme", subject: "Rack servers", status: "new", status_id: 1, status_name: "New", sla_state: "none",
         needs_triage: false, source: "portal", created_at: "2026-10-01T12:00:00Z", project_id: 1, project_name: "Office move",
       }),
@@ -222,7 +222,7 @@ describe("links to projects", () => {
   });
 
   it("the nav link needs ticket:read", async () => {
-    go("/projects", "x", [], { "/api/projects": json([]) });
+    go("/projects", "x", [], { "/api/v1/projects": json([]) });
     await waitFor(() => expect(screen.queryByRole("link", { name: "Projects" })).toBeNull());
   });
 });

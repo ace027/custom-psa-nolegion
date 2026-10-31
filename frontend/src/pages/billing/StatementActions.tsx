@@ -11,7 +11,7 @@ export default function StatementActions({ orgId }: { orgId: number }) {
   const qc = useQueryClient();
   const nav = useNavigate();
   const make = () => api<Statement>(clientApiPath(orgId, "statements"), { method: "POST" });
-  const pdf = useMutation({ mutationFn: make, onSuccess: (s) => window.open(`/api/statements/${s.id}/pdf`, "_blank") });
+  const pdf = useMutation({ mutationFn: make, onSuccess: (s) => window.open(`/api/v1/statements/${s.id}/pdf`, "_blank") });
   const email = useMutation({
     mutationFn: async () => {
       const s = await make();

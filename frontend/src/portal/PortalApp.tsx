@@ -216,7 +216,7 @@ const STATUS: Record<PortalInvoice["status"], string> = { paid: "Paid", partial:
 function Invoices() {
   const q = useQuery({ queryKey: ["portal", "invoices"], queryFn: () => api<PortalInvoice[]>("/portal/invoices") });
   return (
-    <Card title="Invoices" actions={<a className="text-sm text-blue-700 hover:underline" href="/api/portal/statement/pdf">Download account statement</a>}>
+    <Card title="Invoices" actions={<a className="text-sm text-blue-700 hover:underline" href="/api/v1/portal/statement/pdf">Download account statement</a>}>
       <ErrorMsg error={q.error} />
       <table className="w-full text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-1">Invoice</th><th>Date</th><th>Due</th><th className="text-right">Total</th><th className="text-right">Balance</th><th /></tr></thead>
@@ -245,7 +245,7 @@ function InvoicePage() {
       <Link className="text-sm text-blue-700 hover:underline" to="/portal/invoices">← All invoices</Link>
       <ErrorMsg error={q.error} />
       {i && (
-        <Card title={i.number} actions={<a className="text-sm text-blue-700 hover:underline" href={`/api/portal/invoices/${i.id}/pdf`}>Download PDF</a>}>
+        <Card title={i.number} actions={<a className="text-sm text-blue-700 hover:underline" href={`/api/v1/portal/invoices/${i.id}/pdf`}>Download PDF</a>}>
           <p className="mb-2 text-sm text-slate-600">Dated {i.invoice_date}, due {i.due_date}. {STATUS[i.status]}{i.balance_cents > 0 ? `, balance ${money(i.balance_cents)}` : ""}.</p>
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-1">Description</th><th className="text-right">Qty</th><th className="text-right">Price</th><th className="text-right">Amount</th></tr></thead>

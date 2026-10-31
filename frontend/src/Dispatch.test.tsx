@@ -33,11 +33,11 @@ interface Call { method: string; path: string; search: URLSearchParams; body: un
 function run(perms: string[], entry: string, extra: Record<string, Handler> = {}) {
   const calls: Call[] = [];
   const routes: Record<string, Handler> = {
-    "GET /api/auth/me": () => json(me(perms)),
-    "GET /api/users": () => json(USERS),
-    "GET /api/settings": () => json(SETTINGS),
-    "GET /api/appointments": () => json(APPTS),
-    "GET /api/availability": () => json(AVAIL),
+    "GET /api/v1/auth/me": () => json(me(perms)),
+    "GET /api/v1/users": () => json(USERS),
+    "GET /api/v1/settings": () => json(SETTINGS),
+    "GET /api/v1/appointments": () => json(APPTS),
+    "GET /api/v1/availability": () => json(AVAIL),
     ...extra,
   };
   vi.stubGlobal("fetch", vi.fn(async (raw: string, init: RequestInit = {}) => {
@@ -72,7 +72,7 @@ describe("dispatch board", () => {
     expect(screen.queryByText("#103 Gone")).not.toBeInTheDocument(); // cancelled
     expect(screen.getByText("Times in America/Chicago")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New booking" })).toBeInTheDocument();
-    const list = calls.find((c) => c.path === "/api/appointments")!;
+    const list = calls.find((c) => c.path === "/api/v1/appointments")!;
     expect(list.search.get("from")).toBe("2026-10-07T05:00:00.000Z");
     expect(list.search.get("to")).toBe("2026-10-08T05:00:00.000Z");
     expect(list.search.get("with_conflicts")).toBe("true");
@@ -92,7 +92,7 @@ describe("dispatch board", () => {
   });
 
   it("shows an empty state with no techs", async () => {
-    run(WRITE, "/dispatch?date=2026-10-07", { "GET /api/users": () => json([user(4, "Bill Billing", "billing")]) });
+    run(WRITE, "/dispatch?date=2026-10-07", { "GET /api/v1/users": () => json([user(4, "Bill Billing", "billing")]) });
     expect(await screen.findByText("No active admins or techs")).toBeInTheDocument();
   });
 
@@ -110,7 +110,7 @@ describe("dispatch board", () => {
 
   it("edit dialog saves only the changed field, then Undo sends the reverse PATCH", async () => {
     const calls = run(WRITE, "/dispatch?date=2026-10-07", {
-      "PATCH /api/appointments/1": (_u, init) => {
+      "PATCH /api/v1/appointments/1": (_u, init) => {
         const body = JSON.parse(String(init.body));
         return json(appt({ ...body, starts_at: body.starts_at, conflicts: body.tech_id ? [] : [{ kind: "outside_hours", time_off_id: null, appointment_id: null }] }));
       },
@@ -147,8 +147,8 @@ describe("dispatch board", () => {
     let failed = false;
     run(WRITE, "/dispatch?date=2026-10-07", {
       // After the failure, the refetch never answers, so only the rollback can restore the block.
-      "GET /api/appointments": () => (failed ? new Promise<Response>(() => {}) : json(APPTS)),
-      "PATCH /api/appointments/1": () => {
+      "GET /api/v1/appointments": () => (failed ? new Promise<Response>(() => {}) : json(APPTS)),
+      "PATCH /api/v1/appointments/1": () => {
         failed = true;
         return json({ detail: "Only scheduled appointments can be changed" }, 409);
       },
@@ -166,8 +166,8 @@ describe("dispatch board", () => {
 
   it("books a ticket from the New booking dialog with UTC times", async () => {
     const calls = run(WRITE, "/dispatch?date=2026-10-07", {
-      "GET /api/tickets": (u) => json({ items: u.searchParams.get("q") === "print" ? [{ id: 7, number: 10007, subject: "Printer down", organization_name: "Acme" }] : [], total: 1, limit: 10, offset: 0 }),
-      "POST /api/appointments": (_u, init) => json(appt({ id: 9, ...JSON.parse(String(init.body)), conflicts: [{ kind: "outside_hours", time_off_id: null, appointment_id: null }] }), 201),
+      "GET /api/v1/tickets": (u) => json({ items: u.searchParams.get("q") === "print" ? [{ id: 7, number: 10007, subject: "Printer down", organization_name: "Acme" }] : [], total: 1, limit: 10, offset: 0 }),
+      "POST /api/v1/appointments": (_u, init) => json(appt({ id: 9, ...JSON.parse(String(init.body)), conflicts: [{ kind: "outside_hours", time_off_id: null, appointment_id: null }] }), 201),
     });
     fireEvent.click(await screen.findByRole("button", { name: "New booking" }));
     const dialog = await screen.findByRole("dialog");
@@ -195,12 +195,12 @@ describe("dispatch board", () => {
 
   it("week view renders in the selected tech's zone from their schedule", async () => {
     const calls = run(WRITE, "/dispatch?view=week&date=2026-10-07&tech=2", {
-      "GET /api/users/2/schedule": () => json({ user_id: 2, timezone: "America/New_York", timezone_override: "America/New_York", uses_default_hours: true, work_hours: [] }),
+      "GET /api/v1/users/2/schedule": () => json({ user_id: 2, timezone: "America/New_York", timezone_override: "America/New_York", uses_default_hours: true, work_hours: [] }),
     });
     expect(await screen.findByText("Times in America/New_York")).toBeInTheDocument();
     expect(await screen.findByText("#101 Acme")).toBeInTheDocument();
     expect(screen.queryByText("#102 Globex")).not.toBeInTheDocument(); // another tech's
-    const list = calls.find((c) => c.path === "/api/appointments")!;
+    const list = calls.find((c) => c.path === "/api/v1/appointments")!;
     expect(list.search.get("from")).toBe("2026-10-05T04:00:00.000Z"); // Monday 00:00 New York
     expect(list.search.get("to")).toBe("2026-10-12T04:00:00.000Z");
     expect(list.search.get("tech_id")).toBe("2");
@@ -208,7 +208,7 @@ describe("dispatch board", () => {
 
   it("week view falls back to the availability zone when the schedule is forbidden", async () => {
     run(WRITE, "/dispatch?view=week&date=2026-10-07&tech=2", {
-      "GET /api/users/2/schedule": () => json({ detail: "Forbidden" }, 403),
+      "GET /api/v1/users/2/schedule": () => json({ detail: "Forbidden" }, 403),
     });
     expect(await screen.findByText("Times in America/New_York")).toBeInTheDocument();
   });

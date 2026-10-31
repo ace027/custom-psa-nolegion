@@ -19,7 +19,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("portal appointments", () => {
   it("groups upcoming and past, shows the tech first name and links to the ticket", async () => {
-    go({ "/api/portal/me": json(me), "/api/portal/appointments": json([appt(1, -5 * day), appt(2, 2 * day)]) });
+    go({ "/api/v1/portal/me": json(me), "/api/v1/portal/appointments": json([appt(1, -5 * day), appt(2, 2 * day)]) });
     expect(await screen.findByText("Upcoming")).toBeInTheDocument();
     expect(screen.getByText("Past 30 days")).toBeInTheDocument();
     expect(screen.getAllByText(/· Sam/)).toHaveLength(2);
@@ -29,12 +29,12 @@ describe("portal appointments", () => {
   });
 
   it("says so when there are no appointments", async () => {
-    go({ "/api/portal/me": json(me), "/api/portal/appointments": json([]) });
+    go({ "/api/v1/portal/me": json(me), "/api/v1/portal/appointments": json([]) });
     expect(await screen.findByText("No appointments scheduled")).toBeInTheDocument();
   });
 
   it("shows an error when the request fails", async () => {
-    go({ "/api/portal/me": json(me), "/api/portal/appointments": json({ detail: "Boom" }, 500) });
+    go({ "/api/v1/portal/me": json(me), "/api/v1/portal/appointments": json({ detail: "Boom" }, 500) });
     expect(await screen.findByText(/Boom/)).toBeInTheDocument();
     expect(screen.queryByText("No appointments scheduled")).toBeNull();
   });

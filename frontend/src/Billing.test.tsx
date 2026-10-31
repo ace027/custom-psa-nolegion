@@ -38,7 +38,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("invoice page", () => {
   it("lets billing edit a draft: editable lines, add line, unbilled, finalize, PDF", async () => {
-    go("/billing/invoices/5", { "/api/auth/me": json(me("billing", BILL)), "/api/invoices/5": json(invoice()) });
+    go("/billing/invoices/5", { "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/invoices/5": json(invoice()) });
     expect(await screen.findByText("Draft invoice #5")).toBeInTheDocument();
     expect(screen.getByLabelText("Line description")).toHaveValue("Managed Services: 25 users x $12.00 (Sep 2026)");
     expect(screen.getByLabelText("Line quantity")).toHaveValue("25");
@@ -48,13 +48,13 @@ describe("invoice page", () => {
     expect(screen.getByRole("button", { name: "Finalize invoice" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add line" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Add unbilled/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Download PDF" })).toHaveAttribute("href", "/api/invoices/5/pdf");
+    expect(screen.getByRole("link", { name: "Download PDF" })).toHaveAttribute("href", "/api/v1/invoices/5/pdf");
   });
 
   it("shows a finalized invoice as frozen: no edit controls, even for billing", async () => {
     go("/billing/invoices/5", {
-      "/api/auth/me": json(me("billing", BILL)),
-      "/api/invoices/5": json(invoice({ status: "final", number: "INV-2026-0001", invoice_date: "2026-09-30", due_date: "2026-10-30", terms_days: 30, paid_cents: 0, written_off_cents: 0, balance_cents: 32475, payment_status: "unpaid" })),
+      "/api/v1/auth/me": json(me("billing", BILL)),
+      "/api/v1/invoices/5": json(invoice({ status: "final", number: "INV-2026-0001", invoice_date: "2026-09-30", due_date: "2026-10-30", terms_days: 30, paid_cents: 0, written_off_cents: 0, balance_cents: 32475, payment_status: "unpaid" })),
     });
     expect(await screen.findByText("INV-2026-0001")).toBeInTheDocument();
     expect(screen.getByText(/This invoice is frozen/)).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe("invoice page", () => {
   });
 
   it("gives read-only users nothing to click", async () => {
-    go("/billing/invoices/5", { "/api/auth/me": json(me("read_only", READ)), "/api/invoices/5": json(invoice()) });
+    go("/billing/invoices/5", { "/api/v1/auth/me": json(me("read_only", READ)), "/api/v1/invoices/5": json(invoice()) });
     expect(await screen.findByText("Draft invoice #5")).toBeInTheDocument();
     expect(screen.queryByLabelText("Line description")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Finalize invoice" })).not.toBeInTheDocument();
@@ -73,7 +73,7 @@ describe("invoice page", () => {
   });
 
   it("sends draft invoices that belong to a run to the run for finalizing", async () => {
-    go("/billing/invoices/5", { "/api/auth/me": json(me("billing", BILL)), "/api/invoices/5": json(invoice({ billing_run_id: 9 })) });
+    go("/billing/invoices/5", { "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/invoices/5": json(invoice({ billing_run_id: 9 })) });
     expect(await screen.findByText(/finalize it from the run/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Finalize invoice" })).not.toBeInTheDocument();
   });
@@ -81,7 +81,7 @@ describe("invoice page", () => {
 
 describe("billing run page", () => {
   it("shows warnings and guides the draft -> reviewed step", async () => {
-    go("/billing/runs/9", { "/api/auth/me": json(me("billing", BILL)), "/api/billing-runs/9": json(run()) });
+    go("/billing/runs/9", { "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/billing-runs/9": json(run()) });
     expect(await screen.findByText("Billing run 2026-10")).toBeInTheDocument();
     expect(screen.getByText(/Warnings \(1\)/)).toBeInTheDocument();
     expect(screen.getByText(/left unbilled/)).toBeInTheDocument();
@@ -91,20 +91,20 @@ describe("billing run page", () => {
   });
 
   it("offers finalize only after review", async () => {
-    go("/billing/runs/9", { "/api/auth/me": json(me("billing", BILL)), "/api/billing-runs/9": json(run({ status: "reviewed", reviewed_at: "2026-09-30T13:00:00Z" })) });
+    go("/billing/runs/9", { "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/billing-runs/9": json(run({ status: "reviewed", reviewed_at: "2026-09-30T13:00:00Z" })) });
     expect(await screen.findByRole("button", { name: "Finalize all invoices" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mark reviewed" })).not.toBeInTheDocument();
   });
 
   it("has no action buttons once finalized or for read-only users", async () => {
-    go("/billing/runs/9", { "/api/auth/me": json(me("billing", BILL)), "/api/billing-runs/9": json(run({ status: "finalized" })) });
+    go("/billing/runs/9", { "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/billing-runs/9": json(run({ status: "finalized" })) });
     expect(await screen.findByText("Billing run 2026-10")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /review|Finalize|Cancel/i })).not.toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 
   it("hides run actions from read-only users", async () => {
-    go("/billing/runs/9", { "/api/auth/me": json(me("read_only", READ)), "/api/billing-runs/9": json(run()) });
+    go("/billing/runs/9", { "/api/v1/auth/me": json(me("read_only", READ)), "/api/v1/billing-runs/9": json(run()) });
     expect(await screen.findByText("Billing run 2026-10")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mark reviewed" })).not.toBeInTheDocument();
   });
@@ -113,8 +113,8 @@ describe("billing run page", () => {
 describe("navigation", () => {
   it("shows the Billing menu to those who can read billing, and hides it otherwise", async () => {
     go("/dashboard", {
-      "/api/auth/me": json(me("tech", ["org:read", "user:read", "ticket:read"])),
-      "/api/dashboard": json({ my_open: [], unassigned: [], sla_at_risk: [], counts: { open: 0, mine: 0, unassigned: 0, sla_at_risk: 0, needs_triage: 0 } }),
+      "/api/v1/auth/me": json(me("tech", ["org:read", "user:read", "ticket:read"])),
+      "/api/v1/dashboard": json({ my_open: [], unassigned: [], sla_at_risk: [], counts: { open: 0, mine: 0, unassigned: 0, sla_at_risk: 0, needs_triage: 0 } }),
     });
     expect(await screen.findByText("Dashboard", { selector: "h1" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Billing" })).not.toBeInTheDocument();

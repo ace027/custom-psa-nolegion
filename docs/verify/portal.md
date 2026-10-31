@@ -17,7 +17,7 @@ Prep: mailbox configured and the worker running; two clients each with a contact
 - [ ] Remove the contact's portal access (or switch the portal off) while signed in: the next click asks to sign in again
 
 ## What they see
-- [ ] Non-billing contact: Tickets only, no Invoices tab; opening `/api/portal/invoices` directly is refused
+- [ ] Non-billing contact: Tickets only, no Invoices tab; opening `/api/v1/portal/invoices` directly is refused
 - [ ] Billing contact: Invoices with status and balance, invoice PDF, account statement PDF; no drafts or voided invoices
 - [ ] A contact sees only their own tickets; *See all company tickets* widens that to their company only
 - [ ] Add an internal note and a customer note on a ticket in the staff UI: only the customer note shows in the portal

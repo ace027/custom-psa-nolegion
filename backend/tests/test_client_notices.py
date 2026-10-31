@@ -46,7 +46,7 @@ def ticket(make_ticket, org_ctx):
 
 def book(admin, ticket_id, tech, start=None, end=None, **kw):
     r = admin.post(
-        "/api/appointments",
+        "/api/v1/appointments",
         json={
             "ticket_id": ticket_id,
             "tech_id": tech.user["id"],
@@ -60,13 +60,13 @@ def book(admin, ticket_id, tech, start=None, end=None, **kw):
 
 
 def patch(admin, appt, **body):
-    r = admin.patch(f"/api/appointments/{appt}", json=body)
+    r = admin.patch(f"/api/v1/appointments/{appt}", json=body)
     assert r.status_code == 200, r.text
     return r.json()
 
 
 def cancel(admin, appt, reason=None):
-    r = admin.post(f"/api/appointments/{appt}/cancel", json={"reason": reason})
+    r = admin.post(f"/api/v1/appointments/{appt}/cancel", json={"reason": reason})
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -306,10 +306,10 @@ def test_responses_include_client_notice(admin, owner, on, ticket, tech):
     a = book(admin, ticket["id"], tech)
     assert a["client_notice"]["state"] == "pending"
     assert a["client_notice"]["kind"] is None
-    got = admin.get(f"/api/appointments/{a['id']}").json()
+    got = admin.get(f"/api/v1/appointments/{a['id']}").json()
     assert got["client_notice"]["state"] == "pending"
     send()
-    listed = admin.get("/api/appointments", params={"ticket_id": ticket["id"]}).json()
+    listed = admin.get("/api/v1/appointments", params={"ticket_id": ticket["id"]}).json()
     assert listed[0]["client_notice"]["state"] == "sent"
     assert listed[0]["client_notice"]["kind"] == "booked"
     assert listed[0]["client_notice"]["sent_at"] is not None

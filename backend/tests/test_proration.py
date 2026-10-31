@@ -16,16 +16,16 @@ def agreement(client, org, **kw):
         "start_date": "2020-01-01",
         **kw,
     }
-    r = client.post("/api/agreements", json=body)
+    r = client.post("/api/v1/agreements", json=body)
     assert r.status_code == 201, r.text
     return r.json()
 
 
 def run_lines(client, org_name="Acme"):
-    r = client.post("/api/billing-runs", json={"period": PERIOD})
+    r = client.post("/api/v1/billing-runs", json={"period": PERIOD})
     assert r.status_code == 201, r.text
     inv = next(i for i in r.json()["invoices"] if i["organization_name"] == org_name)
-    return client.get(f"/api/invoices/{inv['id']}").json()
+    return client.get(f"/api/v1/invoices/{inv['id']}").json()
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ def test_mid_month_start_gets_a_separate_negative_line(biller, org):
 
 
 def test_tax_follows_the_agreement_on_both_lines(biller, org):
-    biller.patch(f"/api/organizations/{org}/billing", json={"tax_rate_bp": 825})
+    biller.patch(f"/api/v1/organizations/{org}/billing", json={"tax_rate_bp": 825})
     agreement(biller, org, start_date="2026-07-15", taxable=True)
     inv = run_lines(biller)
     assert [ln["tax_cents"] for ln in inv["lines"]] == [12375, -5589]  # -5,588.715 rounds away
@@ -82,7 +82,7 @@ def test_flat_agreements_prorate_too(biller, org):
 def test_voiding_the_invoice_frees_both_lines(biller, org, owner):
     agreement(biller, org, start_date="2026-07-15")
     inv = run_lines(biller)
-    biller.post(f"/api/invoices/{inv['id']}/void", json={})
+    biller.post(f"/api/v1/invoices/{inv['id']}/void", json={})
     rows = owner.execute(
         text("SELECT kind, voided FROM invoice_lines WHERE invoice_id = :i ORDER BY id"),
         {"i": inv["id"]},
@@ -94,9 +94,9 @@ def test_revenue_report_nets_the_credit_into_agreement_revenue(admin, biller, or
     agreement(biller, org, start_date="2026-07-15")
     inv = run_lines(biller)
     run_id = inv["billing_run_id"]
-    assert biller.post(f"/api/billing-runs/{run_id}/review").status_code == 200
-    assert biller.post(f"/api/billing-runs/{run_id}/finalize").status_code == 200
-    r = admin.get("/api/reports/revenue")
+    assert biller.post(f"/api/v1/billing-runs/{run_id}/review").status_code == 200
+    assert biller.post(f"/api/v1/billing-runs/{run_id}/finalize").status_code == 200
+    r = admin.get("/api/v1/reports/revenue")
     assert r.status_code == 200, r.text
     row = r.json()["clients"][0]
     assert row["agreement_cents"] == 82258 and row["subtotal_cents"] == 82258
@@ -138,17 +138,17 @@ def test_device_count_is_a_suggestion_and_changes_nothing(biller, org, owner):
     _asset(owner, org, "PC-3")
     _asset(owner, org, "PC-OLD", retired=True)  # retired: not counted
     _asset(owner, org, "HUDU-ONLY", source="hudu")  # not reported by NinjaOne: not counted
-    r = biller.get(f"/api/agreements/{a['id']}/device-count")
+    r = biller.get(f"/api/v1/agreements/{a['id']}/device-count")
     assert r.json() == {"ninjaone_devices": 3, "agreement_quantity": 2, "differs": True}
-    assert biller.get(f"/api/agreements/{a['id']}").json()["quantity"] == 2
-    assert biller.get(f"/api/agreements/{a['id']}/quantity-log").json()[0]["new_quantity"] == 2
+    assert biller.get(f"/api/v1/agreements/{a['id']}").json()["quantity"] == 2
+    assert biller.get(f"/api/v1/agreements/{a['id']}/quantity-log").json()[0]["new_quantity"] == 2
     # the one-click update is the ordinary PATCH, which logs the change with a reason
-    biller.patch(f"/api/agreements/{a['id']}", json={"quantity": 3, "reason": "NinjaOne count"})
-    log = biller.get(f"/api/agreements/{a['id']}/quantity-log").json()
+    biller.patch(f"/api/v1/agreements/{a['id']}", json={"quantity": 3, "reason": "NinjaOne count"})
+    log = biller.get(f"/api/v1/agreements/{a['id']}/quantity-log").json()
     assert log[0]["new_quantity"] == 3 and log[0]["old_quantity"] == 2
 
 
 def test_device_count_only_for_per_device(biller, org):
     flat = agreement(biller, org, type="flat", quantity=1)
-    assert biller.get(f"/api/agreements/{flat['id']}/device-count").status_code == 409
-    assert biller.get("/api/agreements/999999/device-count").status_code == 404
+    assert biller.get(f"/api/v1/agreements/{flat['id']}/device-count").status_code == 409
+    assert biller.get("/api/v1/agreements/999999/device-count").status_code == 404

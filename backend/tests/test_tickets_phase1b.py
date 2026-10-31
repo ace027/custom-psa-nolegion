@@ -44,11 +44,11 @@ def test_exceptions_never_open_a_non_business_day():
 
 # ---- holiday API ----
 def test_holiday_crud_validation_and_audit(admin):
-    r = admin.post("/api/holidays", json={"on_date": "2026-12-25", "name": "Christmas"})
+    r = admin.post("/api/v1/holidays", json={"on_date": "2026-12-25", "name": "Christmas"})
     assert r.status_code == 201, r.text
     hid = r.json()["id"]
     assert (
-        admin.post("/api/holidays", json={"on_date": "2026-12-25", "name": "Dup"}).status_code
+        admin.post("/api/v1/holidays", json={"on_date": "2026-12-25", "name": "Dup"}).status_code
         == 409
     )
     half = {
@@ -57,27 +57,28 @@ def test_holiday_crud_validation_and_audit(admin):
         "open_minute": 480,
         "close_minute": 720,
     }
-    assert admin.post("/api/holidays", json=half).status_code == 201
+    assert admin.post("/api/v1/holidays", json=half).status_code == 201
     bad = {"on_date": "2026-12-31", "name": "NYE"}
-    assert admin.post("/api/holidays", json={**bad, "open_minute": 480}).status_code == 422
+    assert admin.post("/api/v1/holidays", json={**bad, "open_minute": 480}).status_code == 422
     assert (
         admin.post(
-            "/api/holidays", json={**bad, "open_minute": 700, "close_minute": 600}
+            "/api/v1/holidays", json={**bad, "open_minute": 700, "close_minute": 600}
         ).status_code
         == 422
     )
-    assert admin.post("/api/holidays", json={**bad, "name": "  "}).status_code == 422
-    assert [h["on_date"] for h in admin.get("/api/holidays", params={"year": 2026}).json()] == [
+    assert admin.post("/api/v1/holidays", json={**bad, "name": "  "}).status_code == 422
+    assert [h["on_date"] for h in admin.get("/api/v1/holidays", params={"year": 2026}).json()] == [
         "2026-12-24",
         "2026-12-25",
     ]
-    assert admin.get("/api/holidays", params={"year": 2027}).json() == []
-    ok = admin.put(f"/api/holidays/{hid}", json={"on_date": "2026-12-25", "name": "Xmas Day"})
+    assert admin.get("/api/v1/holidays", params={"year": 2027}).json() == []
+    ok = admin.put(f"/api/v1/holidays/{hid}", json={"on_date": "2026-12-25", "name": "Xmas Day"})
     assert ok.status_code == 200 and ok.json()["name"] == "Xmas Day"
-    assert admin.delete(f"/api/holidays/{hid}").status_code == 204
-    assert admin.delete(f"/api/holidays/{hid}").status_code == 404
+    assert admin.delete(f"/api/v1/holidays/{hid}").status_code == 204
+    assert admin.delete(f"/api/v1/holidays/{hid}").status_code == 404
     actions = [
-        a["action"] for a in admin.get("/api/audit", params={"action": "holiday."}).json()["items"]
+        a["action"]
+        for a in admin.get("/api/v1/audit", params={"action": "holiday."}).json()["items"]
     ]
     assert {"holiday.create", "holiday.update", "holiday.delete"} <= set(actions)
 
@@ -85,12 +86,12 @@ def test_holiday_crud_validation_and_audit(admin):
 def test_holiday_permissions(login, admin):
     tech, ro = login("tech"), login("read_only")
     body = {"on_date": "2026-07-04", "name": "Independence Day"}
-    assert tech.get("/api/holidays").status_code == 200
-    assert tech.post("/api/holidays", json=body).status_code == 403
-    assert ro.post("/api/holidays", json=body).status_code == 403
-    hid = admin.post("/api/holidays", json=body).json()["id"]
-    assert tech.put(f"/api/holidays/{hid}", json=body).status_code == 403
-    assert tech.delete(f"/api/holidays/{hid}").status_code == 403
+    assert tech.get("/api/v1/holidays").status_code == 200
+    assert tech.post("/api/v1/holidays", json=body).status_code == 403
+    assert ro.post("/api/v1/holidays", json=body).status_code == 403
+    hid = admin.post("/api/v1/holidays", json=body).json()["id"]
+    assert tech.put(f"/api/v1/holidays/{hid}", json=body).status_code == 403
+    assert tech.delete(f"/api/v1/holidays/{hid}").status_code == 403
 
 
 def test_new_tickets_use_the_holiday_calendar(admin, owner, make_ticket):
@@ -129,12 +130,12 @@ def acks(owner):
 
 
 def enable_ack(admin, **kw):
-    r = admin.patch("/api/settings", json={"auto_ack_enabled": True, **kw})
+    r = admin.patch("/api/v1/settings", json={"auto_ack_enabled": True, **kw})
     assert r.status_code == 200, r.text
 
 
 def test_ack_is_off_by_default(admin, org_ctx, mail, acks):
-    assert admin.get("/api/settings").json()["auto_ack_enabled"] is False
+    assert admin.get("/api/v1/settings").json()["auto_ack_enabled"] is False
     mail.add(msg())
     ingest.poll_once(mail, MAILBOX)
     assert acks() == []
@@ -145,7 +146,7 @@ def test_ack_for_a_known_contact_threads_and_is_marked_automatic(admin, org_ctx,
     mail.add(msg())
     assert ingest.poll_once(mail, MAILBOX) == {"ticket_created": 1}
     [a] = acks()
-    t = admin.get("/api/tickets").json()["items"][0]
+    t = admin.get("/api/v1/tickets").json()["items"][0]
     assert a.to_emails == ["pat@acme.com"] and a.ticket_id == t["id"] and a.auto_generated
     assert a.subject.startswith(f"[#{t['number']}]") and "Pat Customer" in a.body_text
     ingest.send_pending(mail, MAILBOX)
@@ -175,12 +176,12 @@ def test_ack_is_capped_per_sender_per_day(admin, org_ctx, mail, acks):
     for i in range(5):
         mail.add(msg(subject=f"Problem {i}"))
     ingest.poll_once(mail, MAILBOX)
-    assert len(admin.get("/api/tickets").json()["items"]) == 5
+    assert len(admin.get("/api/v1/tickets").json()["items"]) == 5
     assert len(acks()) == 3
 
 
 def test_ack_template_is_validated_and_always_threads(admin, org_ctx, mail, acks):
-    assert admin.patch("/api/settings", json={"auto_ack_body": "Hi {nope}"}).status_code == 409
+    assert admin.patch("/api/v1/settings", json={"auto_ack_body": "Hi {nope}"}).status_code == 409
     enable_ack(admin, auto_ack_subject="Thanks {contact_name}")
     mail.add(msg())
     ingest.poll_once(mail, MAILBOX)
@@ -190,11 +191,12 @@ def test_ack_template_is_validated_and_always_threads(admin, org_ctx, mail, acks
 
 def test_escalation_settings_validation(admin):
     assert (
-        admin.patch("/api/settings", json={"escalation_email": "not an email"}).status_code == 422
+        admin.patch("/api/v1/settings", json={"escalation_email": "not an email"}).status_code
+        == 422
     )
-    ok = admin.patch("/api/settings", json={"escalation_email": "boss@msp.example"})
+    ok = admin.patch("/api/v1/settings", json={"escalation_email": "boss@msp.example"})
     assert ok.json()["escalation_email"] == "boss@msp.example"
-    cleared = admin.patch("/api/settings", json={"escalation_email": ""})
+    cleared = admin.patch("/api/v1/settings", json={"escalation_email": ""})
     assert cleared.json()["escalation_email"] is None
 
 
@@ -226,38 +228,39 @@ def test_breach_escalates_once_to_the_configured_address(
     make_breached(owner, t["id"])
     worker.notify_jobs()
     assert escalations() == []  # nothing configured, nothing sent
-    admin.patch("/api/settings", json={"escalation_email": "boss@msp.example"})
+    admin.patch("/api/v1/settings", json={"escalation_email": "boss@msp.example"})
     worker.notify_jobs()
     worker.notify_jobs()
     [e] = escalations()
     assert e.to_emails == ["boss@msp.example"] and f"#{t['number']}" in e.subject
-    assert admin.get(f"/api/tickets/{t['id']}").json()["priority_name"] == "Normal"  # no bump
+    assert admin.get(f"/api/v1/tickets/{t['id']}").json()["priority_name"] == "Normal"  # no bump
 
 
 def test_escalation_ignores_healthy_and_finished_tickets(
     admin, owner, mail_ready, escalations, make_ticket
 ):
-    admin.patch("/api/settings", json={"escalation_email": "boss@msp.example"})
+    admin.patch("/api/v1/settings", json={"escalation_email": "boss@msp.example"})
     make_ticket()  # healthy
     done = make_ticket()
     make_breached(owner, done["id"])
-    admin.patch(f"/api/tickets/{done['id']}", json={"status": "resolved"})
+    admin.patch(f"/api/v1/tickets/{done['id']}", json={"status": "resolved"})
     worker.notify_jobs()
     assert escalations() == []
 
 
 def test_optional_priority_bump_is_audited(admin, owner, mail_ready, escalations, make_ticket):
-    admin.patch("/api/settings", json={"escalation_bump_priority": True})
-    prios = sorted(admin.get("/api/priorities").json(), key=lambda p: p["rank"])
+    admin.patch("/api/v1/settings", json={"escalation_bump_priority": True})
+    prios = sorted(admin.get("/api/v1/priorities").json(), key=lambda p: p["rank"])
     normal = next(p for p in prios if p["name"] == "Normal")
     higher = [p for p in prios if p["rank"] < normal["rank"]][-1]
     t = make_ticket()
     make_breached(owner, t["id"])
     worker.notify_jobs()
     worker.notify_jobs()
-    assert admin.get(f"/api/tickets/{t['id']}").json()["priority_id"] == higher["id"]
+    assert admin.get(f"/api/v1/tickets/{t['id']}").json()["priority_id"] == higher["id"]
     assert escalations() == []  # no address configured: bump only
     actions = [
-        a["action"] for a in admin.get("/api/audit", params={"action": "ticket."}).json()["items"]
+        a["action"]
+        for a in admin.get("/api/v1/audit", params={"action": "ticket."}).json()["items"]
     ]
     assert actions.count("ticket.update") >= 1

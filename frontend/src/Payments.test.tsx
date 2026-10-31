@@ -36,7 +36,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("receivables", () => {
   it("shows aging buckets, totals, credit and an overdue badge", async () => {
-    go("/billing/receivables", { "/api/auth/me": json(me("billing", BILL)), "/api/receivables": json(receivables) });
+    go("/billing/receivables", { "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/receivables": json(receivables) });
     expect(await screen.findByText("Acme Corp")).toBeInTheDocument();
     expect(screen.getAllByText("$224.75").length).toBeGreaterThan(0);
     expect(screen.getByText(/oldest 30d late/)).toBeInTheDocument();
@@ -46,7 +46,7 @@ describe("receivables", () => {
   });
 
   it("does not offer Record payment to read-only users", async () => {
-    go("/billing/receivables", { "/api/auth/me": json(me("read_only", READ)), "/api/receivables": json(receivables) });
+    go("/billing/receivables", { "/api/v1/auth/me": json(me("read_only", READ)), "/api/v1/receivables": json(receivables) });
     expect(await screen.findByText("Acme Corp")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Record payment" })).not.toBeInTheDocument();
   });
@@ -54,7 +54,7 @@ describe("receivables", () => {
 
 describe("invoice payment section", () => {
   it("shows status, balance, payments and the actions for billing", async () => {
-    go("/billing/invoices/5", { "/api/auth/me": json(me("billing", BILL)), "/api/invoices/5": json(inv()) });
+    go("/billing/invoices/5", { "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/invoices/5": json(inv()) });
     expect(await screen.findByText("INV-2026-0001")).toBeInTheDocument();
     expect(screen.getByText("partial")).toBeInTheDocument();
     expect(screen.getByText("30d overdue")).toBeInTheDocument();
@@ -66,7 +66,7 @@ describe("invoice payment section", () => {
   });
 
   it("hides every payment action from read-only users but still shows the balance", async () => {
-    go("/billing/invoices/5", { "/api/auth/me": json(me("read_only", READ)), "/api/invoices/5": json(inv()) });
+    go("/billing/invoices/5", { "/api/v1/auth/me": json(me("read_only", READ)), "/api/v1/invoices/5": json(inv()) });
     expect(await screen.findByText("$224.75")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Record payment" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Write off balance" })).not.toBeInTheDocument();
@@ -74,7 +74,7 @@ describe("invoice payment section", () => {
   });
 
   it("shows no balance actions on a paid invoice, and strikes through undone payments", async () => {
-    go("/billing/invoices/5", { "/api/auth/me": json(me("billing", BILL)), "/api/invoices/5": json(inv({ paid_cents: 32475, balance_cents: 0, payment_status: "paid", is_overdue: false, days_past_due: 0 })) });
+    go("/billing/invoices/5", { "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/invoices/5": json(inv({ paid_cents: 32475, balance_cents: 0, payment_status: "paid", is_overdue: false, days_past_due: 0 })) });
     expect(await screen.findByText("paid")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Record payment" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Write off balance" })).not.toBeInTheDocument();
@@ -84,10 +84,10 @@ describe("invoice payment section", () => {
 describe("record payment", () => {
   const open = { items: [inv({ id: 5, number: "INV-1", balance_cents: 6000 }), inv({ id: 6, number: "INV-2", balance_cents: 4000, due_date: "2026-09-15", days_past_due: 15 })], total: 2, limit: 200, offset: 0 };
   const handlers = (extra: Record<string, () => Response> = {}) => ({
-    "/api/auth/me": json(me("billing", BILL)),
-    "/api/payments?limit=100": json({ items: [], total: 0, limit: 100, offset: 0 }),
-    "/api/organizations?limit=200&include_archived=false&q=": json({ items: [{ id: 1, name: "Acme Corp", status: "active", archived_at: null }], total: 1, limit: 200, offset: 0 }),
-    "/api/invoices?organization_id=1&payment_status=open&limit=200": json(open),
+    "/api/v1/auth/me": json(me("billing", BILL)),
+    "/api/v1/payments?limit=100": json({ items: [], total: 0, limit: 100, offset: 0 }),
+    "/api/v1/organizations?limit=200&include_archived=false&q=": json({ items: [{ id: 1, name: "Acme Corp", status: "active", archived_at: null }], total: 1, limit: 200, offset: 0 }),
+    "/api/v1/invoices?organization_id=1&payment_status=open&limit=200": json(open),
     ...extra,
   });
 
@@ -112,7 +112,7 @@ describe("record payment", () => {
   });
 
   it("is not shown to users who cannot record payments", async () => {
-    go("/billing/payments", { ...handlers(), "/api/auth/me": json(me("read_only", READ)) });
+    go("/billing/payments", { ...handlers(), "/api/v1/auth/me": json(me("read_only", READ)) });
     expect(await screen.findByText(/Record money received/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Record payment" })).not.toBeInTheDocument();
   });

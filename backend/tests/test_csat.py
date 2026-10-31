@@ -28,14 +28,14 @@ def tokens_in(body):
 
 
 def resolve(admin, t):
-    r = admin.patch(f"/api/tickets/{t['id']}", json={"status": "resolved"})
+    r = admin.patch(f"/api/v1/tickets/{t['id']}", json={"status": "resolved"})
     assert r.status_code == 200, r.text
     return r.json()
 
 
 @pytest.fixture
 def csat_on(admin):
-    assert admin.patch("/api/settings", json={"csat_enabled": True}).status_code == 200
+    assert admin.patch("/api/v1/settings", json={"csat_enabled": True}).status_code == 200
 
 
 @pytest.fixture
@@ -44,10 +44,10 @@ def ticket(make_ticket, org_ctx):
 
 
 def test_off_by_default_so_nothing_is_sent(admin, ticket, surveys):
-    assert admin.get("/api/settings").json()["csat_enabled"] is False
+    assert admin.get("/api/v1/settings").json()["csat_enabled"] is False
     resolve(admin, ticket)
     assert surveys() == []
-    assert admin.get(f"/api/tickets/{ticket['id']}/csat").json() is None
+    assert admin.get(f"/api/v1/tickets/{ticket['id']}/csat").json() is None
 
 
 def test_resolving_sends_one_survey_with_five_links(admin, csat_on, ticket, surveys):
@@ -60,10 +60,10 @@ def test_resolving_sends_one_survey_with_five_links(admin, csat_on, ticket, surv
     assert len({t for t, _ in links}) == 1  # same token, different rating
     assert "VPN down" in m.body_text and "Pat Customer" in m.body_text
     # pending in the ticket view, not yet answered
-    s = admin.get(f"/api/tickets/{ticket['id']}/csat").json()
+    s = admin.get(f"/api/v1/tickets/{ticket['id']}/csat").json()
     assert s["sent_to"] == "pat@acme.com" and s["rating"] is None
     # reopening and resolving again never asks twice; closing directly never asks
-    admin.patch(f"/api/tickets/{ticket['id']}", json={"status": "open"})
+    admin.patch(f"/api/v1/tickets/{ticket['id']}", json={"status": "open"})
     resolve(admin, ticket)
     assert len(surveys()) == 1
 
@@ -75,7 +75,7 @@ def test_not_sent_without_a_known_client_or_recipient_or_when_closed_directly(
     resolve(admin, plain)
     assert surveys() == []
     withc = make_ticket()
-    admin.patch(f"/api/tickets/{withc['id']}", json={"status": "closed"})
+    admin.patch(f"/api/v1/tickets/{withc['id']}", json={"status": "closed"})
     assert surveys() == []
 
 
@@ -90,13 +90,13 @@ def test_answering_once_with_a_comment_then_the_link_is_dead(admin, csat_on, tic
     resolve(admin, ticket)
     token = tokens_in(surveys()[0].body_text)[0][0]
     c = anon_client()
-    r = c.post("/api/csat/respond", json={"token": token, "rating": 4, "comment": " Quick fix "})
+    r = c.post("/api/v1/csat/respond", json={"token": token, "rating": 4, "comment": " Quick fix "})
     assert r.status_code == 200 and r.json() == {"ticket_number": ticket["number"]}
-    s = admin.get(f"/api/tickets/{ticket['id']}/csat").json()
+    s = admin.get(f"/api/v1/tickets/{ticket['id']}/csat").json()
     assert s["rating"] == 4 and s["comment"] == "Quick fix" and s["responded_at"]
-    again = c.post("/api/csat/respond", json={"token": token, "rating": 1})
+    again = c.post("/api/v1/csat/respond", json={"token": token, "rating": 1})
     assert again.status_code == 404
-    assert admin.get(f"/api/tickets/{ticket['id']}/csat").json()["rating"] == 4
+    assert admin.get(f"/api/v1/tickets/{ticket['id']}/csat").json()["rating"] == 4
 
 
 def test_bad_input_and_made_up_or_expired_tokens(admin, csat_on, ticket, surveys, owner):
@@ -104,13 +104,15 @@ def test_bad_input_and_made_up_or_expired_tokens(admin, csat_on, ticket, surveys
     token = tokens_in(surveys()[0].body_text)[0][0]
     c = anon_client()
     for bad in (0, 6, "x"):
-        assert c.post("/api/csat/respond", json={"token": token, "rating": bad}).status_code == 422
+        assert (
+            c.post("/api/v1/csat/respond", json={"token": token, "rating": bad}).status_code == 422
+        )
     big = {"token": token, "rating": 3, "comment": "x" * 2001}
-    assert c.post("/api/csat/respond", json=big).status_code == 422
-    assert c.post("/api/csat/respond", json={"token": "n" * 40, "rating": 3}).status_code == 404
+    assert c.post("/api/v1/csat/respond", json=big).status_code == 422
+    assert c.post("/api/v1/csat/respond", json={"token": "n" * 40, "rating": 3}).status_code == 404
     owner.execute(text("UPDATE csat_surveys SET expires_at = now() - interval '1 minute'"))
-    assert c.post("/api/csat/respond", json={"token": token, "rating": 3}).status_code == 404
-    assert admin.get(f"/api/tickets/{ticket['id']}/csat").json()["rating"] is None
+    assert c.post("/api/v1/csat/respond", json={"token": token, "rating": 3}).status_code == 404
+    assert admin.get(f"/api/v1/tickets/{ticket['id']}/csat").json()["rating"] is None
 
 
 def test_summary_counts_and_average(admin, csat_on, make_ticket, org_ctx, surveys):
@@ -122,25 +124,26 @@ def test_summary_counts_and_average(admin, csat_on, make_ticket, org_ctx, survey
     for row, rating in zip(rows[:2], (5, 3), strict=True):
         token = tokens_in(row.body_text)[0][0]
         assert (
-            c.post("/api/csat/respond", json={"token": token, "rating": rating}).status_code == 200
+            c.post("/api/v1/csat/respond", json={"token": token, "rating": rating}).status_code
+            == 200
         )
-    s = admin.get("/api/csat/summary").json()
+    s = admin.get("/api/v1/csat/summary").json()
     assert s["requested"] == 3 and s["responses"] == 2 and s["average"] == 4.0
     assert s["distribution"] == {"1": 0, "2": 0, "3": 1, "4": 0, "5": 1}
-    assert admin.get("/api/csat/summary", params={"days": 0}).status_code == 422
+    assert admin.get("/api/v1/csat/summary", params={"days": 0}).status_code == 422
 
 
 def test_permissions_and_audit(admin, login, csat_on, ticket, surveys, owner):
     resolve(admin, ticket)
     token = tokens_in(surveys()[0].body_text)[0][0]
-    anon_client().post("/api/csat/respond", json={"token": token, "rating": 2})
+    anon_client().post("/api/v1/csat/respond", json={"token": token, "rating": 2})
     ro = login("read_only")
-    assert ro.get(f"/api/tickets/{ticket['id']}/csat").json()["rating"] == 2
-    assert ro.get("/api/csat/summary").status_code == 200
-    assert anon_client().get("/api/csat/summary").status_code == 401
-    assert admin.get("/api/tickets/99999/csat").status_code == 404
-    assert admin.patch("/api/settings", json={"csat_enabled": False}).status_code == 200
-    assert login("tech").patch("/api/settings", json={"csat_enabled": True}).status_code == 403
+    assert ro.get(f"/api/v1/tickets/{ticket['id']}/csat").json()["rating"] == 2
+    assert ro.get("/api/v1/csat/summary").status_code == 200
+    assert anon_client().get("/api/v1/csat/summary").status_code == 401
+    assert admin.get("/api/v1/tickets/99999/csat").status_code == 404
+    assert admin.patch("/api/v1/settings", json={"csat_enabled": False}).status_code == 200
+    assert login("tech").patch("/api/v1/settings", json={"csat_enabled": True}).status_code == 403
     actions = {
         r[0] for r in owner.execute(text("SELECT action FROM audit_log WHERE action LIKE 'csat.%'"))
     }

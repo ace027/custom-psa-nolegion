@@ -11,11 +11,11 @@ const memo = {
   subtotal_cents: 14197, tax_cents: 1171, total_cents: 15368, status: "active", applied_cents: 0, unapplied_cents: 15368, void_reason: null, created_at: "2026-10-08T12:00:00Z",
 };
 const base: Record<string, (init?: RequestInit) => Response> = {
-  "/api/auth/me": json(me),
-  "/api/organizations": json({ items: [{ id: 1, name: "Acme" }], total: 1 }),
-  "/api/receivables": json({ as_of: "2026-10-08", rows: [], totals: { overdue_invoice_count: 0 } }),
-  "/api/billing-notices": json({ items: [], total: 0 }),
-  "/api/invoices": json({ items: [{ id: 9, number: "INV-2026-0042", organization_id: 1, due_date: "2026-11-01", balance_cents: 15368, is_overdue: false, days_past_due: 0 }], total: 1 }),
+  "/api/v1/auth/me": json(me),
+  "/api/v1/organizations": json({ items: [{ id: 1, name: "Acme" }], total: 1 }),
+  "/api/v1/receivables": json({ as_of: "2026-10-08", rows: [], totals: { overdue_invoice_count: 0 } }),
+  "/api/v1/billing-notices": json({ items: [], total: 0 }),
+  "/api/v1/invoices": json({ items: [{ id: 9, number: "INV-2026-0042", organization_id: 1, due_date: "2026-11-01", balance_cents: 15368, is_overdue: false, days_past_due: 0 }], total: 1 }),
 };
 
 function mount(path: string, extra: Record<string, (init?: RequestInit) => Response>) {
@@ -38,9 +38,9 @@ describe("credit memos", () => {
   it("lists memos and applies unapplied credit to an open invoice", async () => {
     const posts: string[] = [];
     mount("/billing/credit-memos", {
-      "/api/credit-memos": () => new Response(JSON.stringify({ items: [memo], total: 1, limit: 100, offset: 0 })),
-      "/api/credit-memos/3": json({ ...memo, lines: [{ position: 1, description: "Correction", quantity: "1.0000", unit_price_cents: 14197, amount_cents: 14197, tax_cents: 1171 }], applications: [] }),
-      "/api/credit-memos/3/apply": (init) => { posts.push(String(init?.body)); return new Response(JSON.stringify(memo)); },
+      "/api/v1/credit-memos": () => new Response(JSON.stringify({ items: [memo], total: 1, limit: 100, offset: 0 })),
+      "/api/v1/credit-memos/3": json({ ...memo, lines: [{ position: 1, description: "Correction", quantity: "1.0000", unit_price_cents: 14197, amount_cents: 14197, tax_cents: 1171 }], applications: [] }),
+      "/api/v1/credit-memos/3/apply": (init) => { posts.push(String(init?.body)); return new Response(JSON.stringify(memo)); },
     });
     expect(await screen.findByText("CM-2026-0001")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "details" }));
@@ -56,7 +56,7 @@ describe("credit memos", () => {
   it("issues a memo from positive line amounts", async () => {
     const posts: string[] = [];
     mount("/billing/credit-memos", {
-      "/api/credit-memos": (init) => {
+      "/api/v1/credit-memos": (init) => {
         if (init?.method === "POST") { posts.push(String(init.body)); return new Response(JSON.stringify(memo), { status: 201 }); }
         return new Response(JSON.stringify({ items: [], total: 0, limit: 100, offset: 0 }));
       },

@@ -14,8 +14,8 @@ Sign in as an admin. Seed data is fine; nothing here needs live mail.
 1. Settings → **Ticket types and custom fields** → add type "New hire".
 2. Open **Fields** and add: "Start date" (date, required), "Laptop" (dropdown: Dell, HP), "Needs VPN" (checkbox), "Manager" (text, *show to client*).
 3. Open a ticket → **Type and custom fields** card → choose New hire. The four inputs appear. Click **Save** without a start date: the error names the required field. Fill it in and save: it sticks after a reload.
-4. Enter an impossible date or a dropdown value by API (`PATCH /api/tickets/{id}` with a bad `custom_values`): 409 with a plain message.
-5. Change the ticket to another type, then back: the earlier answers return. Set type to None: the card hides the fields, but `GET /api/tickets/{id}` still shows the stored values.
+4. Enter an impossible date or a dropdown value by API (`PATCH /api/v1/tickets/{id}` with a bad `custom_values`): 409 with a plain message.
+5. Change the ticket to another type, then back: the earlier answers return. Set type to None: the card hides the fields, but `GET /api/v1/tickets/{id}` still shows the stored values.
 6. Archive "Laptop": it disappears from the ticket, values stay in the database. Restore it: it comes back.
 7. Ticket list: the **Type** filter (shown once a type exists) narrows the list.
 8. Portal: sign in as the ticket's contact. The ticket shows **Details → Manager** only (not the other fields, and not empty ones).

@@ -37,9 +37,9 @@ interface Call { method: string; path: string }
 function setup(ui: React.ReactElement, perms: string[], routes: Record<string, Handler>, role = "admin") {
   const calls: Call[] = [];
   const all: Record<string, Handler> = {
-    "GET /api/auth/me": () => json(me(perms, role)),
-    "GET /api/users": () => json(USERS),
-    "GET /api/settings": () => json(SETTINGS),
+    "GET /api/v1/auth/me": () => json(me(perms, role)),
+    "GET /api/v1/users": () => json(USERS),
+    "GET /api/v1/settings": () => json(SETTINGS),
     ...routes,
   };
   vi.stubGlobal("fetch", vi.fn(async (raw: string, init: RequestInit = {}) => {
@@ -60,10 +60,10 @@ function setup(ui: React.ReactElement, perms: string[], routes: Record<string, H
 const board = (perms: string[], over: { status?: Handler; fetched?: string | null; retry?: Handler } = {}) => {
   const state = { failed: true };
   const calls = setup(<Dispatch />, perms, {
-    "GET /api/appointments": () => json([appt(state.failed ? {} : { sync: { state: "pending", last_error: null } })]),
-    "GET /api/availability": () => json([avail(2, over.fetched === undefined ? minutesAgo(3) : over.fetched), avail(3, over.fetched === undefined ? minutesAgo(3) : over.fetched)]),
-    "GET /api/calendar-sync/status": over.status ?? (() => json(state.failed ? status() : status({ failed: 0, pending: 1, failures: [] }))),
-    "POST /api/appointments/1/sync/retry": over.retry ?? (() => { state.failed = false; return json(appt({ sync: { state: "pending", last_error: null } })); }),
+    "GET /api/v1/appointments": () => json([appt(state.failed ? {} : { sync: { state: "pending", last_error: null } })]),
+    "GET /api/v1/availability": () => json([avail(2, over.fetched === undefined ? minutesAgo(3) : over.fetched), avail(3, over.fetched === undefined ? minutesAgo(3) : over.fetched)]),
+    "GET /api/v1/calendar-sync/status": over.status ?? (() => json(state.failed ? status() : status({ failed: 0, pending: 1, failures: [] }))),
+    "POST /api/v1/appointments/1/sync/retry": over.retry ?? (() => { state.failed = false; return json(appt({ sync: { state: "pending", last_error: null } })); }),
   });
   return calls;
 };
@@ -91,11 +91,11 @@ describe("Outlook sync on the board", () => {
     fireEvent.click((await screen.findByText("#101 Acme")).closest(".rbc-event") as HTMLElement);
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Outlook sync failed: 403 mailbox outside the scope")).toBeInTheDocument();
-    const before = calls.filter((c) => c.path === "/api/calendar-sync/status").length;
+    const before = calls.filter((c) => c.path === "/api/v1/calendar-sync/status").length;
     fireEvent.click(within(dialog).getByRole("button", { name: "Retry Outlook sync" }));
     expect(await within(dialog).findByText("Waiting to sync")).toBeInTheDocument();
-    expect(calls.some((c) => c.method === "POST" && c.path === "/api/appointments/1/sync/retry")).toBe(true);
-    await waitFor(() => expect(calls.filter((c) => c.path === "/api/calendar-sync/status").length).toBeGreaterThan(before));
+    expect(calls.some((c) => c.method === "POST" && c.path === "/api/v1/appointments/1/sync/retry")).toBe(true);
+    await waitFor(() => expect(calls.filter((c) => c.path === "/api/v1/calendar-sync/status").length).toBeGreaterThan(before));
     await waitFor(() => expect(screen.queryByRole("button", { name: /Outlook sync failure/ })).not.toBeInTheDocument());
   });
 
@@ -114,7 +114,7 @@ describe("Outlook sync on the board", () => {
     expect(within(list).getByRole("link", { name: "Ticket #7" })).toHaveAttribute("href", "/tickets/7");
     expect(within(list).getByText("403 mailbox outside the scope")).toBeInTheDocument();
     fireEvent.click(within(list).getByRole("button", { name: /Retry/ }));
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/api/appointments/1/sync/retry")).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/api/v1/appointments/1/sync/retry")).toBe(true));
   });
 
   it("hides retry without schedule:write", async () => {
@@ -141,8 +141,8 @@ describe("Outlook calendar sync card", () => {
   const card = (perms: string[], role: string, enabled = false) => {
     const patches: unknown[] = [];
     setup(<OutlookSyncCard />, perms, {
-      "GET /api/calendar-sync/status": () => json(status({ enabled, failed: 2, pending: 3, failures: [] })),
-      "PATCH /api/settings": (_u, init) => { patches.push(JSON.parse(String(init.body))); return json(SETTINGS); },
+      "GET /api/v1/calendar-sync/status": () => json(status({ enabled, failed: 2, pending: 3, failures: [] })),
+      "PATCH /api/v1/settings": (_u, init) => { patches.push(JSON.parse(String(init.body))); return json(SETTINGS); },
     }, role);
     return patches;
   };

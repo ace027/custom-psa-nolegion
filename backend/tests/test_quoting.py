@@ -105,7 +105,7 @@ def test_contract_end_is_the_day_before_the_anniversary():
 @pytest.fixture
 def rates(admin):
     r = admin.patch(
-        "/api/quotes/settings",
+        "/api/v1/quotes/settings",
         json={
             "per_user_rate_cents": 10000,
             "workstation_rate_cents": 2000,
@@ -123,9 +123,9 @@ def tech(login):
 
 @pytest.fixture
 def prospect(admin, company):
-    org = admin.post("/api/organizations", json={"name": "Newco", "status": "prospect"}).json()
+    org = admin.post("/api/v1/organizations", json={"name": "Newco", "status": "prospect"}).json()
     admin.post(
-        f"/api/organizations/{org['id']}/contacts",
+        f"/api/v1/organizations/{org['id']}/contacts",
         json={"name": "Nina New", "email": "nina@newco.com", "is_primary": True},
     )
     return org["id"]
@@ -144,28 +144,28 @@ ENV = {  # 10 users, 8 workstations (5 out of warranty), 1 server: hardware upli
 
 
 def surveyed(tech, org, body=None, complete=True):
-    r = tech.post(f"/api/organizations/{org}/surveys", json={})
+    r = tech.post(f"/api/v1/organizations/{org}/surveys", json={})
     assert r.status_code == 201, r.text
     sid = r.json()["id"]
-    r = tech.put(f"/api/surveys/{sid}", json=body or ENV)
+    r = tech.put(f"/api/v1/surveys/{sid}", json=body or ENV)
     assert r.status_code == 200, r.text
     if complete:
-        assert tech.post(f"/api/surveys/{sid}/complete").status_code == 200
+        assert tech.post(f"/api/v1/surveys/{sid}/complete").status_code == 200
     return sid
 
 
 def draft(tech, org, **kw):
     sid = surveyed(tech, org, **kw)
-    r = tech.post(f"/api/surveys/{sid}/quote", json={})
+    r = tech.post(f"/api/v1/surveys/{sid}/quote", json={})
     assert r.status_code == 201, r.text
     return r.json()
 
 
 def test_rate_card_is_readable_by_techs_but_only_admins_can_change_it(tech, login, rates):
-    assert tech.get("/api/quotes/settings").json()["hardware_uplift_bp"] == 2500
-    assert tech.patch("/api/quotes/settings", json={"hardware_uplift_bp": 1}).status_code == 403
-    assert login("billing").get("/api/quotes/settings").status_code == 200
-    bad = login("admin").patch("/api/quotes/settings", json={"term_months": 0})
+    assert tech.get("/api/v1/quotes/settings").json()["hardware_uplift_bp"] == 2500
+    assert tech.patch("/api/v1/quotes/settings", json={"hardware_uplift_bp": 1}).status_code == 403
+    assert login("billing").get("/api/v1/quotes/settings").status_code == 200
+    bad = login("admin").patch("/api/v1/quotes/settings", json={"term_months": 0})
     assert bad.status_code == 422
 
 
@@ -181,26 +181,26 @@ def test_survey_is_saved_priced_and_shows_its_working(tech, prospect, rates):
 
 def test_quote_needs_a_completed_survey_and_a_rate_card(tech, prospect, admin):
     sid = surveyed(tech, prospect, complete=False)
-    assert tech.post(f"/api/surveys/{sid}/quote", json={}).status_code == 409
-    tech.post(f"/api/surveys/{sid}/complete")
-    r = tech.post(f"/api/surveys/{sid}/quote", json={})  # rates are all zero
+    assert tech.post(f"/api/v1/surveys/{sid}/quote", json={}).status_code == 409
+    tech.post(f"/api/v1/surveys/{sid}/complete")
+    r = tech.post(f"/api/v1/surveys/{sid}/quote", json={})  # rates are all zero
     assert r.status_code == 409 and "rate card" in r.json()["detail"]
 
 
 def test_completed_survey_cannot_be_edited_and_empty_one_cannot_complete(tech, prospect):
     sid = surveyed(tech, prospect)
-    assert tech.put(f"/api/surveys/{sid}", json=ENV).status_code == 409
-    empty = tech.post(f"/api/organizations/{prospect}/surveys", json={}).json()["id"]
-    tech.put(f"/api/surveys/{empty}", json={"user_count": 0})
-    assert tech.post(f"/api/surveys/{empty}/complete").status_code == 409
+    assert tech.put(f"/api/v1/surveys/{sid}", json=ENV).status_code == 409
+    empty = tech.post(f"/api/v1/organizations/{prospect}/surveys", json={}).json()["id"]
+    tech.put(f"/api/v1/surveys/{empty}", json={"user_count": 0})
+    assert tech.post(f"/api/v1/surveys/{empty}/complete").status_code == 409
 
 
 def test_warranty_date_on_a_device_sets_its_status(tech, prospect):
-    sid = tech.post(f"/api/organizations/{prospect}/surveys", json={}).json()["id"]
+    sid = tech.post(f"/api/v1/organizations/{prospect}/surveys", json={}).json()["id"]
     old = (biz_today() - timedelta(days=5)).isoformat()
     new = (biz_today() + timedelta(days=5)).isoformat()
     s = tech.put(
-        f"/api/surveys/{sid}",
+        f"/api/v1/surveys/{sid}",
         json={
             "user_count": 1,
             "devices": [
@@ -211,85 +211,85 @@ def test_warranty_date_on_a_device_sets_its_status(tech, prospect):
     ).json()
     assert [d["warranty_status"] for d in s["devices"]] == ["out_of_warranty", "in_warranty"]
     # saving again replaces, not appends
-    s = tech.put(f"/api/surveys/{sid}", json={"user_count": 2, "devices": [device()]}).json()
+    s = tech.put(f"/api/v1/surveys/{sid}", json={"user_count": 2, "devices": [device()]}).json()
     assert len(s["devices"]) == 1 and s["status"] == "in_progress"
 
 
 def test_untouched_quote_is_approved_on_submit_without_anyone(tech, prospect, rates):
     q = draft(tech, prospect)
-    q = tech.post(f"/api/quotes/{q['id']}/submit").json()
+    q = tech.post(f"/api/v1/quotes/{q['id']}/submit").json()
     assert q["status"] == "approved" and q["approved_by"] is None
 
 
 def test_adjusted_price_needs_a_reason_then_an_admin_approval(tech, admin, prospect, rates):
     q = draft(tech, prospect)
     qid = q["id"]
-    r = tech.patch(f"/api/quotes/{qid}", json={"final_price_cents": 140000})
+    r = tech.patch(f"/api/v1/quotes/{qid}", json={"final_price_cents": 140000})
     assert r.status_code == 409 and "reason" in r.json()["detail"]
     r = tech.patch(
-        f"/api/quotes/{qid}",
+        f"/api/v1/quotes/{qid}",
         json={"final_price_cents": 140000, "adjustment_reason": "Referral discount"},
     )
     assert r.status_code == 200 and r.json()["final_price_cents"] == 140000
-    assert tech.post(f"/api/quotes/{qid}/submit").json()["status"] == "needs_approval"
-    assert tech.post(f"/api/quotes/{qid}/approve").status_code == 403  # techs can't approve
-    assert tech.post(f"/api/quotes/{qid}/send", json={}).status_code == 409  # not approved yet
-    a = admin.post(f"/api/quotes/{qid}/approve").json()
+    assert tech.post(f"/api/v1/quotes/{qid}/submit").json()["status"] == "needs_approval"
+    assert tech.post(f"/api/v1/quotes/{qid}/approve").status_code == 403  # techs can't approve
+    assert tech.post(f"/api/v1/quotes/{qid}/send", json={}).status_code == 409  # not approved yet
+    a = admin.post(f"/api/v1/quotes/{qid}/approve").json()
     assert a["status"] == "approved" and a["approved_by"] == admin.user["id"]
 
 
 def test_reject_sends_it_back_and_any_edit_voids_an_approval(tech, admin, prospect, rates):
     qid = draft(tech, prospect)["id"]
-    tech.patch(f"/api/quotes/{qid}", json={"final_price_cents": 1, "adjustment_reason": "x"})
-    tech.post(f"/api/quotes/{qid}/submit")
-    r = admin.post(f"/api/quotes/{qid}/reject", json={"note": "too low"})
+    tech.patch(f"/api/v1/quotes/{qid}", json={"final_price_cents": 1, "adjustment_reason": "x"})
+    tech.post(f"/api/v1/quotes/{qid}/submit")
+    r = admin.post(f"/api/v1/quotes/{qid}/reject", json={"note": "too low"})
     assert r.json()["status"] == "draft" and r.json()["decision_note"] == "too low"
-    tech.post(f"/api/quotes/{qid}/submit")
-    assert admin.post(f"/api/quotes/{qid}/approve").json()["status"] == "approved"
-    edited = tech.patch(f"/api/quotes/{qid}", json={"notes": "hi"}).json()
+    tech.post(f"/api/v1/quotes/{qid}/submit")
+    assert admin.post(f"/api/v1/quotes/{qid}/approve").json()["status"] == "approved"
+    edited = tech.patch(f"/api/v1/quotes/{qid}", json={"notes": "hi"}).json()
     assert edited["status"] == "draft" and edited["approved_at"] is None
 
 
 def test_you_cannot_approve_your_own_price_change(tech, admin, prospect, rates):
     qid = draft(tech, prospect)["id"]
-    admin.patch(f"/api/quotes/{qid}", json={"final_price_cents": 100, "adjustment_reason": "r"})
-    assert tech.post(f"/api/quotes/{qid}/submit").json()["status"] == "needs_approval"
-    r = admin.post(f"/api/quotes/{qid}/approve")
+    admin.patch(f"/api/v1/quotes/{qid}", json={"final_price_cents": 100, "adjustment_reason": "r"})
+    assert tech.post(f"/api/v1/quotes/{qid}/submit").json()["status"] == "needs_approval"
+    r = admin.post(f"/api/v1/quotes/{qid}/approve")
     assert r.status_code == 409 and "own price change" in r.json()["detail"]
 
 
 def test_an_admins_own_adjustment_is_approved_on_submit(admin, prospect, rates, tech):
     qid = draft(tech, prospect)["id"]
-    admin.patch(f"/api/quotes/{qid}", json={"final_price_cents": 100, "adjustment_reason": "r"})
-    q = admin.post(f"/api/quotes/{qid}/submit").json()
+    admin.patch(f"/api/v1/quotes/{qid}", json={"final_price_cents": 100, "adjustment_reason": "r"})
+    q = admin.post(f"/api/v1/quotes/{qid}/submit").json()
     assert q["status"] == "approved" and q["approved_by"] == admin.user["id"]
 
 
 def test_setting_the_price_back_to_computed_clears_the_adjustment(tech, prospect, rates):
     q = draft(tech, prospect)
-    tech.patch(f"/api/quotes/{q['id']}", json={"final_price_cents": 5, "adjustment_reason": "r"})
-    q = tech.patch(f"/api/quotes/{q['id']}", json={"final_price_cents": 157500}).json()
+    tech.patch(f"/api/v1/quotes/{q['id']}", json={"final_price_cents": 5, "adjustment_reason": "r"})
+    q = tech.patch(f"/api/v1/quotes/{q['id']}", json={"final_price_cents": 157500}).json()
     assert q["adjustment_reason"] is None and q["adjusted_by"] is None
 
 
 def approved(tech, org):
     q = draft(tech, org)
-    return tech.post(f"/api/quotes/{q['id']}/submit").json()
+    return tech.post(f"/api/v1/quotes/{q['id']}/submit").json()
 
 
 def test_send_freezes_the_quote_and_only_one_open_quote_per_survey(tech, prospect, rates):
     q = approved(tech, prospect)
-    sent = tech.post(f"/api/quotes/{q['id']}/send", json={}).json()
+    sent = tech.post(f"/api/v1/quotes/{q['id']}/send", json={}).json()
     assert sent["status"] == "sent" and sent["sent_at"] and sent["sent_to"] is None
     assert sent["valid_until"] == (biz_today() + timedelta(days=30)).isoformat()
-    assert tech.patch(f"/api/quotes/{q['id']}", json={"notes": "x"}).status_code == 409
-    again = tech.post(f"/api/surveys/{q['survey_id']}/quote", json={})
+    assert tech.patch(f"/api/v1/quotes/{q['id']}", json={"notes": "x"}).status_code == 409
+    again = tech.post(f"/api/v1/surveys/{q['survey_id']}/quote", json={})
     assert again.status_code == 409
 
 
 def test_sending_by_email_queues_the_pdf_for_the_worker(tech, prospect, rates, mail_ready):
     q = approved(tech, prospect)
-    sent = tech.post(f"/api/quotes/{q['id']}/send", json={"send_email": True}).json()
+    sent = tech.post(f"/api/v1/quotes/{q['id']}/send", json={"send_email": True}).json()
     assert sent["sent_to"] == "nina@newco.com"
     [msg] = worker_sends().sent
     [(name, ctype, data)] = msg["attachments"]
@@ -298,22 +298,26 @@ def test_sending_by_email_queues_the_pdf_for_the_worker(tech, prospect, rates, m
 
 
 def test_email_needs_a_mailbox_and_a_recipient(tech, admin, login, rates):
-    org = admin.post("/api/organizations", json={"name": "Nocontact", "status": "prospect"}).json()
+    org = admin.post(
+        "/api/v1/organizations", json={"name": "Nocontact", "status": "prospect"}
+    ).json()
     q = approved(tech, org["id"])
-    r = tech.post(f"/api/quotes/{q['id']}/send", json={"send_email": True})
+    r = tech.post(f"/api/v1/quotes/{q['id']}/send", json={"send_email": True})
     assert r.status_code == 409 and "Email is not configured" in r.json()["detail"]
 
 
 def test_email_without_a_contact_is_refused_and_leaves_the_quote_approved(
     tech, admin, rates, mail_ready
 ):
-    org = admin.post("/api/organizations", json={"name": "Nocontact", "status": "prospect"}).json()
+    org = admin.post(
+        "/api/v1/organizations", json={"name": "Nocontact", "status": "prospect"}
+    ).json()
     q = approved(tech, org["id"])
-    r = tech.post(f"/api/quotes/{q['id']}/send", json={"send_email": True})
+    r = tech.post(f"/api/v1/quotes/{q['id']}/send", json={"send_email": True})
     assert r.status_code == 409 and "No contact" in r.json()["detail"]
-    assert tech.get(f"/api/quotes/{q['id']}").json()["status"] == "approved"
+    assert tech.get(f"/api/v1/quotes/{q['id']}").json()["status"] == "approved"
     ok = tech.post(
-        f"/api/quotes/{q['id']}/send",
+        f"/api/v1/quotes/{q['id']}/send",
         json={"send_email": True, "to_emails": ["boss@nocontact.com"]},
     )
     assert ok.status_code == 200 and ok.json()["sent_to"] == "boss@nocontact.com"
@@ -322,10 +326,10 @@ def test_email_without_a_contact_is_refused_and_leaves_the_quote_approved(
 def test_pdf_is_a_real_pdf_and_hides_internal_reasons(tech, prospect, rates, company):
     q = draft(tech, prospect)
     tech.patch(
-        f"/api/quotes/{q['id']}",
+        f"/api/v1/quotes/{q['id']}",
         json={"final_price_cents": 150000, "adjustment_reason": "SECRET-INTERNAL-REASON"},
     )
-    r = tech.get(f"/api/quotes/{q['id']}/pdf")
+    r = tech.get(f"/api/v1/quotes/{q['id']}/pdf")
     assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
     assert r.content.startswith(b"%PDF")
     assert b"SECRET-INTERNAL-REASON" not in r.content
@@ -336,60 +340,60 @@ def test_accepting_activates_the_prospect_and_creates_a_12_month_flat_agreement(
     tech, admin, prospect, rates
 ):
     q = approved(tech, prospect)
-    tech.post(f"/api/quotes/{q['id']}/send", json={})
-    assert tech.post(f"/api/quotes/{q['id']}/accept", json={}).status_code == 403
+    tech.post(f"/api/v1/quotes/{q['id']}/send", json={})
+    assert tech.post(f"/api/v1/quotes/{q['id']}/accept", json={}).status_code == 403
     start = biz_today()
-    a = admin.post(f"/api/quotes/{q['id']}/accept", json={"start_date": start.isoformat()})
+    a = admin.post(f"/api/v1/quotes/{q['id']}/accept", json={"start_date": start.isoformat()})
     assert a.status_code == 200, a.text
     body = a.json()
     assert body["status"] == "accepted" and body["resulting_agreement_id"]
-    assert admin.get(f"/api/organizations/{prospect}").json()["status"] == "active"
-    [ag] = admin.get("/api/agreements", params={"organization_id": prospect}).json()
+    assert admin.get(f"/api/v1/organizations/{prospect}").json()["status"] == "active"
+    [ag] = admin.get("/api/v1/agreements", params={"organization_id": prospect}).json()
     assert (ag["type"], ag["unit_price_cents"], ag["quantity"]) == ("flat", 157500, 1)
     assert ag["start_date"] == start.isoformat()
     assert ag["end_date"] == quoting.contract_end(start, 12).isoformat()
-    assert admin.post(f"/api/quotes/{q['id']}/accept", json={}).status_code == 409
+    assert admin.post(f"/api/v1/quotes/{q['id']}/accept", json={}).status_code == 409
 
 
 def test_cannot_accept_before_sending_or_after_expiry(tech, admin, prospect, rates, monkeypatch):
     q = approved(tech, prospect)
-    assert admin.post(f"/api/quotes/{q['id']}/accept", json={}).status_code == 409
-    tech.post(f"/api/quotes/{q['id']}/send", json={})
+    assert admin.post(f"/api/v1/quotes/{q['id']}/accept", json={}).status_code == 409
+    tech.post(f"/api/v1/quotes/{q['id']}/send", json={})
     monkeypatch.setattr(quoting, "today", lambda ctx: biz_today() + timedelta(days=45))
-    shown = admin.get(f"/api/quotes/{q['id']}").json()
+    shown = admin.get(f"/api/v1/quotes/{q['id']}").json()
     assert shown["status"] == "sent" and shown["is_expired"] is True
-    r = admin.post(f"/api/quotes/{q['id']}/accept", json={})
+    r = admin.post(f"/api/v1/quotes/{q['id']}/accept", json={})
     assert r.status_code == 409 and "expired" in r.json()["detail"]
 
 
 def test_decline_and_cancel(tech, admin, prospect, rates):
     q = approved(tech, prospect)
-    tech.post(f"/api/quotes/{q['id']}/send", json={})
-    d = admin.post(f"/api/quotes/{q['id']}/decline", json={"note": "went elsewhere"}).json()
+    tech.post(f"/api/v1/quotes/{q['id']}/send", json={})
+    d = admin.post(f"/api/v1/quotes/{q['id']}/decline", json={"note": "went elsewhere"}).json()
     assert d["status"] == "declined" and d["decision_note"] == "went elsewhere"
-    assert admin.get(f"/api/organizations/{prospect}").json()["status"] == "prospect"
-    assert tech.post(f"/api/quotes/{q['id']}/cancel", json={}).status_code == 409
+    assert admin.get(f"/api/v1/organizations/{prospect}").json()["status"] == "prospect"
+    assert tech.post(f"/api/v1/quotes/{q['id']}/cancel", json={}).status_code == 409
     q2 = draft(tech, prospect)
-    assert tech.post(f"/api/quotes/{q2['id']}/cancel", json={}).json()["status"] == "cancelled"
+    assert tech.post(f"/api/v1/quotes/{q2['id']}/cancel", json={}).json()["status"] == "cancelled"
 
 
 def test_revise_reprices_at_todays_rate_card_and_closes_the_old_quote(tech, admin, prospect, rates):
     q = approved(tech, prospect)
-    tech.post(f"/api/quotes/{q['id']}/send", json={})
-    admin.patch("/api/quotes/settings", json={"per_user_rate_cents": 20000})
-    n = tech.post(f"/api/quotes/{q['id']}/revise").json()
+    tech.post(f"/api/v1/quotes/{q['id']}/send", json={})
+    admin.patch("/api/v1/quotes/settings", json={"per_user_rate_cents": 20000})
+    n = tech.post(f"/api/v1/quotes/{q['id']}/revise").json()
     assert n["version"] == 2 and n["replaces_quote_id"] == q["id"] and n["status"] == "draft"
     assert n["base_cents"] == 10 * 20000 + 16000 + 10000
-    assert tech.get(f"/api/quotes/{q['id']}").json()["status"] == "cancelled"
-    assert [x["id"] for x in tech.get("/api/quotes", params={"status": "draft"}).json()] == [
+    assert tech.get(f"/api/v1/quotes/{q['id']}").json()["status"] == "cancelled"
+    assert [x["id"] for x in tech.get("/api/v1/quotes", params={"status": "draft"}).json()] == [
         n["id"]
     ]
 
 
 def test_quote_snapshot_is_unaffected_by_later_rate_changes(tech, admin, prospect, rates):
     q = draft(tech, prospect)
-    admin.patch("/api/quotes/settings", json={"per_user_rate_cents": 99999})
-    again = tech.get(f"/api/quotes/{q['id']}").json()
+    admin.patch("/api/v1/quotes/settings", json={"per_user_rate_cents": 99999})
+    again = tech.get(f"/api/v1/quotes/{q['id']}").json()
     assert again["base_cents"] == 126000 and again["snapshot"]["rates"]["per_user"] == 10000
 
 
@@ -401,9 +405,9 @@ def next_month_first():
 
 @pytest.fixture
 def client_agreement(admin, prospect, rates):
-    admin.patch(f"/api/organizations/{prospect}", json={"status": "active"})
+    admin.patch(f"/api/v1/organizations/{prospect}", json={"status": "active"})
     r = admin.post(
-        "/api/agreements",
+        "/api/v1/agreements",
         json={
             "organization_id": prospect,
             "name": "Managed services",
@@ -424,7 +428,7 @@ def test_reprice_ends_the_old_agreement_and_starts_the_lower_price_next_month(
     sid = surveyed(tech, prospect, fixed)
     eff = next_month_first()
     r = tech.post(
-        f"/api/surveys/{sid}/quote",
+        f"/api/v1/surveys/{sid}/quote",
         json={
             "kind": "reprice",
             "agreement_id": client_agreement["id"],
@@ -434,12 +438,12 @@ def test_reprice_ends_the_old_agreement_and_starts_the_lower_price_next_month(
     assert r.status_code == 201, r.text
     q = r.json()
     assert q["final_price_cents"] == 126000 < client_agreement["unit_price_cents"]
-    tech.post(f"/api/quotes/{q['id']}/submit")
-    tech.post(f"/api/quotes/{q['id']}/send", json={})
-    assert admin.post(f"/api/quotes/{q['id']}/accept", json={}).status_code == 200
+    tech.post(f"/api/v1/quotes/{q['id']}/submit")
+    tech.post(f"/api/v1/quotes/{q['id']}/send", json={})
+    assert admin.post(f"/api/v1/quotes/{q['id']}/accept", json={}).status_code == 200
     ags = {
         a["id"]: a
-        for a in admin.get("/api/agreements", params={"organization_id": prospect}).json()
+        for a in admin.get("/api/v1/agreements", params={"organization_id": prospect}).json()
     }
     old, new = (
         ags[client_agreement["id"]],
@@ -454,7 +458,7 @@ def test_reprice_validates_the_effective_date_and_the_agreement(
     tech, admin, prospect, client_agreement
 ):
     sid = surveyed(tech, prospect)
-    url = f"/api/surveys/{sid}/quote"
+    url = f"/api/v1/surveys/{sid}/quote"
     base = {"kind": "reprice", "agreement_id": client_agreement["id"]}
     assert tech.post(url, json=base).status_code == 409  # no date
     mid = (next_month_first() + timedelta(days=3)).isoformat()
@@ -469,28 +473,30 @@ def test_reprice_validates_the_effective_date_and_the_agreement(
 def test_roles_and_the_prospect_status(login, prospect, rates, tech):
     ro, billing = login("read_only"), login("billing")
     q = draft(tech, prospect)
-    assert ro.get(f"/api/quotes/{q['id']}").status_code == 200
+    assert ro.get(f"/api/v1/quotes/{q['id']}").status_code == 200
     for who in (ro, billing):
-        assert who.post(f"/api/organizations/{prospect}/surveys", json={}).status_code == 403
-        assert who.post(f"/api/quotes/{q['id']}/submit").status_code == 403
-        assert who.post(f"/api/quotes/{q['id']}/cancel", json={}).status_code == 403
-    assert ro.put("/api/surveys/1", json={"user_count": 1}).status_code == 403
+        assert who.post(f"/api/v1/organizations/{prospect}/surveys", json={}).status_code == 403
+        assert who.post(f"/api/v1/quotes/{q['id']}/submit").status_code == 403
+        assert who.post(f"/api/v1/quotes/{q['id']}/cancel", json={}).status_code == 403
+    assert ro.put("/api/v1/surveys/1", json={"user_count": 1}).status_code == 403
 
 
 def test_unknown_ids_are_404(tech, admin):
-    assert tech.get("/api/quotes/999").status_code == 404
-    assert tech.get("/api/surveys/999").status_code == 404
-    assert tech.get("/api/quotes/999/pdf").status_code == 404
-    assert tech.post("/api/organizations/999/surveys", json={}).status_code == 404
-    assert admin.post("/api/quotes/999/approve").status_code == 404
+    assert tech.get("/api/v1/quotes/999").status_code == 404
+    assert tech.get("/api/v1/surveys/999").status_code == 404
+    assert tech.get("/api/v1/quotes/999/pdf").status_code == 404
+    assert tech.post("/api/v1/organizations/999/surveys", json={}).status_code == 404
+    assert admin.post("/api/v1/quotes/999/approve").status_code == 404
 
 
 def test_every_step_is_audited(tech, admin, prospect, rates):
     q = approved(tech, prospect)
-    tech.post(f"/api/quotes/{q['id']}/send", json={})
-    admin.post(f"/api/quotes/{q['id']}/accept", json={})
-    admin.patch("/api/quotes/settings", json={"hardware_uplift_bp": 3000})
-    actions = [e["action"] for e in admin.get("/api/audit", params={"limit": 200}).json()["items"]]
+    tech.post(f"/api/v1/quotes/{q['id']}/send", json={})
+    admin.post(f"/api/v1/quotes/{q['id']}/accept", json={})
+    admin.patch("/api/v1/quotes/settings", json={"hardware_uplift_bp": 3000})
+    actions = [
+        e["action"] for e in admin.get("/api/v1/audit", params={"limit": 200}).json()["items"]
+    ]
     for expected in (
         "survey.create",
         "survey.save",
@@ -521,7 +527,7 @@ def test_quotes_and_surveys_are_row_level_secured(owner, tech, prospect, rates):
 
 def test_db_refuses_to_change_a_sent_quote_or_delete_any(owner, tech, prospect, rates):
     q = approved(tech, prospect)
-    tech.post(f"/api/quotes/{q['id']}/send", json={})
+    tech.post(f"/api/v1/quotes/{q['id']}/send", json={})
     with pytest.raises(Exception, match="sent quote cannot be changed"):
         owner.execute(text("UPDATE quotes SET final_price_cents = 1 WHERE id = :i"), {"i": q["id"]})
     with pytest.raises(Exception, match="never deleted"):

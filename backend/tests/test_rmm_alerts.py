@@ -26,7 +26,7 @@ def poll(iid, now=None, adapter=None):
 
 
 def configure(admin, iid, **cfg):
-    r = admin.patch(f"/api/integrations/{iid}", json={"config": {"alerts_enabled": True, **cfg}})
+    r = admin.patch(f"/api/v1/integrations/{iid}", json={"config": {"alerts_enabled": True, **cfg}})
     assert r.status_code == 200, r.text
 
 
@@ -169,7 +169,7 @@ def test_clear_after_a_technician_note_leaves_the_ticket_open(env, owner, admin)
     env.vendor.alerts = [alert("1")]
     poll(env.iid)
     tid = tickets(owner)[0].id
-    assert admin.post(f"/api/tickets/{tid}/notes", json={"body": "looking"}).status_code == 201
+    assert admin.post(f"/api/v1/tickets/{tid}/notes", json={"body": "looking"}).status_code == 201
     env.vendor.alerts = [OTHER()]
     poll(env.iid)
     res = poll(env.iid)
@@ -183,7 +183,7 @@ def test_clear_after_assignment_leaves_the_ticket_open(env, owner, admin):
     env.vendor.alerts = [alert("1")]
     poll(env.iid)
     tid = tickets(owner)[0].id
-    admin.patch(f"/api/tickets/{tid}", json={"assignee_id": admin.user["id"]})
+    admin.patch(f"/api/v1/tickets/{tid}", json={"assignee_id": admin.user["id"]})
     env.vendor.alerts = [OTHER()]
     poll(env.iid)
     assert poll(env.iid).noted == 1
@@ -205,7 +205,7 @@ def test_always_resolve_rule_resolves_a_worked_ticket(env, owner, admin):
     env.vendor.alerts = [alert("1")]
     poll(env.iid)
     tid = tickets(owner)[0].id
-    admin.post(f"/api/tickets/{tid}/notes", json={"body": "looking"})
+    admin.post(f"/api/v1/tickets/{tid}/notes", json={"body": "looking"})
     env.vendor.alerts = [OTHER()]
     poll(env.iid)
     assert poll(env.iid).resolved == 1
@@ -216,7 +216,7 @@ def test_clear_when_ticket_already_resolved_does_nothing_to_it(env, owner, admin
     env.vendor.alerts = [alert("1")]
     poll(env.iid)
     tid = tickets(owner)[0].id
-    admin.patch(f"/api/tickets/{tid}", json={"status": "resolved"})
+    admin.patch(f"/api/v1/tickets/{tid}", json={"status": "resolved"})
     env.vendor.alerts = [OTHER()]
     poll(env.iid)
     res = poll(env.iid)
@@ -243,7 +243,7 @@ def test_new_uid_after_tech_resolved_the_ticket_supersedes(env, owner, admin):
     env.vendor.alerts = [alert("1", uid="u1")]
     poll(env.iid)
     tid = tickets(owner)[0].id
-    admin.patch(f"/api/tickets/{tid}", json={"status": "resolved"})
+    admin.patch(f"/api/v1/tickets/{tid}", json={"status": "resolved"})
     env.vendor.alerts = [alert("1", uid="u2")]
     res = poll(env.iid)
     assert res.created == 1 and res.repeated == 0
@@ -305,9 +305,9 @@ def test_due_respects_enabled_minutes_and_requests(env, admin):
     with dbmod.new_session() as db:
         dbmod.set_org_scope(db, "all")
         assert rmm_alerts.due(Ctx(db=db, user=None, scope=Scope.all()), poll_at)
-    assert admin.post(f"/api/integrations/{env.iid}/alerts/poll").status_code == 202
+    assert admin.post(f"/api/v1/integrations/{env.iid}/alerts/poll").status_code == 202
     assert due_ids() == [env.iid]  # asked to poll now
-    admin.patch(f"/api/integrations/{env.iid}", json={"config": {"alerts_enabled": False}})
+    admin.patch(f"/api/v1/integrations/{env.iid}", json={"config": {"alerts_enabled": False}})
     assert due_ids() == []
 
 
@@ -529,9 +529,9 @@ def test_same_device_id_on_two_integrations_stays_in_each_org(admin, make_org, v
     v2 = vendors[i2["id"]]
     v2.clients = {"8": "Globex"}
     v2.assets = {"8": [dev("1", "PC-B", "SER-BBBB-0002")]}
-    m = admin.post(f"/api/integrations/{i2['id']}/clients/refresh").json()[0]
+    m = admin.post(f"/api/v1/integrations/{i2['id']}/clients/refresh").json()[0]
     admin.put(
-        f"/api/integrations/{i2['id']}/clients/{m['id']}", json={"organization_id": org2["id"]}
+        f"/api/v1/integrations/{i2['id']}/clients/{m['id']}", json={"organization_id": org2["id"]}
     )
     for i in (i1, i2):
         run_sync(i["id"])

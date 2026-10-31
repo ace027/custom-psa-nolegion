@@ -17,7 +17,7 @@ const notice = (over = {}) => ({
   invoices: [{ invoice_id: 1, number: "INV-2026-0001", due_date: "2026-09-01", balance_cents: 10000, days_past_due: 29, new_stage: true }], ...over,
 });
 const page = (items: unknown[]) => ({ items, total: items.length, limit: 200, offset: 0 });
-const PENDING = "/api/billing-notices?status=pending&limit=200";
+const PENDING = "/api/v1/billing-notices?status=pending&limit=200";
 
 function go(path: string, handlers: Record<string, () => Response>, calls: string[] = []) {
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
@@ -34,20 +34,20 @@ describe("reminder review queue", () => {
   it("shows what will be sent, and sends only when approved", async () => {
     const calls: string[] = [];
     go("/billing/reminders", {
-      "/api/auth/me": json(me("billing", BILL)), "/api/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
-      [PENDING]: json(page([notice()])), "POST /api/billing-notices/7/send": json(notice({ status: "sent" })),
+      "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
+      [PENDING]: json(page([notice()])), "POST /api/v1/billing-notices/7/send": json(notice({ status: "sent" })),
     }, calls);
     expect(await screen.findByText("Acme Corp")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Past due invoice")).toBeInTheDocument();
     expect(screen.getByText(/To: pat@acme.com/)).toBeInTheDocument();
     expect(calls.some((c) => c.startsWith("POST"))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: /approve & send/i }));
-    await waitFor(() => expect(calls).toContain("POST /api/billing-notices/7/send"));
+    await waitFor(() => expect(calls).toContain("POST /api/v1/billing-notices/7/send"));
   });
 
   it("blocks sending when there is no recipient or the numbers changed", async () => {
     go("/billing/reminders", {
-      "/api/auth/me": json(me("billing", BILL)), "/api/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
+      "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
       [PENDING]: json(page([notice({ blocked_reason: "No billing or primary contact has an email address", to_emails: [] }), notice({ id: 8, organization_name: "Beta LLC", stale: true })])),
     });
     expect(await screen.findByText(/No billing or primary contact/)).toBeInTheDocument();
@@ -58,19 +58,19 @@ describe("reminder review queue", () => {
   it("needs a reason to dismiss", async () => {
     const calls: string[] = [];
     go("/billing/reminders", {
-      "/api/auth/me": json(me("billing", BILL)), "/api/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
-      [PENDING]: json(page([notice()])), "POST /api/billing-notices/7/dismiss": json(notice({ status: "dismissed" })),
+      "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
+      [PENDING]: json(page([notice()])), "POST /api/v1/billing-notices/7/dismiss": json(notice({ status: "dismissed" })),
     }, calls);
     fireEvent.click(await screen.findByRole("button", { name: "Dismiss" }));
     expect(screen.getByRole("button", { name: /confirm dismiss/i })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Dismiss reason"), { target: { value: "spoke by phone" } });
     fireEvent.click(screen.getByRole("button", { name: /confirm dismiss/i }));
-    await waitFor(() => expect(calls).toContain("POST /api/billing-notices/7/dismiss"));
+    await waitFor(() => expect(calls).toContain("POST /api/v1/billing-notices/7/dismiss"));
   });
 
   it("is read-only for people who cannot write billing", async () => {
     go("/billing/reminders", {
-      "/api/auth/me": json(me("tech", READ)), "/api/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
+      "/api/v1/auth/me": json(me("tech", READ)), "/api/v1/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
       [PENDING]: json(page([notice()])),
     });
     expect(await screen.findByText("Acme Corp")).toBeInTheDocument();
@@ -80,7 +80,7 @@ describe("reminder review queue", () => {
 
   it("shows the review count on the Billing tab", async () => {
     go("/billing/reminders", {
-      "/api/auth/me": json(me("billing", BILL)), "/api/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
+      "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
       [PENDING]: json(page([notice(), notice({ id: 8 })])),
     });
     expect(await screen.findByText("2 to review")).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe("reminder review queue", () => {
 
   it("labels invoice emails and lists them with the other client emails", async () => {
     go("/billing/reminders", {
-      "/api/auth/me": json(me("billing", BILL)), "/api/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
+      "/api/v1/auth/me": json(me("billing", BILL)), "/api/v1/receivables": json({ as_of: "2026-09-30", rows: [], totals: {} }),
       [PENDING]: json(page([notice({ kind: "invoice", stage_name: null, subject: "Invoice INV-2026-0001 from Acme MSP" })])),
     });
     expect(await screen.findByText("Invoice")).toBeInTheDocument();

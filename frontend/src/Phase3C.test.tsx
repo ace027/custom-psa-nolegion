@@ -11,10 +11,10 @@ const row = {
   balance_cents: 100000, base_cents: 100000, percent_bp: 150, percent_fee_cents: 1500, flat_fee_cents: 1000, fee_cents: 2500, fees_so_far: 0,
 };
 const base: Record<string, (init?: RequestInit) => Response> = {
-  "/api/auth/me": json(me),
-  "/api/organizations": json({ items: [], total: 0 }),
-  "/api/receivables": json({ as_of: "2026-10-08", rows: [], totals: { overdue_invoice_count: 0 } }),
-  "/api/billing-notices": json({ items: [], total: 0 }),
+  "/api/v1/auth/me": json(me),
+  "/api/v1/organizations": json({ items: [], total: 0 }),
+  "/api/v1/receivables": json({ as_of: "2026-10-08", rows: [], totals: { overdue_invoice_count: 0 } }),
+  "/api/v1/billing-notices": json({ items: [], total: 0 }),
 };
 
 function mount(path: string, extra: Record<string, (init?: RequestInit) => Response>) {
@@ -37,8 +37,8 @@ describe("late fees", () => {
   it("previews qualifying invoices and applies only the ticked ones", async () => {
     const posts: string[] = [];
     mount("/billing/late-fees", {
-      "/api/late-fees/preview": json({ configured: true, percent_bp: 150, flat_cents: 1000, grace_days: 15, max_per_invoice: 1, rows: [row] }),
-      "/api/late-fees/apply": (init) => { posts.push(String(init?.body)); return new Response("[]", { status: 201 }); },
+      "/api/v1/late-fees/preview": json({ configured: true, percent_bp: 150, flat_cents: 1000, grace_days: 15, max_per_invoice: 1, rows: [row] }),
+      "/api/v1/late-fees/apply": (init) => { posts.push(String(init?.body)); return new Response("[]", { status: 201 }); },
     });
     expect(await screen.findByText("INV-2026-0042")).toBeTruthy();
     expect(screen.getByText("$25.00")).toBeTruthy();
@@ -50,7 +50,7 @@ describe("late fees", () => {
 
   it("tells the user when no rule is set", async () => {
     mount("/billing/late-fees", {
-      "/api/late-fees/preview": json({ configured: false, percent_bp: 0, flat_cents: 0, grace_days: 15, max_per_invoice: 1, rows: [] }),
+      "/api/v1/late-fees/preview": json({ configured: false, percent_bp: 0, flat_cents: 0, grace_days: 15, max_per_invoice: 1, rows: [] }),
     });
     expect(await screen.findByText(/No late-fee rule is set/)).toBeTruthy();
   });

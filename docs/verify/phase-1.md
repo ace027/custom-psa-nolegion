@@ -12,7 +12,7 @@ Prep: dev stack running with seed data (`docs/DEVELOPMENT.md`), or a deployed st
 - [ ] `admin`: sees Organizations, Users, Audit log; can edit everything
 - [ ] `tech`: can add/edit organizations, sites, contacts; **no** Audit log link; Users page has no edit controls
 - [ ] `billing` and `read_only`: can browse but see no Add/Save/Archive controls
-- [ ] As `read_only`, `curl`/DevTools a POST to `/api/organizations` gets **403**, and the denial appears in the audit log as `auth.denied`
+- [ ] As `read_only`, `curl`/DevTools a POST to `/api/v1/organizations` gets **403**, and the denial appears in the audit log as `auth.denied`
 
 ## Organizations, sites, contacts
 - [ ] Create an organization; duplicate name (any capitalization) is refused
@@ -26,6 +26,6 @@ Prep: dev stack running with seed data (`docs/DEVELOPMENT.md`), or a deployed st
 - [ ] You cannot change your own role or deactivate yourself
 
 ## Platform
-- [ ] `/api/docs` lists every endpoint with descriptions
+- [ ] `/api/v1/docs` lists every endpoint with descriptions
 - [ ] `docker compose up -d --build` starts cleanly on your VM (it was verified in the dev sandbox; your VM adds real DNS/HTTPS and Entra)
 - [ ] Run the backup script once and do the restore drill from `docs/BACKUP_RESTORE.md`

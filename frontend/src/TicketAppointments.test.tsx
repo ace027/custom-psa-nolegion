@@ -28,13 +28,13 @@ interface Call { method: string; path: string; search: URLSearchParams; body: un
 function run(perms: string[], t: Ticket, extra: Record<string, Handler> = {}) {
   const calls: Call[] = [];
   const routes: Record<string, Handler> = {
-    "GET /api/auth/me": () => json(me(perms)),
-    "GET /api/users": () => json([user(2, "Sam Tech", "tech"), user(3, "Alex Admin", "admin")]),
-    "GET /api/settings": () => json(SETTINGS),
-    "GET /api/work-types": () => json([{ id: 5, name: "Remote" }, { id: 6, name: "Onsite" }]),
-    "GET /api/appointments": () => json([FUTURE, PAST]),
-    "GET /api/appointments/1": () => json({ ...FUTURE, conflicts: [{ kind: "overlap", time_off_id: null, appointment_id: 9 }] }),
-    "GET /api/appointments/2": () => json({ ...PAST, conflicts: [{ kind: "overlap", time_off_id: null, appointment_id: 9 }] }),
+    "GET /api/v1/auth/me": () => json(me(perms)),
+    "GET /api/v1/users": () => json([user(2, "Sam Tech", "tech"), user(3, "Alex Admin", "admin")]),
+    "GET /api/v1/settings": () => json(SETTINGS),
+    "GET /api/v1/work-types": () => json([{ id: 5, name: "Remote" }, { id: 6, name: "Onsite" }]),
+    "GET /api/v1/appointments": () => json([FUTURE, PAST]),
+    "GET /api/v1/appointments/1": () => json({ ...FUTURE, conflicts: [{ kind: "overlap", time_off_id: null, appointment_id: 9 }] }),
+    "GET /api/v1/appointments/2": () => json({ ...PAST, conflicts: [{ kind: "overlap", time_off_id: null, appointment_id: 9 }] }),
     ...extra,
   };
   vi.stubGlobal("fetch", vi.fn(async (raw: string, init: RequestInit = {}) => {
@@ -66,8 +66,8 @@ describe("ticket appointments card", () => {
     expect(items[1]).toHaveTextContent("2099");
     await waitFor(() => expect(within(items[1]).getByText("Has conflicts")).toBeInTheDocument());
     expect(within(items[0]).queryByText("Has conflicts")).not.toBeInTheDocument();
-    expect(calls.some((c) => c.path === "/api/appointments/2")).toBe(false);
-    expect(calls.find((c) => c.path === "/api/appointments")!.search.get("ticket_id")).toBe("7");
+    expect(calls.some((c) => c.path === "/api/v1/appointments/2")).toBe(false);
+    expect(calls.find((c) => c.path === "/api/v1/appointments")!.search.get("ticket_id")).toBe("7");
     expect(within(items[1]).getByRole("link", { name: "Open on board" })).toHaveAttribute("href", "/dispatch?view=day&date=2099-10-07");
     expect(within(items[0]).queryByRole("button", { name: "Start timer" })).not.toBeInTheDocument();
     expect(within(items[1]).getByRole("button", { name: "Start timer" })).toBeInTheDocument();
@@ -96,7 +96,7 @@ describe("ticket appointments card", () => {
   it("Start timer posts the body, and a 409 shows its detail", async () => {
     let conflict = true;
     const calls = run(WRITE, ticket(), {
-      "POST /api/timer/start": () => (conflict ? json({ detail: "A timer is already running" }, 409) : json({ started_at: "2099-01-01T00:00:00Z" })),
+      "POST /api/v1/timer/start": () => (conflict ? json({ detail: "A timer is already running" }, 409) : json({ started_at: "2099-01-01T00:00:00Z" })),
     });
     await screen.findAllByText("Sam Tech");
     fireEvent.click(screen.getByRole("button", { name: "Start timer" }));
@@ -105,7 +105,7 @@ describe("ticket appointments card", () => {
     fireEvent.change(screen.getByLabelText("Work type"), { target: { value: "5" } });
     fireEvent.click(screen.getByRole("button", { name: "Start" }));
     expect(await screen.findByText("A timer is already running")).toBeInTheDocument();
-    const post = calls.find((c) => c.method === "POST" && c.path === "/api/timer/start")!;
+    const post = calls.find((c) => c.method === "POST" && c.path === "/api/v1/timer/start")!;
     expect(post.body).toEqual({ ticket_id: 7, work_type_id: 5, billable: true, note: "Appointment 2099-10-07" });
 
     conflict = false;

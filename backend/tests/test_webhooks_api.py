@@ -16,7 +16,7 @@ BODY = {"name": "Teams ops", "kind": "teams", "url": URL, "events": ["ticket.cre
 
 @pytest.fixture
 def made(admin):
-    r = admin.post("/api/webhooks", json=BODY)
+    r = admin.post("/api/v1/webhooks", json=BODY)
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -42,7 +42,7 @@ def test_create_returns_secret_once_and_never_the_url(admin, made, owner):
         "id", "name", "kind", "url_host", "url_preview", "events", "enabled",
         "consecutive_failures", "last_success_at", "last_failure_at", "created_at",
     }  # fmt: skip
-    listed = admin.get("/api/webhooks")
+    listed = admin.get("/api/v1/webhooks")
     assert listed.status_code == 200 and listed.json() == [ep]
     assert secret not in listed.text and "abcdefXYZ" not in listed.text
     stored = owner.execute(text("SELECT secret, url FROM webhook_endpoints")).one()
@@ -54,15 +54,15 @@ def test_create_returns_secret_once_and_never_the_url(admin, made, owner):
 
 def test_create_validation(admin):
     def post(**kw):
-        return admin.post("/api/webhooks", json={**BODY, **kw})
+        return admin.post("/api/v1/webhooks", json={**BODY, **kw})
 
     assert post(kind="slack").status_code == 409
     assert post(events=[]).status_code == 409
     assert post(events=["ticket.exploded"]).status_code == 409
     assert post(name="  ").status_code in (409, 422)
     assert post(name="").status_code == 422
-    assert admin.post("/api/webhooks", json={"name": "x"}).status_code == 422
-    assert admin.get("/api/webhooks").json() == []
+    assert admin.post("/api/v1/webhooks", json={"name": "x"}).status_code == 422
+    assert admin.get("/api/v1/webhooks").json() == []
 
 
 @pytest.mark.parametrize(
@@ -78,8 +78,8 @@ def test_create_validation(admin):
     ],
 )
 def test_ssrf_and_bad_urls_are_409_on_create_and_update(admin, made, url):
-    assert admin.post("/api/webhooks", json={**BODY, "url": url}).status_code == 409
-    r = admin.patch(f"/api/webhooks/{made['endpoint']['id']}", json={"url": url})
+    assert admin.post("/api/v1/webhooks", json={**BODY, "url": url}).status_code == 409
+    r = admin.patch(f"/api/v1/webhooks/{made['endpoint']['id']}", json={"url": url})
     assert r.status_code == 409
 
 
@@ -90,11 +90,13 @@ def test_hostname_resolving_privately_is_409(admin, made, monkeypatch):
 
     monkeypatch.setattr(socket, "getaddrinfo", addrinfo("10.9.9.9"))
     assert (
-        admin.post("/api/webhooks", json={**BODY, "url": "https://evil.example.com/x"}).status_code
+        admin.post(
+            "/api/v1/webhooks", json={**BODY, "url": "https://evil.example.com/x"}
+        ).status_code
         == 409
     )
     r = admin.patch(
-        f"/api/webhooks/{made['endpoint']['id']}", json={"url": "https://evil.example.com/x"}
+        f"/api/v1/webhooks/{made['endpoint']['id']}", json={"url": "https://evil.example.com/x"}
     )
     assert r.status_code == 409
 
@@ -103,7 +105,7 @@ def test_patch_fields_and_audit(admin, made, owner):
     wid = made["endpoint"]["id"]
     new_url = "https://n8n.example.com/webhook/zzz-secret-token"
     r = admin.patch(
-        f"/api/webhooks/{wid}",
+        f"/api/v1/webhooks/{wid}",
         json={"name": "Renamed", "enabled": False, "events": ["ticket.assigned", "ticket.created"],
               "url": new_url},
     )  # fmt: skip
@@ -115,10 +117,10 @@ def test_patch_fields_and_audit(admin, made, owner):
     assert owner.execute(text("SELECT url FROM webhook_endpoints")).scalar() == new_url
     [row] = audit_rows(owner, "webhook.updated")
     assert "zzz-secret-token" not in str(row) and '"url"' in row.d
-    assert admin.patch(f"/api/webhooks/{wid}", json={"events": []}).status_code == 409
-    assert admin.patch(f"/api/webhooks/{wid}", json={"events": ["nope"]}).status_code == 409
-    assert admin.patch("/api/webhooks/9999", json={"name": "x"}).status_code == 404
-    assert admin.patch(f"/api/webhooks/{wid}", json={"name": ""}).status_code == 422
+    assert admin.patch(f"/api/v1/webhooks/{wid}", json={"events": []}).status_code == 409
+    assert admin.patch(f"/api/v1/webhooks/{wid}", json={"events": ["nope"]}).status_code == 409
+    assert admin.patch("/api/v1/webhooks/9999", json={"name": "x"}).status_code == 404
+    assert admin.patch(f"/api/v1/webhooks/{wid}", json={"name": ""}).status_code == 422
 
 
 def test_rotate_secret_changes_the_signature(admin, made, owner):
@@ -127,7 +129,7 @@ def test_rotate_secret_changes_the_signature(admin, made, owner):
     queue(wid, body)
     seen = []
     deliver(handler=lambda r: seen.append(r) or httpx.Response(200))
-    r = admin.post(f"/api/webhooks/{wid}/rotate-secret")
+    r = admin.post(f"/api/v1/webhooks/{wid}/rotate-secret")
     assert r.status_code == 200, r.text
     new = r.json()["secret"]
     assert new != old and r.json()["endpoint"]["id"] == wid
@@ -146,13 +148,13 @@ def test_rotate_secret_changes_the_signature(admin, made, owner):
     assert second.headers["x-psa-signature"] != mac(old, second)
     [row] = audit_rows(owner, "webhook.secret_rotated")
     assert new not in str(row) and old not in str(row)
-    assert admin.post("/api/webhooks/9999/rotate-secret").status_code == 404
+    assert admin.post("/api/v1/webhooks/9999/rotate-secret").status_code == 404
 
 
 def test_test_ping_enqueues_for_this_endpoint_only(admin, made, owner):
-    other = admin.post("/api/webhooks", json={**BODY, "name": "other"}).json()["endpoint"]["id"]
+    other = admin.post("/api/v1/webhooks", json={**BODY, "name": "other"}).json()["endpoint"]["id"]
     wid = made["endpoint"]["id"]
-    r = admin.post(f"/api/webhooks/{wid}/test")
+    r = admin.post(f"/api/v1/webhooks/{wid}/test")
     assert r.status_code == 202 and r.json() == {"queued": 1}
     rows = owner.execute(
         text("SELECT endpoint_id, event_type, payload FROM webhook_deliveries")
@@ -162,9 +164,9 @@ def test_test_ping_enqueues_for_this_endpoint_only(admin, made, owner):
     seen = []
     deliver(now=None, handler=lambda req: seen.append(req) or httpx.Response(200))
     assert "PSA webhook test" in seen[0].content.decode()  # the teams card
-    assert admin.post("/api/webhooks/9999/test").status_code == 404
-    admin.patch(f"/api/webhooks/{wid}", json={"enabled": False})
-    assert admin.post(f"/api/webhooks/{wid}/test").status_code == 409
+    assert admin.post("/api/v1/webhooks/9999/test").status_code == 404
+    admin.patch(f"/api/v1/webhooks/{wid}", json={"enabled": False})
+    assert admin.post(f"/api/v1/webhooks/{wid}/test").status_code == 409
 
 
 def test_deliveries_list_filter_limit(admin, made):
@@ -172,8 +174,8 @@ def test_deliveries_list_filter_limit(admin, made):
     for _ in range(3):
         queue(wid)
     deliver(handler=lambda r: httpx.Response(500))
-    admin.post(f"/api/webhooks/{wid}/test")
-    r = admin.get(f"/api/webhooks/{wid}/deliveries")
+    admin.post(f"/api/v1/webhooks/{wid}/test")
+    r = admin.get(f"/api/v1/webhooks/{wid}/deliveries")
     assert r.status_code == 200
     items = r.json()
     assert len(items) == 4 and [i["id"] for i in items] == sorted(
@@ -186,16 +188,20 @@ def test_deliveries_list_filter_limit(admin, made):
     }  # fmt: skip
     assert first["attempts"] == 1 and first["last_status_code"] == 500
     assert "payload" not in first
-    assert len(admin.get(f"/api/webhooks/{wid}/deliveries", params={"limit": 2}).json()) == 2
+    assert len(admin.get(f"/api/v1/webhooks/{wid}/deliveries", params={"limit": 2}).json()) == 2
     assert (
-        len(admin.get(f"/api/webhooks/{wid}/deliveries", params={"status": "pending"}).json()) == 4
+        len(admin.get(f"/api/v1/webhooks/{wid}/deliveries", params={"status": "pending"}).json())
+        == 4
     )
-    assert admin.get(f"/api/webhooks/{wid}/deliveries", params={"status": "delivered"}).json() == []
     assert (
-        admin.get(f"/api/webhooks/{wid}/deliveries", params={"status": "bogus"}).status_code == 422
+        admin.get(f"/api/v1/webhooks/{wid}/deliveries", params={"status": "delivered"}).json() == []
     )
-    assert admin.get(f"/api/webhooks/{wid}/deliveries", params={"limit": 0}).status_code == 422
-    assert admin.get("/api/webhooks/9999/deliveries").status_code == 404
+    assert (
+        admin.get(f"/api/v1/webhooks/{wid}/deliveries", params={"status": "bogus"}).status_code
+        == 422
+    )
+    assert admin.get(f"/api/v1/webhooks/{wid}/deliveries", params={"limit": 0}).status_code == 422
+    assert admin.get("/api/v1/webhooks/9999/deliveries").status_code == 404
 
 
 def test_retry_rules(admin, made, owner):
@@ -203,13 +209,13 @@ def test_retry_rules(admin, made, owner):
     done = queue(wid)
     failed = queue(wid, status="failed", attempts=6)
     deliver()  # sends `done`
-    r = admin.post(f"/api/webhooks/deliveries/{done}/retry")
+    r = admin.post(f"/api/v1/webhooks/deliveries/{done}/retry")
     assert r.status_code == 409
-    r = admin.post(f"/api/webhooks/deliveries/{failed}/retry")
+    r = admin.post(f"/api/v1/webhooks/deliveries/{failed}/retry")
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "pending" and r.json()["attempts"] == 0
     assert len(audit_rows(owner, "webhook.delivery_retried")) == 1
-    assert admin.post("/api/webhooks/deliveries/9999/retry").status_code == 404
+    assert admin.post("/api/v1/webhooks/deliveries/9999/retry").status_code == 404
     assert deliver()["delivered"] == 1
 
 
@@ -217,13 +223,13 @@ def test_tech_and_anonymous_are_refused(login, anon, made):
     tech = login("tech")
     wid = made["endpoint"]["id"]
     checks = [
-        ("get", "/api/webhooks", None),
-        ("post", "/api/webhooks", BODY),
-        ("patch", f"/api/webhooks/{wid}", {"name": "x"}),
-        ("post", f"/api/webhooks/{wid}/rotate-secret", None),
-        ("post", f"/api/webhooks/{wid}/test", None),
-        ("get", f"/api/webhooks/{wid}/deliveries", None),
-        ("post", "/api/webhooks/deliveries/1/retry", None),
+        ("get", "/api/v1/webhooks", None),
+        ("post", "/api/v1/webhooks", BODY),
+        ("patch", f"/api/v1/webhooks/{wid}", {"name": "x"}),
+        ("post", f"/api/v1/webhooks/{wid}/rotate-secret", None),
+        ("post", f"/api/v1/webhooks/{wid}/test", None),
+        ("get", f"/api/v1/webhooks/{wid}/deliveries", None),
+        ("post", "/api/v1/webhooks/deliveries/1/retry", None),
     ]
     for method, path, body in checks:
         assert getattr(tech, method)(path, **({"json": body} if body else {})).status_code == 403, (
@@ -236,10 +242,10 @@ def test_tech_and_anonymous_are_refused(login, anon, made):
 
 
 def test_api_key_without_permission_cannot_manage_webhooks(admin):
-    r = admin.post("/api/api-keys", json={"name": "k", "permissions": ["ticket:read"]})
+    r = admin.post("/api/v1/api-keys", json={"name": "k", "permissions": ["ticket:read"]})
     from fastapi.testclient import TestClient
 
     from app.main import app
 
     c = TestClient(app, headers={"Authorization": f"Bearer {r.json()['token']}"})
-    assert c.get("/api/webhooks").status_code == 403
+    assert c.get("/api/v1/webhooks").status_code == 403

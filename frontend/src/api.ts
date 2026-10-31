@@ -10,7 +10,7 @@ export class ApiError extends Error {
 
 export async function api<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const { json, headers, ...rest } = init;
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`/api/v1${path}`, {
     credentials: "same-origin",
     ...rest,
     headers: {
@@ -1622,7 +1622,7 @@ export const reportsApi = {
   aging: () => api<AgingReport>("/reports/aging"),
   profitability: (q: { from?: string; to?: string }) => api<ProfitabilityReport>(`/reports/profitability${enc(q)}`),
   /** href of the CSV that matches a report page's query */
-  csv: (report: ReportName, q: Record<string, string | undefined> = {}) => `/api/reports/${report}.csv${enc(q)}`,
+  csv: (report: ReportName, q: Record<string, string | undefined> = {}) => `/api/v1/reports/${report}.csv${enc(q)}`,
   myDashboard: () => api<MyDashboard>("/dashboard/me"),
   managerDashboard: () => api<ManagerDashboard>("/reports/dashboard"),
   schedules: () => api<ReportSchedule[]>("/reports/schedules"),

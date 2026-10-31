@@ -10,13 +10,13 @@ it("lets a user turn their own notification emails on and off", async () => {
   const calls: string[] = [];
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
     calls.push(`${init?.method ?? "GET"} ${url} ${init?.body ?? ""}`);
-    return Promise.resolve(new Response(JSON.stringify(url === "/api/auth/me" || url.endsWith("notifications") ? me : {}), { status: 200 }));
+    return Promise.resolve(new Response(JSON.stringify(url === "/api/v1/auth/me" || url.endsWith("notifications") ? me : {}), { status: 200 }));
   }));
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={["/profile"]}><App /></MemoryRouter></QueryClientProvider>);
   const box = await screen.findByLabelText(/A customer replies on my ticket/);
   expect(box).not.toBeChecked();
   fireEvent.click(box);
-  await waitFor(() => expect(calls.some((c) => c.startsWith("PATCH /api/auth/me/notifications") && c.includes('"notify_reply":true'))).toBe(true));
+  await waitFor(() => expect(calls.some((c) => c.startsWith("PATCH /api/v1/auth/me/notifications") && c.includes('"notify_reply":true'))).toBe(true));
   vi.unstubAllGlobals();
 });

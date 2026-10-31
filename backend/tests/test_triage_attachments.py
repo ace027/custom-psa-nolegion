@@ -49,18 +49,18 @@ def unmatched(owner):
 
 def test_unmatched_tickets_are_flagged_and_listed(admin, unmatched):
     tid = unmatched()
-    t = admin.get(f"/api/tickets/{tid}").json()
+    t = admin.get(f"/api/v1/tickets/{tid}").json()
     assert t["needs_triage"] and t["organization_name"] is None
-    assert admin.get("/api/tickets", params={"needs_triage": True}).json()["total"] == 1
-    assert admin.get("/api/dashboard").json()["counts"]["needs_triage"] == 1
-    assert admin.get("/api/mail/status").json()["tickets_needing_triage"] == 1
-    assert admin.get(f"/api/tickets/{tid}/notes").json()[0]["email_status"] == "received"
+    assert admin.get("/api/v1/tickets", params={"needs_triage": True}).json()["total"] == 1
+    assert admin.get("/api/v1/dashboard").json()["counts"]["needs_triage"] == 1
+    assert admin.get("/api/v1/mail/status").json()["tickets_needing_triage"] == 1
+    assert admin.get(f"/api/v1/tickets/{tid}/notes").json()[0]["email_status"] == "received"
 
 
 def test_triage_assigns_org_and_moves_children(admin, owner, unmatched, org_ctx):
     tid = unmatched()
     r = admin.patch(
-        f"/api/tickets/{tid}",
+        f"/api/v1/tickets/{tid}",
         json={"organization_id": org_ctx["org"], "contact_id": org_ctx["contact"]},
     )
     assert r.status_code == 200 and not r.json()["needs_triage"]
@@ -72,26 +72,27 @@ def test_triage_assigns_org_and_moves_children(admin, owner, unmatched, org_ctx)
             )
         }
         assert orgs == {org_ctx["org"]}, table
-    entry = admin.get("/api/audit", params={"action": "ticket.triage"}).json()["items"]
+    entry = admin.get("/api/v1/audit", params={"action": "ticket.triage"}).json()["items"]
     assert entry and entry[0]["detail"] == {"triage": True}
     # once matched, the org is locked
-    other = admin.post("/api/organizations", json={"name": "Elsewhere"}).json()
+    other = admin.post("/api/v1/organizations", json={"name": "Elsewhere"}).json()
     assert (
-        admin.patch(f"/api/tickets/{tid}", json={"organization_id": other["id"]}).status_code == 409
+        admin.patch(f"/api/v1/tickets/{tid}", json={"organization_id": other["id"]}).status_code
+        == 409
     )
 
 
 def test_triage_rejects_unknown_org_and_foreign_contact(admin, unmatched, org_ctx, make_org):
     tid = unmatched()
-    assert admin.patch(f"/api/tickets/{tid}", json={"organization_id": 999}).status_code == 404
-    assert admin.patch(f"/api/tickets/{tid}", json={"organization_id": None}).status_code in (
+    assert admin.patch(f"/api/v1/tickets/{tid}", json={"organization_id": 999}).status_code == 404
+    assert admin.patch(f"/api/v1/tickets/{tid}", json={"organization_id": None}).status_code in (
         200,
         404,
         409,
     )
     other = make_org("Other")
     r = admin.patch(
-        f"/api/tickets/{tid}",
+        f"/api/v1/tickets/{tid}",
         json={"organization_id": other["id"], "contact_id": org_ctx["contact"]},
     )
     assert r.status_code == 409
@@ -99,9 +100,11 @@ def test_triage_rejects_unknown_org_and_foreign_contact(admin, unmatched, org_ct
 
 def test_time_cannot_be_logged_until_ticket_is_matched(admin, unmatched):
     tid = unmatched()
-    wt = admin.get("/api/work-types").json()[0]["id"]
+    wt = admin.get("/api/v1/work-types").json()[0]["id"]
     assert (
-        admin.post(f"/api/tickets/{tid}/time", json={"work_type_id": wt, "minutes": 5}).status_code
+        admin.post(
+            f"/api/v1/tickets/{tid}/time", json={"work_type_id": wt, "minutes": 5}
+        ).status_code
         == 409
     )
 
@@ -111,7 +114,7 @@ def test_time_cannot_be_logged_until_ticket_is_matched(admin, unmatched):
 def stored_file(tmp_path, monkeypatch, owner, unmatched, admin, org_ctx):
     monkeypatch.setattr(get_settings(), "attachments_dir", str(tmp_path))
     tid = unmatched()
-    admin.patch(f"/api/tickets/{tid}", json={"organization_id": org_ctx["org"]})
+    admin.patch(f"/api/v1/tickets/{tid}", json={"organization_id": org_ctx["org"]})
     data = b"<script>alert(1)</script>"
     (tmp_path / "1").mkdir()
     (tmp_path / "1" / "abc").write_bytes(data)
@@ -127,9 +130,9 @@ def stored_file(tmp_path, monkeypatch, owner, unmatched, admin, org_ctx):
 
 def test_attachment_list_and_safe_download(admin, login, stored_file):
     tid, data = stored_file
-    listed = admin.get(f"/api/tickets/{tid}/attachments").json()
+    listed = admin.get(f"/api/v1/tickets/{tid}/attachments").json()
     assert len(listed) == 1 and listed[0]["size_bytes"] == len(data)
-    r = login("read_only").get(f"/api/attachments/{listed[0]['id']}/download")
+    r = login("read_only").get(f"/api/v1/attachments/{listed[0]['id']}/download")
     assert r.status_code == 200 and r.content == data
     assert r.headers["content-type"] == "application/octet-stream"
     assert r.headers["content-disposition"].startswith("attachment;")
@@ -137,15 +140,15 @@ def test_attachment_list_and_safe_download(admin, login, stored_file):
         ".." not in r.headers["content-disposition"] and "<" not in r.headers["content-disposition"]
     )
     assert r.headers["x-content-type-options"] == "nosniff"
-    assert admin.get("/api/attachments/999/download").status_code == 404
-    assert admin.get("/api/tickets/999/attachments").status_code == 404
+    assert admin.get("/api/v1/attachments/999/download").status_code == 404
+    assert admin.get("/api/v1/tickets/999/attachments").status_code == 404
 
 
 def test_download_refuses_path_traversal_and_missing_files(admin, owner, stored_file, tmp_path):
     tid, _ = stored_file
-    aid = admin.get(f"/api/tickets/{tid}/attachments").json()[0]["id"]
+    aid = admin.get(f"/api/v1/tickets/{tid}/attachments").json()[0]["id"]
     (Path(tmp_path).parent / "secret.txt").write_text("nope")
     owner.execute(text("UPDATE attachments SET storage_key = '../secret.txt'"))
-    assert admin.get(f"/api/attachments/{aid}/download").status_code == 404
+    assert admin.get(f"/api/v1/attachments/{aid}/download").status_code == 404
     owner.execute(text("UPDATE attachments SET storage_key = '1/missing'"))
-    assert admin.get(f"/api/attachments/{aid}/download").status_code == 404
+    assert admin.get(f"/api/v1/attachments/{aid}/download").status_code == 404

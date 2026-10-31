@@ -22,7 +22,7 @@ alembic upgrade head          # as psa_owner (MIGRATION_DATABASE_URL)
 python -m app.seed            # demo data: 4 users (one per role), 3 orgs
 uvicorn app.main:app --reload
 ```
-Interactive API docs: http://localhost:8000/api/docs
+Interactive API docs: http://localhost:8000/api/v1/docs
 
 Lint/format: `ruff check app tests && ruff format app tests`
 
@@ -68,7 +68,7 @@ With the API and `npm run dev` running and a **freshly seeded** database (the bi
 ### Isolated e2e run
 `scripts/e2e.sh [playwright args...]` runs Playwright against a throwaway stack, so it needs no running servers and no fresh seed:
 - a new database `psa_e2e_<pid>` (roles `psa_owner` / `psa_app` are created if missing), migrated and seeded, and dropped on exit;
-- the API (`DEV_LOGIN_ENABLED=true`) and the Vite dev server on free ports, with Vite proxying `/api` to that API (`E2E_API_PORT`);
+- the API (`DEV_LOGIN_ENABLED=true`) and the Vite dev server on free ports, with Vite proxying `/api/v1` to that API (`E2E_API_PORT`);
 - both processes are stopped on exit, even on failure or Ctrl-C. Logs are kept in a temp dir whose path is printed on failure.
 
 ```sh

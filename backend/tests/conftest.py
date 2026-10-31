@@ -153,7 +153,7 @@ def login(make_user):
     def _login(role: str = "admin", email: str | None = None) -> TestClient:
         user = make_user(role, email)
         client = TestClient(RouteRecorder(app), headers={"X-Requested-With": "psa"})
-        r = client.post("/api/auth/dev-login", json={"email": user["email"]})
+        r = client.post("/api/v1/auth/dev-login", json={"email": user["email"]})
         assert r.status_code == 200, r.text
         client.user = user
         return client
@@ -174,7 +174,7 @@ def anon():
 @pytest.fixture
 def make_org(admin):
     def _make(name="Acme Corp", **kw):
-        r = admin.post("/api/organizations", json={"name": name, **kw})
+        r = admin.post("/api/v1/organizations", json={"name": name, **kw})
         assert r.status_code == 201, r.text
         return r.json()
 
@@ -186,7 +186,7 @@ def org_ctx(admin, make_org):
     """An organization with a contact, ready to have tickets."""
     org = make_org("Acme Corp")
     contact = admin.post(
-        f"/api/organizations/{org['id']}/contacts",
+        f"/api/v1/organizations/{org['id']}/contacts",
         json={"name": "Pat Customer", "email": "pat@acme.com"},
     ).json()
     return {"org": org["id"], "contact": contact["id"]}
@@ -196,7 +196,7 @@ def org_ctx(admin, make_org):
 def make_ticket(admin, org_ctx):
     def _make(**kw):
         body = {"organization_id": org_ctx["org"], "subject": "Printer down", **kw}
-        r = admin.post("/api/tickets", json=body)
+        r = admin.post("/api/v1/tickets", json=body)
         assert r.status_code == 201, r.text
         return r.json()
 
@@ -216,7 +216,7 @@ def biz_today():
 @pytest.fixture
 def company(admin):
     r = admin.patch(
-        "/api/settings",
+        "/api/v1/settings",
         json={
             "company_name": "Acme MSP LLC",
             "company_address": "1 Main St\nSpringfield, IL",
@@ -234,16 +234,17 @@ def biller(login):
 @pytest.fixture
 def wt(admin):
     """Work type ids by name, with Remote=$150/h (not taxable), Onsite=$200/h (taxable)."""
-    ids = {w["name"]: w["id"] for w in admin.get("/api/work-types").json()}
+    ids = {w["name"]: w["id"] for w in admin.get("/api/v1/work-types").json()}
     assert (
         admin.patch(
-            f"/api/billing/work-types/{ids['Remote']}", json={"rate_cents": 15000}
+            f"/api/v1/billing/work-types/{ids['Remote']}", json={"rate_cents": 15000}
         ).status_code
         == 200
     )
     assert (
         admin.patch(
-            f"/api/billing/work-types/{ids['Onsite']}", json={"rate_cents": 20000, "taxable": True}
+            f"/api/v1/billing/work-types/{ids['Onsite']}",
+            json={"rate_cents": 20000, "taxable": True},
         ).status_code
         == 200
     )
@@ -254,7 +255,7 @@ def wt(admin):
 def log(admin):
     def _log(ticket_id, work_type_id, minutes, **kw):
         r = admin.post(
-            f"/api/tickets/{ticket_id}/time",
+            f"/api/v1/tickets/{ticket_id}/time",
             json={"work_type_id": work_type_id, "minutes": minutes, **kw},
         )
         assert r.status_code == 201, r.text
@@ -268,7 +269,7 @@ def make_org_with_ticket(admin, make_org):
     def _make(name):
         org = make_org(name)
         t = admin.post(
-            "/api/tickets", json={"organization_id": org["id"], "subject": f"{name} issue"}
+            "/api/v1/tickets", json={"organization_id": org["id"], "subject": f"{name} issue"}
         ).json()
         return org, t
 
@@ -294,7 +295,7 @@ def client_org(admin, make_org, company):
     """A client whose billing contact will receive notices."""
     org = make_org("Acme Corp")["id"]
     admin.post(
-        f"/api/organizations/{org}/contacts",
+        f"/api/v1/organizations/{org}/contacts",
         json={"name": "Pat Payer", "email": "pat@acme.com", "is_billing_contact": True},
     )
     return org

@@ -424,7 +424,7 @@ def test_budget_exact_cents(run, org, wt, log, owner, admin):
     log(t1_ticket, wt["Remote"], 90)  # 1.5 h  = 225.00
     log(t2_ticket, wt["Remote"], 7)  # rounds up to 15 min = 0.25 h = 37.50
     voided = log(t2_ticket, wt["Remote"], 60)
-    assert admin.post(f"/api/time-entries/{voided['id']}/void").status_code == 200
+    assert admin.post(f"/api/v1/time-entries/{voided['id']}/void").status_code == 200
     log(t2_ticket, wt["Remote"], 30, billable=False)  # worked, never billed
     with run() as ctx:
         b = svc.budget(ctx, pid)
@@ -492,7 +492,7 @@ def test_budget_uses_org_rate_override(run, org, wt, log, admin):
         p = mk_tm(ctx, org)
         pid, tid = p.id, task(ctx, p).ticket_id
     r = admin.put(
-        f"/api/organizations/{org}/billing/rates/{wt['Remote']}", json={"rate_cents": 10_000}
+        f"/api/v1/organizations/{org}/billing/rates/{wt['Remote']}", json={"rate_cents": 10_000}
     )
     assert r.status_code == 200, r.text
     log(tid, wt["Remote"], 60)

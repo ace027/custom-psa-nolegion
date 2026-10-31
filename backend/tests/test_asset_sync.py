@@ -15,13 +15,15 @@ def setup_ninja(admin, make_org, vendors, assets, name="Acme Corp"):  # noqa: F8
     v = vendors[i["id"]]
     v.clients = {"7": name}
     v.assets = {"7": assets}
-    m = admin.post(f"/api/integrations/{i['id']}/clients/refresh").json()[0]
-    admin.put(f"/api/integrations/{i['id']}/clients/{m['id']}", json={"organization_id": org["id"]})
+    m = admin.post(f"/api/v1/integrations/{i['id']}/clients/refresh").json()[0]
+    admin.put(
+        f"/api/v1/integrations/{i['id']}/clients/{m['id']}", json={"organization_id": org["id"]}
+    )
     return org, i, v
 
 
 def assets_of(admin, org, **q):
-    r = admin.get(f"/api/organizations/{org['id']}/assets", params=q)
+    r = admin.get(f"/api/v1/organizations/{org['id']}/assets", params=q)
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -94,7 +96,7 @@ def test_failed_sync_changes_nothing_and_shows_a_clear_error(admin, make_org, ve
     run = run_sync(i["id"])
     assert run["status"] == "failed" and "down" in run["error"]
     assert [a["name"] for a in assets_of(admin, org)] == ["PC-1"]
-    state = admin.get("/api/integrations").json()[0]
+    state = admin.get("/api/v1/integrations").json()[0]
     assert state["status"] == "error" and state["last_error"]
 
 
@@ -103,9 +105,11 @@ def test_a_client_that_fails_is_left_alone_while_others_sync(admin, make_org, ve
     org_b = make_org("Globex")
     v.clients["8"] = "Globex"
     v.assets["8"] = [dev("9", "G-PC", "SER-GLOB-0009")]
-    rows = admin.post(f"/api/integrations/{i['id']}/clients/refresh").json()
+    rows = admin.post(f"/api/v1/integrations/{i['id']}/clients/refresh").json()
     gid = next(r["id"] for r in rows if r["external_id"] == "8")
-    admin.put(f"/api/integrations/{i['id']}/clients/{gid}", json={"organization_id": org_b["id"]})
+    admin.put(
+        f"/api/v1/integrations/{i['id']}/clients/{gid}", json={"organization_id": org_b["id"]}
+    )
     run_sync(i["id"])
     v.fail_assets = {"7"}
     v.assets["7"] = []  # would look like "everything gone" if it were trusted
@@ -143,9 +147,9 @@ def test_unmapped_and_ignored_clients_are_never_synced(admin, make_org, vendors,
     v = vendors[i["id"]]
     v.clients = {"7": "Acme Corp", "8": "Ignored Inc"}
     v.assets = {"7": [dev("1")], "8": [dev("2", "X", "SER-IGNO-0002")]}
-    rows = admin.post(f"/api/integrations/{i['id']}/clients/refresh").json()
+    rows = admin.post(f"/api/v1/integrations/{i['id']}/clients/refresh").json()
     ig = next(r for r in rows if r["external_id"] == "8")
-    admin.put(f"/api/integrations/{i['id']}/clients/{ig['id']}", json={"ignored": True})
+    admin.put(f"/api/v1/integrations/{i['id']}/clients/{ig['id']}", json={"ignored": True})
     run = run_sync(i["id"])
     assert (
         run["clients_synced"] == 0
@@ -161,15 +165,15 @@ def test_same_serial_in_both_systems_merges_with_two_sources(admin, make_org, ve
     hv = vendors[hudu["id"]]
     hv.clients = {"H1": "Acme Corp"}
     hv.assets = {"H1": [dev("a9", "PC-1 (hudu)", "sn abcd 1234", end=iso(100))]}
-    m = admin.post(f"/api/integrations/{hudu['id']}/clients/refresh").json()[0]
+    m = admin.post(f"/api/v1/integrations/{hudu['id']}/clients/refresh").json()[0]
     admin.put(
-        f"/api/integrations/{hudu['id']}/clients/{m['id']}", json={"organization_id": org["id"]}
+        f"/api/v1/integrations/{hudu['id']}/clients/{m['id']}", json={"organization_id": org["id"]}
     )
     run_sync(ninja["id"])
     run_sync(hudu["id"])
     rows = assets_of(admin, org)
     assert len(rows) == 1 and rows[0]["conflict"] is False
-    assert len(admin.get(f"/api/assets/{rows[0]['id']}").json()["sources"]) == 2
+    assert len(admin.get(f"/api/v1/assets/{rows[0]['id']}").json()["sources"]) == 2
 
 
 def test_disagreeing_warranty_dates_are_flagged_not_silently_resolved(admin, make_org, vendors):  # noqa: F811
@@ -177,9 +181,9 @@ def test_disagreeing_warranty_dates_are_flagged_not_silently_resolved(admin, mak
     hudu = connect(admin, HUDU)
     vendors[hudu["id"]].clients = {"H1": "Acme Corp"}
     vendors[hudu["id"]].assets = {"H1": [dev("a9", "PC-1", "SN-ABCD-1234", end=iso(300))]}
-    m = admin.post(f"/api/integrations/{hudu['id']}/clients/refresh").json()[0]
+    m = admin.post(f"/api/v1/integrations/{hudu['id']}/clients/refresh").json()[0]
     admin.put(
-        f"/api/integrations/{hudu['id']}/clients/{m['id']}", json={"organization_id": org["id"]}
+        f"/api/v1/integrations/{hudu['id']}/clients/{m['id']}", json={"organization_id": org["id"]}
     )
     run_sync(ninja["id"])
     run_sync(hudu["id"])
@@ -197,9 +201,9 @@ def test_network_gear_takes_its_values_from_hudu_first(admin, make_org, vendors)
     vendors[hudu["id"]].assets = {
         "H1": [dev("a9", "Core Switch", "SW-CORE-0001", kind="network", end=iso(900))]
     }
-    m = admin.post(f"/api/integrations/{hudu['id']}/clients/refresh").json()[0]
+    m = admin.post(f"/api/v1/integrations/{hudu['id']}/clients/refresh").json()[0]
     admin.put(
-        f"/api/integrations/{hudu['id']}/clients/{m['id']}", json={"organization_id": org["id"]}
+        f"/api/v1/integrations/{hudu['id']}/clients/{m['id']}", json={"organization_id": org["id"]}
     )
     run_sync(ninja["id"])
     run_sync(hudu["id"])
@@ -238,9 +242,9 @@ def test_hostname_fallback_only_when_a_serial_is_missing(admin, make_org, vendor
             dev("a2", "FILE-SRV", "SRV-FILE-0002", kind="server"),  # serial on both and they differ
         ]
     }
-    m = admin.post(f"/api/integrations/{hudu['id']}/clients/refresh").json()[0]
+    m = admin.post(f"/api/v1/integrations/{hudu['id']}/clients/refresh").json()[0]
     admin.put(
-        f"/api/integrations/{hudu['id']}/clients/{m['id']}", json={"organization_id": org["id"]}
+        f"/api/v1/integrations/{hudu['id']}/clients/{m['id']}", json={"organization_id": org["id"]}
     )
     run_sync(ninja["id"])
     run_sync(hudu["id"])
@@ -252,9 +256,11 @@ def test_same_serial_in_two_clients_stays_two_assets(admin, make_org, vendors): 
     org_b = make_org("Globex")
     v.clients["8"] = "Globex"
     v.assets["8"] = [dev("2")]  # same serial, different client
-    rows = admin.post(f"/api/integrations/{i['id']}/clients/refresh").json()
+    rows = admin.post(f"/api/v1/integrations/{i['id']}/clients/refresh").json()
     gid = next(r["id"] for r in rows if r["external_id"] == "8")
-    admin.put(f"/api/integrations/{i['id']}/clients/{gid}", json={"organization_id": org_b["id"]})
+    admin.put(
+        f"/api/v1/integrations/{i['id']}/clients/{gid}", json={"organization_id": org_b["id"]}
+    )
     run_sync(i["id"])
     assert len(assets_of(admin, org_a)) == 1 and len(assets_of(admin, org_b)) == 1
 
@@ -265,7 +271,7 @@ def test_override_wins_survives_sync_and_can_be_removed(admin, make_org, vendors
     a = assets_of(admin, org)[0]
     assert a["warranty_status"] == "expired"
     r = admin.put(
-        f"/api/assets/{a['id']}/overrides/warranty_end",
+        f"/api/v1/assets/{a['id']}/overrides/warranty_end",
         json={"value": iso(200), "reason": "Extended warranty per invoice 4471"},
     )
     assert r.status_code == 200 and r.json()["warranty_status"] == "in_warranty"
@@ -273,10 +279,10 @@ def test_override_wins_survives_sync_and_can_be_removed(admin, make_org, vendors
     run_sync(i["id"])
     row = assets_of(admin, org)[0]
     assert row["warranty_end"] == iso(200) and row["warranty_overridden"] is True
-    assert admin.get(f"/api/assets/{a['id']}").json()["sources"][0]["data"]["warranty_end"] == iso(
-        -3
-    )
-    gone = admin.delete(f"/api/assets/{a['id']}/overrides/warranty_end")
+    assert admin.get(f"/api/v1/assets/{a['id']}").json()["sources"][0]["data"][
+        "warranty_end"
+    ] == iso(-3)
+    gone = admin.delete(f"/api/v1/assets/{a['id']}/overrides/warranty_end")
     assert gone.status_code == 200 and gone.json()["warranty_end"] == iso(-3)
     actions = [r[0] for r in owner.execute(text("SELECT action FROM audit_log ORDER BY id"))]
     assert "asset.override_set" in actions and "asset.override_cleared" in actions
@@ -286,7 +292,7 @@ def test_override_needs_a_reason_and_a_known_field(admin, make_org, vendors):  #
     org, i, _ = setup_ninja(admin, make_org, vendors, [dev("1")])
     run_sync(i["id"])
     a = assets_of(admin, org)[0]
-    url = f"/api/assets/{a['id']}/overrides"
+    url = f"/api/v1/assets/{a['id']}/overrides"
     assert (
         admin.put(f"{url}/warranty_end", json={"value": iso(5), "reason": "  "}).status_code == 409
     )
@@ -294,7 +300,7 @@ def test_override_needs_a_reason_and_a_known_field(admin, make_org, vendors):  #
     assert admin.delete(f"{url}/warranty_end").status_code == 404
     assert (
         admin.put(
-            "/api/assets/999/overrides/warranty_end", json={"value": iso(5), "reason": "x"}
+            "/api/v1/assets/999/overrides/warranty_end", json={"value": iso(5), "reason": "x"}
         ).status_code
         == 404
     )
@@ -304,9 +310,9 @@ def test_remapping_a_vendor_client_moves_its_devices(admin, make_org, vendors): 
     org_a, i, v = setup_ninja(admin, make_org, vendors, [dev("1")])
     org_b = make_org("Globex")
     run_sync(i["id"])
-    m = admin.get(f"/api/integrations/{i['id']}/clients").json()[0]
+    m = admin.get(f"/api/v1/integrations/{i['id']}/clients").json()[0]
     admin.put(
-        f"/api/integrations/{i['id']}/clients/{m['id']}", json={"organization_id": org_b["id"]}
+        f"/api/v1/integrations/{i['id']}/clients/{m['id']}", json={"organization_id": org_b["id"]}
     )
     run_sync(i["id"])
     assert len(assets_of(admin, org_b)) == 1
@@ -328,12 +334,12 @@ def test_due_logic_respects_interval_and_sync_now(admin, make_org, vendors, owne
     assert due_ids() == [i["id"]]  # never synced
     run_sync(i["id"])
     assert due_ids() == []
-    admin.post(f"/api/integrations/{i['id']}/sync")
+    admin.post(f"/api/v1/integrations/{i['id']}/sync")
     assert due_ids() == [i["id"]]  # "sync now"
     run_sync(i["id"])
     assert due_ids() == []
     owner.execute(text("UPDATE integrations SET last_sync_at = now() - interval '7 hours'"))
     owner.execute(text("UPDATE sync_runs SET started_at = now() - interval '7 hours'"))
     assert due_ids() == [i["id"]]
-    admin.patch(f"/api/integrations/{i['id']}", json={"enabled": False})
+    admin.patch(f"/api/v1/integrations/{i['id']}", json={"enabled": False})
     assert due_ids() == []

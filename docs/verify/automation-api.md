@@ -9,7 +9,7 @@ Run this once in Phase 15. Mark each item pass or fail with a note.
 
 ## API keys
 - [ ] 1. Create an API key (Settings > API keys) with ticket read. Expect the token shown once.
-- [ ] 2. `curl -H "Authorization: Bearer <token>" https://<host>/api/tickets` returns tickets; without the header it is refused.
+- [ ] 2. `curl -H "Authorization: Bearer <token>" https://<host>/api/v1/tickets` returns tickets; without the header it is refused.
 - [ ] 3. Revoke the key. The same call is now refused. The audit log shows the create and the revoke.
 
 ## Webhooks

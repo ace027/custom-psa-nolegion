@@ -66,14 +66,14 @@ def test_database_refuses_more_than_the_invoice_balance(biller, world, org_ctx):
 def test_database_refuses_bad_targets(biller, world, make_org):
     w = world
     draft = biller.post(
-        "/api/invoices", json={"organization_id": w["org"], "include_unbilled": False}
+        "/api/v1/invoices", json={"organization_id": w["org"], "include_unbilled": False}
     ).json()["id"]
     refuses(APPLY, "finalized invoice", p=w["payment"], i=draft, o=w["org"], a=1)
     other_org = make_org("Other")["id"]
     theirs = final_invoice(biller, other_org, 500)["id"]
     refuses(APPLY, "different clients", p=w["payment"], i=theirs, o=other_org, a=1)
     refuses(APPLY, "different clients", p=w["payment"], i=w["invoice"], o=other_org, a=1)
-    biller.post(f"/api/payments/{w['payment']}/void", json={"reason": "bounced"})
+    biller.post(f"/api/v1/payments/{w['payment']}/void", json={"reason": "bounced"})
     refuses(APPLY, "voided payment", p=w["payment"], i=w["invoice"], o=w["org"], a=1)
 
 
@@ -100,7 +100,7 @@ def test_payments_are_immutable_except_for_voiding(world):
 
 def test_a_void_payment_and_void_application_are_frozen(biller, world):
     w = world
-    biller.post(f"/api/payments/{w['payment']}/void", json={"reason": "bounced"})
+    biller.post(f"/api/v1/payments/{w['payment']}/void", json={"reason": "bounced"})
     refuses("UPDATE payments SET status = 'active' WHERE id = :p", "immutable", p=w["payment"])
     refuses(
         "UPDATE payment_applications SET amount_cents = 1 WHERE id = :a",
@@ -142,7 +142,7 @@ def test_write_off_guards(biller, world):
     refuses(ins, "more than the invoice balance", i=w["invoice"], o=w["org"], a=6001, r="too much")
     refuses(ins, "ck_write_offs_reason", i=w["invoice"], o=w["org"], a=1, r="  ")
     run_sql(ins, i=w["invoice"], o=w["org"], a=6000, r="uncollectible")
-    wo = biller.post(f"/api/invoices/{w['invoice']}/write-off", json={"reason": "nothing left"})
+    wo = biller.post(f"/api/v1/invoices/{w['invoice']}/write-off", json={"reason": "nothing left"})
     assert wo.status_code == 409
     refuses("UPDATE write_offs SET amount_cents = 1", "can only be voided")
     with pytest.raises(DBAPIError):
@@ -175,7 +175,7 @@ def test_concurrent_payments_cannot_overpay_an_invoice(biller, login, org_ctx, c
     def attempt(client, payment_id):
         gate.wait()
         r = client.post(
-            f"/api/payments/{payment_id}/apply",
+            f"/api/v1/payments/{payment_id}/apply",
             json={"invoice_id": invoice["id"], "amount_cents": 3000},
         )
         results.append(r.status_code)
@@ -186,7 +186,7 @@ def test_concurrent_payments_cannot_overpay_an_invoice(biller, login, org_ctx, c
     [t.start() for t in threads]
     [t.join() for t in threads]
     assert sorted(results) == [200, 200, 200] + [409] * 7, results
-    final = biller.get(f"/api/invoices/{invoice['id']}").json()
+    final = biller.get(f"/api/v1/invoices/{invoice['id']}").json()
     assert final["paid_cents"] == 9000 and final["balance_cents"] == 1000
     assert final["paid_cents"] <= final["total_cents"]
 
@@ -203,14 +203,14 @@ def test_concurrent_write_off_and_payment_cannot_exceed_the_balance(
     def do_pay():
         gate.wait()
         out["pay"] = a.post(
-            f"/api/payments/{p['id']}/apply",
+            f"/api/v1/payments/{p['id']}/apply",
             json={"invoice_id": invoice["id"], "amount_cents": 10000},
         ).status_code
 
     def do_wo():
         gate.wait()
         out["wo"] = b.post(
-            f"/api/invoices/{invoice['id']}/write-off",
+            f"/api/v1/invoices/{invoice['id']}/write-off",
             json={"reason": "uncollectible", "amount_cents": 10000},
         ).status_code
 
@@ -218,5 +218,5 @@ def test_concurrent_write_off_and_payment_cannot_exceed_the_balance(
     [t.start() for t in ts]
     [t.join() for t in ts]
     assert sorted(out.values()) in ([200, 409], [201, 409]), out
-    final = biller.get(f"/api/invoices/{invoice['id']}").json()
+    final = biller.get(f"/api/v1/invoices/{invoice['id']}").json()
     assert final["balance_cents"] == 0 and final["paid_cents"] + final["written_off_cents"] == 10000

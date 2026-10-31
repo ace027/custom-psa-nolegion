@@ -26,15 +26,15 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("App", () => {
   it("shows the sign-in page when unauthenticated", async () => {
-    route({ "/api/auth/me": json({ detail: "Not authenticated" }, 401) });
+    route({ "/api/v1/auth/me": json({ detail: "Not authenticated" }, 401) });
     renderApp();
     expect(await screen.findByText("Sign in with Microsoft")).toBeInTheDocument();
   });
 
   it("hides admin-only navigation from a tech", async () => {
     route({
-      "/api/auth/me": json(me),
-      "/api/organizations?limit=200&include_archived=false&q=": json({ items: [{ id: 1, name: "Acme", status: "active", archived_at: null }], total: 1, limit: 200, offset: 0 }),
+      "/api/v1/auth/me": json(me),
+      "/api/v1/organizations?limit=200&include_archived=false&q=": json({ items: [{ id: 1, name: "Acme", status: "active", archived_at: null }], total: 1, limit: 200, offset: 0 }),
     });
     renderApp();
     expect(await screen.findByText("Acme")).toBeInTheDocument();
@@ -44,8 +44,8 @@ describe("App", () => {
 
   it("hides write controls from read-only users", async () => {
     route({
-      "/api/auth/me": json({ ...me, role: "read_only", permissions: ["org:read", "user:read"] }),
-      "/api/organizations?limit=200&include_archived=false&q=": json({ items: [], total: 0, limit: 200, offset: 0 }),
+      "/api/v1/auth/me": json({ ...me, role: "read_only", permissions: ["org:read", "user:read"] }),
+      "/api/v1/organizations?limit=200&include_archived=false&q=": json({ items: [], total: 0, limit: 200, offset: 0 }),
     });
     renderApp();
     expect(await screen.findByText("No organizations.")).toBeInTheDocument();

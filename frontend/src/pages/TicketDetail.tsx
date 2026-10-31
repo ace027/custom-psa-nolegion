@@ -75,7 +75,7 @@ export default function TicketDetail() {
           <ul className="text-sm">
             {files.data!.map((a) => (
               <li key={a.id}>
-                <a className="text-blue-700 hover:underline" href={`/api/attachments/${a.id}/download`}>
+                <a className="text-blue-700 hover:underline" href={`/api/v1/attachments/${a.id}/download`}>
                   {a.filename}
                 </a>{" "}
                 <span className="text-slate-500">({Math.ceil(a.size_bytes / 1024)} KB)</span>

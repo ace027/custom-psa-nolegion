@@ -10,7 +10,7 @@ cd frontend && npm run typecheck && npm test && npm run build
 `scripts/e2e.sh` is described in [DEVELOPMENT.md](../DEVELOPMENT.md). Set `CHROMIUM_PATH` if Playwright's bundled browser is not installed
 (in the cloud sandbox: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`).
 
-The spec pins the clock to Tue 2030-01-08 15:00 UTC (09:00 in America/Chicago, the seeded org zone; it reads the zone from `/api/settings`).
+The spec pins the clock to Tue 2030-01-08 15:00 UTC (09:00 in America/Chicago, the seeded org zone; it reads the zone from `/api/v1/settings`).
 - Booking flow: Book on the ticket, row on the card, Open on board, event in the tech's column, edit 10:00-11:00 to 13:00-14:00, toast, Undo, times back.
 - Reassign and conflict: move an appointment onto a tech who is busy at that time; the toast says "Overlaps another appointment" and the block shows the "Has conflicts" icon.
 - Drag: mouse-drag an event one hour down; `starts_at` and `ends_at` both move by 60 minutes. Native drag works with Playwright mouse steps, so this test is active (not `fixme`).

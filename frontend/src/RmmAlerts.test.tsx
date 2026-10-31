@@ -28,7 +28,7 @@ const ticket = (over = {}) => ({
 
 let calls: string[] = [];
 function go(path: string, h: Record<string, () => Response>) {
-  const handlers: Record<string, () => Response> = { "/api/auth/me": json(me), ...h };
+  const handlers: Record<string, () => Response> = { "/api/v1/auth/me": json(me), ...h };
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
     const key = init?.method && init.method !== "GET" ? `${init.method} ${url}` : url;
     calls.push(`${key} ${init?.body ?? ""}`);
@@ -40,12 +40,12 @@ function go(path: string, h: Record<string, () => Response>) {
 beforeEach(() => { calls = []; });
 afterEach(() => vi.unstubAllGlobals());
 
-const ALERTS_OPEN = "/api/integrations/1/alerts?state=open";
+const ALERTS_OPEN = "/api/v1/integrations/1/alerts?state=open";
 
 describe("RMM alerts card", () => {
   it("renders only for ninjaone, with defaults for an empty config", async () => {
     go("/integrations", {
-      "/api/integrations": json([integ(), integ({ id: 2, kind: "hudu", name: "Hudu" })]),
+      "/api/v1/integrations": json([integ(), integ({ id: 2, kind: "hudu", name: "Hudu" })]),
       [ALERTS_OPEN]: json([]),
     });
     expect(await screen.findByText("Alerts to tickets")).toBeInTheDocument();
@@ -60,51 +60,51 @@ describe("RMM alerts card", () => {
 
   it("saves the merged config", async () => {
     go("/integrations", {
-      "/api/integrations": json([integ({ config: { keep: "me" } })]),
+      "/api/v1/integrations": json([integ({ config: { keep: "me" } })]),
       [ALERTS_OPEN]: json([]),
-      "PATCH /api/integrations/1": json(integ()),
+      "PATCH /api/v1/integrations/1": json(integ()),
     });
     fireEvent.click(await screen.findByLabelText("Create tickets from alerts"));
     fireEvent.change(screen.getByLabelText("Minimum severity"), { target: { value: "CRITICAL" } });
     fireEvent.change(screen.getByLabelText("When an alert clears"), { target: { value: "note_only" } });
     fireEvent.change(screen.getByLabelText("Check every (minutes)"), { target: { value: "10" } });
     fireEvent.click(screen.getByRole("button", { name: "Save alert settings" }));
-    await waitFor(() => expect(calls.some((c) => c.startsWith("PATCH /api/integrations/1 "))).toBe(true));
-    const body = JSON.parse(calls.find((c) => c.startsWith("PATCH /api/integrations/1 "))!.split(" ").slice(2).join(" "));
+    await waitFor(() => expect(calls.some((c) => c.startsWith("PATCH /api/v1/integrations/1 "))).toBe(true));
+    const body = JSON.parse(calls.find((c) => c.startsWith("PATCH /api/v1/integrations/1 "))!.split(" ").slice(2).join(" "));
     expect(body.config).toEqual({ keep: "me", alerts_enabled: true, alert_min_severity: "CRITICAL", alert_clear_rule: "note_only", alert_poll_minutes: 10 });
   });
 
   it("shows a server 409 inline", async () => {
     go("/integrations", {
-      "/api/integrations": json([integ()]),
+      "/api/v1/integrations": json([integ()]),
       [ALERTS_OPEN]: json([]),
-      "PATCH /api/integrations/1": json({ detail: "alert_poll_minutes must be 1-60" }, 409),
+      "PATCH /api/v1/integrations/1": json({ detail: "alert_poll_minutes must be 1-60" }, 409),
     });
     fireEvent.click(await screen.findByRole("button", { name: "Save alert settings" }));
     expect(await screen.findByText("alert_poll_minutes must be 1-60")).toBeInTheDocument();
   });
 
   it("Check now is disabled while alerts are off and queues a poll when on", async () => {
-    const { unmount } = go("/integrations", { "/api/integrations": json([integ()]), [ALERTS_OPEN]: json([]) });
+    const { unmount } = go("/integrations", { "/api/v1/integrations": json([integ()]), [ALERTS_OPEN]: json([]) });
     expect(await screen.findByRole("button", { name: "Check now" })).toBeDisabled();
     unmount();
     go("/integrations", {
-      "/api/integrations": json([integ({ config: { alerts_enabled: true }, alerts_requested: true, alerts_last_error: "NinjaOne sign-in failed" })]),
+      "/api/v1/integrations": json([integ({ config: { alerts_enabled: true }, alerts_requested: true, alerts_last_error: "NinjaOne sign-in failed" })]),
       [ALERTS_OPEN]: json([]),
-      "POST /api/integrations/1/alerts/poll": json(integ(), 202),
+      "POST /api/v1/integrations/1/alerts/poll": json(integ(), 202),
     });
     const btn = await screen.findByRole("button", { name: "Check now" });
     expect(btn).toBeEnabled();
     expect(screen.getByText("Check queued")).toBeInTheDocument();
     expect(screen.getByText("NinjaOne sign-in failed")).toBeInTheDocument();
     fireEvent.click(btn);
-    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/integrations/1/alerts/poll"))).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/v1/integrations/1/alerts/poll"))).toBe(true));
   });
 
   it("shows a deferred or suspicious warning from the last poll", async () => {
     const warning = "3 new alert(s) deferred to the next poll (limit 25 per poll)";
     go("/integrations", {
-      "/api/integrations": json([integ({ config: { alerts_enabled: true }, alerts_last_error: warning })]),
+      "/api/v1/integrations": json([integ({ config: { alerts_enabled: true }, alerts_last_error: warning })]),
       [ALERTS_OPEN]: json([]),
     });
     expect(await screen.findByText(warning)).toBeInTheDocument();
@@ -112,30 +112,30 @@ describe("RMM alerts card", () => {
 
   it("lists alerts with a ticket link and switches the filter", async () => {
     go("/integrations", {
-      "/api/integrations": json([integ()]),
+      "/api/v1/integrations": json([integ()]),
       [ALERTS_OPEN]: json([alertRow()]),
-      "/api/integrations/1/alerts?state=cleared": json([alertRow({ id: 6, state: "cleared", cleared_at: "2026-10-03T12:00:00Z", resolution: "resolved", ticket_number: 108, ticket_id: 43 })]),
+      "/api/v1/integrations/1/alerts?state=cleared": json([alertRow({ id: 6, state: "cleared", cleared_at: "2026-10-03T12:00:00Z", resolution: "resolved", ticket_number: 108, ticket_id: 43 })]),
     });
     const link = await screen.findByRole("link", { name: "#107" });
     expect(link).toHaveAttribute("href", "/tickets/42");
     expect(screen.getByText("Disk almost full")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Alert filter"), { target: { value: "cleared" } });
     expect(await screen.findByRole("link", { name: "#108" })).toHaveAttribute("href", "/tickets/43");
-    expect(calls.some((c) => c.startsWith("/api/integrations/1/alerts?state=cleared"))).toBe(true);
+    expect(calls.some((c) => c.startsWith("/api/v1/integrations/1/alerts?state=cleared"))).toBe(true);
     expect(screen.getByText("Ticket resolved")).toBeInTheDocument();
   });
 });
 
 describe("ticket device chip", () => {
   it("shows the device link and RMM badge for an rmm ticket", async () => {
-    go("/tickets/42", { "/api/tickets/42": json(ticket()) });
+    go("/tickets/42", { "/api/v1/tickets/42": json(ticket()) });
     expect(await screen.findByText("From RMM alert")).toBeInTheDocument();
     expect(screen.getByText(/Device:/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "PC-1" })).toHaveAttribute("href", "/organizations/3");
   });
 
   it("shows nothing for a ui ticket", async () => {
-    go("/tickets/42", { "/api/tickets/42": json(ticket({ source: "ui", asset_id: null, asset_name: null })) });
+    go("/tickets/42", { "/api/v1/tickets/42": json(ticket({ source: "ui", asset_id: null, asset_name: null })) });
     expect(await screen.findByText(/#107/)).toBeInTheDocument();
     expect(screen.queryByText("From RMM alert")).toBeNull();
     expect(screen.queryByText(/Device:/)).toBeNull();

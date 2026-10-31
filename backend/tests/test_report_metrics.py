@@ -127,7 +127,7 @@ def sla_params(group="priority"):
 
 
 def test_sla_classification_percentiles_and_totals(biller, sla_data):
-    d = biller.get("/api/reports/sla", params=sla_params()).json()
+    d = biller.get("/api/v1/reports/sla", params=sla_params()).json()
     by = {r["label"]: r for r in d["rows"]}
     assert [r["label"] for r in d["rows"]] == ["Urgent", "High", "Low"]  # by priority rank
     u = by["Urgent"]
@@ -157,22 +157,22 @@ def test_sla_classification_percentiles_and_totals(biller, sla_data):
 
 
 def test_sla_groups_by_organization_and_assignee(biller, sla_data):
-    d = biller.get("/api/reports/sla", params=sla_params("organization")).json()
+    d = biller.get("/api/v1/reports/sla", params=sla_params("organization")).json()
     assert [(r["label"], r["n"]) for r in d["rows"]] == [("Alpha Co", 4), ("Beta Co", 3)]
-    d = biller.get("/api/reports/sla", params=sla_params("assignee")).json()
+    d = biller.get("/api/v1/reports/sla", params=sla_params("assignee")).json()
     assert [(r["label"], r["n"]) for r in d["rows"]] == [("tech user", 4), ("Unassigned", 3)]
     assert d["rows"][-1]["key"] is None and d["totals"]["n"] == 7
-    assert biller.get("/api/reports/sla", params={"group": "nope"}).status_code == 422
+    assert biller.get("/api/v1/reports/sla", params={"group": "nope"}).status_code == 422
 
 
 def test_sla_empty_range(biller, utc_always_open):
-    d = biller.get("/api/reports/sla", params={"from": "2001-01-01", "to": "2001-01-31"}).json()
+    d = biller.get("/api/v1/reports/sla", params={"from": "2001-01-01", "to": "2001-01-31"}).json()
     assert d["rows"] == [] and d["totals"]["n"] == 0
     assert d["totals"]["first_response"]["met_bp"] is None
     assert d["totals"]["resolution"]["p90_minutes"] is None
     assert (
         biller.get(
-            "/api/reports/sla", params={"from": "2026-05-02", "to": "2026-05-01"}
+            "/api/v1/reports/sla", params={"from": "2026-05-02", "to": "2026-05-01"}
         ).status_code
         == 409
     )
@@ -245,7 +245,7 @@ def util_data(owner, admin, make_org_with_ticket, make_user, utc_always_open):
 
 
 def test_utilisation_capacity_with_holiday_and_partial_time_off(biller, util_data):
-    d = biller.get("/api/reports/utilisation", params={"from": str(MON), "to": str(SUN)}).json()
+    d = biller.get("/api/v1/reports/utilisation", params={"from": str(MON), "to": str(SUN)}).json()
     row = next(r for r in d["rows"] if r["user_id"] == util_data["tech"])
     # 4 working days x 480 (Wednesday is a holiday) minus 180 minutes of approved time off
     assert row["capacity_minutes"] == 4 * 480 - 180 == 1740
@@ -259,7 +259,9 @@ def test_utilisation_capacity_with_holiday_and_partial_time_off(biller, util_dat
 
 def test_utilisation_reconciles_with_time_entries(biller, owner, util_data):
     for lo, hi in ((MON, SUN), (date(2026, 3, 1), date(2026, 3, 31))):
-        d = biller.get("/api/reports/utilisation", params={"from": str(lo), "to": str(hi)}).json()
+        d = biller.get(
+            "/api/v1/reports/utilisation", params={"from": str(lo), "to": str(hi)}
+        ).json()
         expected = owner.execute(
             text(
                 "SELECT (SELECT coalesce(sum(minutes_actual), 0) FROM time_entries"
@@ -275,11 +277,13 @@ def test_utilisation_reconciles_with_time_entries(biller, owner, util_data):
 
 def test_utilisation_empty_range_has_capacity_but_no_logged_time(biller, util_data):
     d = biller.get(
-        "/api/reports/utilisation", params={"from": "2001-01-01", "to": "2001-01-07"}
+        "/api/v1/reports/utilisation", params={"from": "2001-01-01", "to": "2001-01-07"}
     ).json()
     assert d["totals"]["logged_minutes"] == 0 and d["totals"]["utilisation_bp"] == 0
     # a range with no working days at all (Saturday only): zero capacity, null percentages
-    sat = biller.get("/api/reports/utilisation", params={"from": "2026-03-07", "to": "2026-03-07"})
+    sat = biller.get(
+        "/api/v1/reports/utilisation", params={"from": "2026-03-07", "to": "2026-03-07"}
+    )
     t = sat.json()["totals"]
     row = next(r for r in sat.json()["rows"] if r["user_id"] == util_data["tech"])
     assert row["capacity_minutes"] == 0 and row["utilisation_bp"] is None
@@ -300,9 +304,9 @@ def test_aging_total_equals_open_invoice_balances(biller, owner, make_org, compa
     )
     assert pay(biller, a, 4000, [{"invoice_id": i1["id"], "amount_cents": 4000}]).status_code == 201
     assert biller.post(
-        f"/api/invoices/{i3['id']}/write-off", json={"amount_cents": 5000, "reason": "bad debt"}
+        f"/api/v1/invoices/{i3['id']}/write-off", json={"amount_cents": 5000, "reason": "bad debt"}
     ).status_code in (200, 201)
-    d = biller.get("/api/reports/aging").json()
+    d = biller.get("/api/v1/reports/aging").json()
     balance_sum = owner.execute(
         text(
             """SELECT coalesce(sum(bal), 0) FROM (
@@ -324,7 +328,7 @@ def test_aging_total_equals_open_invoice_balances(biller, owner, make_org, compa
 
 
 def test_aging_with_nothing_owed(biller):
-    d = biller.get("/api/reports/aging").json()
+    d = biller.get("/api/v1/reports/aging").json()
     assert d["rows"] == [] and d["totals"]["total_open_cents"] == 0
 
 
@@ -421,7 +425,7 @@ def profit_data(admin, biller, owner, make_org_with_ticket, make_user, company):
 
 
 def test_profitability_costs_margin_and_data_gaps(biller, profit_data):
-    d = biller.get("/api/reports/profitability", params={"from": str(LO), "to": str(HI)}).json()
+    d = biller.get("/api/v1/reports/profitability", params={"from": str(LO), "to": str(HI)}).json()
     by = {r["organization_name"]: r for r in d["rows"]}
     main = by["Main Co"]
     assert main["revenue_cents"] == 100000
@@ -446,8 +450,8 @@ def test_profitability_costs_margin_and_data_gaps(biller, profit_data):
 def test_profitability_revenue_reconciles_with_the_revenue_report(biller, profit_data):
     for lo, hi in ((LO, HI), (date(2026, 1, 1), date(2026, 12, 31))):
         p = {"from": str(lo), "to": str(hi)}
-        prof = biller.get("/api/reports/profitability", params=p).json()
-        rev = biller.get("/api/reports/revenue", params=p).json()
+        prof = biller.get("/api/v1/reports/profitability", params=p).json()
+        rev = biller.get("/api/v1/reports/revenue", params=p).json()
         assert prof["totals"]["revenue_cents"] == rev["totals"]["subtotal_cents"]
         by = {c["organization_id"]: c["subtotal_cents"] for c in rev["clients"]}
         for r in prof["rows"]:
@@ -456,7 +460,7 @@ def test_profitability_revenue_reconciles_with_the_revenue_report(biller, profit
 
 def test_profitability_empty_range(biller):
     d = biller.get(
-        "/api/reports/profitability", params={"from": "2001-01-01", "to": "2001-01-31"}
+        "/api/v1/reports/profitability", params={"from": "2001-01-01", "to": "2001-01-31"}
     ).json()
     assert (
         d["rows"] == [] and d["totals"]["revenue_cents"] == 0 and d["totals"]["margin_bp"] is None
@@ -467,7 +471,7 @@ def test_zero_revenue_client_with_no_cost_rate_user(biller, owner, make_org_with
     org, ticket = make_org_with_ticket("Lonely Co")
     u = make_user("tech", "lonely@example.com")["id"]
     add_time(owner, org["id"], ticket["id"], u, date(2026, 3, 3), 45)
-    d = biller.get("/api/reports/profitability", params={"from": str(LO), "to": str(HI)}).json()
+    d = biller.get("/api/v1/reports/profitability", params={"from": str(LO), "to": str(HI)}).json()
     [r] = d["rows"]
     assert (r["revenue_cents"], r["cost_cents"], r["margin_cents"]) == (0, 0, 0)
     assert r["margin_bp"] is None and r["minutes_without_cost_rate"] == 45

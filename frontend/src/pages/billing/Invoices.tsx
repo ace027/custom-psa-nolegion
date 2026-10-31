@@ -104,7 +104,7 @@ export function InvoicePage() {
         <h2 className="text-lg font-semibold">{inv.number ?? `Draft invoice #${inv.id}`}</h2>
         <StatusPill status={inv.status} />
         <span className="text-slate-600">{inv.organization_name}</span>
-        <a className="ml-auto text-sm text-blue-700 hover:underline" href={`/api/invoices/${inv.id}/pdf`}>Download PDF</a>
+        <a className="ml-auto text-sm text-blue-700 hover:underline" href={`/api/v1/invoices/${inv.id}/pdf`}>Download PDF</a>
         {inv.status === "final" && can(me, "billing:write") && <EmailInvoice id={inv.id} />}
         {inv.billing_run_id && <Link className="text-sm text-blue-700 hover:underline" to={`/billing/runs/${inv.billing_run_id}`}>Billing run</Link>}
       </div>

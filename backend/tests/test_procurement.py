@@ -9,7 +9,7 @@ from sqlalchemy import text
 from tests.conftest import biz_today
 from tests.test_timekeeping import audit_actions
 
-P = "/api/procurement"
+P = "/api/v1/procurement"
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def vendor(admin):
 
 @pytest.fixture
 def taxed(admin, org_ctx):
-    r = admin.patch(f"/api/organizations/{org_ctx['org']}/billing", json={"tax_rate_bp": 825})
+    r = admin.patch(f"/api/v1/organizations/{org_ctx['org']}/billing", json={"tax_rate_bp": 825})
     assert r.status_code == 200, r.text
 
 
@@ -80,7 +80,7 @@ def charges(owner):
 
 def product(admin, **kw):
     body = {"name": "Switch", "unit_price_cents": 99999, "cost_cents": 12345, **kw}
-    r = admin.post("/api/products", json=body)
+    r = admin.post("/api/v1/products", json=body)
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -157,7 +157,7 @@ def test_line_defaults_from_product_and_requires_a_cost(admin, vendor):
     assert r.status_code == 201, r.text
     got = r.json()["lines"][0]
     assert (got["description"], got["unit_cost_cents"], got["taxable"]) == ("Switch", 12345, False)
-    nocost = admin.post("/api/products", json={"name": "Cable", "unit_price_cents": 500}).json()
+    nocost = admin.post("/api/v1/products", json={"name": "Cable", "unit_price_cents": 500}).json()
     r = admin.post(
         f"{P}/purchase-orders",
         json={"vendor_id": vendor["id"], "lines": [{"product_id": nocost["id"], "quantity": 1}]},
@@ -218,17 +218,17 @@ def test_markup_rule_crud_and_duplicates(admin, tech, vendor, owner):
 
 
 def test_default_markup_setting_and_product_category(admin):
-    assert admin.get("/api/settings").json()["default_markup_bp"] == 0
-    r = admin.patch("/api/settings", json={"default_markup_bp": 1800})
+    assert admin.get("/api/v1/settings").json()["default_markup_bp"] == 0
+    r = admin.patch("/api/v1/settings", json={"default_markup_bp": 1800})
     assert r.status_code == 200 and r.json()["default_markup_bp"] == 1800
-    assert admin.patch("/api/settings", json={"default_markup_bp": -1}).status_code == 422
+    assert admin.patch("/api/v1/settings", json={"default_markup_bp": -1}).status_code == 422
     p = product(admin, category="hardware")
     assert p["category"] == "hardware"
-    r = admin.patch(f"/api/products/{p['id']}", json={"category": "license"})
+    r = admin.patch(f"/api/v1/products/{p['id']}", json={"category": "license"})
     assert r.json()["category"] == "license"
     assert (
         admin.post(
-            "/api/products", json={"name": "x", "unit_price_cents": 1, "category": "bogus"}
+            "/api/v1/products", json={"name": "x", "unit_price_cents": 1, "category": "bogus"}
         ).status_code
         == 422
     )
@@ -249,7 +249,7 @@ def test_markup_resolution_order(admin, vendor, org_ctx, owner):
     # nothing configured: default 0 bills at cost
     price, item = unit_price_for(admin, org, vendor, owner, product_id=p["id"])
     assert price == 12345 and item["markup_bp"] == 0
-    admin.patch("/api/settings", json={"default_markup_bp": 1000})
+    admin.patch("/api/v1/settings", json={"default_markup_bp": 1000})
     assert unit_price_for(admin, org, vendor, owner, product_id=p["id"])[0] == 13580  # +1,234.5
     admin.post(f"{P}/markup-rules", json={"category": "hardware", "markup_bp": 2000})
     assert unit_price_for(admin, org, vendor, owner, product_id=p["id"])[0] == 14814
@@ -418,7 +418,7 @@ def test_create_asset_carries_the_serial(admin, vendor, org_ctx, owner):
         {"i": asset_id},
     ).one()
     assert row == (org_ctx["org"], "Laptop", "SN-9876-XYZ", "SN9876XYZ")
-    assert admin.get(f"/api/assets/{asset_id}").status_code == 200
+    assert admin.get(f"/api/v1/assets/{asset_id}").status_code == 200
     [c] = charges(owner)
     assert c.description == "Laptop (S/N SN-9876-XYZ)"
 
@@ -476,7 +476,7 @@ def test_undo_after_the_charge_is_invoiced_is_refused(
 ):
     [item] = stock(admin, vendor)
     assert deliver(admin, item, org_ctx["org"]).status_code == 200
-    run = biller.post("/api/billing-runs", json={"period": biz_today().strftime("%Y-%m")})
+    run = biller.post("/api/v1/billing-runs", json={"period": biz_today().strftime("%Y-%m")})
     assert run.status_code == 201, run.text
     assert charges(owner)[0].invoice_line_id is not None
     r = admin.post(f"{P}/inventory/{item['id']}/undo-delivery")
@@ -497,8 +497,8 @@ def test_delivered_item_becomes_one_product_invoice_line(
     p = product(admin, category="hardware", taxable=True)
     [item] = stock(admin, vendor, quantity=3, product_id=p["id"])
     assert deliver(admin, item, org_ctx["org"], quantity=3).status_code == 200
-    inv = biller.post("/api/invoices", json={"organization_id": org_ctx["org"]}).json()
-    inv = biller.get(f"/api/invoices/{inv['id']}").json()
+    inv = biller.post("/api/v1/invoices", json={"organization_id": org_ctx["org"]}).json()
+    inv = biller.get(f"/api/v1/invoices/{inv['id']}").json()
     [ln] = inv["lines"]
     assert ln["kind"] == "product" and ln["unit_price_cents"] == 14197
     assert float(ln["quantity"]) == 3
@@ -510,8 +510,8 @@ def test_delivered_item_becomes_one_product_invoice_line(
 def test_untaxable_line_carries_no_tax(admin, biller, vendor, org_ctx, taxed, company):
     [item] = stock(admin, vendor, taxable=False)
     deliver(admin, item, org_ctx["org"])
-    inv = biller.post("/api/invoices", json={"organization_id": org_ctx["org"]}).json()
-    [ln] = biller.get(f"/api/invoices/{inv['id']}").json()["lines"]
+    inv = biller.post("/api/v1/invoices", json={"organization_id": org_ctx["org"]}).json()
+    [ln] = biller.get(f"/api/v1/invoices/{inv['id']}").json()["lines"]
     assert (ln["amount_cents"], ln["tax_cents"]) == (12345, 0)
 
 

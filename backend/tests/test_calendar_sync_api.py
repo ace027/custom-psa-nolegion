@@ -33,7 +33,7 @@ def enabled(owner):
 
 def book(admin, ticket_id, tech, start=None, end=None):
     r = admin.post(
-        "/api/appointments",
+        "/api/v1/appointments",
         json={
             "ticket_id": ticket_id,
             "tech_id": tech.user["id"],
@@ -64,7 +64,7 @@ def set_state(owner, appt, state, error=None):
 
 def avail(client, tech):
     r = client.get(
-        "/api/availability",
+        "/api/v1/availability",
         params={"from": at(0).isoformat(), "to": at(24).isoformat(), "user_ids": tech.user["id"]},
     )
     assert r.status_code == 200, r.text
@@ -111,14 +111,14 @@ def test_sync_is_off_when_disabled_and_real_when_enabled(admin, owner, make_tick
     appt = book(admin, make_ticket()["id"], tech)
     assert appt["sync"] == {"state": "off", "last_error": None}
     set_state(owner, appt["id"], "failed", "boom")
-    assert admin.get(f"/api/appointments/{appt['id']}").json()["sync"]["state"] == "off"
+    assert admin.get(f"/api/v1/appointments/{appt['id']}").json()["sync"]["state"] == "off"
     owner.execute(text("UPDATE settings SET outlook_sync_enabled = true"))
-    assert admin.get(f"/api/appointments/{appt['id']}").json()["sync"] == {
+    assert admin.get(f"/api/v1/appointments/{appt['id']}").json()["sync"] == {
         "state": "failed",
         "last_error": "boom",
     }
     rows = admin.get(
-        "/api/appointments", params={"from": at(0).isoformat(), "to": at(24).isoformat()}
+        "/api/v1/appointments", params={"from": at(0).isoformat(), "to": at(24).isoformat()}
     ).json()
     assert rows[0]["sync"]["state"] == "failed"
 
@@ -134,7 +134,7 @@ def test_list_query_count_is_bounded(admin, owner, make_ticket, tech, enabled):
     event.listen(Engine, "before_cursor_execute", count)
     try:
         r = admin.get(
-            "/api/appointments", params={"from": at(0).isoformat(), "to": at(24).isoformat()}
+            "/api/v1/appointments", params={"from": at(0).isoformat(), "to": at(24).isoformat()}
         )
     finally:
         event.remove(Engine, "before_cursor_execute", count)
@@ -144,11 +144,11 @@ def test_list_query_count_is_bounded(admin, owner, make_ticket, tech, enabled):
 
 # ---- settings ----------------------------------------------------------------------------------
 def test_setting_is_admin_write_only(admin, tech):
-    assert admin.get("/api/settings").json()["outlook_sync_enabled"] is False
-    assert tech.patch("/api/settings", json={"outlook_sync_enabled": True}).status_code == 403
-    r = admin.patch("/api/settings", json={"outlook_sync_enabled": True})
+    assert admin.get("/api/v1/settings").json()["outlook_sync_enabled"] is False
+    assert tech.patch("/api/v1/settings", json={"outlook_sync_enabled": True}).status_code == 403
+    r = admin.patch("/api/v1/settings", json={"outlook_sync_enabled": True})
     assert r.status_code == 200 and r.json()["outlook_sync_enabled"] is True
-    assert tech.get("/api/settings").json()["outlook_sync_enabled"] is True
+    assert tech.get("/api/v1/settings").json()["outlook_sync_enabled"] is True
 
 
 # ---- status ------------------------------------------------------------------------------------
@@ -165,7 +165,7 @@ def test_status_counts_and_lists_failures_newest_first(admin, owner, make_ticket
             ),
             {"e": f"err{n}", "t": FETCHED + timedelta(minutes=n), "i": i},
         )
-    s = tech.get("/api/calendar-sync/status").json()
+    s = tech.get("/api/v1/calendar-sync/status").json()
     assert s["enabled"] is True and s["pending"] == 1 and s["failed"] == 22
     assert len(s["failures"]) == 20
     assert s["failures"][0]["appointment_id"] == ids[21]
@@ -188,7 +188,7 @@ def test_status_reports_oldest_fetch_and_errors(admin, owner, login):
             text("INSERT INTO calendar_busy_status VALUES (:u, :f, :e)"),
             {"u": uid, "f": ts, "e": err},
         )
-    s = admin.get("/api/calendar-sync/status").json()
+    s = admin.get("/api/v1/calendar-sync/status").json()
     assert s["busy_fetched_at"] is None  # other eligible users were never fetched
     owner.execute(
         text(
@@ -197,7 +197,7 @@ def test_status_reports_oldest_fetch_and_errors(admin, owner, login):
         ),
         {"f": FETCHED + timedelta(hours=2), "a": a, "b": b},
     )
-    s = admin.get("/api/calendar-sync/status").json()
+    s = admin.get("/api/v1/calendar-sync/status").json()
     assert s["busy_fetched_at"] == "2030-01-07T06:00:00Z" and s["busy_errors"] == 1
     assert s["enabled"] is False
 
@@ -207,7 +207,7 @@ def test_retry_resets_a_failed_row_and_audits(admin, owner, make_ticket, tech, e
     appt = book(admin, make_ticket()["id"], tech)
     set_state(owner, appt["id"], "failed", "boom")
     owner.execute(text("UPDATE appointment_sync SET attempts = 6"))
-    r = admin.post(f"/api/appointments/{appt['id']}/sync/retry")
+    r = admin.post(f"/api/v1/appointments/{appt['id']}/sync/retry")
     assert r.status_code == 200, r.text
     assert r.json()["sync"] == {"state": "pending", "last_error": None}
     row = owner.execute(text("SELECT state, attempts, last_error FROM appointment_sync")).one()
@@ -218,22 +218,22 @@ def test_retry_resets_a_failed_row_and_audits(admin, owner, make_ticket, tech, e
 
 def test_retry_of_a_non_failed_row_is_409(admin, owner, make_ticket, tech, enabled):
     appt = book(admin, make_ticket()["id"], tech)
-    url = f"/api/appointments/{appt['id']}/sync/retry"
+    url = f"/api/v1/appointments/{appt['id']}/sync/retry"
     assert admin.post(url).status_code == 409  # pending
     set_state(owner, appt["id"], "synced")
     assert admin.post(url).status_code == 409
 
 
 def test_retry_unknown_appointment_is_404(admin):
-    assert admin.post("/api/appointments/999999/sync/retry").status_code == 404
+    assert admin.post("/api/v1/appointments/999999/sync/retry").status_code == 404
 
 
 def test_read_only_cannot_retry(admin, login, owner, make_ticket, tech):
     appt = book(admin, make_ticket()["id"], tech)
     set_state(owner, appt["id"], "failed", "boom")
     ro = login("read_only", "ro@example.com")
-    assert ro.post(f"/api/appointments/{appt['id']}/sync/retry").status_code == 403
-    assert ro.get("/api/calendar-sync/status").status_code == 200
+    assert ro.post(f"/api/v1/appointments/{appt['id']}/sync/retry").status_code == 403
+    assert ro.get("/api/v1/calendar-sync/status").status_code == 200
 
 
 def test_retry_outside_scope_is_404(admin, owner, make_ticket, tech):

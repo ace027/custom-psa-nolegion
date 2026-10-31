@@ -39,7 +39,7 @@ async def login(request: Request):
     s = get_settings()
     if not s.entra_configured:
         raise HTTPException(503, "Entra ID sign-in is not configured")
-    redirect_uri = f"{s.public_url}/api/auth/callback"
+    redirect_uri = f"{s.public_url}/api/v1/auth/callback"
     return await oidc.get_oauth().entra.authorize_redirect(request, redirect_uri)
 
 

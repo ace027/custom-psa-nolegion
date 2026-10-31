@@ -12,11 +12,11 @@ JUL, AUG, SEP = "2026-07", "2026-08", "2026-09"
 
 # ---- helpers ----
 def project(client, org, name="Rollout", approve=True, **billing):
-    r = client.post("/api/projects", json={"organization_id": org, "name": name, **billing})
+    r = client.post("/api/v1/projects", json={"organization_id": org, "name": name, **billing})
     assert r.status_code == 201, r.text
     p = r.json()
     if approve:
-        r = client.post(f"/api/projects/{p['id']}/approve")
+        r = client.post(f"/api/v1/projects/{p['id']}/approve")
         assert r.status_code == 200, r.text
         p = r.json()
     return p
@@ -31,7 +31,7 @@ def fixed(client, org, fee, **kw):
 
 
 def task_ticket(client, pid, title="Task"):
-    r = client.post(f"/api/projects/{pid}/tasks", json={"title": title})
+    r = client.post(f"/api/v1/projects/{pid}/tasks", json={"title": title})
     assert r.status_code == 201, r.text
     return r.json()["ticket_id"]
 
@@ -41,12 +41,12 @@ def day(period, n):
 
 
 def run(client, period, org_name="Acme Corp"):
-    r = client.post("/api/billing-runs", json={"period": period})
+    r = client.post("/api/v1/billing-runs", json={"period": period})
     assert r.status_code == 201, r.text
     inv = next((i for i in r.json()["invoices"] if i["organization_name"] == org_name), None)
     if inv is None:
         return None
-    return client.get(f"/api/invoices/{inv['id']}").json()
+    return client.get(f"/api/v1/invoices/{inv['id']}").json()
 
 
 def lines(inv):
@@ -81,18 +81,18 @@ def line_projects(owner, inv):
 
 
 def budget(client, pid):
-    return client.get(f"/api/projects/{pid}/budget").json()
+    return client.get(f"/api/v1/projects/{pid}/budget").json()
 
 
 def tax(client, org, bp):
-    r = client.patch(f"/api/organizations/{org}/billing", json={"tax_rate_bp": bp})
+    r = client.patch(f"/api/v1/organizations/{org}/billing", json={"tax_rate_bp": bp})
     assert r.status_code == 200, r.text
 
 
 @pytest.fixture
 def ticket(admin, client_org):
     """A normal ticket of the client, outside any project."""
-    r = admin.post("/api/tickets", json={"organization_id": client_org, "subject": "Printer"})
+    r = admin.post("/api/v1/tickets", json={"organization_id": client_org, "subject": "Printer"})
     assert r.status_code == 201, r.text
     return r.json()["id"]
 
@@ -167,7 +167,7 @@ def test_budget_lowered_below_billed_puts_new_time_over_budget(
     t = task_ticket(admin, p["id"])
     log(t, wt["Remote"], 240, work_date=day(JUL, 2))
     assert run(biller, JUL)["total_cents"] == 60000
-    r = admin.patch(f"/api/projects/{p['id']}", json={"budget_cents": 50_000})
+    r = admin.patch(f"/api/v1/projects/{p['id']}", json={"budget_cents": 50_000})
     assert r.status_code == 200, r.text
     assert budget(biller, p["id"])["remaining_cents"] == 0
 
@@ -243,7 +243,9 @@ def test_draft_and_cancelled_before_approval_bill_nothing(
     e1 = log(task_ticket(admin, draft["id"]), wt["Remote"], 60, work_date=day(JUL, 1))["id"]
     e2 = log(task_ticket(admin, gone["id"]), wt["Remote"], 60, work_date=day(JUL, 1))["id"]
     assert (
-        admin.post(f"/api/projects/{gone['id']}/status", json={"status": "cancelled"}).status_code
+        admin.post(
+            f"/api/v1/projects/{gone['id']}/status", json={"status": "cancelled"}
+        ).status_code
         == 200
     )
 
@@ -259,18 +261,18 @@ def test_draft_and_cancelled_before_approval_bill_nothing(
         e2: (None, 0),
         normal: (inv["lines"][0]["id"], 0),
     }
-    r = biller.post(f"/api/projects/{draft['id']}/bill-fixed-fee")
+    r = biller.post(f"/api/v1/projects/{draft['id']}/bill-fixed-fee")
     assert (
         r.status_code == 409 and r.json()["detail"] == "Approve the project before billing its fee"
     )
-    assert biller.get(f"/api/projects/{draft['id']}").json()["fixed_fee_billed"] is False
+    assert biller.get(f"/api/v1/projects/{draft['id']}").json()["fixed_fee_billed"] is False
 
 
 def test_cancelled_after_approval_still_bills_its_time(admin, biller, client_org, wt, log, owner):
     p = tm(admin, client_org, 100_000)
     e = log(task_ticket(admin, p["id"]), wt["Remote"], 90, work_date=day(JUL, 1))["id"]
     assert (
-        admin.post(f"/api/projects/{p['id']}/status", json={"status": "cancelled"}).status_code
+        admin.post(f"/api/v1/projects/{p['id']}/status", json={"status": "cancelled"}).status_code
         == 200
     )
     inv = run(biller, JUL)
@@ -303,9 +305,9 @@ def test_fixed_fee_bills_once_on_the_next_run_and_covers_time(
         text("SELECT fixed_fee_invoice_line_id FROM projects WHERE id = :p"), {"p": p["id"]}
     ).scalar_one()
     assert fee_line == inv["lines"][0]["id"]
-    assert biller.get(f"/api/projects/{p['id']}").json()["fixed_fee_billed"] is True
+    assert biller.get(f"/api/v1/projects/{p['id']}").json()["fixed_fee_billed"] is True
 
-    r = biller.post(f"/api/projects/{p['id']}/bill-fixed-fee")
+    r = biller.post(f"/api/v1/projects/{p['id']}/bill-fixed-fee")
     assert r.status_code == 409 and r.json()["detail"] == "The fixed fee is already billed"
 
     e3 = log(t, wt["Remote"], 60, work_date=day(AUG, 1))["id"]
@@ -329,11 +331,13 @@ def test_bill_fixed_fee_now_makes_a_one_off_draft(admin, biller, client_org, wt,
     tax(biller, client_org, 825)
     p = fixed(admin, client_org, 250_000, taxable=True)
     assert (
-        login("tech", "t@example.com").post(f"/api/projects/{p['id']}/bill-fixed-fee").status_code
+        login("tech", "t@example.com")
+        .post(f"/api/v1/projects/{p['id']}/bill-fixed-fee")
+        .status_code
         == 403
     )
 
-    r = biller.post(f"/api/projects/{p['id']}/bill-fixed-fee")
+    r = biller.post(f"/api/v1/projects/{p['id']}/bill-fixed-fee")
     assert r.status_code == 201, r.text
     out = r.json()
     assert (out["status"], out["billing_run_id"], out["memo"]) == (
@@ -342,7 +346,7 @@ def test_bill_fixed_fee_now_makes_a_one_off_draft(admin, biller, client_org, wt,
         "Project: Rollout (fixed fee)",
     )
     assert (out["subtotal_cents"], out["tax_cents"], out["total_cents"]) == (250000, 20625, 270625)
-    inv = biller.get(f"/api/invoices/{out['id']}").json()
+    inv = biller.get(f"/api/v1/invoices/{out['id']}").json()
     assert lines(inv) == [("project", "1.0000", 250000, 250000)]
     assert descriptions(inv) == ["Project: Rollout (fixed fee)"]
     assert line_projects(owner, inv) == [p["id"]]
@@ -352,7 +356,7 @@ def test_bill_fixed_fee_now_makes_a_one_off_draft(admin, biller, client_org, wt,
     ).one()
     assert audit.detail["invoice_id"] == out["id"] and audit.detail["amount_cents"] == 250000
 
-    again = biller.post(f"/api/projects/{p['id']}/bill-fixed-fee")
+    again = biller.post(f"/api/v1/projects/{p['id']}/bill-fixed-fee")
     assert again.status_code == 409 and again.json()["detail"] == "The fixed fee is already billed"
 
     # the run then only covers the time
@@ -364,11 +368,11 @@ def test_bill_fixed_fee_now_makes_a_one_off_draft(admin, biller, client_org, wt,
 
 def test_bill_fixed_fee_errors(admin, biller, client_org):
     p = tm(admin, client_org, 10_000)
-    r = biller.post(f"/api/projects/{p['id']}/bill-fixed-fee")
+    r = biller.post(f"/api/v1/projects/{p['id']}/bill-fixed-fee")
     assert (
         r.status_code == 409 and r.json()["detail"] == "Only a fixed-fee project has a fee to bill"
     )
-    assert biller.post("/api/projects/9999/bill-fixed-fee").status_code == 404
+    assert biller.post("/api/v1/projects/9999/bill-fixed-fee").status_code == 404
 
 
 def test_voiding_the_fee_invoice_releases_fee_and_time_and_rerun_bills_again(
@@ -379,33 +383,33 @@ def test_voiding_the_fee_invoice_releases_fee_and_time_and_rerun_bills_again(
     inv = run(biller, JUL)
     assert lines(inv) == [("project", "1.0000", 500000, 500000), ("project", "1.0000", 0, 0)]
 
-    r = biller.post(f"/api/invoices/{inv['id']}/void", json={})
+    r = biller.post(f"/api/v1/invoices/{inv['id']}/void", json={})
     assert r.status_code == 200, r.text
-    assert biller.get(f"/api/projects/{p['id']}").json()["fixed_fee_billed"] is False
+    assert biller.get(f"/api/v1/projects/{p['id']}").json()["fixed_fee_billed"] is False
     assert linked(owner, [e]) == {e: (None, 0)}
     assert budget(biller, p["id"])["billed_cents"] == 0
 
-    assert biller.post(f"/api/billing-runs/{inv['billing_run_id']}/cancel").status_code == 200
+    assert biller.post(f"/api/v1/billing-runs/{inv['billing_run_id']}/cancel").status_code == 200
     again = run(biller, JUL)
     assert again["id"] != inv["id"]
     assert lines(again) == [("project", "1.0000", 500000, 500000), ("project", "1.0000", 0, 0)]
     assert again["total_cents"] == 500000
     assert linked(owner, [e]) == {e: (again["lines"][1]["id"], 0)}
-    assert biller.get(f"/api/projects/{p['id']}").json()["fixed_fee_billed"] is True
+    assert biller.get(f"/api/v1/projects/{p['id']}").json()["fixed_fee_billed"] is True
 
 
 def test_voiding_or_deleting_the_one_off_fee_lets_it_bill_again(admin, biller, client_org, company):
     p = fixed(admin, client_org, 70_000)
-    first = biller.post(f"/api/projects/{p['id']}/bill-fixed-fee").json()
-    assert biller.post(f"/api/invoices/{first['id']}/void", json={}).status_code == 200
-    assert biller.get(f"/api/projects/{p['id']}").json()["fixed_fee_billed"] is False
+    first = biller.post(f"/api/v1/projects/{p['id']}/bill-fixed-fee").json()
+    assert biller.post(f"/api/v1/invoices/{first['id']}/void", json={}).status_code == 200
+    assert biller.get(f"/api/v1/projects/{p['id']}").json()["fixed_fee_billed"] is False
 
-    second = biller.post(f"/api/projects/{p['id']}/bill-fixed-fee")
+    second = biller.post(f"/api/v1/projects/{p['id']}/bill-fixed-fee")
     assert second.status_code == 201 and second.json()["total_cents"] == 70000
-    line = biller.get(f"/api/invoices/{second.json()['id']}").json()["lines"][0]
-    assert biller.delete(f"/api/invoice-lines/{line['id']}").status_code == 204
-    assert biller.get(f"/api/projects/{p['id']}").json()["fixed_fee_billed"] is False
-    assert biller.post(f"/api/projects/{p['id']}/bill-fixed-fee").status_code == 201
+    line = biller.get(f"/api/v1/invoices/{second.json()['id']}").json()["lines"][0]
+    assert biller.delete(f"/api/v1/invoice-lines/{line['id']}").status_code == 204
+    assert biller.get(f"/api/v1/projects/{p['id']}").json()["fixed_fee_billed"] is False
+    assert biller.post(f"/api/v1/projects/{p['id']}/bill-fixed-fee").status_code == 201
 
 
 def test_voiding_a_tm_invoice_restores_the_budget(admin, biller, client_org, wt, log, owner):
@@ -414,10 +418,10 @@ def test_voiding_a_tm_invoice_restores_the_budget(admin, biller, client_org, wt,
     e = log(t, wt["Remote"], 120, work_date=day(JUL, 3))["id"]  # 300.00 -> capped at 200.00
     inv = run(biller, JUL)
     assert lines(inv) == [("time", "1.0000", 20000, 20000)]
-    assert biller.post(f"/api/invoices/{inv['id']}/void", json={}).status_code == 200
+    assert biller.post(f"/api/v1/invoices/{inv['id']}/void", json={}).status_code == 200
     assert linked(owner, [e]) == {e: (None, 0)}
     assert budget(biller, p["id"])["remaining_cents"] == 20000
-    assert biller.post(f"/api/billing-runs/{inv['billing_run_id']}/cancel").status_code == 200
+    assert biller.post(f"/api/v1/billing-runs/{inv['billing_run_id']}/cancel").status_code == 200
     again = run(biller, JUL)
     assert lines(again) == [("time", "1.0000", 20000, 20000)]
     assert linked(owner, [e]) == {e: (again["lines"][0]["id"], 0)}
@@ -428,7 +432,7 @@ def test_project_time_never_draws_down_block_hours(
     admin, biller, client_org, wt, log, owner, ticket
 ):
     r = biller.post(
-        "/api/agreements",
+        "/api/v1/agreements",
         json={
             "organization_id": client_org,
             "name": "Retainer",
@@ -463,7 +467,7 @@ def test_expenses_and_charges_on_project_tickets_bill_normally_outside_the_cap(
     t = task_ticket(admin, p["id"])
     e = log(t, wt["Remote"], 60, work_date=day(JUL, 2))["id"]
     r = biller.post(
-        "/api/product-charges",
+        "/api/v1/product-charges",
         json={
             "organization_id": client_org,
             "ticket_id": t,
@@ -475,10 +479,10 @@ def test_expenses_and_charges_on_project_tickets_bill_normally_outside_the_cap(
     )
     assert r.status_code == 201, r.text
     travel = next(
-        c["id"] for c in admin.get("/api/expense-categories").json() if c["name"] == "Travel"
+        c["id"] for c in admin.get("/api/v1/expense-categories").json() if c["name"] == "Travel"
     )
     r = admin.post(
-        "/api/expenses",
+        "/api/v1/expenses",
         json={
             "description": "Parking",
             "amount_cents": 1000,
@@ -508,13 +512,15 @@ def test_one_off_invoice_never_pulls_project_time(
     p = tm(admin, client_org, 100_000)
     pe = log(task_ticket(admin, p["id"]), wt["Remote"], 60)["id"]
     ne = log(ticket, wt["Remote"], 60)["id"]
-    r = biller.post("/api/invoices", json={"organization_id": client_org, "include_unbilled": True})
+    r = biller.post(
+        "/api/v1/invoices", json={"organization_id": client_org, "include_unbilled": True}
+    )
     assert r.status_code == 201, r.text
-    inv = biller.get(f"/api/invoices/{r.json()['id']}").json()
+    inv = biller.get(f"/api/v1/invoices/{r.json()['id']}").json()
     assert lines(inv) == [("time", "1.0000", 15000, 15000)]
     assert line_projects(owner, inv) == [None]
     assert linked(owner, [pe, ne]) == {pe: (None, 0), ne: (inv["lines"][0]["id"], 0)}
-    r = biller.post(f"/api/invoices/{inv['id']}/add-unbilled")
+    r = biller.post(f"/api/v1/invoices/{inv['id']}/add-unbilled")
     assert r.status_code == 200, r.text
     assert linked(owner, [pe]) == {pe: (None, 0)}
 
@@ -529,7 +535,7 @@ def test_project_lines_serialize_and_count_in_the_revenue_report(
     log(ticket, wt["Remote"], 30, work_date=day(JUL, 3))
 
     inv = run(biller, JUL)
-    r = biller.get(f"/api/invoices/{inv['id']}")
+    r = biller.get(f"/api/v1/invoices/{inv['id']}")
     assert r.status_code == 200, r.text
     assert sorted(lines(r.json())) == [
         ("project", "1.0000", 123456, 123456),
@@ -539,9 +545,9 @@ def test_project_lines_serialize_and_count_in_the_revenue_report(
     assert inv["total_cents"] == 145956
 
     run_id = inv["billing_run_id"]
-    assert biller.post(f"/api/billing-runs/{run_id}/review").status_code == 200
-    assert biller.post(f"/api/billing-runs/{run_id}/finalize").status_code == 200
-    r = admin.get("/api/reports/revenue", params={"from": "2026-01-01", "to": "2026-12-31"})
+    assert biller.post(f"/api/v1/billing-runs/{run_id}/review").status_code == 200
+    assert biller.post(f"/api/v1/billing-runs/{run_id}/finalize").status_code == 200
+    r = admin.get("/api/v1/reports/revenue", params={"from": "2026-01-01", "to": "2026-12-31"})
     assert r.status_code == 200, r.text
     row = r.json()["clients"][0]
     assert (row["project_cents"], row["time_cents"]) == (123456, 22500)

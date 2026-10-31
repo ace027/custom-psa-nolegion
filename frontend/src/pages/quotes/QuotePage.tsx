@@ -82,7 +82,7 @@ export default function QuotePage() {
         <Badge status={q.status} expired={q.is_expired} />
         {q.kind === "reprice" && <span className="text-sm text-slate-500">reprice from {q.effective_date}</span>}
       </div>
-      <Card title="Monthly flat fee" actions={<a className="text-sm text-blue-700 hover:underline" href={`/api/quotes/${q.id}/pdf`}>Download proposal PDF</a>}>
+      <Card title="Monthly flat fee" actions={<a className="text-sm text-blue-700 hover:underline" href={`/api/v1/quotes/${q.id}/pdf`}>Download proposal PDF</a>}>
         <p className="text-3xl font-semibold tabular-nums" data-testid="price">{money(q.final_price_cents)}</p>
         <p className="text-sm text-slate-600">{q.term_months}-month agreement. Onboarding is included. {q.valid_until && <>Valid until {q.valid_until}.</>}</p>
         {adjusted && <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-sm text-amber-900">Adjusted from the computed {money(q.computed_price_cents)}: {q.adjustment_reason}</p>}

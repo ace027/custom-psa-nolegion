@@ -14,7 +14,7 @@ const key = (over = {}) => ({
 
 let calls: string[] = [];
 function go(path: string, role: string, perms: string[], h: Record<string, () => Response>) {
-  const handlers: Record<string, () => Response> = { "/api/auth/me": json(me(role, perms)), ...h };
+  const handlers: Record<string, () => Response> = { "/api/v1/auth/me": json(me(role, perms)), ...h };
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
     const k = init?.method && init.method !== "GET" ? `${init.method} ${url}` : url;
     calls.push(`${k} ${init?.body ?? ""}`);
@@ -28,14 +28,14 @@ afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("api keys", () => {
   it("lists keys without any secret", async () => {
-    go("/api-keys", "admin", ADMIN, { "/api/api-keys": json([key(), key({ id: 5, name: "old", state: "revoked" })]) });
+    go("/api-keys", "admin", ADMIN, { "/api/v1/api-keys": json([key(), key({ id: 5, name: "old", state: "revoked" })]) });
     expect(await screen.findByText("n8n")).toBeInTheDocument();
     expect(screen.getAllByText("psa_ab12cd34_…").length).toBe(2);
     expect(screen.getAllByRole("button", { name: /^Revoke / }).length).toBe(1);
   });
 
   it("offers no forbidden permissions", async () => {
-    go("/api-keys", "admin", ADMIN, { "/api/api-keys": json([]) });
+    go("/api-keys", "admin", ADMIN, { "/api/v1/api-keys": json([]) });
     await screen.findByText("Create a key");
     expect(await screen.findByLabelText("ticket:write")).toBeInTheDocument();
     for (const p of ["user:manage", "apikey:manage", "portal:manage"]) expect(screen.queryByLabelText(p)).toBeNull();
@@ -43,8 +43,8 @@ describe("api keys", () => {
 
   it("shows the token once after create", async () => {
     go("/api-keys", "admin", ADMIN, {
-      "/api/api-keys": json([]),
-      "POST /api/api-keys": json({ key: key(), token: "psa_ab12cd34_SECRETSECRETSECRETSECRET" }, 201),
+      "/api/v1/api-keys": json([]),
+      "POST /api/v1/api-keys": json({ key: key(), token: "psa_ab12cd34_SECRETSECRETSECRETSECRET" }, 201),
     });
     fireEvent.change(await screen.findByLabelText("Name"), { target: { value: "n8n" } });
     fireEvent.click(await screen.findByLabelText("ticket:read"));
@@ -52,24 +52,24 @@ describe("api keys", () => {
     expect(await screen.findByDisplayValue("psa_ab12cd34_SECRETSECRETSECRETSECRET")).toHaveAttribute("readonly");
     expect(screen.getByText("Copy this key now. It will not be shown again.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy" })).toBeInTheDocument();
-    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/api-keys ") && c.includes('"expires_in_days":365') && c.includes('"ticket:read"'))).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/v1/api-keys ") && c.includes('"expires_in_days":365') && c.includes('"ticket:read"'))).toBe(true));
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(screen.queryByDisplayValue(/SECRET/)).toBeNull();
   });
 
   it("revokes only after confirmation", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
-    go("/api-keys", "admin", ADMIN, { "/api/api-keys": json([key()]), "POST /api/api-keys/4/revoke": json(key({ state: "revoked" })) });
+    go("/api-keys", "admin", ADMIN, { "/api/v1/api-keys": json([key()]), "POST /api/v1/api-keys/4/revoke": json(key({ state: "revoked" })) });
     const btn = await screen.findByRole("button", { name: "Revoke n8n" });
     fireEvent.click(btn);
-    expect(calls.some((c) => c.startsWith("POST /api/api-keys/4/revoke"))).toBe(false);
+    expect(calls.some((c) => c.startsWith("POST /api/v1/api-keys/4/revoke"))).toBe(false);
     fireEvent.click(btn);
-    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/api-keys/4/revoke"))).toBe(true));
+    await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/v1/api-keys/4/revoke"))).toBe(true));
     expect(confirm).toHaveBeenCalledTimes(2);
   });
 
   it("is hidden without the permission", async () => {
-    go("/api-keys", "tech", ["org:read", "ticket:read"], { "/api/tickets": json([]) });
+    go("/api-keys", "tech", ["org:read", "ticket:read"], { "/api/v1/tickets": json([]) });
     await waitFor(() => expect(screen.queryByText("Create a key")).toBeNull());
     expect(screen.queryByRole("link", { name: "API keys" })).toBeNull();
   });
