@@ -13,7 +13,16 @@ from app import repositories as repo
 from app import ticket_services as tsvc
 from app.config import get_settings
 from app.deps import Ctx
-from app.models import Contact, Organization, Priority, Site, Ticket, User, WorkType
+from app.models import (
+    Contact,
+    KbArticle,
+    Organization,
+    Priority,
+    Site,
+    Ticket,
+    User,
+    WorkType,
+)
 from app.scope import Scope
 
 USERS = [
@@ -354,6 +363,68 @@ def seed_projects(db) -> None:
         )
 
 
+KB_ARTICLES = [
+    # (title, visibility, status, tags, body)
+    (
+        "Fixing a printer that shows offline",
+        "client",
+        "published",
+        ["printer", "troubleshooting"],
+        "If your printer shows offline, check that it is powered on and connected to the network. "
+        "Restart the print spooler service, then remove and re-add the printer. "
+        "If it is still offline, contact support with the printer name.",
+    ),
+    (
+        "Setting up your Microsoft 365 mailbox",
+        "client",
+        "published",
+        ["m365", "email", "onboarding"],
+        "New staff receive a Microsoft 365 mailbox after we get the onboarding request. "
+        "Sign in at office.com with your work address, set up multi-factor authentication "
+        "and add the mailbox to Outlook on your phone and computer.",
+    ),
+    (
+        "VPN drops every hour: checklist",
+        "internal",
+        "published",
+        ["vpn", "network"],
+        "Hourly VPN disconnects usually mean the IKE rekey timer differs between the client and "
+        "the firewall. Collect the VPN client log, compare lifetimes and align the phase 1 "
+        "lifetime. Check for ISP address changes before changing anything else.",
+    ),
+    (
+        "Handling a suspicious sign-in alert",
+        "internal",
+        "draft",
+        ["security", "m365"],
+        "Draft runbook: confirm the sign-in location with the user, revoke active sessions, "
+        "reset the password and review mailbox rules for forwarding.",
+    ),
+]
+
+
+def seed_knowledge(db) -> None:
+    if db.execute(select(func.count()).select_from(KbArticle)).scalar_one():
+        return
+    author = db.execute(select(User).where(func.lower(User.email) == "tech@example.com")).scalar()
+    for title, visibility, status, tags, body in KB_ARTICLES:
+        article = KbArticle(
+            title=title,
+            visibility=visibility,
+            status=status,
+            tags=tags,
+            body=body,
+            created_by_id=author.id if author else None,
+            updated_by_id=author.id if author else None,
+        )
+        db.add(article)
+        db.flush()
+        db.refresh(article)
+        snap = audit.snapshot(article)
+        snap.pop("search", None)
+        audit.record(db, author, "kb_article.create", article, after=snap, detail={"seed": True})
+
+
 def run() -> None:
     if get_settings().is_production:
         raise SystemExit("Refusing to seed demo data in production")
@@ -365,6 +436,7 @@ def run() -> None:
             seed_billing(db)
             seed_assets(db)
             seed_projects(db)
+            seed_knowledge(db)
             db.commit()
             return
         for email, name, role in USERS:
@@ -435,10 +507,11 @@ def run() -> None:
         seed_billing(db)
         seed_assets(db)
         seed_projects(db)
+        seed_knowledge(db)
         db.commit()
         print(
             f"Seeded {len(USERS)} users, {len(ORGS)} organizations, demo tickets, billing, "
-            "devices and projects."
+            "devices, projects and knowledge-base articles."
         )
 
 

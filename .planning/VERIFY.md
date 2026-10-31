@@ -82,3 +82,7 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Build with VITE_BRAND_NAME, VITE_BRAND_LOGO and VITE_BRAND_COLORS set and check the header and login page
 - [ ] An API-key request creates a ticket with source `api`
 - [ ] An existing n8n/webhook consumer still works (outbound webhook URLs are unchanged)
+
+## Phase 13: Knowledge base
+- [ ] Walk through docs/verify/kb.md
+- [ ] Confirm: kb:write for admin and tech only (assumed default)
