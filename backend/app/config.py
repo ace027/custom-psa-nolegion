@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     entra_tenant_id: str = ""
     entra_client_id: str = ""
     entra_client_secret: str = ""
+    # Client-portal SSO: a SECOND, multi-tenant app registration (authority "organizations"),
+    # separate from the single-tenant staff one above. See docs/PORTAL_SSO.md.
+    portal_entra_client_id: str = ""
+    portal_entra_client_secret: str = ""
 
     dev_login_enabled: bool = False
 
@@ -66,6 +70,10 @@ class Settings(BaseSettings):
     @property
     def entra_configured(self) -> bool:
         return bool(self.entra_tenant_id and self.entra_client_id and self.entra_client_secret)
+
+    @property
+    def portal_sso_configured(self) -> bool:
+        return bool(self.portal_entra_client_id and self.portal_entra_client_secret)
 
 
 @lru_cache

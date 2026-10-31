@@ -32,6 +32,9 @@ appointments scheduled".
 3. A portal session cookie (`psa_portal`, HttpOnly, SameSite=Lax, Secure in production) lasts 8 hours.
    Every request re-checks that the contact and client are still active and portal access is still on, so
    removing access, archiving the contact or client, or switching the portal off ends sessions immediately.
+- **Sign in with Microsoft** is offered too when configured: contacts of a client whose Entra tenant id
+  is set on the organization can sign in with their work account instead of a link. Setup, matching rules
+  and the denial reasons are in [PORTAL_SSO.md](PORTAL_SSO.md). Links keep working for everyone.
 - Limits: at most 3 links per contact and 20 per IP per hour; 20 new tickets and 50 replies per contact
   per day. Sign-in requests, sign-ins, failures and denials are all in the audit log (`portal.*`).
 

@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import date, datetime
 from typing import Any, Generic, Literal, TypeVar
@@ -31,11 +32,27 @@ class ErrorOut(BaseModel):
 
 
 # ---- organizations ----
+_TENANT_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+def _tenant_id(value: str | None) -> str | None:
+    """The client's Entra tenant GUID for portal SSO, stored lower-case. Blank clears it."""
+    if value is None or not value.strip():
+        return None
+    value = value.strip().lower()
+    if not _TENANT_ID.match(value):
+        raise ValueError("must be an Entra tenant id (a GUID such as 0f1e2d3c-...)")
+    return value
+
+
 class OrganizationIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     status: OrgStatus = "active"
     billing_address: str | None = None
     notes: str | None = None
+    entra_tenant_id: str | None = Field(default=None, max_length=64)
+
+    _tenant = field_validator("entra_tenant_id")(_tenant_id)
 
 
 class OrganizationPatch(BaseModel):
@@ -44,6 +61,10 @@ class OrganizationPatch(BaseModel):
     billing_address: str | None = None
     notes: str | None = None
     rmm_client_id: uuid.UUID | None = None  # the future RMM's client id; null clears the link
+    # the client's Entra tenant id for portal SSO; null or blank clears it
+    entra_tenant_id: str | None = Field(default=None, max_length=64)
+
+    _tenant = field_validator("entra_tenant_id")(_tenant_id)
 
 
 class OrganizationOut(ORM):
@@ -55,6 +76,7 @@ class OrganizationOut(ORM):
     billing_address: str | None
     notes: str | None
     assets_published: bool
+    entra_tenant_id: str | None
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -120,6 +142,8 @@ class ContactPatch(BaseModel):
     portal_access: bool | None = None
     portal_org_tickets: bool | None = None
     portal_assets: bool | None = None
+    # true clears the bound Entra object id so the next portal SSO sign-in matches by email again
+    unlink_entra: bool = False
 
 
 class ContactOut(ORM):
@@ -136,6 +160,7 @@ class ContactOut(ORM):
     portal_access: bool
     portal_org_tickets: bool
     portal_assets: bool
+    entra_linked: bool  # an Entra account is bound for portal SSO (the oid itself stays internal)
     archived_at: datetime | None
 
 

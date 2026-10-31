@@ -69,6 +69,8 @@ class Organization(TimestampMixin, Base):
     assets_published: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    # The client's Entra tenant GUID (lower-case) for portal SSO; partial-unique in migration 0035
+    entra_tenant_id: Mapped[str | None] = mapped_column(String(64))
 
 
 class Site(TimestampMixin, Base):
@@ -125,7 +127,13 @@ class Contact(TimestampMixin, Base):
     portal_assets: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    # Entra object id bound on the first portal SSO sign-in; partial-unique in migration 0035
+    entra_oid: Mapped[str | None] = mapped_column(String(64))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    @property
+    def entra_linked(self) -> bool:
+        return self.entra_oid is not None
 
 
 class User(TimestampMixin, Base):
@@ -833,9 +841,12 @@ class Attachment(Base):
     __tablename__ = "attachments"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
-    email_message_id: Mapped[int] = mapped_column(ForeignKey("email_messages.id"), nullable=False)
+    # Required when source is 'email' (CHECK in migration 0035); NULL for portal uploads
+    email_message_id: Mapped[int | None] = mapped_column(ForeignKey("email_messages.id"))
     ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), nullable=False)
     organization_id: Mapped[int | None] = mapped_column(BigInteger)
+    source: Mapped[str] = mapped_column(String(10), nullable=False, server_default="email")
+    uploaded_by_contact_id: Mapped[int | None] = mapped_column(ForeignKey("contacts.id"))
     filename: Mapped[str] = mapped_column(String(300), nullable=False)
     content_type: Mapped[str | None] = mapped_column(String(200))
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)

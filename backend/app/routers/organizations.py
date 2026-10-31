@@ -29,6 +29,15 @@ def _org_or_404(ctx: Ctx, org_id: int):
     return org
 
 
+def _tenant_needs_permission(ctx: Ctx, data: dict) -> None:
+    """Setting a client's Entra tenant id decides whose Microsoft accounts may sign in to that
+    client's portal, so it is an admin decision like granting portal access. Clearing it is not."""
+    if data.get("entra_tenant_id") and not P.has_permission(ctx.user.role, P.PORTAL_MANAGE):
+        raise HTTPException(
+            status_code=403, detail="Only an admin can set the client's Entra tenant id"
+        )
+
+
 # ---- organizations ----
 @router.get("/organizations", response_model=Page[OrganizationOut], summary="List organizations")
 def list_organizations(
@@ -52,7 +61,9 @@ def list_organizations(
     summary="Create an organization",
 )
 def create_organization(body: OrganizationIn, ctx: Ctx = require(P.ORG_WRITE)):
-    return services.create_organization(ctx, body.model_dump())
+    data = body.model_dump()
+    _tenant_needs_permission(ctx, data)
+    return services.create_organization(ctx, data)
 
 
 @router.get(
@@ -72,7 +83,9 @@ def get_organization(org_id: int, ctx: Ctx = require(P.ORG_READ)):
     summary="Update an organization",
 )
 def update_organization(org_id: int, body: OrganizationPatch, ctx: Ctx = require(P.ORG_WRITE)):
-    return services.update_organization(ctx, org_id, body.model_dump(exclude_unset=True))
+    data = body.model_dump(exclude_unset=True)
+    _tenant_needs_permission(ctx, data)
+    return services.update_organization(ctx, org_id, data)
 
 
 @router.post(

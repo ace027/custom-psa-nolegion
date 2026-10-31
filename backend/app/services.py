@@ -24,6 +24,8 @@ def _flush(ctx: Ctx, message: str) -> None:
         ctx.db.rollback()
         if "uq_organizations_rmm_client_id" in str(exc.orig):
             raise Conflict("rmm_client_id already linked to another client") from exc
+        if "uq_organizations_entra_tenant_id" in str(exc.orig):
+            raise Conflict("That Entra tenant id is already set on another organization") from exc
         raise Conflict(message) from exc
 
 
@@ -205,11 +207,15 @@ def update_contact(ctx: Ctx, contact_id: int, data: dict) -> Contact:
     before = audit.snapshot(contact)
     if data.get("is_primary"):
         _clear_other_primary(ctx, contact.organization_id, contact.id)
+    unlink = data.pop("unlink_entra", False) and contact.entra_oid is not None
     _apply(contact, data)
+    if unlink:
+        contact.entra_oid = None
     if contact.portal_access and not contact.email:
         raise Conflict("Portal access needs an email address on the contact")
     _flush(ctx, CONTACT_CONFLICT)
-    if not contact.portal_access and before["portal_access"]:
+    if unlink or (not contact.portal_access and before["portal_access"]):
+        # unlinking is done when the account may belong to someone else: end its sessions too
         _revoke_portal(ctx, contact)
     ctx.db.refresh(contact)
     audit.record(

@@ -68,3 +68,57 @@ def test_validation_and_404(admin):
     assert admin.patch("/api/v1/organizations/999", json={"name": "x"}).status_code == 404
     assert admin.post("/api/v1/organizations/999/archive").status_code == 404
     assert admin.get("/api/v1/organizations", params={"limit": 0}).status_code == 422
+
+
+# ---- Entra tenant id for portal SSO ----
+TENANT = "0F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0"
+
+
+def test_entra_tenant_id_is_validated_stored_lower_case_and_unique(admin, make_org):
+    a, b = make_org("Acme Corp"), make_org("Beta LLC")
+    assert a["entra_tenant_id"] is None
+    for bad in ("not-a-guid", "0f1e2d3c4b5a69788796a5b4c3d2e1f0", TENANT + "0", "{" + TENANT + "}"):
+        r = admin.patch(f"/api/v1/organizations/{a['id']}", json={"entra_tenant_id": bad})
+        assert r.status_code == 422, bad
+    r = admin.patch(f"/api/v1/organizations/{a['id']}", json={"entra_tenant_id": f" {TENANT} "})
+    assert r.status_code == 200 and r.json()["entra_tenant_id"] == TENANT.lower()
+    r = admin.patch(f"/api/v1/organizations/{b['id']}", json={"entra_tenant_id": TENANT.lower()})
+    assert r.status_code == 409 and "tenant" in r.json()["detail"]
+    r = admin.post("/api/v1/organizations", json={"name": "Gamma", "entra_tenant_id": TENANT})
+    assert r.status_code == 409
+    audit = admin.get("/api/v1/audit", params={"action": "organization.update"}).json()["items"]
+    assert audit[0]["after"]["entra_tenant_id"] == TENANT.lower()
+    r = admin.patch(f"/api/v1/organizations/{a['id']}", json={"entra_tenant_id": ""})
+    assert r.status_code == 200 and r.json()["entra_tenant_id"] is None
+    assert admin.patch(
+        f"/api/v1/organizations/{b['id']}", json={"entra_tenant_id": TENANT}
+    ).is_success  # free again once cleared
+
+
+def test_only_portal_admins_set_the_tenant_id(admin, make_org, login):
+    org = make_org("Acme Corp")
+    tech = login("tech", "tech@example.com")
+    url = f"/api/v1/organizations/{org['id']}"
+    assert tech.patch(url, json={"entra_tenant_id": TENANT}).status_code == 403
+    r = tech.post("/api/v1/organizations", json={"name": "Beta", "entra_tenant_id": TENANT})
+    assert r.status_code == 403
+    assert admin.patch(url, json={"entra_tenant_id": TENANT}).status_code == 200
+    assert tech.patch(url, json={"name": "Acme Inc"}).status_code == 200  # other edits still fine
+    assert tech.patch(url, json={"entra_tenant_id": None}).json()["entra_tenant_id"] is None
+
+
+def test_contact_entra_link_flag_and_unlink(admin, make_org, owner):
+    from sqlalchemy import text
+
+    org = make_org("Acme Corp")
+    c = admin.post(
+        f"/api/v1/organizations/{org['id']}/contacts", json={"name": "Pat", "email": "p@a.com"}
+    ).json()
+    assert c["entra_linked"] is False and "entra_oid" not in c
+    owner.execute(text("UPDATE contacts SET entra_oid = 'oid-1' WHERE id = :i"), {"i": c["id"]})
+    listed = admin.get(f"/api/v1/organizations/{org['id']}/contacts").json()
+    assert listed[0]["entra_linked"] is True
+    r = admin.patch(f"/api/v1/contacts/{c['id']}", json={"unlink_entra": True})
+    assert r.status_code == 200 and r.json()["entra_linked"] is False
+    r = admin.patch(f"/api/v1/contacts/{c['id']}", json={"unlink_entra": True})
+    assert r.status_code == 200  # unlinking an unlinked contact is a no-op

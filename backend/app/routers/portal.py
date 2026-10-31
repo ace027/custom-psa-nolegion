@@ -1,7 +1,9 @@
-"""Client portal API. Signed-in endpoints see only the contact's own organization; the two
-unauthenticated ones (request / redeem a sign-in link) reveal nothing about who has access."""
+"""Client portal API. Signed-in endpoints see only the contact's own organization; the
+unauthenticated ones (request / redeem a sign-in link, login options, Microsoft sign-in) reveal
+nothing about who has access: every SSO denial ends on the same /portal?sso=denied redirect."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app import audit
@@ -11,13 +13,21 @@ from app import portal as svc
 from app import repositories as repo
 from app import ticket_services as tsvc
 from app.asset_schemas import PortalAssetsOut
-from app.auth import portal_sessions
+from app.auth import oidc, portal_sessions
 from app.config import get_settings
 from app.context import client_ip_var
 from app.invoice_pdf import render_invoice_pdf
 from app.kb_schemas import PortalKbArticleOut, PortalKbSummary, snippet_of
 from app.notices import build_statement
-from app.portal_deps import PortalCtx, billing_only, devices_only, portal_required, public_session
+from app.portal_deps import (
+    PortalCtx,
+    billing_only,
+    devices_only,
+    portal_enabled,
+    portal_required,
+    public_session,
+)
+from app.portal_schemas import PortalLoginOptionsOut
 from app.scheduling_schemas import PortalAppointmentOut
 from app.schemas import (
     ErrorOut,
@@ -89,6 +99,74 @@ def verify(
     )
     ctx = PortalCtx(db=db, user=None, scope=Scope.orgs(contact.organization_id), contact=contact)
     return svc.me(ctx)
+
+
+# ---- Sign in with Microsoft (multi-tenant portal app registration; docs/PORTAL_SSO.md) ----
+def _sso_available(db: Session) -> bool:
+    return get_settings().portal_sso_configured and portal_enabled(db)
+
+
+@router.get(
+    "/login-options",
+    response_model=PortalLoginOptionsOut,
+    summary="Which portal sign-in methods are available (public)",
+)
+def login_options(db: Session = Depends(public_session)):
+    return PortalLoginOptionsOut(sso=_sso_available(db))
+
+
+@router.get(
+    "/sso/login",
+    status_code=302,
+    responses={404: {"model": ErrorOut}},
+    summary="Start Sign in with Microsoft for the portal (redirects to Microsoft)",
+)
+async def sso_login(request: Request, db: Session = Depends(public_session)):
+    if not _sso_available(db):
+        raise HTTPException(status_code=404, detail="Not found")
+    redirect_uri = f"{get_settings().public_url}/api/v1/portal/sso/callback"
+    return await oidc.get_oauth().entra_portal.authorize_redirect(request, redirect_uri)
+
+
+@router.get(
+    "/sso/callback",
+    status_code=303,
+    summary="Microsoft redirect target for portal sign-in; starts a portal session",
+)
+async def sso_callback(request: Request, db: Session = Depends(public_session)):
+    s = get_settings()
+    denied = RedirectResponse(f"{s.public_url}/portal?sso=denied", status_code=303)
+
+    def deny(reason: str) -> RedirectResponse:
+        db.rollback()
+        audit.record_auth_event("portal.login_failed", detail={"reason": reason, "method": "sso"})
+        return denied
+
+    if not s.portal_sso_configured:
+        return deny("not_configured")
+    if not portal_enabled(db):
+        return deny("portal_disabled")
+    try:
+        token = await oidc.get_oauth().entra_portal.authorize_access_token(
+            request, claims_options=oidc.PORTAL_CLAIMS_OPTIONS
+        )
+        claims = dict(token.get("userinfo") or {})
+    except Exception:
+        return deny("token_exchange")
+    try:
+        contact = oidc.resolve_contact_from_claims(db, claims)
+    except oidc.PortalLoginDenied as e:
+        return deny(e.reason)
+    cookie = portal_sessions.create_session(
+        db, contact, client_ip_var.get(), request.headers.get("user-agent")
+    )
+    db.flush()
+    audit.record_auth_event("portal.login", detail={"contact_id": contact.id, "method": "sso"})
+    response = RedirectResponse(f"{s.public_url}/portal", status_code=303)
+    response.set_cookie(
+        s.portal_cookie_name, cookie, max_age=s.portal_session_hours * 3600, **_cookie_args()
+    )
+    return response
 
 
 @router.post("/logout", status_code=204, summary="End the portal session")

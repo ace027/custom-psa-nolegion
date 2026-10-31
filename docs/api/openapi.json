@@ -2499,6 +2499,10 @@
             ],
             "title": "Email"
           },
+          "entra_linked": {
+            "title": "Entra Linked",
+            "type": "boolean"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -2584,6 +2588,7 @@
           "portal_access",
           "portal_org_tickets",
           "portal_assets",
+          "entra_linked",
           "archived_at"
         ],
         "title": "ContactOut",
@@ -2703,6 +2708,11 @@
               }
             ],
             "title": "Title"
+          },
+          "unlink_entra": {
+            "default": false,
+            "title": "Unlink Entra",
+            "type": "boolean"
           }
         },
         "title": "ContactPatch",
@@ -8234,6 +8244,18 @@
             ],
             "title": "Billing Address"
           },
+          "entra_tenant_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entra Tenant Id"
+          },
           "name": {
             "maxLength": 200,
             "minLength": 1,
@@ -8302,6 +8324,17 @@
             "title": "Created At",
             "type": "string"
           },
+          "entra_tenant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entra Tenant Id"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -8357,6 +8390,7 @@
           "billing_address",
           "notes",
           "assets_published",
+          "entra_tenant_id",
           "archived_at",
           "created_at",
           "updated_at"
@@ -8376,6 +8410,18 @@
               }
             ],
             "title": "Billing Address"
+          },
+          "entra_tenant_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entra Tenant Id"
           },
           "name": {
             "anyOf": [
@@ -9690,6 +9736,19 @@
           "email"
         ],
         "title": "PortalLinkIn",
+        "type": "object"
+      },
+      "PortalLoginOptionsOut": {
+        "properties": {
+          "sso": {
+            "title": "Sso",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sso"
+        ],
+        "title": "PortalLoginOptionsOut",
         "type": "object"
       },
       "PortalMeOut": {
@@ -32941,6 +33000,27 @@
         ]
       }
     },
+    "/api/v1/portal/login-options": {
+      "get": {
+        "operationId": "login_options_api_v1_portal_login_options_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalLoginOptionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Which portal sign-in methods are available (public)",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
     "/api/v1/portal/logout": {
       "post": {
         "operationId": "logout_api_v1_portal_logout_post",
@@ -32971,6 +33051,54 @@
           }
         },
         "summary": "The signed-in contact and what they can see",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/v1/portal/sso/callback": {
+      "get": {
+        "operationId": "sso_callback_api_v1_portal_sso_callback_get",
+        "responses": {
+          "303": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Microsoft redirect target for portal sign-in; starts a portal session",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/v1/portal/sso/login": {
+      "get": {
+        "operationId": "sso_login_api_v1_portal_sso_login_get",
+        "responses": {
+          "302": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Start Sign in with Microsoft for the portal (redirects to Microsoft)",
         "tags": [
           "portal"
         ]

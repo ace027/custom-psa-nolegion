@@ -46,7 +46,7 @@ def test_migration_0032_reporting_tables_and_constraints(owner_engine, make_user
     from sqlalchemy.exc import IntegrityError
 
     with owner_engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0034"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0035"
     uid = make_user("admin")["id"]
 
     def schedule(**kw):
@@ -99,3 +99,57 @@ def test_migration_0032_reporting_tables_and_constraints(owner_engine, make_user
                 for p in ("SELECT", "INSERT", "UPDATE", "DELETE")
             }
             assert granted == {"SELECT": True, "INSERT": True, "UPDATE": True, "DELETE": False}
+
+
+def test_migration_0035_portal_columns_and_constraints(owner_engine, make_org):
+    from sqlalchemy.exc import IntegrityError
+
+    a, b = make_org("Tenant A")["id"], make_org("Tenant B")["id"]
+    tid = "11111111-2222-3333-4444-555555555555"
+    with owner_engine.begin() as c:
+        c.execute(
+            text("UPDATE organizations SET entra_tenant_id = :t WHERE id = :o"), dict(t=tid, o=a)
+        )
+    with pytest.raises(IntegrityError), owner_engine.begin() as c:  # unique, case-insensitively
+        c.execute(
+            text("UPDATE organizations SET entra_tenant_id = :t WHERE id = :o"),
+            dict(t=tid.upper(), o=b),
+        )
+    with owner_engine.begin() as c:
+        for org in (a, b):
+            c.execute(
+                text(
+                    "INSERT INTO contacts (organization_id, name, entra_oid) VALUES (:o, 'C', NULL)"
+                ),
+                dict(o=org),
+            )
+        c.execute(
+            text("UPDATE contacts SET entra_oid = 'oid-x' WHERE organization_id = :o"), dict(o=a)
+        )
+    with pytest.raises(IntegrityError), owner_engine.begin() as c:
+        c.execute(
+            text("UPDATE contacts SET entra_oid = 'oid-x' WHERE organization_id = :o"), dict(o=b)
+        )
+    with owner_engine.connect() as c:
+        checks = {
+            r[0]
+            for r in c.execute(
+                text(
+                    "SELECT conname FROM pg_constraint WHERE conrelid = 'attachments'::regclass"
+                    " AND contype = 'c'"
+                )
+            )
+        }
+        assert {"ck_attachments_source", "ck_attachments_email_has_message"} <= checks
+        granted = {
+            p: c.execute(
+                text("SELECT has_table_privilege('psa_app', 'attachments', :p)"), dict(p=p)
+            ).scalar_one()
+            for p in ("SELECT", "INSERT", "UPDATE", "DELETE")
+        }
+        assert granted == {"SELECT": True, "INSERT": True, "UPDATE": False, "DELETE": False}
+        for table, col in (("contacts", "entra_oid"), ("organizations", "entra_tenant_id")):
+            assert c.execute(
+                text("SELECT has_column_privilege('psa_app', :t, :c, 'UPDATE')"),
+                dict(t=table, c=col),
+            ).scalar_one()
