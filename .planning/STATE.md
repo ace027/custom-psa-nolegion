@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 14 of 13 (planned)
-- **Status**: Phase 14 planned -- 3 plans across 3 waves
-- **Last Activity**: Phase 14 planning (2026-10-31)
+- **Phase**: 14 of 13 (executing)
+- **Status**: Phase 14 executing — Plan 14-01 complete
+- **Last Activity**: Plan 14-01 execution (2026-10-31)
 
 ## Progress
 ```
-[##################..] 91% — 44/48 plans complete
+[##################..] 93% — 45/48 plans complete
 ```
 
 ## Recent Decisions
@@ -145,3 +145,7 @@ Run `/triad:build` to execute Phase 14: Portal polish
 - Plan 13-01 (Wave 1): Knowledge base backend: schema, permissions, staff, suggestion and portal APIs — PARTIAL: The knowledge base backend is built, and everything passes except one test that needs a file outside my write list. `tests/test_seed_and_migrations.py` line 49 hardcodes alembic head `"0033"`, so `tes
 - Plan 13-01 (Wave 1): Knowledge base backend: schema, permissions, staff, suggestion and portal APIs — Complete
 - Plan 13-02 (Wave 2): Knowledge base frontend: staff pages, ticket suggestions card, portal pages, docs — Complete
+
+## Phase 14 Results
+(build started 2026-10-31)
+- Plan 14-01 (Wave 1): Portal Entra SSO and the phase 14 schema — Complete with Warnings

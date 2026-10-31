@@ -196,5 +196,5 @@
 | 11 | 3 | 3 | Shipped |
 | 12 | 4 | 4 | Shipped |
 | 13 | 2 | 2 | Complete |
-| 14 | 3 | 0 | Planned |
+| 14 | 3 | 1 | In Progress |
 | 15 | 1 | 0 | Pending |
