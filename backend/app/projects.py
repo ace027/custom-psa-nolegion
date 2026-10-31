@@ -589,7 +589,12 @@ def budget(ctx: Ctx, project_id: int) -> dict:
             ),
         )
         .join(Ticket, Ticket.id == TimeEntry.ticket_id)
-        .where(Ticket.project_id == project.id, TimeEntry.voided_at.is_(None))
+        .where(
+            Ticket.project_id == project.id,
+            TimeEntry.voided_at.is_(None),
+            # owner decision 2026-10-30: automation time is not project labour or billing
+            TimeEntry.entry_type == "labour",
+        )
         .group_by(TimeEntry.work_type_id)
     ).all()
     minutes = 0

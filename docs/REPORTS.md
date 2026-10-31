@@ -23,6 +23,7 @@ Every rule here is an **assumption** until the owner confirms it in Phase 15 (se
 - **Definition**: time worked against time available.
 - **Population and date basis**: active technicians; time entries by work date in the range.
 - **Formulas**: capacity = for each non-holiday date, the person's work-hours minutes for that weekday minus overlapping time off. Logged = non-voided ticket time (actual minutes) plus internal time. Billable = non-voided billable ticket time (actual minutes). Utilisation = logged / capacity; billable % = billable / capacity.
+- **Automation time (owner decision 2026-10-30)**: entries with type `automation` are not in logged, billable or utilisation %. Their non-voided actual minutes are reported in a separate `automation_minutes` column (last column in the CSV), per technician and in the total.
 - **Exclusions**: voided entries; holidays; time off.
 - **Grain**: one row per technician plus a team total. n shown is capacity minutes.
 - **Rounding**: basis points. A person with no capacity shows `-`.
@@ -43,6 +44,7 @@ Every rule here is an **assumption** until the owner confirms it in Phase 15 (se
   - Labour per time entry = `round_cents(actual minutes * cost rate / 60)`, rounded per entry then summed, dated by work date. Cost rate is the hourly rate on the user (Users page, `user:manage`). Entries by someone with no rate count as $0 and are reported as **minutes without cost rate**.
   - Goods = delivered inventory items (quantity x unit cost, dated by delivery date), plus non-voided product charges in range that no inventory item covers, at quantity x product cost. Charges whose product has no cost are counted as **charges without cost**.
   - Expenses = expense amounts (the cost, not the marked-up price), dated by expense date.
+- **Automation time (owner decision 2026-10-30)**: labour cost counts labour entries only; automation entries add no labour cost.
 - **Margin** = revenue - cost. Margin % = margin / revenue, `-` when revenue is 0 or less.
 - **Exclusions**: internal time is not attributed to clients.
 - **Grain**: one row per client plus a total.

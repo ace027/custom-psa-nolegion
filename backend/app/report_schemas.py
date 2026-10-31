@@ -48,6 +48,7 @@ class UtilisationRowOut(BaseModel):
     capacity_minutes: int
     logged_minutes: int
     billable_minutes: int
+    automation_minutes: int
     utilisation_bp: int | None
     billable_bp: int | None
 
@@ -56,6 +57,7 @@ class UtilisationTotalsOut(BaseModel):
     capacity_minutes: int
     logged_minutes: int
     billable_minutes: int
+    automation_minutes: int
     utilisation_bp: int | None
     billable_bp: int | None
 

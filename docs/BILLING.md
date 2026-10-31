@@ -227,6 +227,9 @@ never runs a client-supplied name as a formula.
 - **Invoice CSV:** one row per finalized or voided invoice by invoice date, with paid, written-off,
   balance and payment status, for your accountant. Nothing is sent to any accounting system.
 
+## Automation time
+Time entries of type `automation` (logged by integrations, never billable) are never billable, never invoiced and never drawn from block hours. Billing runs, block drawdown, project T&M billing and the unbilled report select labour entries only. Automation minutes are shown separately in the utilisation report (owner decision 2026-10-30).
+
 ## Procurement charges
 Hardware and other goods you buy for a client are tracked in Procurement (see `docs/PROCUREMENT.md`). When a **billable** inventory item is delivered to a client it becomes one product charge at **cost plus markup** (line markup, then product rule, then category rule, then the default markup). That charge is picked up like any other and bills on the client's **next run**.
 - Tax follows the taxable flag on the purchase order line, which defaults from the product.

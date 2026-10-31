@@ -189,6 +189,8 @@ def unbilled_time(
     stmt = scope.apply(
         select(TimeEntry).where(
             TimeEntry.organization_id == org_id,
+            # owner decision 2026-10-30: automation time is never invoiced
+            TimeEntry.entry_type == "labour",
             TimeEntry.billable.is_(True),
             TimeEntry.voided_at.is_(None),
             TimeEntry.invoice_line_id.is_(None),
@@ -220,6 +222,8 @@ def block_candidates(
         .join(WorkType, WorkType.id == TimeEntry.work_type_id)
         .where(
             TimeEntry.organization_id == org_id,
+            # owner decision 2026-10-30: automation time never draws down a block
+            TimeEntry.entry_type == "labour",
             TimeEntry.billable.is_(True),
             TimeEntry.voided_at.is_(None),
             TimeEntry.invoice_line_id.is_(None),
@@ -252,6 +256,8 @@ def orgs_with_billables(db: Session, scope: Scope, start: date, end: date) -> li
     }
     t = scope.apply(
         select(TimeEntry.organization_id).where(
+            # owner decision 2026-10-30: automation time is never invoiced
+            TimeEntry.entry_type == "labour",
             TimeEntry.billable.is_(True),
             TimeEntry.voided_at.is_(None),
             TimeEntry.invoice_line_id.is_(None),

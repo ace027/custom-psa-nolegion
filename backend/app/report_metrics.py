@@ -28,6 +28,8 @@ Utilisation (per staff user)
   logged_minutes  minutes_actual of non-voided time entries (work_date in range) plus non-voided
     internal time entries.
   billable_minutes  minutes_actual of non-voided time entries flagged billable.
+  automation_minutes  non-voided entry_type 'automation' minutes_actual, reported on their own
+    (owner decision 2026-10-30): never in logged, billable, utilisation or labour cost.
   utilisation_bp = logged / capacity; billable_bp = billable / capacity.
   Users listed: active users who may log time, plus anyone who logged time in the range.
 
@@ -258,6 +260,7 @@ def utilisation(ctx: Ctx, start: date | None, end: date | None) -> dict:
 
     logged: dict[int, int] = defaultdict(int)
     billable: dict[int, int] = defaultdict(int)
+    automation: dict[int, int] = defaultdict(int)
     te = ctx.scope.apply(
         select(
             TimeEntry.user_id,
@@ -265,6 +268,8 @@ def utilisation(ctx: Ctx, start: date | None, end: date | None) -> dict:
             func.sum(TimeEntry.minutes_actual).filter(TimeEntry.billable.is_(True)),
         )
         .where(
+            # owner decision 2026-10-30: utilisation counts labour only
+            TimeEntry.entry_type == "labour",
             TimeEntry.voided_at.is_(None),
             TimeEntry.work_date >= start,
             TimeEntry.work_date <= end,
@@ -275,6 +280,19 @@ def utilisation(ctx: Ctx, start: date | None, end: date | None) -> dict:
     for uid, minutes, bill in db.execute(te):
         logged[uid] += int(minutes or 0)
         billable[uid] += int(bill or 0)
+    auto = ctx.scope.apply(
+        select(TimeEntry.user_id, func.sum(TimeEntry.minutes_actual))
+        .where(
+            TimeEntry.entry_type == "automation",
+            TimeEntry.voided_at.is_(None),
+            TimeEntry.work_date >= start,
+            TimeEntry.work_date <= end,
+        )
+        .group_by(TimeEntry.user_id),
+        TimeEntry.organization_id,
+    )
+    for uid, minutes in db.execute(auto):
+        automation[uid] += int(minutes or 0)
     internal = (
         select(InternalTimeEntry.user_id, func.sum(InternalTimeEntry.minutes))
         .where(
@@ -292,7 +310,9 @@ def utilisation(ctx: Ctx, start: date | None, end: date | None) -> dict:
         for u in db.execute(
             select(User.id, User.display_name, User.timezone, User.role, User.is_active)
         )
-        if u.id in logged or (u.is_active and P.has_permission(u.role, P.TIME_WRITE))
+        if u.id in logged
+        or u.id in automation
+        or (u.is_active and P.has_permission(u.role, P.TIME_WRITE))
     ]
     hours: dict[int, dict[int, tuple[int, int]]] = defaultdict(dict)
     for uid, weekday, s, e in db.execute(
@@ -342,6 +362,7 @@ def utilisation(ctx: Ctx, start: date | None, end: date | None) -> dict:
                 capacity_minutes=capacity,
                 logged_minutes=logged.get(u.id, 0),
                 billable_minutes=billable.get(u.id, 0),
+                automation_minutes=automation.get(u.id, 0),
                 utilisation_bp=bp(logged.get(u.id, 0), capacity),
                 billable_bp=bp(billable.get(u.id, 0), capacity),
             )
@@ -350,10 +371,12 @@ def utilisation(ctx: Ctx, start: date | None, end: date | None) -> dict:
     cap = sum(r["capacity_minutes"] for r in rows)
     log_ = sum(r["logged_minutes"] for r in rows)
     bil = sum(r["billable_minutes"] for r in rows)
+    auto_total = sum(r["automation_minutes"] for r in rows)
     totals = dict(
         capacity_minutes=cap,
         logged_minutes=log_,
         billable_minutes=bil,
+        automation_minutes=auto_total,
         utilisation_bp=bp(log_, cap),
         billable_bp=bp(bil, cap),
     )
@@ -390,6 +413,8 @@ def profitability(ctx: Ctx, start: date | None, end: date | None) -> dict:
         )
         .join(User, User.id == TimeEntry.user_id)
         .where(
+            # owner decision 2026-10-30: labour cost counts labour entries only
+            TimeEntry.entry_type == "labour",
             TimeEntry.voided_at.is_(None),
             TimeEntry.work_date >= start,
             TimeEntry.work_date <= end,
@@ -550,6 +575,7 @@ def _utilisation_csv(d: dict) -> tuple[list[str], list[list], set[int]]:
         "billable_minutes",
         "utilisation_pct",
         "billable_pct",
+        "automation_minutes",
     ]
 
     def line(name: str, r: dict) -> list:
@@ -560,6 +586,7 @@ def _utilisation_csv(d: dict) -> tuple[list[str], list[list], set[int]]:
             r["billable_minutes"],
             pct(r["utilisation_bp"]),
             pct(r["billable_bp"]),
+            r["automation_minutes"],
         ]
 
     rows = [line(r["name"], r) for r in d["rows"]] + [line("Total", d["totals"])]

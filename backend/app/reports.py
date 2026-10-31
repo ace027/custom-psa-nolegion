@@ -163,6 +163,8 @@ def unbilled(ctx: Ctx, through: date | None) -> dict:
                 func.min(TimeEntry.work_date),
             )
             .where(
+                # owner decision 2026-10-30: automation time is never invoiced
+                TimeEntry.entry_type == "labour",
                 TimeEntry.billable.is_(True),
                 TimeEntry.voided_at.is_(None),
                 TimeEntry.invoice_line_id.is_(None),
