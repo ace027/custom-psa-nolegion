@@ -13,7 +13,7 @@
 - [x] Phase 9: CRM & renewals (3 plans)
 - [x] Phase 10: Procurement & inventory (3 plans)
 - [x] Phase 11: Reporting & dashboards (3 plans)
-- [ ] Phase 12: Integration readiness (3 plans)
+- [x] Phase 12: Integration readiness (3 plans)
 - [ ] Phase 13: Knowledge base (2 plans)
 - [ ] Phase 14: Portal polish (3 plans)
 - [ ] Phase 15: Verify (owner manual testing) (1 plan)
@@ -194,7 +194,7 @@
 | 9 | 3 | 3 | Shipped |
 | 10 | 3 | 3 | Complete |
 | 11 | 3 | 3 | Complete |
-| 12 | 4 | 4 | Executed |
+| 12 | 4 | 4 | Complete |
 | 13 | 2 | 0 | Pending |
 | 14 | 3 | 0 | Pending |
 | 15 | 1 | 0 | Pending |

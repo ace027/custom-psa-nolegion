@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Phase**: 12 of 13 (executed, pending review)
-- **Status**: Phase 12 review stale — the same 1 finding(s) after 3 cycles
+- **Phase**: 12 of 13 (complete)
+- **Status**: Phase 12 complete — review passed (1 cycle(s))
 - **Last Activity**: Phase 12 review (2026-10-31)
 
 ## Progress
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Fix the unresolved findings in 12-REVIEW.md, accept the phase as is, or re-plan; then run `/triad:review --phase 12`
+Run `/triad:plan 13` to plan Phase 13: Knowledge base
 
 ## Phase 1 Results
 (build started 2026-10-09)
