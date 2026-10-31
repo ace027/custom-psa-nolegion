@@ -167,3 +167,7 @@ verification: 6/6 passed
 | O-102 | 2026-10-31 | dev | 12 | 12-02 | engineering-senior-developer | implementation | success | 2 | integration-readiness, engineering | Automation time kept out of billing; reported separately: Complete |
 | O-103 | 2026-10-31 | dev | 12 | 12-03 | engineering-frontend-developer | implementation | success | 2 | integration-readiness, engineering | Frontend: branding config, client scope module, note authors and new fields: Complete |
 | O-104 | 2026-10-31 | dev | 12 | 12-04 | engineering-senior-developer | implementation | success | 2 | integration-readiness, engineering | /api/v1 everywhere and the committed OpenAPI spec: Complete |
+| O-105 | 2026-10-31 | dev | 12 | 12-00 | testing-qa-verification-specialist | quality-review | partial | 4 | review, testing | Phase 12 review STALE LOOP ABORTED in 3 cycle(s), 2 finding(s) |
+| O-106 | 2026-10-31 | dev | 12 | 12-00 | testing-api-tester | quality-review | partial | 4 | review, testing | Phase 12 review STALE LOOP ABORTED in 3 cycle(s), 2 finding(s) |
+| O-107 | 2026-10-31 | dev | 12 | 12-00 | engineering-backend-architect | quality-review | partial | 5 | review, engineering | Phase 12 review STALE LOOP ABORTED in 3 cycle(s), 2 finding(s) |
+| O-108 | 2026-10-31 | dev | 12 | 12-00 | design-ux-researcher | quality-review | partial | 5 | review, design | Phase 12 review STALE LOOP ABORTED in 3 cycle(s), 2 finding(s) |

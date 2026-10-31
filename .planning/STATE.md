@@ -2,8 +2,8 @@
 
 ## Current Position
 - **Phase**: 12 of 13 (executed, pending review)
-- **Status**: Phase 12 complete — all plans executed successfully
-- **Last Activity**: Plan 12-04 execution (2026-10-31)
+- **Status**: Phase 12 review stale — the same 1 finding(s) after 3 cycles
+- **Last Activity**: Phase 12 review (2026-10-31)
 
 ## Progress
 ```
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:review` to verify Phase 12: Integration readiness
+Fix the unresolved findings in 12-REVIEW.md, accept the phase as is, or re-plan; then run `/triad:review --phase 12`
 
 ## Phase 1 Results
 (build started 2026-10-09)
