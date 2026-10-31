@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Phase**: 12 of 13 (executing)
-- **Status**: Phase 12 executing — Plan 12-01 failed
+- **Phase**: 12 of 13 (partial — 1 plan(s) failed)
+- **Status**: Phase 12 partial — 12-01 failed, stopped after wave 1, review needed
 - **Last Activity**: Plan 12-01 execution (2026-10-31)
 
 ## Progress
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:build` to execute Phase 12: Integration readiness
+Fix the failed plans and run `/triad:build` again (completed plans are kept), or run `/triad:review`
 
 ## Phase 1 Results
 (build started 2026-10-09)
