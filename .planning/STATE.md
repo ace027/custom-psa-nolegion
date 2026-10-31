@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 11 of 13 (complete)
-- **Status**: Phase 11 complete — review passed (2 cycle(s))
-- **Last Activity**: Phase 11 review (2026-10-30)
+- **Phase**: 12 of 13 (planned)
+- **Status**: Phase 12 planned -- 4 plans across 3 waves
+- **Last Activity**: Phase 12 planning (2026-10-31)
 
 ## Progress
 ```
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:plan 12` to plan Phase 12: Integration readiness (design: .planning/explorations/2026-10-30-integration-readiness.md)
+Run `/triad:build` to execute Phase 12: Integration readiness
 
 ## Phase 1 Results
 (build started 2026-10-09)
@@ -42,6 +42,7 @@ Run `/triad:plan 12` to plan Phase 12: Integration readiness (design: .planning/
 - Phase 7 issue: #12
 - Phase 8 issue: #13
 - Phase 9 issue: #14
+- Phase 12 issue: #17
 
 ## Phase 2 Results
 (build started 2026-10-09)
