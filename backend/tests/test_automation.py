@@ -19,7 +19,7 @@ from tests.vendorfakes import vendors  # noqa: F401
 
 
 def queue(admin, name):
-    return next(q["id"] for q in admin.get("/api/queues").json() if q["name"] == name)
+    return next(q["id"] for q in admin.get("/api/v1/queues").json() if q["name"] == name)
 
 
 def mkrule(admin, **kw):
@@ -30,7 +30,7 @@ def mkrule(admin, **kw):
         "actions": [],
         **kw,
     }
-    r = admin.post("/api/automation/rules", json=body)
+    r = admin.post("/api/v1/automation/rules", json=body)
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -152,7 +152,7 @@ def test_assign_set_queue_and_set_priority_in_position_order(admin, tech, owner,
         "actual": "VPN is down",
         "matched": True,
     }
-    rules = {x["id"]: x for x in admin.get("/api/automation/rules").json()}
+    rules = {x["id"]: x for x in admin.get("/api/v1/automation/rules").json()}
     assert rules[first["id"]]["fire_count"] == 1 and rules[first["id"]]["last_fired_at"]
 
 
@@ -166,7 +166,7 @@ def test_non_matching_rule_is_recorded_but_runs_nothing(admin, owner, make_ticke
     [r] = runs(owner, rule["id"])
     assert r.matched is False and r.trace["actions"] == []
     assert ticket_row(owner, t["id"]).priority_id == t["priority_id"]
-    assert admin.get("/api/automation/rules").json()[0]["fire_count"] == 0
+    assert admin.get("/api/v1/automation/rules").json()[0]["fire_count"] == 0
 
 
 def test_escalate_steps_up_writes_a_note_and_stops_at_the_top(admin, owner, make_ticket):
@@ -229,7 +229,7 @@ def test_webhook_action_to_an_already_subscribed_endpoint_is_skipped_not_doubled
 def test_create_ticket_links_it_and_skips_without_an_organization(admin, owner, make_ticket):
     rule = mkrule(
         admin,
-        conditions=[{"field": "source", "op": "in", "value": ["ui", "email"]}],
+        conditions=[{"field": "source", "op": "in", "value": ["manual", "email"]}],
         actions=[
             {"type": "create_ticket", "subject": "Follow up", "priority_id": pri(admin, "Low")}
         ],
@@ -279,7 +279,7 @@ def test_disabled_and_archived_rules_never_run(admin, owner, make_ticket):
     act = [{"type": "set_priority", "priority_id": pri(admin, "Low")}]
     off = mkrule(admin, name="off", enabled=False, actions=act)
     gone = mkrule(admin, name="gone", actions=act)
-    assert admin.post(f"/api/automation/rules/{gone['id']}/archive").status_code == 200
+    assert admin.post(f"/api/v1/automation/rules/{gone['id']}/archive").status_code == 200
     t = make_ticket()
     assert runs(owner) == []
     assert ticket_row(owner, t["id"]).priority_id == t["priority_id"]
@@ -302,7 +302,7 @@ def test_loop_guard_rules_do_not_trigger_rules_but_webhooks_fire(admin, tech, ow
         actions=[{"type": "set_priority", "priority_id": pri(admin, "Low")}],
     )
     t = make_ticket()
-    r = admin.patch(f"/api/tickets/{t['id']}", json={"status": "waiting_on_customer"})
+    r = admin.patch(f"/api/v1/tickets/{t['id']}", json={"status": "waiting_on_customer"})
     assert r.status_code == 200, r.text
     assert events.automation_depth.get() == 0
     assert [r.rule_id for r in runs(owner)] == [first["id"]]  # the second never ran
@@ -314,7 +314,7 @@ def test_loop_guard_rules_do_not_trigger_rules_but_webhooks_fire(admin, tech, ow
     assert len(hooks) == 1
     assert hooks[0].payload["changes"] == {"assignee_id": [None, tech.user["id"]]}
     # a human assigning afterwards does run the second rule
-    admin.patch(f"/api/tickets/{t['id']}", json={"assignee_id": admin.user["id"]})
+    admin.patch(f"/api/v1/tickets/{t['id']}", json={"assignee_id": admin.user["id"]})
     assert [r.rule_id for r in runs(owner, second["id"])] == [second["id"]]
 
 
@@ -333,7 +333,7 @@ def test_on_event_twice_with_the_same_event_runs_once(admin, owner, make_ticket)
             db.commit()
     assert len(runs(owner, rule["id"])) == 1
     assert owner.execute(text("SELECT count(*) FROM ticket_notes")).scalar() == 1
-    assert admin.get("/api/automation/rules").json()[0]["fire_count"] == 1
+    assert admin.get("/api/v1/automation/rules").json()[0]["fire_count"] == 1
 
 
 # ---- rate cap ----
@@ -371,14 +371,14 @@ def test_reenable_is_refused_while_the_rate_window_is_full(admin, owner, make_ti
         {"r": rule["id"]},
     )
     make_ticket()  # trips the cap
-    r = admin.patch(f"/api/automation/rules/{rule['id']}", json={"enabled": True})
+    r = admin.patch(f"/api/v1/automation/rules/{rule['id']}", json={"enabled": True})
     assert r.status_code == 409 and "turned back on after" in r.text
     # once the window has room, re-enabling works
     owner.execute(
         text("UPDATE automation_runs SET created_at = now() - interval '2 hours' WHERE rule_id=:r"),
         {"r": rule["id"]},
     )
-    r = admin.patch(f"/api/automation/rules/{rule['id']}", json={"enabled": True})
+    r = admin.patch(f"/api/v1/automation/rules/{rule['id']}", json={"enabled": True})
     assert r.status_code == 200 and r.json()["disabled_reason"] is None
 
 

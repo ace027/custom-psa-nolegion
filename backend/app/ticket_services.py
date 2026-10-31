@@ -5,6 +5,7 @@ Works for people (Ctx.user set) and for the mail worker (Ctx.user None = system 
 
 from datetime import UTC, date, datetime
 
+from fastapi import HTTPException
 from sqlalchemy import update
 
 from app import audit, custom_fields, timesheets
@@ -120,7 +121,12 @@ def _mark_first_response(ticket: Ticket) -> None:
 
 # ---- tickets -------------------------------------------------------------------------------
 def create_ticket(
-    ctx: Ctx, data: dict, *, source: str = "ui", requester_email: str | None = None
+    ctx: Ctx,
+    data: dict,
+    *,
+    source: str = "manual",
+    requester_email: str | None = None,
+    external_ref: str | None = None,
 ) -> Ticket:
     org_id = data.get("organization_id")
     if org_id is not None and repo.get_organization(ctx.db, ctx.scope, org_id) is None:
@@ -161,6 +167,7 @@ def create_ticket(
         type_id=type_id,
         custom_values=custom_values,
         source=source,
+        external_ref=external_ref,
         requester_email=requester_email,
         created_by_user_id=ctx.user.id if ctx.user else None,
     )
@@ -384,6 +391,7 @@ def system_note(ctx: Ctx, ticket: Ticket, body: str) -> TicketNote:
         ticket_id=ticket.id,
         organization_id=ticket.organization_id,
         author_user_id=None,
+        author_type="system",
         visibility="internal",
         source="ui",
         body=body,
@@ -452,6 +460,9 @@ def add_time(ctx: Ctx, ticket_id: int, data: dict) -> TimeEntry:
     work_date = _entry_date(ctx, data.get("work_date"))
     timesheets.assert_open(ctx, user_id, work_date)
     inc = repo.get_settings_row(ctx.db).billing_increment_minutes
+    entry_type = data.get("entry_type") or "labour"
+    if entry_type == "automation":
+        data = {**data, "billable": False}
     entry = TimeEntry(
         ticket_id=ticket.id,
         organization_id=ticket.organization_id,
@@ -460,6 +471,7 @@ def add_time(ctx: Ctx, ticket_id: int, data: dict) -> TimeEntry:
         work_date=work_date,
         minutes_actual=data["minutes"],
         billable=data["billable"],
+        entry_type=entry_type,
         note=data.get("note"),
         minutes_billable=billable_minutes(data["minutes"], data["billable"], inc),
     )
@@ -494,6 +506,8 @@ def update_time(ctx: Ctx, entry_id: int, data: dict) -> TimeEntry:
     if entry.block_minutes_covered:
         # part of it was drawn from a block on an invoice; the rest is waiting on an hourly rate
         raise Conflict("This time is partly covered by a block on an invoice and is locked")
+    if entry.entry_type == "automation" and data.get("billable"):
+        raise HTTPException(status_code=422, detail="Automation time is never billable")
     timesheets.assert_open(ctx, entry.user_id, entry.work_date)
     if data.get("work_date"):
         timesheets.assert_open(ctx, entry.user_id, data["work_date"])

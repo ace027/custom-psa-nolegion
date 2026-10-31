@@ -76,6 +76,21 @@ The contact then sees a Devices tab: totals, how many expire within 90 days, and
 | Warranty report and CSV | admin, billing (`report:read`) |
 | Publish to the portal / flag a contact | admin (`portal:manage`) |
 
+## Integration fields
+Hooks for the future custom RMM and other modules. They are columns and API fields only: **the RMM connector itself is future work** and nothing reads or writes these from outside yet.
+
+| Field | Values | Who writes it |
+|---|---|---|
+| `uuid` on clients, sites, contacts | UUID, always present, never changes | The database, at creation. Not client-writable. The integer `id` and all routes stay. |
+| `rmm_client_id` on a client | UUID or null; unique across clients | Staff with `org:write` (PATCH a client). A second client with the same value gets 409 "rmm_client_id already linked to another client". |
+| `source` on an asset | `manual`, `rmm`, `import` | The system. Assets created by a NinjaOne sync are `rmm`, other syncs `import`, hand-entered ones `manual`. A sync never changes a manual asset's source. |
+| `external_id` on an asset | text or null; unique per `source` when set | Read-only; reserved for the RMM's own device id. |
+| `source` on a ticket | `manual`, `email`, `portal`, `rmm`, `api`, `rule` (and `project` for project tasks) | The system: `manual` for a staff session, `api` for an API-key request. The old `ui` value became `manual`, including in stored automation rule conditions. |
+| `external_ref` on a ticket | up to 200 characters or null; unique per `source` when set | Sent when creating a ticket (trimmed; blank means none). A duplicate returns 409 with the existing `ticket_id` when the caller can see it. Cannot be changed afterwards. |
+| `author_type` on a note | `human`, `system`, `ai` | `system` for notes the app writes itself (for example escalation notes), `human` for everything else including email replies. `ai` is reserved. |
+| `entry_type` on a time entry | `labour`, `automation` | Sent when logging time (default `labour`). Automation time is always non-billable: sending `billable: true` returns 422, and the database refuses a billable or invoiced automation row. |
+| `entra_tenant_id` on a user | Entra tenant id or null | Set at every successful Entra sign-in. Read-only. |
+
 ## Not in Phase 1
 Vulnerabilities (ConnectSecure), compliance scores, scoring, PTA reports, tickets from findings, warranty-expiry emails, write-back to any vendor. See [VCISO_PLAN.md](VCISO_PLAN.md).
 
@@ -87,3 +102,5 @@ These were assumptions in the plan (section 8). Building went ahead on them bein
 4. Read-only everywhere; no write-back.
 5. Warranty data reaches clients only when published per client and flagged per contact.
 6. Syncing every 6 hours.
+
+See [API.md](API.md) for the `/api/v1` base path, versioning policy and the committed OpenAPI spec.

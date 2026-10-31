@@ -3,6 +3,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
+from sqlalchemy.exc import IntegrityError
 
 from app import permissions as P
 from app import repositories as repo
@@ -89,11 +90,28 @@ def list_tickets(
     return Page(items=[view(t) for t in items], total=total, limit=limit, offset=offset)
 
 
+def _check_external_ref_free(ctx: Ctx, source: str, external_ref: str) -> None:
+    existing = repo.get_ticket_by_external_ref(ctx.db, ctx.scope, source, external_ref)
+    if existing is not None:
+        raise HTTPException(409, {"message": "external_ref already used", "ticket_id": existing.id})
+
+
 @router.post(
     "/tickets", response_model=TicketOut, status_code=201, responses=ERR, summary="Create a ticket"
 )
 def create_ticket(body: TicketIn, ctx: Ctx = require(P.TICKET_WRITE)):
-    ticket = svc.create_ticket(ctx, body.model_dump())
+    data = body.model_dump()
+    external_ref = data.pop("external_ref")
+    source = "api" if ctx.api_key_id is not None else "manual"
+    if external_ref is not None:
+        _check_external_ref_free(ctx, source, external_ref)
+    try:
+        ticket = svc.create_ticket(ctx, data, source=source, external_ref=external_ref)
+    except IntegrityError as exc:
+        if "uq_tickets_source_external_ref" not in str(exc.orig):
+            raise
+        # lost a race, or the existing ticket is outside this caller's scope
+        raise HTTPException(409, {"message": "external_ref already used"}) from exc
     return _view(ctx)(ticket)
 
 
@@ -144,6 +162,7 @@ def _note_out(ctx: Ctx, notes) -> list[NoteOut]:
                 author_user_id=n.author_user_id,
                 author_name=n.author.display_name if n.author else None,
                 author_email=n.author_email,
+                author_type=n.author_type,
                 visibility=n.visibility,
                 source=n.source,
                 body=n.body,

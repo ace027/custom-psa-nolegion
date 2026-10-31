@@ -120,6 +120,7 @@ def _apply_client(
                 asset = Asset(
                     organization_id=org_id,
                     kind=ra.kind,
+                    source="rmm" if integration.kind == "ninjaone" else "import",
                     name=ra.name,
                     first_seen_at=stamp,
                     last_seen_at=stamp,

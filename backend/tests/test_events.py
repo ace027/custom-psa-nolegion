@@ -48,7 +48,7 @@ def keys(obj):
 
 
 def pri(admin, name):
-    return next(p["id"] for p in admin.get("/api/priorities").json() if p["name"] == name)
+    return next(p["id"] for p in admin.get("/api/v1/priorities").json() if p["name"] == name)
 
 
 def test_event_types_and_rule_triggers():
@@ -70,7 +70,7 @@ def test_create_emits_created_with_facts_only(admin, owner, ep, make_ticket):
         "priority": "Normal",
         "organization": "Acme Corp",
         "assignee": None,
-        "source": "ui",
+        "source": "manual",
         "url": f"http://localhost:8000/tickets/{t['id']}",
     }
     assert "alert" not in p
@@ -91,7 +91,7 @@ def test_update_emits_assigned_status_and_priority_with_changes(admin, owner, ep
     owner.execute(text("DELETE FROM webhook_deliveries"))
     high = pri(admin, "High")
     r = admin.patch(
-        f"/api/tickets/{t['id']}",
+        f"/api/v1/tickets/{t['id']}",
         json={"assignee_id": admin.user["id"], "priority_id": high},
     )
     assert r.status_code == 200, r.text
@@ -103,7 +103,7 @@ def test_update_emits_assigned_status_and_priority_with_changes(admin, owner, ep
         "ticket.priority_changed": {"priority_id": [t["priority_id"], high]},
     }
     owner.execute(text("DELETE FROM webhook_deliveries"))
-    admin.patch(f"/api/tickets/{t['id']}", json={"status": "waiting_on_customer"})
+    admin.patch(f"/api/v1/tickets/{t['id']}", json={"status": "waiting_on_customer"})
     [d] = sent(owner)
     assert d.event_type == "ticket.status_changed"
     assert d.payload["changes"] == {"status": ["open", "waiting_on_customer"]}
@@ -113,8 +113,8 @@ def test_update_emits_assigned_status_and_priority_with_changes(admin, owner, ep
 def test_no_event_when_nothing_relevant_changed(admin, owner, ep, make_ticket):
     t = make_ticket()
     owner.execute(text("DELETE FROM webhook_deliveries"))
-    admin.patch(f"/api/tickets/{t['id']}", json={"subject": "New subject"})
-    admin.patch(f"/api/tickets/{t['id']}", json={"priority_id": t["priority_id"]})
+    admin.patch(f"/api/v1/tickets/{t['id']}", json={"subject": "New subject"})
+    admin.patch(f"/api/v1/tickets/{t['id']}", json={"priority_id": t["priority_id"]})
     assert sent(owner) == []
 
 
@@ -122,7 +122,7 @@ def test_bulk_update_emits_per_ticket(admin, owner, ep, make_ticket):
     ids = [make_ticket(subject=f"T{i}")["id"] for i in range(3)]
     owner.execute(text("DELETE FROM webhook_deliveries"))
     r = admin.post(
-        "/api/tickets/bulk",
+        "/api/v1/tickets/bulk",
         json={"ticket_ids": ids, "changes": {"priority_id": pri(admin, "Urgent")}},
     )
     assert r.json()["updated"] == 3
@@ -176,7 +176,7 @@ def test_sla_breach_event_once_for_assigned_and_unassigned(admin, owner, ep, mak
 
 def test_resolved_tickets_do_not_breach(admin, owner, ep, make_ticket):
     t = make_ticket()
-    admin.patch(f"/api/tickets/{t['id']}", json={"status": "resolved"})
+    admin.patch(f"/api/v1/tickets/{t['id']}", json={"status": "resolved"})
     owner.execute(text("UPDATE tickets SET sla_resolution_due = now() - interval '1 hour'"))
     owner.execute(text("DELETE FROM webhook_deliveries"))
     worker.notify_jobs()
@@ -207,7 +207,7 @@ def test_endpoint_only_gets_subscribed_events(admin, owner, make_ticket):
     add_endpoint(admin.user["id"], events=["ticket.assigned"])
     t = make_ticket()
     assert sent(owner) == []
-    admin.patch(f"/api/tickets/{t['id']}", json={"assignee_id": admin.user["id"]})
+    admin.patch(f"/api/v1/tickets/{t['id']}", json={"assignee_id": admin.user["id"]})
     assert types(owner) == ["ticket.assigned"]
 
 
@@ -243,5 +243,5 @@ def test_a_queue_failure_never_breaks_the_ticket(admin, owner, ep, make_ticket, 
 
     monkeypatch.setattr(webhooks, "enqueue", boom)
     t = make_ticket()
-    assert admin.get(f"/api/tickets/{t['id']}").status_code == 200
+    assert admin.get(f"/api/v1/tickets/{t['id']}").status_code == 200
     assert sent(owner) == []

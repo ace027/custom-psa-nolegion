@@ -22,6 +22,8 @@ def _flush(ctx: Ctx, message: str) -> None:
         ctx.db.flush()
     except IntegrityError as exc:
         ctx.db.rollback()
+        if "uq_organizations_rmm_client_id" in str(exc.orig):
+            raise Conflict("rmm_client_id already linked to another client") from exc
         raise Conflict(message) from exc
 
 
@@ -51,6 +53,8 @@ def update_organization(ctx: Ctx, org_id: int, data: dict) -> Organization:
     if org is None:
         raise NotFound("Organization not found")
     before = audit.snapshot(org)
+    if data.get("rmm_client_id") is not None:
+        data = {**data, "rmm_client_id": str(data["rmm_client_id"])}
     _apply(org, data)
     _flush(ctx, "An active organization with that name already exists")
     ctx.db.refresh(org)

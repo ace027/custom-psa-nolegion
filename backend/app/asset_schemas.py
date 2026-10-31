@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 IntegrationKind = Literal["ninjaone", "hudu"]
+AssetSource = Literal["manual", "rmm", "import"]
 AssetKind = Literal["computer", "server", "network", "other"]
 WarrantyState = Literal[
     "expired", "expiring_30", "expiring_60", "expiring_90", "in_warranty", "unknown"
@@ -108,6 +109,8 @@ class AssetOut(BaseModel):
     organization_id: int
     organization_name: str
     kind: str
+    source: AssetSource
+    external_id: str | None
     name: str
     manufacturer: str | None
     model: str | None

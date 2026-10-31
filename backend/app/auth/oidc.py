@@ -59,4 +59,5 @@ def resolve_user_from_claims(db: Session, claims: dict) -> User:
             user.entra_oid = oid
     if not user.is_active:
         raise LoginDenied("inactive")
+    user.entra_tenant_id = claims["tid"]
     return user

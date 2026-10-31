@@ -36,6 +36,7 @@ def ticket_out(t: Ticket, cal: Calendar, at_risk_percent: int, now: datetime) ->
         subject=t.subject,
         description=t.description,
         source=t.source,
+        external_ref=t.external_ref,
         project_id=t.project_id,
         project_name=t.project.name if t.project else None,
         requester_email=t.requester_email,

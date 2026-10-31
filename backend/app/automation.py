@@ -53,7 +53,7 @@ MAX_CONDITIONS = 20
 MAX_ACTIONS = 10
 MAX_LIST = 50
 STATUSES = ("new", "open", "waiting_on_customer", "resolved", "closed")
-SOURCES = ("ui", "email", "portal", "rmm", "rule")
+SOURCES = ("manual", "email", "portal", "rmm", "api", "rule")
 SEVERITIES = ("NONE", "MINOR", "MODERATE", "MAJOR", "CRITICAL")
 
 _ID_OPS = ("eq", "ne", "in", "not_in")

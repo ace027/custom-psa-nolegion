@@ -76,3 +76,9 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Confirm: labour comes from each user's cost rate, and time with no rate counts as $0 and is flagged
 - [ ] Confirm: weekly reports cover the previous Monday to Sunday, monthly the previous calendar month (day 1-28)
 - [ ] Confirm: scheduled emails go once per period, only to staff holding report:read, and failures are not retried
+
+## Phase 12: Integration readiness
+- [ ] Update the Entra app registration redirect URI to `<public_url>/api/v1/auth/callback`, then sign in
+- [ ] Build with VITE_BRAND_NAME, VITE_BRAND_LOGO and VITE_BRAND_COLORS set and check the header and login page
+- [ ] An API-key request creates a ticket with source `api`
+- [ ] An existing n8n/webhook consumer still works (outbound webhook URLs are unchanged)

@@ -6,6 +6,10 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, mo
 
 Role = Literal["admin", "tech", "billing", "read_only"]
 OrgStatus = Literal["active", "inactive", "prospect"]
+# 'project' is set by project tasks (app/projects.py); the other six are the integration sources
+TicketSource = Literal["manual", "email", "portal", "rmm", "api", "rule", "project"]
+NoteAuthorType = Literal["human", "system", "ai"]
+TimeEntryType = Literal["labour", "automation"]
 
 
 class ORM(BaseModel):
@@ -39,10 +43,13 @@ class OrganizationPatch(BaseModel):
     status: OrgStatus | None = None
     billing_address: str | None = None
     notes: str | None = None
+    rmm_client_id: uuid.UUID | None = None  # the future RMM's client id; null clears the link
 
 
 class OrganizationOut(ORM):
     id: int
+    uuid: uuid.UUID
+    rmm_client_id: uuid.UUID | None
     name: str
     status: str
     billing_address: str | None
@@ -76,6 +83,7 @@ class SitePatch(BaseModel):
 
 class SiteOut(ORM):
     id: int
+    uuid: uuid.UUID
     organization_id: int
     name: str
     address_line1: str | None
@@ -116,6 +124,7 @@ class ContactPatch(BaseModel):
 
 class ContactOut(ORM):
     id: int
+    uuid: uuid.UUID
     organization_id: int
     site_id: int | None
     name: str
@@ -150,6 +159,7 @@ class UserOut(ORM):
     role: str
     is_active: bool
     last_login_at: datetime | None
+    entra_tenant_id: str | None = None
 
 
 class MeOut(UserOut):
@@ -206,6 +216,12 @@ class TicketIn(BaseModel):
     description: str | None = None
     type_id: int | None = None
     custom_values: dict[str, Any] = Field(default_factory=dict)  # keys are custom field ids
+    external_ref: str | None = Field(default=None, max_length=200)  # id in an outside system
+
+    @field_validator("external_ref")
+    @classmethod
+    def _strip_ref(cls, v: str | None) -> str | None:
+        return (v.strip() or None) if v is not None else None
 
 
 class TicketPatch(BaseModel):
@@ -289,7 +305,8 @@ class TicketOut(BaseModel):
     assignee_name: str | None
     subject: str
     description: str | None
-    source: str
+    source: TicketSource
+    external_ref: str | None = None
     project_id: int | None = None
     project_name: str | None = None
     requester_email: str | None
@@ -316,6 +333,7 @@ class NoteOut(BaseModel):
     author_user_id: int | None
     author_name: str | None
     author_email: str | None
+    author_type: NoteAuthorType = "human"
     visibility: Visibility
     source: str
     body: str
@@ -328,8 +346,17 @@ class TimeIn(BaseModel):
     minutes: int = Field(ge=1, le=1440)
     work_date: date | None = None  # defaults to today in the business timezone
     billable: bool = True
+    entry_type: TimeEntryType = "labour"  # 'automation' is never billable
     note: str | None = None
     user_id: int | None = None  # admin only; defaults to the caller
+
+    @model_validator(mode="after")
+    def _automation_unbilled(self):
+        if self.entry_type == "automation":
+            if self.billable and "billable" in self.model_fields_set:
+                raise ValueError("Automation time is never billable")
+            self.billable = False
+        return self
 
 
 class TimePatch(BaseModel):
@@ -351,6 +378,7 @@ class TimeOut(ORM):
     minutes_actual: int
     minutes_billable: int
     billable: bool
+    entry_type: TimeEntryType = "labour"
     note: str | None
     voided_at: datetime | None
 

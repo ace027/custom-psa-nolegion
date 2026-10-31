@@ -131,6 +131,8 @@ def asset_row(ctx: Ctx, a: Asset, on: date | None = None) -> dict:
         "organization_id": a.organization_id,
         "organization_name": a.organization.name,
         "kind": a.kind,
+        "source": a.source,
+        "external_id": a.external_id,
         "name": a.name,
         "manufacturer": a.manufacturer,
         "model": a.model,

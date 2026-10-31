@@ -14,15 +14,15 @@ def test_seed_is_idempotent_and_usable(login, owner):
     assert owner.execute(text("SELECT count(*) FROM users")).scalar_one() == 4
     assert owner.execute(text("SELECT count(*) FROM tickets")).scalar_one() == 12
     tech = login("tech", "tech@example.com")
-    assert tech.get("/api/organizations").json()["total"] == 3
-    d = tech.get("/api/dashboard").json()
+    assert tech.get("/api/v1/organizations").json()["total"] == 3
+    d = tech.get("/api/v1/dashboard").json()
     assert d["counts"]["open"] == 12 and d["counts"]["needs_triage"] == 1
     assert len(d["my_open"]) == 6
     assert owner.execute(text("SELECT count(*) FROM agreements")).scalar_one() == 4
     assert owner.execute(text("SELECT count(*) FROM product_charges")).scalar_one() == 1
     assert owner.execute(text("SELECT count(*) FROM assets")).scalar_one() == 5
     biller = login("billing", "billing@example.com")
-    r = biller.post("/api/billing-runs", json={"period": biz_today().strftime("%Y-%m")})
+    r = biller.post("/api/v1/billing-runs", json={"period": biz_today().strftime("%Y-%m")})
     assert r.status_code == 201 and r.json()["invoice_count"] >= 3
 
 
@@ -46,7 +46,7 @@ def test_migration_0032_reporting_tables_and_constraints(owner_engine, make_user
     from sqlalchemy.exc import IntegrityError
 
     with owner_engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0032"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0033"
     uid = make_user("admin")["id"]
 
     def schedule(**kw):

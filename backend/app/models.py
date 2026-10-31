@@ -45,6 +45,13 @@ class Organization(TimestampMixin, Base):
     __tablename__ = "organizations"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    uuid: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),  # str values keep audit snapshots JSON-safe
+        nullable=False,
+        unique=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    rmm_client_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), unique=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
     billing_address: Mapped[str | None] = mapped_column(Text)
@@ -67,6 +74,12 @@ class Site(TimestampMixin, Base):
     __tablename__ = "sites"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    uuid: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),  # str values keep audit snapshots JSON-safe
+        nullable=False,
+        unique=True,
+        server_default=text("gen_random_uuid()"),
+    )
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.id"), nullable=False, index=True
     )
@@ -84,6 +97,12 @@ class Contact(TimestampMixin, Base):
     __tablename__ = "contacts"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    uuid: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),  # str values keep audit snapshots JSON-safe
+        nullable=False,
+        unique=True,
+        server_default=text("gen_random_uuid()"),
+    )
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.id"), nullable=False, index=True
     )
@@ -115,6 +134,7 @@ class User(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     entra_oid: Mapped[str | None] = mapped_column(String(64), unique=True)
+    entra_tenant_id: Mapped[str | None] = mapped_column(String(64))
     email: Mapped[str] = mapped_column(String(320), nullable=False)
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -600,7 +620,8 @@ class Ticket(TimestampMixin, Base):
     assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     subject: Mapped[str] = mapped_column(String(300), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    source: Mapped[str] = mapped_column(String(10), nullable=False, server_default="ui")
+    source: Mapped[str] = mapped_column(String(10), nullable=False, server_default="manual")
+    external_ref: Mapped[str | None] = mapped_column(String(200))
     requester_email: Mapped[str | None] = mapped_column(String(320))
     sla_first_response_due: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sla_resolution_due: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -678,6 +699,7 @@ class TicketNote(Base):
     organization_id: Mapped[int | None] = mapped_column(BigInteger)
     author_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     author_email: Mapped[str | None] = mapped_column(String(320))
+    author_type: Mapped[str] = mapped_column(String(10), nullable=False, server_default="human")
     visibility: Mapped[str] = mapped_column(String(10), nullable=False)
     source: Mapped[str] = mapped_column(String(10), nullable=False, server_default="ui")
     body: Mapped[str] = mapped_column(Text, nullable=False)
@@ -700,6 +722,7 @@ class TimeEntry(TimestampMixin, Base):
     minutes_actual: Mapped[int] = mapped_column(Integer, nullable=False)
     minutes_billable: Mapped[int] = mapped_column(Integer, nullable=False)
     billable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    entry_type: Mapped[str] = mapped_column(String(12), nullable=False, server_default="labour")
     note: Mapped[str | None] = mapped_column(Text)
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     invoice_line_id: Mapped[int | None] = mapped_column(ForeignKey("invoice_lines.id"))
@@ -1624,6 +1647,8 @@ class Asset(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
     kind: Mapped[str] = mapped_column(String(10), nullable=False)
+    source: Mapped[str] = mapped_column(String(10), nullable=False, server_default="manual")
+    external_id: Mapped[str | None] = mapped_column(String(100))
     name: Mapped[str] = mapped_column(String(300), nullable=False)
     manufacturer: Mapped[str | None] = mapped_column(String(200))
     model: Mapped[str | None] = mapped_column(String(200))

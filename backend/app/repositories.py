@@ -159,6 +159,13 @@ def get_ticket(db: Session, scope: Scope, ticket_id: int) -> Ticket | None:
     return db.execute(stmt).unique().scalar_one_or_none()
 
 
+def get_ticket_by_external_ref(
+    db: Session, scope: Scope, source: str, external_ref: str
+) -> Ticket | None:
+    stmt = _ticket_stmt(scope).where(Ticket.source == source, Ticket.external_ref == external_ref)
+    return db.execute(stmt).unique().scalar_one_or_none()
+
+
 def get_ticket_by_number(db: Session, scope: Scope, number: int) -> Ticket | None:
     stmt = _ticket_stmt(scope).where(Ticket.number == number)
     return db.execute(stmt).unique().scalar_one_or_none()

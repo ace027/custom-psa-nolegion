@@ -76,7 +76,7 @@ def sample_body(event_type="ticket.created", **extra):
             "priority": "High",
             "organization": "Acme Corp",
             "assignee": None,
-            "source": "ui",
+            "source": "manual",
             "url": "http://localhost:8000/tickets/7",
         },
         "changes": {},
