@@ -205,3 +205,7 @@ verification: 13/13 passed
 | O-119 | 2026-10-31 | dev | 14 | 14-02 | engineering-backend-architect | implementation | success | 2 | portal-polish, engineering | Portal attachments, contact self-service and CSV export (backend): Complete |
 | O-120 | 2026-10-31 | dev | 14 | 14-03 | engineering-frontend-developer | implementation | failed | 5 | portal-polish, engineering | Portal polish frontend and manual checks: Partial |
 | O-121 | 2026-10-31 | dev | 14 | 14-03 | engineering-frontend-developer | implementation | success | 2 | portal-polish, engineering | Portal polish frontend and manual checks: Complete |
+| O-122 | 2026-10-31 | dev | 14 | 14-00 | testing-qa-verification-specialist | quality-review | partial | 4 | review, testing | Phase 14 review ESCALATED in 3 cycle(s), 12 finding(s) |
+| O-123 | 2026-10-31 | dev | 14 | 14-00 | engineering-senior-developer | quality-review | partial | 5 | review, engineering | Phase 14 review ESCALATED in 3 cycle(s), 12 finding(s) |
+| O-124 | 2026-10-31 | dev | 14 | 14-00 | design-ux-researcher | quality-review | partial | 5 | review, design | Phase 14 review ESCALATED in 3 cycle(s), 12 finding(s) |
+| O-125 | 2026-10-31 | dev | 14 | 14-00 | engineering-backend-architect | quality-review | partial | 5 | review, engineering | Phase 14 review ESCALATED in 3 cycle(s), 12 finding(s) |
