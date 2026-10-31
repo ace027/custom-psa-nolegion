@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 13 of 13 (planned)
-- **Status**: Phase 13 planned -- 2 plans across 2 waves
-- **Last Activity**: Phase 13 planning (2026-10-31)
+- **Phase**: 13 of 13 (executing)
+- **Status**: Phase 13 executing — Plan 13-01 failed
+- **Last Activity**: Plan 13-01 execution (2026-10-31)
 
 ## Progress
 ```
@@ -138,3 +138,7 @@ Run `/triad:build` to execute Phase 13: Knowledge base
 - Plan 12-02 (Wave 2): Automation time kept out of billing; reported separately — Complete
 - Plan 12-03 (Wave 2): Frontend: branding config, client scope module, note authors and new fields — Complete
 - Plan 12-04 (Wave 3): /api/v1 everywhere and the committed OpenAPI spec — Complete
+
+## Phase 13 Results
+(build started 2026-10-31)
+- Plan 13-01 (Wave 1): Knowledge base backend: schema, permissions, staff, suggestion and portal APIs — PARTIAL: The knowledge base backend is built, and everything passes except one test that needs a file outside my write list. `tests/test_seed_and_migrations.py` line 49 hardcodes alembic head `"0033"`, so `tes
