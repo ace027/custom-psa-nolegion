@@ -43,6 +43,9 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 - Email-to-ticket and email replies through Microsoft Graph (one shared mailbox, scoped by Exchange RBAC), threaded by ticket number and headers, with triage for unknown senders
 - Dashboard: my tickets, unassigned, SLA at risk; admin settings for queues, categories, priorities, work types, business hours
 
+**Phase 13: knowledge base**
+- Knowledge base: staff write, search and archive plain-text articles (internal or client-visible, draft/published), tickets suggest matching published articles, and portal contacts browse published client articles only. See [docs/verify/kb.md](docs/verify/kb.md)
+
 **Phase 1: foundation**
 - Organizations, sites and contacts (soft-delete/archive, no hard deletes)
 - Staff users with fixed roles: `admin`, `tech`, `billing`, `read_only`

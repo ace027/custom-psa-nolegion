@@ -5,6 +5,7 @@ import { WARRANTY_LABEL, ApiError, PortalAssets, PortalInvoice, PortalInvoiceDet
 import { money } from "../money";
 import { Button, Card, ErrorMsg, Field, StatTile, ThemeToggle, WarrantyBadge, fmt, inputCls } from "../ui";
 import AppointmentsPage from "./AppointmentsPage";
+import { KbArticlePage, KbList } from "./KbPages";
 
 function usePortalMe() {
   return useQuery({
@@ -114,12 +115,15 @@ function Signed({ me }: { me: PortalMe }) {
         <NavLink to="/portal/appointments" className={tab}>Appointments</NavLink>
         {me.can_see_billing && <NavLink to="/portal/invoices" className={tab}>Invoices</NavLink>}
         {me.can_see_devices && <NavLink to="/portal/devices" className={tab}>Devices</NavLink>}
+        <NavLink to="/portal/kb" className={tab}>Help articles</NavLink>
       </nav>
       <Routes>
         <Route index element={<Navigate to="/portal/tickets" replace />} />
         <Route path="tickets" element={<Tickets />} />
         <Route path="tickets/:id" element={<TicketPage />} />
         <Route path="appointments" element={<AppointmentsPage />} />
+        <Route path="kb" element={<KbList />} />
+        <Route path="kb/:id" element={<KbArticlePage />} />
         {me.can_see_billing && <Route path="invoices" element={<Invoices />} />}
         {me.can_see_billing && <Route path="invoices/:id" element={<InvoicePage />} />}
         {me.can_see_devices && <Route path="devices" element={<Devices />} />}

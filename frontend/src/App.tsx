@@ -23,6 +23,8 @@ import Forecast from "./pages/crm/Forecast";
 import Leads from "./pages/crm/Leads";
 import OpportunityPage from "./pages/crm/OpportunityPage";
 import Pipeline from "./pages/crm/Pipeline";
+import ArticlePage from "./pages/kb/ArticlePage";
+import KnowledgeBase from "./pages/kb/KnowledgeBase";
 import Inventory from "./pages/procurement/Inventory";
 import MarkupRules from "./pages/procurement/MarkupRules";
 import PurchaseOrderPage from "./pages/procurement/PurchaseOrderPage";
@@ -118,6 +120,7 @@ function Layout() {
           {can(me, "crm:read") && <NavLink to="/crm" className={link}>Sales</NavLink>}
           {can(me, "billing:read") && <NavLink to="/billing" className={link}>Billing</NavLink>}
           {can(me, "procurement:read") && <NavLink to="/procurement" className={link}>Procurement</NavLink>}
+          {can(me, "kb:read") && <NavLink to="/kb" className={link}>Knowledge base</NavLink>}
           {can(me, "quote:read") && <NavLink to="/quotes" className={link}>Quotes</NavLink>}
           {can(me, "report:read") && (
             <div role="group" aria-label="Reports" className="pt-1">
@@ -242,6 +245,13 @@ function StaffApp() {
             <Route path="/procurement/purchase-orders/:id" element={<PurchaseOrderPage />} />
             <Route path="/procurement/inventory" element={<Inventory />} />
             <Route path="/procurement/markup" element={<MarkupRules />} />
+          </>
+        )}
+        {can(me, "kb:read") && (
+          <>
+            <Route path="/kb" element={<KnowledgeBase />} />
+            <Route path="/kb/new" element={<ArticlePage />} />
+            <Route path="/kb/:id" element={<ArticlePage />} />
           </>
         )}
         {can(me, "quote:read") && (
