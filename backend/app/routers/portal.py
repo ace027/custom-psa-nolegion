@@ -2,14 +2,17 @@
 unauthenticated ones (request / redeem a sign-in link, login options, Microsoft sign-in) reveal
 nothing about who has access: every SSO denial ends on the same /portal?sso=denied redirect."""
 
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app import audit
 from app import billing_repo as brepo
 from app import kb as kbsvc
 from app import portal as svc
+from app import portal_files as pfiles
 from app import repositories as repo
 from app import ticket_services as tsvc
 from app.asset_schemas import PortalAssetsOut
@@ -27,7 +30,12 @@ from app.portal_deps import (
     portal_required,
     public_session,
 )
-from app.portal_schemas import PortalLoginOptionsOut
+from app.portal_schemas import (
+    PortalAttachmentIn,
+    PortalAttachmentOut,
+    PortalContactPatch,
+    PortalLoginOptionsOut,
+)
 from app.scheduling_schemas import PortalAppointmentOut
 from app.schemas import (
     ErrorOut,
@@ -187,6 +195,56 @@ def me(ctx: PortalCtx = portal_required()):
     return svc.me(ctx)
 
 
+@router.patch(
+    "/me/contact",
+    response_model=PortalMeOut,
+    summary="Edit your own name, phone and title (not your email)",
+)
+def update_me(body: PortalContactPatch, ctx: PortalCtx = portal_required()):
+    return svc.update_contact(ctx, body.name, body.phone, body.title)
+
+
+# ---- CSV exports ----
+def _csv(kind: str, text: str) -> Response:
+    return Response(
+        text,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{kind}-{date.today().isoformat()}.csv"',
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.get(
+    "/export/tickets.csv",
+    responses={200: {"content": {"text/csv": {}}}},
+    summary="Export your tickets as CSV",
+)
+def export_tickets(ctx: PortalCtx = portal_required()):
+    return _csv("tickets", svc.export_tickets(ctx))
+
+
+@router.get(
+    "/export/invoices.csv",
+    responses={200: {"content": {"text/csv": {}}}, 403: {"model": ErrorOut}},
+    summary="Export your finalized invoices as CSV (billing contacts)",
+)
+def export_invoices(ctx: PortalCtx = portal_required()):
+    billing_only(ctx)
+    return _csv("invoices", svc.export_invoices(ctx))
+
+
+@router.get(
+    "/export/devices.csv",
+    responses={200: {"content": {"text/csv": {}}}, 403: {"model": ErrorOut}},
+    summary="Export your devices and warranty status as CSV (designated contacts only)",
+)
+def export_devices(ctx: PortalCtx = portal_required()):
+    devices_only(ctx)
+    return _csv("devices", svc.export_devices(ctx))
+
+
 # ---- billing (billing contacts only) ----
 @router.get(
     "/invoices",
@@ -289,6 +347,45 @@ def open_ticket(body: PortalTicketIn, ctx: PortalCtx = portal_required()):
 )
 def ticket(ticket_id: int, ctx: PortalCtx = portal_required()):
     return svc.ticket_detail(ctx, ticket_id)
+
+
+@router.get(
+    "/tickets/{ticket_id}/attachments",
+    response_model=list[PortalAttachmentOut],
+    responses=ERR,
+    summary="Files you attached to a ticket through the portal",
+)
+def list_ticket_attachments(ticket_id: int, ctx: PortalCtx = portal_required()):
+    return pfiles.list_for_ticket(ctx, ticket_id)
+
+
+@router.post(
+    "/tickets/{ticket_id}/attachments",
+    status_code=201,
+    response_model=PortalAttachmentOut,
+    responses={**ERR, 413: {"model": ErrorOut}, 415: {"model": ErrorOut}, 429: {"model": ErrorOut}},
+    summary="Attach a file (base64) to one of your open tickets",
+)
+def upload_ticket_attachment(
+    ticket_id: int, body: PortalAttachmentIn, ctx: PortalCtx = portal_required()
+):
+    return pfiles.upload(ctx, ticket_id, body.filename, body.content_base64)
+
+
+@router.get(
+    "/attachments/{attachment_id}/download",
+    response_class=FileResponse,
+    responses=ERR,
+    summary="Download a file attached through the portal (always as a download)",
+)
+def download_attachment(attachment_id: int, ctx: PortalCtx = portal_required()):
+    path, name = pfiles.get_for_download(ctx, attachment_id)
+    return FileResponse(
+        path,
+        media_type="application/octet-stream",
+        filename=name,
+        headers={"X-Content-Type-Options": "nosniff"},
+    )
 
 
 @router.post(

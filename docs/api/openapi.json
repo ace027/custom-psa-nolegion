@@ -1472,9 +1472,25 @@
             "title": "Size Bytes",
             "type": "integer"
           },
+          "source": {
+            "default": "email",
+            "title": "Source",
+            "type": "string"
+          },
           "ticket_id": {
             "title": "Ticket Id",
             "type": "integer"
+          },
+          "uploaded_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded By Name"
           }
         },
         "required": [
@@ -9448,6 +9464,97 @@
           "devices"
         ],
         "title": "PortalAssetsOut",
+        "type": "object"
+      },
+      "PortalAttachmentIn": {
+        "properties": {
+          "content_base64": {
+            "minLength": 1,
+            "title": "Content Base64",
+            "type": "string"
+          },
+          "filename": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Filename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "content_base64"
+        ],
+        "title": "PortalAttachmentIn",
+        "type": "object"
+      },
+      "PortalAttachmentOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "size_bytes",
+          "created_at"
+        ],
+        "title": "PortalAttachmentOut",
+        "type": "object"
+      },
+      "PortalContactPatch": {
+        "additionalProperties": false,
+        "description": "What a contact may change about themselves. Email is deliberately absent (extra=forbid).",
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PortalContactPatch",
         "type": "object"
       },
       "PortalFieldOut": {
@@ -32694,6 +32801,141 @@
         ]
       }
     },
+    "/api/v1/portal/attachments/{attachment_id}/download": {
+      "get": {
+        "operationId": "download_attachment_api_v1_portal_attachments__attachment_id__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "title": "Attachment Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download a file attached through the portal (always as a download)",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/v1/portal/export/devices.csv": {
+      "get": {
+        "operationId": "export_devices_api_v1_portal_export_devices_csv_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/csv": {}
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "summary": "Export your devices and warranty status as CSV (designated contacts only)",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/v1/portal/export/invoices.csv": {
+      "get": {
+        "operationId": "export_invoices_api_v1_portal_export_invoices_csv_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/csv": {}
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "summary": "Export your finalized invoices as CSV (billing contacts)",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/v1/portal/export/tickets.csv": {
+      "get": {
+        "operationId": "export_tickets_api_v1_portal_export_tickets_csv_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/csv": {}
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Export your tickets as CSV",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
     "/api/v1/portal/invoices": {
       "get": {
         "operationId": "invoices_api_v1_portal_invoices_get",
@@ -33056,6 +33298,47 @@
         ]
       }
     },
+    "/api/v1/portal/me/contact": {
+      "patch": {
+        "operationId": "update_me_api_v1_portal_me_contact_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalContactPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalMeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit your own name, phone and title (not your email)",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
     "/api/v1/portal/sso/callback": {
       "get": {
         "operationId": "sso_callback_api_v1_portal_sso_callback_get",
@@ -33265,6 +33548,172 @@
           }
         },
         "summary": "A ticket with its customer-visible conversation",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/v1/portal/tickets/{ticket_id}/attachments": {
+      "get": {
+        "operationId": "list_ticket_attachments_api_v1_portal_tickets__ticket_id__attachments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "title": "Ticket Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PortalAttachmentOut"
+                  },
+                  "title": "Response List Ticket Attachments Api V1 Portal Tickets  Ticket Id  Attachments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Files you attached to a ticket through the portal",
+        "tags": [
+          "portal"
+        ]
+      },
+      "post": {
+        "operationId": "upload_ticket_attachment_api_v1_portal_tickets__ticket_id__attachments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "title": "Ticket Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalAttachmentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalAttachmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          }
+        },
+        "summary": "Attach a file (base64) to one of your open tickets",
         "tags": [
           "portal"
         ]

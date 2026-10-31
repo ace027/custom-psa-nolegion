@@ -96,6 +96,100 @@ def me(ctx: PortalCtx) -> dict:
     )
 
 
+def update_contact(ctx: PortalCtx, name: str, phone: str | None, title: str | None) -> dict:
+    """A contact edits their own name, phone and title. Email and access flags are staff-only."""
+    c = ctx.contact
+    before = dict(name=c.name, phone=c.phone, title=c.title)
+    c.name, c.phone, c.title = name, phone, title
+    ctx.db.flush()
+    audit.record(
+        ctx.db,
+        None,
+        "portal.contact_update",
+        c,
+        before=before,
+        after=dict(name=c.name, phone=c.phone, title=c.title),
+        organization_id=c.organization_id,
+        detail={"contact_id": c.id, "organization_id": c.organization_id},
+    )
+    return me(ctx)
+
+
+# ---- CSV export ------------------------------------------------------------------------
+EXPORT_MAX_ROWS = 10000
+
+
+def _audit_export(ctx: PortalCtx, kind: str, rows: int) -> None:
+    audit.record(
+        ctx.db,
+        None,
+        "portal.export",
+        organization_id=ctx.contact.organization_id,
+        detail={"kind": kind, "rows": rows, "contact_id": ctx.contact.id},
+    )
+
+
+def export_tickets(ctx: PortalCtx) -> str:
+    from app.reports import to_csv
+
+    rows = list(
+        ctx.db.execute(
+            select(Ticket)
+            .where(_visible(ctx))
+            .order_by(Ticket.created_at.desc(), Ticket.id.desc())
+            .limit(EXPORT_MAX_ROWS)
+        )
+        .unique()
+        .scalars()
+    )
+    _audit_export(ctx, "tickets", len(rows))
+    return to_csv(
+        ["number", "subject", "status", "priority", "created_at", "closed_at"],
+        [
+            [
+                t.number,
+                t.subject,
+                t.status_ref.name,
+                t.priority.name,
+                t.created_at.isoformat() if t.created_at else "",
+                t.closed_at.isoformat() if t.closed_at else "",
+            ]
+            for t in rows
+        ],
+    )
+
+
+def export_invoices(ctx: PortalCtx) -> str:
+    from app.reports import to_csv
+
+    rows = list_invoices(ctx)[:EXPORT_MAX_ROWS]  # already newest first
+    _audit_export(ctx, "invoices", len(rows))
+    return to_csv(
+        ["number", "issue_date", "due_date", "status", "total", "balance"],
+        [
+            [
+                r["number"],
+                r["invoice_date"],
+                r["due_date"],
+                r["status"],
+                r["total_cents"],
+                r["balance_cents"],
+            ]
+            for r in rows
+        ],
+        money_cols={4, 5},
+    )
+
+
+def export_devices(ctx: PortalCtx) -> str:
+    from app.reports import to_csv
+
+    cols = ["name", "kind", "manufacturer", "model", "warranty_end", "warranty_status"]
+    devices = list_devices(ctx)["devices"][:EXPORT_MAX_ROWS]
+    _audit_export(ctx, "devices", len(devices))
+    return to_csv(cols, [[d[c] for c in cols] for d in devices])
+
+
 # ---- appointments ----------------------------------------------------------------------
 def list_appointments(ctx: PortalCtx, now: datetime) -> list[dict]:
     """Scheduled, client-visible appointments on tickets this contact can see. Notes, cancel

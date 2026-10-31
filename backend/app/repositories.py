@@ -279,9 +279,17 @@ def get_time_entry(db: Session, scope: Scope, entry_id: int) -> TimeEntry | None
 
 
 def list_attachments(db: Session, scope: Scope, ticket_id: int):
-    stmt = select(Attachment).where(Attachment.ticket_id == ticket_id)
+    stmt = (
+        select(Attachment, Contact.name)
+        .join(Contact, Contact.id == Attachment.uploaded_by_contact_id, isouter=True)
+        .where(Attachment.ticket_id == ticket_id)
+    )
     stmt = scope.apply(stmt, Attachment.organization_id)
-    return list(db.execute(stmt.order_by(Attachment.id)).scalars())
+    out = []
+    for att, uploader in db.execute(stmt.order_by(Attachment.id)).all():
+        att.uploaded_by_name = uploader  # plain attribute, read by AttachmentOut
+        out.append(att)
+    return out
 
 
 def get_attachment(db: Session, scope: Scope, attachment_id: int) -> Attachment | None:

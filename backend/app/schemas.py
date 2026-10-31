@@ -503,6 +503,8 @@ class AttachmentOut(ORM):
     content_type: str | None
     size_bytes: int
     created_at: datetime
+    source: str = "email"
+    uploaded_by_name: str | None = None
 
 
 class LookupOut(ORM):

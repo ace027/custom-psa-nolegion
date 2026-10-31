@@ -47,11 +47,27 @@ appointments scheduled".
   neither works on the other's API.
 - Everything a client does is recorded (`portal.ticket_create`, `portal.ticket_reply`) with the contact id.
 
+## Attachments, self-service and exports
+- **Attachments:** on a ticket they can see that is not closed, a contact can attach a file
+  (`POST /portal/tickets/{id}/attachments`, JSON `{filename, content_base64}`). The size cap is the same as
+  for emailed attachments (`MAX_ATTACHMENT_BYTES`, 413 above it); empty files and bad base64 are 422; only common
+  document, image, archive and text types are accepted (415 otherwise); a closed ticket is 409; at most 20
+  uploads per contact per hour (429). Path components in the filename are stripped. Downloads are always
+  `application/octet-stream`, `nosniff`, as an attachment. The portal lists and serves only files uploaded
+  through the portal on tickets the contact may see; emailed attachments stay internal. Staff see portal
+  uploads in the ticket's attachment list with `source: portal` and the uploader's name. Audited as
+  `portal.attachment_upload`.
+- **Self-service:** `PATCH /portal/me/contact` changes the contact's own name, phone and title. Email is rejected
+  (422). Audited as `portal.contact_update` with before/after values.
+- **CSV export:** `GET /portal/export/tickets.csv` (their visible tickets), `invoices.csv` (billing contacts)
+  and `devices.csv` (designated contacts on a published client), newest first, at most 10,000 rows, cells that
+  start like a spreadsheet formula are neutralised. Audited as `portal.export` with kind and row count.
+
 ## Decisions worth a second look
 - Tickets opened in the portal appear in your normal unassigned queue (source *portal*); nobody is emailed
   about them yet (backlog: new-ticket alert).
 - A client's reply reopens a waiting/resolved/closed ticket, exactly like an emailed reply.
-- No file uploads, no online payment (payments are still recorded by hand), no self-service contact management.
+- No online payment (payments are still recorded by hand). Contacts can edit only their own name, phone and title; email and access flags stay staff-only.
 - Someone who controls the mailbox of a portal contact can sign in as them. That is the same trust
   model as email replies to tickets; keep portal access to people whose mailboxes you trust.
 - A sign-in request from a known address does slightly more work than one from an unknown address, so

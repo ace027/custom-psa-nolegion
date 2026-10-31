@@ -6,6 +6,7 @@ from sqlalchemy import text
 
 from app import ticket_services as svc
 from app.sla import Calendar, add_business_minutes, business_minutes_between
+from tests.test_portal import link_emails, portal_on, sign_in, two_clients  # noqa: F401
 
 CT = ZoneInfo("America/Chicago")
 CAL = Calendar(CT, frozenset({0, 1, 2, 3, 4}), 480, 1020)
@@ -435,3 +436,28 @@ def test_dashboard_lists_breached_tickets_first(admin, owner, make_ticket, freez
     freeze(ct(2026, 9, 29, 12))
     risk = admin.get("/api/v1/dashboard").json()["sla_at_risk"]
     assert [t["subject"] for t in risk] == ["old"] and risk[0]["sla_state"] == "breached"
+
+
+def test_staff_attachment_list_shows_portal_source_and_uploader(
+    admin, sign_in, two_clients, tmp_path, monkeypatch
+):  # noqa: F811
+    import base64
+
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "attachments_dir", str(tmp_path))
+
+    from tests.test_portal import add_contact
+
+    org = two_clients[0]
+    pat = add_contact(admin, org, "Pat", "pat@acme.com")
+    t = admin.post(
+        "/api/v1/tickets", json={"organization_id": org, "contact_id": pat["id"], "subject": "S"}
+    ).json()
+    up = sign_in("pat@acme.com").post(
+        f"/api/v1/portal/tickets/{t['id']}/attachments",
+        json={"filename": "a.txt", "content_base64": base64.b64encode(b"hi").decode()},
+    )
+    assert up.status_code == 201, up.text
+    rows = admin.get(f"/api/v1/tickets/{t['id']}/attachments").json()
+    assert [(r["source"], r["uploaded_by_name"]) for r in rows] == [("portal", "Pat")]
