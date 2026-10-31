@@ -76,18 +76,20 @@ function Verify() {
     mutationFn: (token: string) => api<PortalMe>("/portal/verify", { method: "POST", json: { token } }),
     onSuccess: (me) => { qc.setQueryData(["portal", "me"], me); nav("/portal", { replace: true }); },
   });
+  const [missing, setMissing] = useState(false);
   useEffect(() => {
     // The token travels in the URL fragment so it is never sent to a server, log or referrer.
     const token = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("token");
     window.history.replaceState(null, "", window.location.pathname);
     if (token) redeem.mutate(token);
+    else setMissing(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
     <Shell>
-      {redeem.isError ? (
+      {redeem.isError || missing ? (
         <Card title="This link cannot be used"><p className="text-sm">It has expired or was already used. <Link className="text-blue-700 underline" to="/portal">Ask for a new one</Link>.</p></Card>
-      ) : <p>Signing you in…</p>}
+      ) : <p role="status">Signing you in…</p>}
     </Shell>
   );
 }

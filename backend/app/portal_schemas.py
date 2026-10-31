@@ -11,7 +11,9 @@ class PortalLoginOptionsOut(BaseModel):
 
 class PortalAttachmentIn(BaseModel):
     filename: str = Field(min_length=1, max_length=300)
-    content_base64: str = Field(min_length=1)
+    # base64 of the default 10 MB cap (4/3 inflation + padding slack); the exact configured cap is
+    # re-checked in portal_files._decode
+    content_base64: str = Field(min_length=1, max_length=(10 * 1024 * 1024 * 4) // 3 + 8)
 
 
 class PortalAttachmentOut(BaseModel):

@@ -53,7 +53,8 @@ def safe_filename(name: str) -> str:
 
 
 def _decode(content_base64: str, max_bytes: int) -> bytes:
-    # base64 inflates by 4/3: reject a huge body before spending memory on decoding it
+    # base64 inflates by 4/3: reject an oversized string before spending memory on decoding it.
+    # This runs after the body was parsed; the request-size limit itself is not enforced here.
     if len(content_base64) > (max_bytes * 4) // 3 + 8:
         raise HTTPException(413, "That file is too large")
     try:

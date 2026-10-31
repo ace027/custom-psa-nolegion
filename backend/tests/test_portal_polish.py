@@ -106,6 +106,15 @@ def test_upload_validation(admin, sign_in, world, monkeypatch):
     assert upload(p, tid, data=b"").status_code == 422
 
 
+def test_upload_schema_caps_base64_length(admin, sign_in, world):
+    p = sign_in("pat@acme.com")
+    r = p.post(
+        f"{API}/tickets/{world['ticket']['id']}/attachments",
+        json={"filename": "a.txt", "content_base64": "A" * (14 * 1024 * 1024)},
+    )
+    assert r.status_code == 422
+
+
 def test_closed_ticket_refuses_uploads(admin, sign_in, world):
     admin.patch(f"/api/v1/tickets/{world['ticket']['id']}", json={"status": "closed"})
     assert upload(sign_in("pat@acme.com"), world["ticket"]["id"]).status_code == 409
