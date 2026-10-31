@@ -65,7 +65,7 @@
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | info | security | Setting organizations.entra_tenant_id now needs portal:manage (admin) instead of org:write; clearing it does not. Unlinking a contact's Entra account also ends its portal sessions. | pending | INVALID: type "security" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
+| 1 | info | security | Setting organizations.entra_tenant_id now needs portal:manage (admin) instead of org:write; clearing it does not. Unlinking a contact's Entra account also ends its portal sessions. | approved | Auto default: accepted (tenant id needs portal:manage; unlink ends portal sessions); 14-03 amended to show the input only to portal:manage users. |
 
 - #1 context: The tenant id decides which Microsoft accounts can sign in to a client's portal, so it carries the same risk as granting portal access, which is already admin-only. Plan 14-03 should hide or disable the tenant-id input for non-admins.
 

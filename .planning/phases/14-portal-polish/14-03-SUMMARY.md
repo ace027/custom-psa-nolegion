@@ -60,7 +60,7 @@
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | warning | api-contract | Add `phone` and `title` to `PortalMeOut` (and `svc.me`) so My details can prefill them and not wipe them on save. | pending | INVALID: type "api-contract" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
+| 1 | warning | api-contract | Add `phone` and `title` to `PortalMeOut` (and `svc.me`) so My details can prefill them and not wipe them on save. | approved | Auto default: plan 14-03 amended to add phone/title to PortalMeOut and portal.me() with a test, so My details prefills and never wipes them. |
 
 - #1 context: `backend/` is out of scope for this plan. Until it is changed, a contact who saves My details with those fields empty loses their stored phone and title.
 
