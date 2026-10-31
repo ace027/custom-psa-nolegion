@@ -221,7 +221,8 @@ function Invoices() {
   return (
     <Card title="Invoices" actions={<span className="flex gap-3"><ExportButton kind="invoices" label="Export invoices (CSV)" /><a className="text-sm text-blue-700 hover:underline" href="/api/v1/portal/statement/pdf">Download account statement</a></span>}>
       <ErrorMsg error={q.error} />
-      <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[36rem] text-left text-sm">
         <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-1">Invoice</th><th>Date</th><th>Due</th><th className="text-right">Total</th><th className="text-right">Balance</th><th /></tr></thead>
         <tbody>
           {q.data?.map((i) => (
@@ -235,6 +236,7 @@ function Invoices() {
           {q.data?.length === 0 && <tr><td colSpan={6} className="p-2 text-slate-500">No invoices yet.</td></tr>}
         </tbody>
       </table>
+      </div>
     </Card>
   );
 }
@@ -250,11 +252,13 @@ function InvoicePage() {
       {i && (
         <Card title={i.number} actions={<a className="text-sm text-blue-700 hover:underline" href={`/api/v1/portal/invoices/${i.id}/pdf`}>Download PDF</a>}>
           <p className="mb-2 text-sm text-slate-600">Dated {i.invoice_date}, due {i.due_date}. {STATUS[i.status]}{i.balance_cents > 0 ? `, balance ${money(i.balance_cents)}` : ""}.</p>
-          <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[28rem] text-left text-sm">
             <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-1">Description</th><th className="text-right">Qty</th><th className="text-right">Price</th><th className="text-right">Amount</th></tr></thead>
             <tbody>{i.lines.map((l, n) => <tr key={n} className="border-b border-slate-100"><td className="p-1">{l.description}</td><td className="text-right">{l.quantity.replace(/\.?0+$/, "")}</td><td className="text-right">{money(l.unit_price_cents)}</td><td className="text-right">{money(l.amount_cents)}</td></tr>)}</tbody>
             <tfoot><tr><td colSpan={3} className="p-1 text-right text-slate-500">Tax</td><td className="text-right">{money(i.tax_cents)}</td></tr><tr className="font-semibold"><td colSpan={3} className="p-1 text-right">Total</td><td className="text-right">{money(i.total_cents)}</td></tr></tfoot>
           </table>
+          </div>
         </Card>
       )}
     </div>

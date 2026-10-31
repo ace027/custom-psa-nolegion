@@ -67,6 +67,7 @@ Fix the unresolved findings in 14-REVIEW.md, accept the phase as is, or re-plan;
 - 2026-10-29: report schedules form no longer loses unsaved input (other Edit buttons and New schedule are disabled while a form is open; focus moves into the form and back to its opener)
 - 2026-10-31: F-002, the client page and its cards take the current client from useClientScope (route /organizations/:id wins, else the provider); explicit-client links keep clientRoute(id)
 - 2026-10-31: phase 12 minor findings: add_note marks author-less notes system, timesheet API returns entry_type and automation_minutes, note-system/note-ai colour tokens, a persistent live region for note filters (F-005 and F-007 left for a design decision)
+- 2026-10-31: fix F-009 (phase 14): portal invoice list and detail tables scroll horizontally on narrow screens
 
 ## Phase 4 Results
 (build started 2026-10-10)
