@@ -4,18 +4,24 @@ The owner does no manual testing between phases. Each phase adds its manual
 checks here instead of asking for them, and Phase 15 runs the whole list in one
 pass. Mark each item pass or fail (with a note) when it is run.
 
+Record results in [docs/verify/RUNBOOK.md](../docs/verify/RUNBOOK.md).
+
 ## Phase 1: Block-hour / retainer agreements
+Record results in docs/verify/RUNBOOK.md
 - [ ] Walk through docs/verify/billing-block-hours.md
 
 ## Phase 2: Scheduling: availability & appointments
+Record results in docs/verify/RUNBOOK.md
 - (no manual checks; covered by automated tests)
 
 ## Phase 3: Dispatch board
+Record results in docs/verify/RUNBOOK.md
 - [ ] Walk through docs/verify/dispatch-board.md
 - [ ] Walk through docs/verify/dispatch-spike.md
 - [ ] e2e smoke.spec.ts "ticket lifecycle" fails before phase 4; confirm it is fixed or fix it
 
 ## Phase 4: Outlook push + free/busy
+Record results in docs/verify/RUNBOOK.md
 - [ ] Create the "PSA Techs" group and Exchange RBAC for Applications scope (docs/CALENDAR_SETUP.md)
 - [ ] Run `cd backend && python dev/graph_calendar_spike.py --mailbox <tech>` (read-only) on the real tenant
 - [ ] Run it again with `--write`, then with `--write --outside <someone outside the group>`; the outside call must be refused
@@ -24,9 +30,11 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Force a failure (e.g. a tech outside the group); the board shows the failed badge and Retry works after fixing it
 
 ## Phase 5: Client confirmations + on-call
+Record results in docs/verify/RUNBOOK.md
 - [ ] Walk through docs/verify/client-notices-oncall.md
 
 ## Phase 6: RMM alerts to tickets
+Record results in docs/verify/RUNBOOK.md
 - [ ] Walk through docs/verify/rmm-alerts.md
 - [ ] Check the NinjaOne alert field names (uid, deviceId, severity, sourceConfigUid) against a live tenant first
 - [ ] Enable alerts with defaults on the Integrations card
@@ -43,6 +51,7 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Tech and read-only users cannot see the card
 
 ## Phase 7: Automation & API
+Record results in docs/verify/RUNBOOK.md
 - [ ] Walk through docs/verify/automation-api.md (API keys, webhooks, automation rules)
 - [ ] Unverified: a real Microsoft Teams Workflows webhook URL renders the adaptive card
 - [ ] Unverified: a real n8n instance accepts the payload and the HMAC-SHA256 signature verifies
@@ -51,16 +60,19 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Rules never trigger other rules; a rule firing more than 200 times in an hour switches itself off
 
 ## Phase 8: Projects & project billing
+Record results in docs/verify/RUNBOOK.md
 - [ ] Walk through docs/verify/projects.md (projects, phases, tasks, dependencies, board, budget, fixed-fee and T&M billing)
 - [ ] Confirm: milestones (phase completion) are not billed
 - [ ] Confirm: project time does not use block hours
 
 ## Phase 9: CRM & renewals
+Record results in docs/verify/RUNBOOK.md
 - [ ] Walk through docs/verify/crm.md (leads and conversion, pipeline, quote link and win, forecast, renewal reminders)
 - [ ] Confirm: the forecast is an estimate only and never creates invoices
 - [ ] Confirm: the renewal worker sends one email per new reminder and never repeats it
 
 ## Phase 10: Procurement & inventory
+Record results in docs/verify/RUNBOOK.md
 - [ ] Walk through docs/verify/procurement.md (vendors, purchase orders, receiving with serials, delivery, undo, consume, markup rules, client card)
 - [ ] Confirm: a client is billed when the item is delivered, not when it is received
 - [ ] Confirm: markup order is line, then product rule, then category rule, then the default
@@ -69,6 +81,7 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Confirm: undo delivery is refused once the charge is invoiced, and a credit memo is the fix
 
 ## Phase 11: Reporting & dashboards
+Record results in docs/verify/RUNBOOK.md
 - [ ] Walk through docs/verify/reports.md (SLA, utilisation, aging, profitability, dashboards, scheduled emails)
 - [ ] Confirm: SLA population is tickets created in the range, and pending tickets are left out of the met percentage
 - [ ] Confirm: utilisation capacity is work hours minus holidays and time off, and logged includes internal time
@@ -78,16 +91,19 @@ pass. Mark each item pass or fail (with a note) when it is run.
 - [ ] Confirm: scheduled emails go once per period, only to staff holding report:read, and failures are not retried
 
 ## Phase 12: Integration readiness
+Record results in docs/verify/RUNBOOK.md
 - [ ] Update the Entra app registration redirect URI to `<public_url>/api/v1/auth/callback`, then sign in
 - [ ] Build with VITE_BRAND_NAME, VITE_BRAND_LOGO and VITE_BRAND_COLORS set and check the header and login page
 - [ ] An API-key request creates a ticket with source `api`
 - [ ] An existing n8n/webhook consumer still works (outbound webhook URLs are unchanged)
 
 ## Phase 13: Knowledge base
+Record results in docs/verify/RUNBOOK.md
 - [ ] Walk through docs/verify/kb.md
 - [ ] Confirm: kb:write for admin and tech only (assumed default)
 
 ## Phase 14: Portal polish
+Record results in docs/verify/RUNBOOK.md
 - [ ] Walk through docs/verify/portal-polish.md
 - [ ] Real-tenant check: register the multi-tenant portal app per docs/PORTAL_SSO.md and sign in from a client tenant
 - [ ] Confirm: uploads limited to 10 MB and the extension allowlist (assumed default)
