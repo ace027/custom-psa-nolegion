@@ -64,3 +64,15 @@ _none_
 | SEC-006 | A09:Logging and Monitoring | INFO | Only PortalLoginDenied is audited; other resolver exceptions (e.g. an entra_oid unique race) give an unaudited 500. | backend/app/auth/oidc.py:118-151 | Map IntegrityError on the flush to deny('oid_conflict'). | OPEN |
 | SEC-007 | A04:Insecure Design | INFO | Allowlist includes macro-capable legacy Office formats, .zip, .msg/.eml that staff then open; same exposure as inbound email. | backend/app/portal_files.py:26-47 | Consider malware scanning or dropping legacy macro formats. | OPEN |
 | SEC-008 | A01:Broken Access Control | INFO | An admin can set the MSP's own tenant on a client org (by design, admin-only). | backend/app/routers/organizations.py:32-38 | Warn in the UI when the tenant id equals the staff tenant. | OPEN |
+
+## Resolution (2026-11-01, commit 21e9247)
+
+- MEDIUM (email fallback): fixed. An email-only match emails a one-time confirm link; the oid is bound only when the link is redeemed in the browser that completed the Microsoft sign-in, after re-checking the contact, oid and tenant. Other browsers sign in without binding (audited `different_browser`).
+- LOW aud not pinned: fixed (`portal_claims_options()` pins aud; wrong-aud test).
+- LOW client name prefix: fixed (staff client renamed `entra_staff`).
+- LOW upload decode before rate check: fixed (advisory lock, hourly limit and per-client quota `portal_org_storage_bytes` before decoding).
+- LOW tenant change keeps sessions: fixed (changing or clearing the tenant id unlinks contacts and ends their portal sessions; audited).
+- INFO oid unique race: fixed alongside (mapped to `oid_conflict` denial).
+- INFO macro-capable uploads, INFO MSP tenant on a client org: open, accepted as informational.
+
+Full backend suite 1615 passed; frontend 335 passed.
