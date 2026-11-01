@@ -149,7 +149,7 @@ class FakeEntra:
 
 class FakeOAuth:
     def __init__(self, entra):
-        self.entra = entra
+        self.entra_staff = entra
 
 
 def test_callback_success_creates_session_and_audit(anon, admin, make_user, monkeypatch):

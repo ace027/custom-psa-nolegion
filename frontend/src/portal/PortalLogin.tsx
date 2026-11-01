@@ -17,6 +17,11 @@ export default function PortalLogin() {
           We could not sign you in with Microsoft. Ask your IT contact to check your account, or use an email link.
         </p>
       )}
+      {params.get("sso") === "confirm" && (
+        <p role="status" className="mb-3 rounded bg-blue-50 p-2 text-sm text-blue-800">
+          Check your email: we sent a link to confirm your Microsoft account. It works once.
+        </p>
+      )}
       {sso && (
         <>
           <Button type="button" onClick={() => window.location.assign("/api/v1/portal/sso/login")}>Sign in with Microsoft</Button>

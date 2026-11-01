@@ -4,7 +4,9 @@ Separate from staff sessions on purpose: a different cookie, different tables, a
 (a contact) that can only ever be scoped to its own organization."""
 
 import hashlib
+import hmac
 import secrets
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, func, select, update
@@ -19,6 +21,18 @@ MAX_LINKS_PER_IP_PER_HOUR = 20
 
 def _hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def new_browser_secret() -> tuple[str, str]:
+    """(raw secret for the confirm cookie, its hash for the token row)."""
+    secret = secrets.token_urlsafe(32)
+    return secret, _hash(secret)
+
+
+def browser_matches(secret: str | None, expected_hash: str | None) -> bool:
+    if not secret or not expected_hash:
+        return False
+    return hmac.compare_digest(_hash(secret), expected_hash)
 
 
 def find_contact_by_email(db: Session, email: str) -> Contact | None:
@@ -55,7 +69,17 @@ def may_issue_link(db: Session, contact: Contact, ip: str | None) -> bool:
     return True
 
 
-def issue_link_token(db: Session, contact: Contact, ip: str | None) -> str:
+def issue_link_token(
+    db: Session,
+    contact: Contact,
+    ip: str | None,
+    *,
+    bind_entra_oid: str | None = None,
+    bind_entra_tenant_id: str | None = None,
+    bind_browser_hash: str | None = None,
+) -> str:
+    """A one-time link. With bind_* set it also confirms a pending Microsoft sign-in: redeeming
+    it proves the person controls the contact's mailbox, which the SSO email claim cannot."""
     token = secrets.token_urlsafe(32)
     db.add(
         PortalLoginToken(
@@ -63,15 +87,26 @@ def issue_link_token(db: Session, contact: Contact, ip: str | None) -> str:
             contact_id=contact.id,
             expires_at=datetime.now(UTC) + timedelta(minutes=get_settings().portal_link_minutes),
             requested_ip=ip,
+            bind_entra_oid=bind_entra_oid,
+            bind_entra_tenant_id=bind_entra_tenant_id,
+            bind_browser_hash=bind_browser_hash,
         )
     )
     db.flush()
     return token
 
 
-def consume_link_token(db: Session, token: str) -> Contact | None:
+@dataclass
+class RedeemedLink:
+    contact: Contact
+    bind_entra_oid: str | None
+    bind_entra_tenant_id: str | None
+    bind_browser_hash: str | None
+
+
+def consume_link_token(db: Session, token: str) -> RedeemedLink | None:
     """Single use, atomically: two clicks race on one UPDATE and only one wins."""
-    contact_id = db.execute(
+    row = db.execute(
         update(PortalLoginToken)
         .where(
             PortalLoginToken.token_hash == _hash(token),
@@ -79,12 +114,21 @@ def consume_link_token(db: Session, token: str) -> Contact | None:
             PortalLoginToken.expires_at > datetime.now(UTC),
         )
         .values(used_at=datetime.now(UTC))
-        .returning(PortalLoginToken.contact_id)
-    ).scalar_one_or_none()
-    if contact_id is None:
+        .returning(
+            PortalLoginToken.contact_id,
+            PortalLoginToken.bind_entra_oid,
+            PortalLoginToken.bind_entra_tenant_id,
+            PortalLoginToken.bind_browser_hash,
+        )
+    ).one_or_none()
+    if row is None:
         return None
-    contact = db.get(Contact, contact_id)
-    return contact if _active(db, contact) else None
+    contact = db.get(Contact, row.contact_id)
+    if not _active(db, contact):
+        return None
+    return RedeemedLink(
+        contact, row.bind_entra_oid, row.bind_entra_tenant_id, row.bind_browser_hash
+    )
 
 
 def _active(db: Session, contact: Contact | None) -> bool:

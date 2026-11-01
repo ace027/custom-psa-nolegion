@@ -4,7 +4,11 @@ Needs: the portal multi-tenant app registration (docs/PORTAL_SSO.md) and a clien
 
 ## Sign in with Microsoft
 - [ ] Set the client's *Client Entra tenant ID* on its organization page; the contact has portal access and a matching email
-- [ ] `/portal` shows *Sign in with Microsoft* above the email form; signing in from the client tenant lands in the portal and the contact card shows *Microsoft linked*
+- [ ] `/portal` shows *Sign in with Microsoft* above the email form; a FIRST sign-in from the client tenant returns to `/portal?sso=confirm` with "Check your email: we sent a link to confirm your Microsoft account. It works once." and nothing is linked yet
+- [ ] The contact receives "Your sign-in link for ...: confirm your Microsoft account"; opening the link signs in and the contact card then shows *Microsoft linked*; opening it a second time is refused
+- [ ] A later *Sign in with Microsoft* lands straight in the portal (no email)
+- [ ] Same-browser rule: unlink, sign in with Microsoft in browser A, open the confirm email in browser B (or a private window): you are signed in but the card does NOT show *Microsoft linked*; the audit log shows `portal.sso_link_skipped` with reason `different_browser`. Repeat from browser A to link
+- [ ] Changing the organization's tenant id removes *Microsoft linked* from its contacts and signs them out
 - [ ] A user from a tenant that is not listed on any client is sent back to `/portal?sso=denied` with the "could not sign you in with Microsoft" message
 - [ ] The emailed one-time link still works for the same contact
 - [ ] *Unlink Microsoft* on the contact card removes the badge (org:write users only)

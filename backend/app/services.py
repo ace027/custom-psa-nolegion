@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from app import audit
@@ -57,6 +57,7 @@ def update_organization(ctx: Ctx, org_id: int, data: dict) -> Organization:
     before = audit.snapshot(org)
     if data.get("rmm_client_id") is not None:
         data = {**data, "rmm_client_id": str(data["rmm_client_id"])}
+    old_tenant = (org.entra_tenant_id or "").lower()
     _apply(org, data)
     _flush(ctx, "An active organization with that name already exists")
     ctx.db.refresh(org)
@@ -69,7 +70,35 @@ def update_organization(ctx: Ctx, org_id: int, data: dict) -> Organization:
         after=audit.snapshot(org),
         organization_id=org.id,
     )
+    if (org.entra_tenant_id or "").lower() != old_tenant:
+        _unlink_tenant_contacts(ctx, org)
     return org
+
+
+def _unlink_tenant_contacts(ctx: Ctx, org: Organization) -> None:
+    """The tenant id decides whose Microsoft accounts are trusted for this client. Once it changes
+    (or is cleared), oids bound under the old tenant and the sessions they opened are no longer
+    vouched for: unbind them and end those sessions, as an explicit unlink does."""
+    contacts = (
+        ctx.db.execute(
+            select(Contact).where(Contact.organization_id == org.id, Contact.entra_oid.is_not(None))
+        )
+        .scalars()
+        .all()
+    )
+    for contact in contacts:
+        contact.entra_oid = None
+    ctx.db.flush()
+    for contact in contacts:
+        _revoke_portal(ctx, contact)
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "organization.entra_tenant_changed",
+        org,
+        organization_id=org.id,
+        detail={"contacts_unlinked": len(contacts)},
+    )
 
 
 def set_organization_archived(ctx: Ctx, org_id: int, archived: bool) -> Organization:

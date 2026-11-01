@@ -1482,6 +1482,11 @@ class PortalLoginToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     requested_ip: Mapped[str | None] = mapped_column(String(64))
+    # Set only on links that confirm a first "Sign in with Microsoft": the oid/tid to bind on use.
+    bind_entra_oid: Mapped[str | None] = mapped_column(String(64))
+    bind_entra_tenant_id: Mapped[str | None] = mapped_column(String(64))
+    # sha256 of the secret in the signing-in browser's psa_portal_sso_confirm cookie
+    bind_browser_hash: Mapped[str | None] = mapped_column(String(64))
 
 
 class PortalSession(Base):

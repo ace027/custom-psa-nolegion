@@ -50,30 +50,60 @@ edit organizations may clear it.
 Contacts still need **portal access** as before. SSO never creates contacts.
 
 ## How a sign-in is matched
-1. The ID token is validated by authlib (signature, audience, expiry, nonce, PKCE). Because a
-   multi-tenant app's issuer is a `{tenantid}` template, the PSA also requires `iss` to be exactly
-   `https://login.microsoftonline.com/<tid>/v2.0` for the token's own `tid`.
+1. The ID token is validated by authlib (signature, expiry, nonce, PKCE). Because the PSA passes its own
+   claims options (which replace authlib's defaults), it pins `aud` to `PORTAL_ENTRA_CLIENT_ID`
+   explicitly, and because a multi-tenant app's issuer is a `{tenantid}` template, it requires `iss`
+   to be exactly `https://login.microsoftonline.com/<tid>/v2.0` for the token's own `tid`.
 2. `tid` and `oid` must be present. `tid` must match one organization's tenant id; that organization
    must not be archived.
 3. Within **that organization only**, the contact is found by its bound Entra object id (`oid`), or, on
    a first sign-in, by email (`email`, else `preferred_username`, case-insensitive).
 4. The contact must have portal access and not be archived. If it is already bound to a different
    `oid`, or the `oid` is bound to a contact of another organization, sign-in is refused.
-5. On success the `oid` is bound to the contact. Later sign-ins match by `oid`, even if the email
-   changes in Entra. The contact list shows **SSO linked**; **Unlink** clears it (and ends that
-   contact's portal sessions) so the next sign-in matches by email again, e.g. when a mailbox is
-   handed to a new person.
+5. **Matched by `oid`** (already linked): the contact is signed in directly.
+6. **Matched by email only** (first sign-in): nothing is signed in and nothing is bound. The PSA emails
+   the contact a one-time link ("confirm your Microsoft account"; the same link machinery, expiry and
+   rate limits as the emailed sign-in link) that carries the pending binding, and redirects to
+   `/portal?sso=confirm` ("Check your email..."). That redirect is the same whether the email was sent,
+   rate-limited or mail is not configured. When a link was issued, the browser also gets a short-lived
+   httponly cookie (`psa_portal_sso_confirm`, path `/api/v1/portal`, expires with the link) whose
+   hash is stored on the link. Audited as `portal.sso_link_requested`
+   (`{"contact_id", "sent", "reason"?}`) or, when rate-limited, `portal.sso_link_rate_limited`.
+7. **Opening the confirm link** signs the contact in (it proves they control the mailbox). It binds the
+   `oid` only when opened **in the same browser that did the Microsoft sign-in** (the cookie matches)
+   and, after re-checking at that moment that the contact is still unlinked, no other contact holds the `oid`, and
+   the organization's tenant id still equals the one the token came from, binds the `oid`
+   (`portal.sso_linked`). If a re-check fails, the contact is still signed in but nothing is bound
+   (`portal.sso_link_skipped` with `reason`: `different_browser`, `contact_already_linked`,
+   `oid_bound_elsewhere` or `tenant_changed`). Opening the link in another browser or device
+   therefore still signs you in but does not link the account; to link it, use Sign in with
+   Microsoft again from the browser you will open the email in. The cookie is cleared once the link
+   is used. If a concurrent binding of the same `oid` wins the race, the link is refused
+   (`portal.login_failed`, `{"reason": "oid_conflict", "method": "sso_confirm"}`) and can be retried.
+8. Later sign-ins match by `oid`, even if the email changes in Entra. The contact list shows **SSO
+   linked**; **Unlink** clears it (and ends that contact's portal sessions) so the next sign-in has to
+   be confirmed by email again, e.g. when a mailbox is handed to a new person.
+9. **Changing or clearing an organization's tenant id** unlinks every contact of that organization
+   that has an `oid` and ends their portal sessions (`organization.entra_tenant_changed` with
+   `{"contacts_unlinked": n}`). Saving the same value again changes nothing.
 
 Every refusal redirects to `/portal?sso=denied` with no detail, and is audited as
 `portal.login_failed` with `{"reason": ..., "method": "sso"}`. Reasons: `not_configured`,
 `portal_disabled`, `token_exchange`, `missing_tid`, `missing_oid`, `unknown_tenant`,
 `organization_archived`, `oid_bound_elsewhere`, `missing_email`, `no_contact`, `contact_archived`,
-`no_portal_access`, `oid_mismatch`. Successes are `portal.login` with `{"contact_id", "method": "sso"}`.
+`no_portal_access`, `oid_mismatch`. Successes are `portal.login` with `{"contact_id", "method": "sso"}`
+(or `"sso_confirm"` when the confirm link was used).
 
 ## Trust note: the email claim
-Users in a tenant cannot normally change their own email, but **that tenant's admins can set any
-address** on any of their users. The PSA therefore trusts the email claim **only inside the
-organization whose tenant issued the token**: a client's admin can at most sign in as their own
-company's portal contacts (people they already control the mailboxes of), never as another client's.
+Entra does **not** verify the `email` / `preferred_username` claims: a tenant's admins can set any
+address on any of their users, and an invited guest or ordinary member can end up carrying an address
+equal to a portal contact's (for example the billing contact). The email claim is therefore only a
+**candidate** match, and only inside the organization whose tenant issued the token, never another
+client's. The first link between a Microsoft account and a contact is confirmed by a one-time link
+sent to the contact's own mailbox, so whoever signs in with Microsoft must also control that mailbox.
+The link only binds in the browser that did the Microsoft sign-in: otherwise a tenant member could sign
+in carrying the contact's address and wait for the real contact to click the email, which would link
+the member's account to the contact (account-linking CSRF). The real contact clicking it elsewhere is
+just signed in as themselves.
 That is why setting the tenant id is admin-only and unique, and why the `oid`, not the email, is the
 lasting identity once bound.

@@ -1,13 +1,15 @@
 """Entra ID OIDC (authorization code + PKCE).
 
-Two app registrations: the single-tenant staff app ('entra') and, for the client portal, a
+Two app registrations: the single-tenant staff app ('entra_staff') and, for the client portal, a
 multi-tenant app ('entra_portal', authority 'organizations') whose sign-ins are mapped to
 pre-existing contacts of the organization that owns the token's tenant."""
 
+from dataclasses import dataclass
 from functools import lru_cache
 
 from authlib.integrations.starlette_client import OAuth
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import repositories as repo
@@ -31,7 +33,9 @@ def _register(oauth: OAuth, name: str, authority: str, client_id: str, secret: s
 def get_oauth() -> OAuth:
     s = get_settings()
     oauth = OAuth()
-    _register(oauth, "entra", s.entra_tenant_id, s.entra_client_id, s.entra_client_secret)
+    # Neither name may be a prefix of the other: authlib keys its state entries in the shared
+    # OIDC state cookie by client name, and prefix overlap would mix the two namespaces.
+    _register(oauth, "entra_staff", s.entra_tenant_id, s.entra_client_id, s.entra_client_secret)
     if s.portal_sso_configured:
         _register(
             oauth,
@@ -53,9 +57,15 @@ def portal_issuer_matches_tid(claims: dict, iss: str | None) -> bool:
     return bool(tid) and iss == f"{LOGIN_BASE}/{tid}/v2.0"
 
 
-# Passed to authorize_access_token for the portal client (authlib reads claims_options per call,
-# not from register()). Signature, aud, exp, iat and nonce stay authlib's own checks.
-PORTAL_CLAIMS_OPTIONS = {"iss": {"essential": True, "validate": portal_issuer_matches_tid}}
+def portal_claims_options() -> dict:
+    """Passed to authorize_access_token for the portal client (authlib reads claims_options per
+    call, not from register()). Supplying claims_options REPLACES authlib's defaults, so aud must
+    be pinned here explicitly or it is not checked at all. Signature, exp, iat and nonce remain
+    authlib's own checks."""
+    return {
+        "iss": {"essential": True, "validate": portal_issuer_matches_tid},
+        "aud": {"essential": True, "values": [get_settings().portal_entra_client_id]},
+    }
 
 
 class LoginDenied(Exception):
@@ -99,14 +109,28 @@ class PortalLoginDenied(Exception):
         self.reason = reason
 
 
-def resolve_contact_from_claims(db: Session, claims: dict) -> Contact:
-    """Map verified portal ID-token claims to an EXISTING portal contact. Never auto-provisions.
+@dataclass
+class PortalMatch:
+    """Outcome of mapping portal claims. `bound` is True when the contact already holds this oid
+    and may be signed in directly; otherwise the match came from the email claim alone and must be
+    confirmed through a one-time link sent to the contact's mailbox before anything is bound."""
+
+    contact: Contact
+    bound: bool
+    oid: str
+    tid: str
+
+
+def resolve_contact_from_claims(db: Session, claims: dict) -> PortalMatch:
+    """Map verified portal ID-token claims to an EXISTING portal contact. Never auto-provisions and
+    never writes.
 
     The token's tenant (tid) selects exactly one organization (staff set its entra_tenant_id), and
     the contact is looked up inside THAT organization only: first by the bound Entra object id,
-    otherwise by email. The email claim is trusted only because it was issued by the client's own
-    tenant, whose admins control it; it is never used to reach another organization's contacts.
-    The oid is bound on the first successful sign-in and never silently replaced.
+    otherwise by email. Entra does not verify the email / preferred_username claims (any tenant
+    member, or an invited guest, can carry an address equal to a contact's), so an email match is
+    only a candidate: the caller must prove mailbox ownership with an emailed link before the oid
+    is bound (bind_confirmed_oid). A bound oid is never silently replaced.
     """
     tid = str(claims.get("tid") or "").strip().lower()
     if not tid:
@@ -145,7 +169,41 @@ def resolve_contact_from_claims(db: Session, claims: dict) -> Contact:
         raise PortalLoginDenied("contact_archived")
     if not contact.portal_access:
         raise PortalLoginDenied("no_portal_access")
-    if contact.entra_oid is None:
-        contact.entra_oid = oid
+    return PortalMatch(contact=contact, bound=bound is not None, oid=oid, tid=tid)
+
+
+def _oid_holder(db: Session, oid: str) -> int | None:
+    return db.execute(select(Contact.id).where(Contact.entra_oid == oid)).scalar_one_or_none()
+
+
+def bind_confirmed_oid(
+    db: Session, contact: Contact, oid: str, tid: str, *, same_browser: bool
+) -> str | None:
+    """Bind the oid carried by a redeemed SSO confirmation link. Everything is re-checked now,
+    because the link may have sat in the mailbox while staff unlinked, re-pointed the tenant, or
+    the same Microsoft account got bound to someone else. Returns None when bound, otherwise the
+    reason it was skipped. Raises PortalLoginDenied('oid_conflict') if a concurrent bind of the
+    same oid wins the unique index between the check and the write.
+
+    same_browser: the redeeming browser holds the secret set by the SSO callback. Without it the
+    mailbox owner may be clicking a link triggered by someone else's Microsoft sign-in; binding
+    would hand that other account permanent access to this contact."""
+    if not same_browser:
+        return "different_browser"
+    if contact.entra_oid is not None:
+        return "contact_already_linked"
+    if _oid_holder(db, oid) is not None:
+        return "oid_bound_elsewhere"
+    org = db.get(Organization, contact.organization_id)
+    current = str((org.entra_tenant_id if org else None) or "").strip().lower()
+    if not current or current != str(tid or "").strip().lower():
+        return "tenant_changed"
+    savepoint = db.begin_nested()
+    contact.entra_oid = oid
+    try:
         db.flush()
-    return contact
+    except IntegrityError:
+        savepoint.rollback()
+        raise PortalLoginDenied("oid_conflict") from None
+    savepoint.commit()
+    return None

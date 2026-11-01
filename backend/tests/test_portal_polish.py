@@ -141,6 +141,38 @@ def test_hourly_upload_limit(admin, sign_in, world):
     assert codes[:20] == [201] * 20 and codes[20] == 429
 
 
+def test_rate_limit_is_checked_before_decoding(admin, sign_in, world, monkeypatch):
+    from app import portal_files
+
+    p = sign_in("pat@acme.com")
+    for _ in range(20):
+        assert upload(p, world["ticket"]["id"], data=b"x").status_code == 201
+
+    def must_not_decode(*args, **kwargs):
+        raise AssertionError("decoded before the rate limit was checked")
+
+    monkeypatch.setattr(portal_files, "_decode", must_not_decode)
+    assert upload(p, world["ticket"]["id"], data=b"x" * 50).status_code == 429
+
+
+def test_org_storage_quota(admin, sign_in, world, monkeypatch):
+    from app import portal_files
+
+    monkeypatch.setattr(get_settings(), "portal_org_storage_bytes", 10)
+    p = sign_in("pat@acme.com")
+    assert upload(p, world["ticket"]["id"], data=b"x" * 8).status_code == 201
+    calls = []
+    real = portal_files._decode
+    monkeypatch.setattr(portal_files, "_decode", lambda *a: calls.append(1) or real(*a))
+    r = upload(p, world["ticket"]["id"], data=b"x" * 8)
+    assert r.status_code == 413
+    assert r.json()["detail"] == "This client's file storage is full. Contact us."
+    assert calls == []  # refused from the encoded length, without decoding
+    # the quota is per client: another organization still has room
+    bea_ticket = mk_ticket(admin, world["b"], world["bea"]["id"])
+    assert upload(sign_in("bea@beta.com"), bea_ticket["id"], data=b"x" * 8).status_code == 201
+
+
 def test_filename_is_sanitised(admin, sign_in, world, files_dir):
     p = sign_in("pat@acme.com")
     r = upload(p, world["ticket"]["id"], name="../../etc/passwd.txt")

@@ -51,6 +51,12 @@ describe("portal Microsoft sign-in", () => {
     portal("/portal?sso=denied", { ...signedOut, "/api/v1/portal/login-options": json({ sso: true }) });
     expect(await screen.findByRole("alert")).toHaveTextContent("We could not sign you in with Microsoft. Ask your IT contact to check your account, or use an email link.");
   });
+
+  it("shows an info message, not an error, for ?sso=confirm", async () => {
+    portal("/portal?sso=confirm", { ...signedOut, "/api/v1/portal/login-options": json({ sso: true }) });
+    expect(await screen.findByRole("status")).toHaveTextContent("Check your email: we sent a link to confirm your Microsoft account. It works once.");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });
 
 describe("My details", () => {

@@ -46,7 +46,7 @@ def test_migration_0032_reporting_tables_and_constraints(owner_engine, make_user
     from sqlalchemy.exc import IntegrityError
 
     with owner_engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0035"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0036"
     uid = make_user("admin")["id"]
 
     def schedule(**kw):

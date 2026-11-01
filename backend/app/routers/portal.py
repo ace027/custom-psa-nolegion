@@ -1,6 +1,8 @@
 """Client portal API. Signed-in endpoints see only the contact's own organization; the
 unauthenticated ones (request / redeem a sign-in link, login options, Microsoft sign-in) reveal
-nothing about who has access: every SSO denial ends on the same /portal?sso=denied redirect."""
+nothing about who has access: every SSO denial ends on the same /portal?sso=denied redirect, and
+every first (email-matched) Microsoft sign-in ends on /portal?sso=confirm whether or not mail went
+out."""
 
 from datetime import date
 
@@ -54,6 +56,8 @@ from app.scope import Scope
 from app.statement_pdf import render_statement_pdf
 
 router = APIRouter(prefix="/portal", tags=["portal"])
+SSO_CONFIRM_COOKIE = "psa_portal_sso_confirm"
+SSO_CONFIRM_PATH = "/api/v1/portal"
 ERR = {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
 
 
@@ -92,15 +96,47 @@ def verify(
     db: Session = Depends(public_session),
 ):
     enabled = repo.get_settings_row(db).portal_enabled
-    contact = portal_sessions.consume_link_token(db, body.token) if enabled else None
-    if contact is None:
+    link = portal_sessions.consume_link_token(db, body.token) if enabled else None
+    if link is None:
         audit.record_auth_event("portal.login_failed", detail={"reason": "bad_or_used_link"})
         raise HTTPException(status_code=401, detail="This link has expired or was already used")
+    contact = link.contact
+    login_detail: dict = {"contact_id": contact.id}
+    if link.bind_entra_oid:
+        # A confirmation link from a first Microsoft sign-in. Redeeming it proves control of the
+        # contact's mailbox, so it always signs in; the oid is bound only if still consistent.
+        login_detail["method"] = "sso_confirm"
+        try:
+            same_browser = portal_sessions.browser_matches(
+                request.cookies.get(SSO_CONFIRM_COOKIE), link.bind_browser_hash
+            )
+            skipped = oidc.bind_confirmed_oid(
+                db,
+                contact,
+                link.bind_entra_oid,
+                link.bind_entra_tenant_id or "",
+                same_browser=same_browser,
+            )
+        except oidc.PortalLoginDenied as e:
+            db.rollback()  # also un-consumes the link; a retry re-checks and skips the bind
+            audit.record_auth_event(
+                "portal.login_failed", detail={"reason": e.reason, "method": "sso_confirm"}
+            )
+            raise HTTPException(
+                status_code=401, detail="This link has expired or was already used"
+            ) from None
+        if skipped:
+            audit.record_auth_event(
+                "portal.sso_link_skipped", detail={"contact_id": contact.id, "reason": skipped}
+            )
+        else:
+            audit.record_auth_event("portal.sso_linked", detail={"contact_id": contact.id})
+        response.delete_cookie(SSO_CONFIRM_COOKIE, path=SSO_CONFIRM_PATH)
     cookie = portal_sessions.create_session(
         db, contact, client_ip_var.get(), request.headers.get("user-agent")
     )
     db.flush()
-    audit.record_auth_event("portal.login", detail={"contact_id": contact.id})
+    audit.record_auth_event("portal.login", detail=login_detail)
     s = get_settings()
     response.set_cookie(
         s.portal_cookie_name, cookie, max_age=s.portal_session_hours * 3600, **_cookie_args()
@@ -156,15 +192,49 @@ async def sso_callback(request: Request, db: Session = Depends(public_session)):
         return deny("portal_disabled")
     try:
         token = await oidc.get_oauth().entra_portal.authorize_access_token(
-            request, claims_options=oidc.PORTAL_CLAIMS_OPTIONS
+            request, claims_options=oidc.portal_claims_options()
         )
         claims = dict(token.get("userinfo") or {})
     except Exception:
         return deny("token_exchange")
     try:
-        contact = oidc.resolve_contact_from_claims(db, claims)
+        match = oidc.resolve_contact_from_claims(db, claims)
     except oidc.PortalLoginDenied as e:
         return deny(e.reason)
+    contact = match.contact
+    if not match.bound:
+        # Matched by the (unverified) email claim only: never sign in or bind on that. Email the
+        # contact a one-time link that carries the pending binding. Every outcome, including rate
+        # limiting and mail being off, ends on the same redirect. The binding is also tied to
+        # THIS browser (cookie secret, hash on the token) so the mailbox owner clicking the link
+        # elsewhere cannot link a Microsoft account they did not sign in with.
+        secret, secret_hash = portal_sessions.new_browser_secret()
+        result = svc.send_link(
+            db,
+            contact,
+            client_ip_var.get(),
+            bind_entra_oid=match.oid,
+            bind_entra_tenant_id=match.tid,
+            bind_browser_hash=secret_hash,
+        )
+        if result["reason"] == "rate_limited":
+            audit.record_auth_event(
+                "portal.sso_link_rate_limited", detail={"contact_id": contact.id}
+            )
+        else:
+            audit.record_auth_event(
+                "portal.sso_link_requested",
+                detail={k: v for k, v in result.items() if v is not None},
+            )
+        confirm = RedirectResponse(f"{s.public_url}/portal?sso=confirm", status_code=303)
+        if result["sent"]:
+            confirm.set_cookie(
+                SSO_CONFIRM_COOKIE,
+                secret,
+                max_age=s.portal_link_minutes * 60,
+                **{**_cookie_args(), "path": SSO_CONFIRM_PATH},
+            )
+        return confirm
     cookie = portal_sessions.create_session(
         db, contact, client_ip_var.get(), request.headers.get("user-agent")
     )

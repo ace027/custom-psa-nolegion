@@ -34,26 +34,60 @@ def request_link(db: Session, email: str, ip: str | None) -> dict:
     contact = portal_sessions.find_contact_by_email(db, email)
     if contact is None:
         return {**outcome, "reason": "unknown_email"}
-    outcome["contact_id"] = contact.id
+    return send_link(db, contact, ip)
+
+
+def send_link(
+    db: Session,
+    contact,
+    ip: str | None,
+    *,
+    bind_entra_oid: str | None = None,
+    bind_entra_tenant_id: str | None = None,
+    bind_browser_hash: str | None = None,
+) -> dict:
+    """Rate-limit, issue and queue one sign-in link for an already-resolved contact. With bind_*
+    set the link also confirms linking the contact's Microsoft account (docs/PORTAL_SSO.md)."""
+    outcome = {"contact_id": contact.id, "sent": False, "reason": None}
     if not portal_sessions.may_issue_link(db, contact, ip):
         return {**outcome, "reason": "rate_limited"}
     if repo.get_mailbox_status(db).mailbox is None:
         return {**outcome, "reason": "mail_not_configured"}
-    token = portal_sessions.issue_link_token(db, contact, ip)
+    token = portal_sessions.issue_link_token(
+        db,
+        contact,
+        ip,
+        bind_entra_oid=bind_entra_oid,
+        bind_entra_tenant_id=bind_entra_tenant_id,
+        bind_browser_hash=bind_browser_hash,
+    )
     company = repo.get_settings_row(db).company_name or "your IT provider"
     minutes = get_settings().portal_link_minutes
     url = f"{get_settings().public_url.rstrip('/')}/portal/verify#token={token}"
+    if bind_entra_oid:
+        subject = f"Your sign-in link for {company}: confirm your Microsoft account"
+        body = (
+            f"Hello {contact.name},\n\nSomeone just used Sign in with Microsoft for the {company} "
+            "client portal with an account that has your email address. Use this link to confirm "
+            f"that the Microsoft account is yours, link it, and sign in:\n\n{url}\n\nOpen this "
+            "link in the same browser you used to sign in with Microsoft. It works once and "
+            f"expires in {minutes} minutes. If this was not you, ignore this message: "
+            "nothing is linked and nobody can sign in as you without it."
+        )
+    else:
+        subject = f"Your sign-in link for {company}"
+        body = (
+            f"Hello {contact.name},\n\nUse this link to sign in to the {company} client portal:"
+            f"\n\n{url}\n\nIt works once and expires in {minutes} minutes. If you did not ask "
+            "for it, you can ignore this message; nobody can sign in without it."
+        )
     db.add(
         EmailMessage(
             direction="out",
             organization_id=contact.organization_id,
             to_emails=[contact.email],
-            subject=f"Your sign-in link for {company}",
-            body_text=(
-                f"Hello {contact.name},\n\nUse this link to sign in to the {company} client portal:"
-                f"\n\n{url}\n\nIt works once and expires in {minutes} minutes. If you did not ask "
-                "for it, you can ignore this message; nobody can sign in without it."
-            ),
+            subject=subject,
+            body_text=body,
             send_status="pending",
         )
     )

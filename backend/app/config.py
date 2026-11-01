@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     mail_poll_seconds: int = 60
     attachments_dir: str = "./data/attachments"
     max_attachment_bytes: int = 10 * 1024 * 1024
+    # Per-client cap on files uploaded through the portal (sum of their sizes).
+    portal_org_storage_bytes: int = 2 * 1024**3
 
     # Fernet key(s) protecting vendor API credentials stored in the database. Comma-separated for
     # rotation: the FIRST key encrypts, every key can decrypt. Generate with

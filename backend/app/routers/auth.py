@@ -40,7 +40,7 @@ async def login(request: Request):
     if not s.entra_configured:
         raise HTTPException(503, "Entra ID sign-in is not configured")
     redirect_uri = f"{s.public_url}/api/v1/auth/callback"
-    return await oidc.get_oauth().entra.authorize_redirect(request, redirect_uri)
+    return await oidc.get_oauth().entra_staff.authorize_redirect(request, redirect_uri)
 
 
 @router.get(
@@ -53,7 +53,7 @@ async def callback(request: Request):
     if not s.entra_configured:
         raise HTTPException(503, "Entra ID sign-in is not configured")
     try:
-        token = await oidc.get_oauth().entra.authorize_access_token(request)
+        token = await oidc.get_oauth().entra_staff.authorize_access_token(request)
         claims = dict(token.get("userinfo") or {})
     except Exception:
         audit.record_auth_event("auth.login_failed", detail={"reason": "token_exchange"})

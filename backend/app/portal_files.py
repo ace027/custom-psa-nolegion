@@ -23,6 +23,8 @@ from app.models import Attachment
 from app.portal_deps import PortalCtx
 
 MAX_UPLOADS_PER_HOUR = 20
+# pg_advisory_xact_lock(namespace, contact_id): serializes one contact's uploads.
+UPLOAD_LOCK_NAMESPACE = 14_003
 ALLOWED_EXTENSIONS = frozenset(
     {
         ".txt",
@@ -115,7 +117,9 @@ def upload(ctx: PortalCtx, ticket_id: int, filename: str, content_base64: str) -
     name = safe_filename(filename)
     if Path(name).suffix.lower() not in ALLOWED_EXTENSIONS:
         raise HTTPException(415, "That file type is not allowed")
-    data = _decode(content_base64, settings.max_attachment_bytes)
+    # Cheap checks first, decoding last. The transaction-scoped lock makes count-then-insert
+    # atomic per contact, so parallel requests cannot all pass the hourly limit or the quota.
+    ctx.db.execute(select(func.pg_advisory_xact_lock(UPLOAD_LOCK_NAMESPACE, ctx.contact.id)))
     since = tsvc.now() - timedelta(hours=1)
     recent = ctx.db.execute(
         select(func.count())
@@ -124,6 +128,15 @@ def upload(ctx: PortalCtx, ticket_id: int, filename: str, content_base64: str) -
     ).scalar_one()
     if recent >= MAX_UPLOADS_PER_HOUR:
         raise HTTPException(429, "You have uploaded a lot of files; please try again later")
+    used = ctx.db.execute(
+        select(func.coalesce(func.sum(Attachment.size_bytes), 0)).where(
+            Attachment.organization_id == t.organization_id, Attachment.source == "portal"
+        )
+    ).scalar_one()
+    # Upper bound of the decoded size, known without decoding: 3 bytes per 4 base64 characters.
+    if used + (len(content_base64) * 3) // 4 > settings.portal_org_storage_bytes:
+        raise HTTPException(413, "This client's file storage is full. Contact us.")
+    data = _decode(content_base64, settings.max_attachment_bytes)
 
     key = f"{t.id}/{uuid.uuid4().hex}"
     path = Path(settings.attachments_dir) / key
