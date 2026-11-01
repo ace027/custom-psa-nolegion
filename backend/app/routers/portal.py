@@ -4,6 +4,7 @@ nothing about who has access: every SSO denial ends on the same /portal?sso=deni
 every first (email-matched) Microsoft sign-in ends on /portal?sso=confirm whether or not mail went
 out."""
 
+import logging
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -54,6 +55,8 @@ from app.schemas import (
 )
 from app.scope import Scope
 from app.statement_pdf import render_statement_pdf
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/portal", tags=["portal"])
 SSO_CONFIRM_COOKIE = "psa_portal_sso_confirm"
@@ -195,7 +198,10 @@ async def sso_callback(request: Request, db: Session = Depends(public_session)):
             request, claims_options=oidc.portal_claims_options()
         )
         claims = dict(token.get("userinfo") or {})
-    except Exception:
+    except Exception as exc:
+        # The audit row records only a generic reason; the log keeps the cause (state mismatch,
+        # bad issuer, expired code, network error) without the token itself.
+        logger.warning("portal sign-in token exchange failed: %s: %s", type(exc).__name__, exc)
         return deny("token_exchange")
     try:
         match = oidc.resolve_contact_from_claims(db, claims)
@@ -275,20 +281,33 @@ def update_me(body: PortalContactPatch, ctx: PortalCtx = portal_required()):
 
 
 # ---- CSV exports ----
-def _csv(kind: str, text: str) -> Response:
+EXPORT_200 = {
+    "content": {"text/csv": {}},
+    "headers": {
+        "X-Export-Truncated": {
+            "description": "true when the export hit the row cap and older rows were left out",
+            "schema": {"type": "string", "enum": ["true", "false"]},
+        }
+    },
+}
+
+
+def _csv(kind: str, export: tuple[str, bool]) -> Response:
+    text, truncated = export
     return Response(
         text,
         media_type="text/csv; charset=utf-8",
         headers={
             "Content-Disposition": f'attachment; filename="{kind}-{date.today().isoformat()}.csv"',
             "X-Content-Type-Options": "nosniff",
+            "X-Export-Truncated": "true" if truncated else "false",
         },
     )
 
 
 @router.get(
     "/export/tickets.csv",
-    responses={200: {"content": {"text/csv": {}}}},
+    responses={200: EXPORT_200},
     summary="Export your tickets as CSV",
 )
 def export_tickets(ctx: PortalCtx = portal_required()):
@@ -297,7 +316,7 @@ def export_tickets(ctx: PortalCtx = portal_required()):
 
 @router.get(
     "/export/invoices.csv",
-    responses={200: {"content": {"text/csv": {}}}, 403: {"model": ErrorOut}},
+    responses={200: EXPORT_200, 403: {"model": ErrorOut}},
     summary="Export your finalized invoices as CSV (billing contacts)",
 )
 def export_invoices(ctx: PortalCtx = portal_required()):
@@ -307,7 +326,7 @@ def export_invoices(ctx: PortalCtx = portal_required()):
 
 @router.get(
     "/export/devices.csv",
-    responses={200: {"content": {"text/csv": {}}}, 403: {"model": ErrorOut}},
+    responses={200: EXPORT_200, 403: {"model": ErrorOut}},
     summary="Export your devices and warranty status as CSV (designated contacts only)",
 )
 def export_devices(ctx: PortalCtx = portal_required()):

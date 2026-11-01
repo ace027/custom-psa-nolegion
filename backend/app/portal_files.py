@@ -12,7 +12,7 @@ from pathlib import Path
 
 from fastapi import HTTPException, Request
 from fastapi.routing import APIRoute
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select
 
 from app import audit
 from app import portal as svc
@@ -109,6 +109,33 @@ def _out(a: Attachment) -> dict:
     return dict(id=a.id, filename=a.filename, size_bytes=a.size_bytes, created_at=a.created_at)
 
 
+def _unlink_on_rollback(db, path: Path) -> None:
+    """Remove the file unless the request's outermost transaction commits.
+
+    Tied to the end of the root transaction, not to after_rollback: after_rollback also fires for
+    a savepoint (begin_nested) rollback such as notifications.notify's duplicate guard, which must
+    not delete a file whose row still commits. Listeners cannot be removed while the event is
+    dispatching, so they stay registered and go inert once the root transaction ends (sessions
+    are per request).
+    """
+    root = db.get_transaction()
+    state = {"committed": False, "done": False}
+
+    def on_commit(_session):
+        if not state["done"]:
+            state["committed"] = True
+
+    def on_end(_session, transaction):
+        if state["done"] or transaction is not root:
+            return
+        state["done"] = True
+        if not state["committed"]:
+            path.unlink(missing_ok=True)
+
+    event.listen(db, "after_commit", on_commit)
+    event.listen(db, "after_transaction_end", on_end)
+
+
 def upload(ctx: PortalCtx, ticket_id: int, filename: str, content_base64: str) -> dict:
     t = svc._get_ticket(ctx, ticket_id)
     if t.status == "closed":
@@ -142,6 +169,7 @@ def upload(ctx: PortalCtx, ticket_id: int, filename: str, content_base64: str) -
     path = Path(settings.attachments_dir) / key
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
+    _unlink_on_rollback(ctx.db, path)
     att = Attachment(
         email_message_id=None,
         ticket_id=t.id,

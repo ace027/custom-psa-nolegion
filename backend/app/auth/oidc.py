@@ -88,7 +88,10 @@ def resolve_user_from_claims(db: Session, claims: dict) -> User:
 
     user = repo.get_user_by_oid(db, oid)
     if user is None:
-        email = claims.get("email") or claims.get("preferred_username")
+        # Only the `email` claim: Microsoft documents preferred_username as mutable and not for
+        # authorization decisions. A user without it must have a mail address in Entra (or the
+        # optional `email` claim configured); see docs/ENTRA_SETUP.md.
+        email = claims.get("email")
         if not email:
             raise LoginDenied("missing_email")
         user = repo.get_user_by_email(db, email)

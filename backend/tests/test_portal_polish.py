@@ -76,6 +76,41 @@ def test_upload_list_download_round_trip(admin, sign_in, world, files_dir):
     assert row["detail"]["contact_id"] == world["pat"]["id"] and row["detail"]["size"] == 11
 
 
+def test_rolled_back_upload_leaves_no_file(admin, sign_in, world, files_dir, monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("audit down")
+
+    monkeypatch.setattr("app.portal_files.audit.record", boom)
+    p = sign_in("pat@acme.com")
+    with pytest.raises(RuntimeError, match="audit down"):
+        upload(p, world["ticket"]["id"])
+    assert [f for f in files_dir.rglob("*") if f.is_file()] == []
+
+
+def test_savepoint_rollback_during_upload_keeps_the_file(
+    admin, sign_in, world, files_dir, monkeypatch
+):
+    # notifications.notify guards duplicates with a savepoint; rolling one back must not delete
+    # a file whose attachment row still commits.
+    from app import audit
+
+    real = audit.record
+
+    def with_savepoint_rollback(db, *a, **k):
+        try:
+            with db.begin_nested():
+                raise ValueError("duplicate")
+        except ValueError:
+            pass
+        return real(db, *a, **k)
+
+    monkeypatch.setattr("app.portal_files.audit.record", with_savepoint_rollback)
+    p = sign_in("pat@acme.com")
+    att = upload(p, world["ticket"]["id"]).json()
+    assert [f for f in files_dir.rglob("*") if f.is_file()] != []
+    assert admin.get(f"/api/v1/attachments/{att['id']}/download").content == b"hello"
+
+
 def test_upload_is_visible_to_staff_with_source_and_uploader(admin, sign_in, world):
     p = sign_in("pat@acme.com")
     upload(p, world["ticket"]["id"])
@@ -348,8 +383,21 @@ def test_ticket_export_is_own_org_only_and_neutralises_formulas(admin, sign_in, 
     assert actions(admin, "portal.export")[0]["detail"] == {
         "kind": "tickets",
         "rows": 2,
+        "truncated": False,
         "contact_id": world["pat"]["id"],
     }
+
+
+def test_export_cap_is_signalled_by_header_and_audit(admin, sign_in, world, monkeypatch):
+    mk_ticket(admin, world["a"], world["pat"]["id"], subject="Second")
+    p = sign_in("pat@acme.com")
+    r = p.get(f"{API}/export/tickets.csv")
+    assert r.headers["x-export-truncated"] == "false" and len(r.text.strip().split("\r\n")) == 3
+    monkeypatch.setattr("app.portal.EXPORT_MAX_ROWS", 1)
+    r = p.get(f"{API}/export/tickets.csv")
+    assert r.headers["x-export-truncated"] == "true" and len(r.text.strip().split("\r\n")) == 2
+    detail = actions(admin, "portal.export")[0]["detail"]
+    assert detail["rows"] == 1 and detail["truncated"] is True
 
 
 def test_ticket_export_respects_contact_visibility(admin, sign_in, world):

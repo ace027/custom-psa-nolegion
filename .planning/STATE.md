@@ -71,6 +71,7 @@ Fix the unresolved findings in 15-REVIEW.md, accept the phase as is, or re-plan;
 - 2026-11-01: phase 14 security fixes: first Microsoft sign-in confirmed by an emailed link bound to the same browser (M-1); aud pinned, staff client renamed entra_staff, upload lock and per-client quota before decoding, tenant-id change unlinks contacts (L-1..L-4); migration 0036
 - 2026-11-01: phase 14 F-001: PATCH /portal/me/contact changes only the fields sent (name can be left out, not cleared)
 - 2026-11-01: phase 14 deferred finding: a portal upload reopens a waiting or resolved ticket and emails the assignee (customer_reply), like a portal reply
+- 2026-11-01: phase 14 deferred cleanup: staff sign-in no longer matches on preferred_username (owner decision); sign-in token-exchange failures are logged; portal exports send X-Export-Truncated; failed exports and downloads show an error instead of saving it; uploaded files are removed when the transaction does not commit (savepoint-safe); attachment list loading state; read-only email styling
 
 ## Phase 4 Results
 (build started 2026-10-10)

@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 
@@ -9,6 +11,8 @@ from app.auth import oidc, sessions
 from app.config import get_settings
 from app.deps import Ctx, authenticated
 from app.schemas import DevLoginIn, ErrorOut, MeOut, NotificationPrefsPatch
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -55,7 +59,10 @@ async def callback(request: Request):
     try:
         token = await oidc.get_oauth().entra_staff.authorize_access_token(request)
         claims = dict(token.get("userinfo") or {})
-    except Exception:
+    except Exception as exc:
+        # The audit row records only a generic reason; the log keeps the cause (state mismatch,
+        # bad issuer, expired code, network error) without the token itself.
+        logger.warning("staff sign-in token exchange failed: %s: %s", type(exc).__name__, exc)
         audit.record_auth_event("auth.login_failed", detail={"reason": "token_exchange"})
         raise HTTPException(403, "Sign-in failed") from None
 

@@ -92,15 +92,22 @@ describe("portal attachments", () => {
   });
   const input = () => document.querySelector('input[type="file"]') as HTMLInputElement;
 
-  it("lists files with download links", async () => {
+  it("lists files as download buttons", async () => {
     portal("/portal/tickets/3", h());
-    expect(await screen.findByRole("link", { name: "screenshot.png" })).toHaveAttribute("href", "/api/v1/portal/attachments/9/download");
+    expect(await screen.findByRole("button", { name: "screenshot.png" })).toBeInTheDocument();
+  });
+
+  it("shows loading text before the list arrives", async () => {
+    portal("/portal/tickets/3", h());
+    expect(await screen.findByText("Loading files…")).toBeInTheDocument();
+    await screen.findByRole("button", { name: "screenshot.png" });
+    expect(screen.queryByText("Loading files…")).toBeNull();
   });
 
   it("rejects an oversized file and a wrong type without a request", async () => {
     const calls: string[] = [];
     portal("/portal/tickets/3", h("open"), calls);
-    await screen.findByRole("link", { name: "screenshot.png" });
+    await screen.findByRole("button", { name: "screenshot.png" });
     fireEvent.change(input(), { target: { files: [file("big.pdf", 10 * 1024 * 1024 + 1)] } });
     expect(await screen.findByRole("alert")).toHaveTextContent("larger than 10 MB");
     fireEvent.change(input(), { target: { files: [file("run.exe", 10)] } });
@@ -111,7 +118,7 @@ describe("portal attachments", () => {
   it("uploads an allowed file as base64", async () => {
     const calls: string[] = [];
     portal("/portal/tickets/3", h("open", { "POST /api/v1/portal/tickets/3/attachments": json(atts[0], 201) }), calls);
-    await screen.findByRole("link", { name: "screenshot.png" });
+    await screen.findByRole("button", { name: "screenshot.png" });
     fireEvent.change(input(), { target: { files: [new File(["hello"], "notes.txt", { type: "text/plain" })] } });
     await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/v1/portal/tickets/3/attachments"))).toBe(true));
     const sent = calls.find((c) => c.startsWith("POST"))!;
@@ -122,34 +129,56 @@ describe("portal attachments", () => {
 
   it("shows the API error on a failed upload", async () => {
     portal("/portal/tickets/3", h("open", { "POST /api/v1/portal/tickets/3/attachments": json({ detail: "Too many uploads, try later" }, 429) }));
-    await screen.findByRole("link", { name: "screenshot.png" });
+    await screen.findByRole("button", { name: "screenshot.png" });
     fireEvent.change(input(), { target: { files: [new File(["hello"], "notes.txt")] } });
     expect(await screen.findByText(/Too many uploads, try later/)).toBeInTheDocument();
   });
 
   it("has no upload input on a closed ticket", async () => {
     portal("/portal/tickets/3", h("closed"));
-    await screen.findByRole("link", { name: "screenshot.png" });
+    await screen.findByRole("button", { name: "screenshot.png" });
     expect(input()).toBeNull();
   });
 });
 
 describe("portal CSV exports", () => {
-  it("links tickets export; invoices only for billing contacts", async () => {
-    portal("/portal/tickets", { "/api/v1/portal/me": json(me()), "/api/v1/portal/tickets": json([ticket]) });
-    expect(await screen.findByRole("link", { name: /export tickets/i })).toHaveAttribute("href", "/api/v1/portal/export/tickets.csv");
-    expect(screen.queryByRole("link", { name: /export invoices/i })).toBeNull();
+  const assets = { total: 0, as_of: "2026-10-01", counts: { expired: 0, expiring_30: 0, expiring_60: 0, expiring_90: 0, in_warranty: 0, unknown: 0 }, devices: [] };
+  const tickets = { "/api/v1/portal/me": json(me()), "/api/v1/portal/tickets": json([ticket]) };
+  const csv = (headers: Record<string, string> = {}) => () => new Response("a,b", { status: 200, headers });
+
+  it("offers tickets export; invoices only for billing contacts", async () => {
+    portal("/portal/tickets", tickets);
+    expect(await screen.findByRole("button", { name: /export tickets/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /export invoices/i })).toBeNull();
   });
 
-  it("links the invoices export", async () => {
+  it("offers the invoices and devices exports", async () => {
     portal("/portal/invoices", { "/api/v1/portal/me": json(me({ can_see_billing: true })), "/api/v1/portal/invoices": json([]) });
-    expect(await screen.findByRole("link", { name: /export invoices/i })).toHaveAttribute("href", "/api/v1/portal/export/invoices.csv");
+    expect(await screen.findByRole("button", { name: /export invoices/i })).toBeInTheDocument();
+    portal("/portal/devices", { "/api/v1/portal/me": json(me({ can_see_devices: true })), "/api/v1/portal/assets": json(assets) });
+    expect(await screen.findByRole("button", { name: /export devices/i })).toBeInTheDocument();
   });
 
-  it("links the devices export", async () => {
-    const assets = { total: 0, as_of: "2026-10-01", counts: { expired: 0, expiring_30: 0, expiring_60: 0, expiring_90: 0, in_warranty: 0, unknown: 0 }, devices: [] };
-    portal("/portal/devices", { "/api/v1/portal/me": json(me({ can_see_devices: true })), "/api/v1/portal/assets": json(assets) });
-    expect(await screen.findByRole("link", { name: /export devices/i })).toHaveAttribute("href", "/api/v1/portal/export/devices.csv");
+  it("shows an alert and saves nothing when the export returns 401", async () => {
+    const create = vi.fn(() => "blob:x");
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: create, revokeObjectURL: vi.fn() }));
+    portal("/portal/tickets", { ...tickets, "/api/v1/portal/export/tickets.csv": json({ detail: "Not signed in" }, 401) });
+    fireEvent.click(await screen.findByRole("button", { name: /export tickets/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("session may have expired");
+    expect(screen.getByRole("alert")).toHaveTextContent("Not signed in");
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("downloads and shows the truncation note", async () => {
+    const create = vi.fn(() => "blob:x");
+    const revoke = vi.fn();
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke }));
+    portal("/portal/tickets", { ...tickets, "/api/v1/portal/export/tickets.csv": csv({ "X-Export-Truncated": "true" }) });
+    fireEvent.click(await screen.findByRole("button", { name: /export tickets/i }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Only the first 10,000 rows were exported.");
+    expect(create).toHaveBeenCalledOnce();
+    expect(revoke).toHaveBeenCalledWith("blob:x");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
 

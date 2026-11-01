@@ -61,7 +61,8 @@ appointments scheduled".
   (422). Audited as `portal.contact_update` with before/after values.
 - **CSV export:** `GET /portal/export/tickets.csv` (their visible tickets), `invoices.csv` (billing contacts)
   and `devices.csv` (designated contacts on a published client), newest first, at most 10,000 rows, cells that
-  start like a spreadsheet formula are neutralised. Audited as `portal.export` with kind and row count.
+  start like a spreadsheet formula are neutralised. Audited as `portal.export` with kind, row count and whether it was truncated.
+  A longer list is cut at the 10,000-row cap and the response carries `X-Export-Truncated: true` (`false` otherwise).
 
 ## Decisions worth a second look
 - Tickets opened in the portal appear in your normal unassigned queue (source *portal*); nobody is emailed

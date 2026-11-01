@@ -100,10 +100,20 @@ def test_claims_bind_oid_to_preprovisioned_user(make_user, db):
     assert again.id == user.id
 
 
-def test_claims_fall_back_to_preferred_username(make_user, db):
+def test_preferred_username_is_not_used_for_matching(make_user, db):
     make_user("tech", "tech@example.com")
     claims = {"tid": "tenant-1", "oid": "o2", "preferred_username": "tech@example.com"}
-    assert oidc.resolve_user_from_claims(db, claims).entra_oid == "o2"
+    with pytest.raises(oidc.LoginDenied) as e:
+        oidc.resolve_user_from_claims(db, claims)
+    assert e.value.reason == "missing_email"
+
+
+def test_bound_oid_signs_in_without_an_email_claim(make_user, db):
+    make_user("tech", "tech@example.com")
+    oidc.resolve_user_from_claims(db, {"tid": "tenant-1", "oid": "o3", "email": "tech@example.com"})
+    db.commit()
+    user = oidc.resolve_user_from_claims(db, {"tid": "tenant-1", "oid": "o3"})
+    assert user.email == "tech@example.com"
 
 
 @pytest.mark.parametrize(

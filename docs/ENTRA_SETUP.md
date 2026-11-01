@@ -32,6 +32,10 @@ permissions are needed for sign-in. (Mailbox permissions arrive with Phase 2.)
 ## Who may sign in
 The PSA never auto-creates users. An admin must first add the person on the **Users** page
 (email + role). On first sign-in their Entra object id (`oid`) is bound to that record.
+The first sign-in matches on the token's `email` claim only (never `preferred_username`, which
+Microsoft says is mutable): give each staff member a mail address in Entra, or add the optional
+`email` claim under **Token configuration**. Without it the sign-in is denied with reason
+`missing_email` in the audit log. After the first sign-in the `oid` is used and email no longer matters.
 Deactivating a user ends their sessions immediately.
 
 ## First admin (one-time bootstrap)

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PORTAL_MAX_UPLOAD_BYTES, PORTAL_UPLOAD_EXTENSIONS, PortalAttachment, api } from "../api";
 import { Card, ErrorMsg, fmt } from "../ui";
+import { DownloadStatus, useDownload } from "./ExportButton";
 
 function readBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -19,6 +20,21 @@ export function checkFile(file: { name: string; size: number }): string | null {
   return null;
 }
 
+function AttachmentRow({ a }: { a: PortalAttachment }) {
+  const d = useDownload("Download");
+  return (
+    <li className="py-1.5">
+      <div className="flex items-center justify-between">
+        <button type="button" className="text-blue-700 hover:underline disabled:opacity-60" disabled={d.busy} onClick={() => d.run(`/api/v1/portal/attachments/${a.id}/download`, a.filename)}>
+          {d.busy ? "Downloading…" : a.filename}
+        </button>
+        <span className="text-slate-500">{Math.ceil(a.size_bytes / 1024)} KB · {fmt(a.created_at)}</span>
+      </div>
+      <DownloadStatus error={d.error} />
+    </li>
+  );
+}
+
 export default function PortalAttachments({ ticketId, closed }: { ticketId: number; closed: boolean }) {
   const qc = useQueryClient();
   const key = ["portal", "attachments", ticketId];
@@ -34,15 +50,13 @@ export default function PortalAttachments({ ticketId, closed }: { ticketId: numb
   return (
     <Card title="Attachments">
       <ErrorMsg error={list.error} />
-      <ul className="divide-y divide-slate-100 text-sm">
-        {list.data?.map((a) => (
-          <li key={a.id} className="flex items-center justify-between py-1.5">
-            <a className="text-blue-700 hover:underline" href={`/api/v1/portal/attachments/${a.id}/download`}>{a.filename}</a>
-            <span className="text-slate-500">{Math.ceil(a.size_bytes / 1024)} KB · {fmt(a.created_at)}</span>
-          </li>
-        ))}
-        {list.data?.length === 0 && <li className="py-1.5 text-slate-500">No files attached.</li>}
-      </ul>
+      {list.isLoading && <p className="text-sm text-slate-500">Loading files…</p>}
+      {list.data && (
+        <ul className="divide-y divide-slate-100 text-sm">
+          {list.data.map((a) => <AttachmentRow key={a.id} a={a} />)}
+          {list.data.length === 0 && <li className="py-1.5 text-slate-500">No files attached.</li>}
+        </ul>
+      )}
       {closed ? (
         <p className="mt-3 text-sm text-slate-500">This ticket is closed, so files can no longer be added.</p>
       ) : (

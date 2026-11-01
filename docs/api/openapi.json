@@ -32893,7 +32893,19 @@
               },
               "text/csv": {}
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "X-Export-Truncated": {
+                "description": "true when the export hit the row cap and older rows were left out",
+                "schema": {
+                  "enum": [
+                    "true",
+                    "false"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -32923,7 +32935,19 @@
               },
               "text/csv": {}
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "X-Export-Truncated": {
+                "description": "true when the export hit the row cap and older rows were left out",
+                "schema": {
+                  "enum": [
+                    "true",
+                    "false"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -32953,7 +32977,19 @@
               },
               "text/csv": {}
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "X-Export-Truncated": {
+                "description": "true when the export hit the row cap and older rows were left out",
+                "schema": {
+                  "enum": [
+                    "true",
+                    "false"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "summary": "Export your tickets as CSV",

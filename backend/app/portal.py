@@ -160,17 +160,23 @@ def update_contact(ctx: PortalCtx, changes: dict) -> dict:
 EXPORT_MAX_ROWS = 10000
 
 
-def _audit_export(ctx: PortalCtx, kind: str, rows: int) -> None:
+def _audit_export(ctx: PortalCtx, kind: str, rows: int, truncated: bool) -> None:
     audit.record(
         ctx.db,
         None,
         "portal.export",
         organization_id=ctx.contact.organization_id,
-        detail={"kind": kind, "rows": rows, "contact_id": ctx.contact.id},
+        detail={
+            "kind": kind,
+            "rows": rows,
+            "truncated": truncated,
+            "contact_id": ctx.contact.id,
+        },
     )
 
 
-def export_tickets(ctx: PortalCtx) -> str:
+def export_tickets(ctx: PortalCtx) -> tuple[str, bool]:
+    """(csv text, truncated): truncated when more than EXPORT_MAX_ROWS rows matched."""
     from app.reports import to_csv
 
     rows = list(
@@ -178,13 +184,15 @@ def export_tickets(ctx: PortalCtx) -> str:
             select(Ticket)
             .where(_visible(ctx))
             .order_by(Ticket.created_at.desc(), Ticket.id.desc())
-            .limit(EXPORT_MAX_ROWS)
+            .limit(EXPORT_MAX_ROWS + 1)
         )
         .unique()
         .scalars()
     )
-    _audit_export(ctx, "tickets", len(rows))
-    return to_csv(
+    truncated = len(rows) > EXPORT_MAX_ROWS
+    rows = rows[:EXPORT_MAX_ROWS]
+    _audit_export(ctx, "tickets", len(rows), truncated)
+    text = to_csv(
         ["number", "subject", "status", "priority", "created_at", "closed_at"],
         [
             [
@@ -198,14 +206,17 @@ def export_tickets(ctx: PortalCtx) -> str:
             for t in rows
         ],
     )
+    return text, truncated
 
 
-def export_invoices(ctx: PortalCtx) -> str:
+def export_invoices(ctx: PortalCtx) -> tuple[str, bool]:
     from app.reports import to_csv
 
-    rows = list_invoices(ctx)[:EXPORT_MAX_ROWS]  # already newest first
-    _audit_export(ctx, "invoices", len(rows))
-    return to_csv(
+    all_rows = list_invoices(ctx)  # already newest first
+    truncated = len(all_rows) > EXPORT_MAX_ROWS
+    rows = all_rows[:EXPORT_MAX_ROWS]
+    _audit_export(ctx, "invoices", len(rows), truncated)
+    text = to_csv(
         ["number", "issue_date", "due_date", "status", "total", "balance"],
         [
             [
@@ -220,15 +231,18 @@ def export_invoices(ctx: PortalCtx) -> str:
         ],
         money_cols={4, 5},
     )
+    return text, truncated
 
 
-def export_devices(ctx: PortalCtx) -> str:
+def export_devices(ctx: PortalCtx) -> tuple[str, bool]:
     from app.reports import to_csv
 
     cols = ["name", "kind", "manufacturer", "model", "warranty_end", "warranty_status"]
-    devices = list_devices(ctx)["devices"][:EXPORT_MAX_ROWS]
-    _audit_export(ctx, "devices", len(devices))
-    return to_csv(cols, [[d[c] for c in cols] for d in devices])
+    all_devices = list_devices(ctx)["devices"]
+    truncated = len(all_devices) > EXPORT_MAX_ROWS
+    devices = all_devices[:EXPORT_MAX_ROWS]
+    _audit_export(ctx, "devices", len(devices), truncated)
+    return to_csv(cols, [[d[c] for c in cols] for d in devices]), truncated
 
 
 # ---- appointments ----------------------------------------------------------------------
