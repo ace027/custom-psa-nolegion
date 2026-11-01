@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import select, text
 
 from app import crm
+from app.billing import today as business_today
 from app.db import new_session, set_org_scope
 from app.deps import Ctx
 from app.errors import Conflict, NotFound
@@ -323,7 +324,7 @@ def test_forecast_ignores_closed_deals_and_reports_wins_this_month(run, org):
         b = opp(ctx, org, monthly_cents=999)
         crm.move_stage(ctx, a.id, stage(ctx, kind="won").id)
         crm.move_stage(ctx, b.id, stage(ctx, kind="lost").id, "No budget")
-        now_day = date.today()
+        now_day = business_today(ctx)  # the business timezone, as the API uses (not UTC)
         f = crm.forecast(ctx, now_day)
         assert f["total"]["count"] == 0
         assert (f["won_this_month"]["count"], f["won_this_month"]["monthly_cents"]) == (1, 4000)
