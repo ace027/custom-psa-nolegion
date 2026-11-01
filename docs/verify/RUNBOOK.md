@@ -33,14 +33,14 @@ Load seed data: `cd backend && alembic upgrade head && python -m app.seed` (the 
 
 ## Owner decisions to confirm
 
-- [ ] Register the multi-tenant portal app per docs/PORTAL_SSO.md (Phase 14)
-- [ ] `kb:write` is limited to admin and tech (assumed default, Phase 13)
-- [ ] Portal uploads are limited to 10 MB and the extension allowlist (assumed default, Phase 14)
-- [ ] Update the staff Entra redirect URI to `<public_url>/api/v1/auth/callback`; the API has no `/api` alias (Phase 12, STATE.md decisions)
-- [ ] Block-hour unused hours expire at month end with no rollover (STATE.md decisions)
-- [ ] One tax rate per client (STATE.md decisions)
-- [ ] No payment processor; portal payments stay manual (STATE.md decisions)
-- [ ] Default markup stays 0% until you set it (Phase 10)
+- [x] Register the multi-tenant portal app per docs/PORTAL_SSO.md (Phase 14)
+- [x] `kb:write` is limited to admin and tech (assumed default, Phase 13)
+- [x] Portal uploads are limited to 10 MB and the extension allowlist (assumed default, Phase 14)
+- [x] Update the staff Entra redirect URI to `<public_url>/api/v1/auth/callback`; the API has no `/api` alias (Phase 12, STATE.md decisions)
+- [ ] Block-hour unused hours expire at month end with no rollover (STATE.md decisions). Make this configurable.
+- [x] One tax rate per client (STATE.md decisions)
+- [x] No payment processor; portal payments stay manual (STATE.md decisions)
+- [x] Default markup stays 0% until you set it (Phase 10)
 
 ## Real-tenant Outlook spike
 
