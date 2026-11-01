@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 14 of 13 (complete)
-- **Status**: Phase 14 complete — review passed (1 cycle(s))
-- **Last Activity**: Phase 14 review (2026-10-31)
+- **Phase**: 15 of 13 (planned)
+- **Status**: Phase 15 planned -- 1 plans across 1 waves
+- **Last Activity**: Phase 15 planning (2026-11-01)
 
 ## Progress
 ```
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:plan 15` to plan Phase 15: Verify (owner manual testing)
+Run `/triad:build` to execute Phase 15: Verify (owner manual testing)
 
 ## Phase 1 Results
 (build started 2026-10-09)
