@@ -24,17 +24,23 @@ class PortalAttachmentOut(BaseModel):
 
 
 class PortalContactPatch(BaseModel):
-    """What a contact may change about themselves. Email is deliberately absent (extra=forbid)."""
+    """What a contact may change about themselves. Email is deliberately absent (extra=forbid).
+
+    PATCH semantics: only the fields sent are changed (model_fields_set). `name` may be left out
+    but not cleared; phone and title are cleared with null or a blank string.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1, max_length=200)
+    name: str | None = Field(default=None, min_length=1, max_length=200)
     phone: str | None = Field(default=None, max_length=50)
     title: str | None = Field(default=None, max_length=100)
 
     @field_validator("name", mode="before")
     @classmethod
     def _strip_name(cls, v):
+        if v is None:
+            raise ValueError("name cannot be cleared")
         return v.strip() if isinstance(v, str) else v
 
     @field_validator("phone", "title", mode="before")

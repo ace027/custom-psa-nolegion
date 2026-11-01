@@ -132,11 +132,16 @@ def me(ctx: PortalCtx) -> dict:
     )
 
 
-def update_contact(ctx: PortalCtx, name: str, phone: str | None, title: str | None) -> dict:
-    """A contact edits their own name, phone and title. Email and access flags are staff-only."""
+def update_contact(ctx: PortalCtx, changes: dict) -> dict:
+    """A contact edits their own name, phone and title. Email and access flags are staff-only.
+
+    `changes` holds only the fields the client sent (PATCH): anything left out is kept.
+    """
     c = ctx.contact
     before = dict(name=c.name, phone=c.phone, title=c.title)
-    c.name, c.phone, c.title = name, phone, title
+    for field in ("name", "phone", "title"):
+        if field in changes:
+            setattr(c, field, changes[field])
     ctx.db.flush()
     audit.record(
         ctx.db,

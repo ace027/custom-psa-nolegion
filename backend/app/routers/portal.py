@@ -268,10 +268,10 @@ def me(ctx: PortalCtx = portal_required()):
 @router.patch(
     "/me/contact",
     response_model=PortalMeOut,
-    summary="Edit your own name, phone and title (not your email)",
+    summary="Edit your own name, phone and title (not your email); fields left out are kept",
 )
 def update_me(body: PortalContactPatch, ctx: PortalCtx = portal_required()):
-    return svc.update_contact(ctx, body.name, body.phone, body.title)
+    return svc.update_contact(ctx, body.model_dump(exclude_unset=True))
 
 
 # ---- CSV exports ----

@@ -9518,13 +9518,20 @@
       },
       "PortalContactPatch": {
         "additionalProperties": false,
-        "description": "What a contact may change about themselves. Email is deliberately absent (extra=forbid).",
+        "description": "What a contact may change about themselves. Email is deliberately absent (extra=forbid).\n\nPATCH semantics: only the fields sent are changed (model_fields_set). `name` may be left out\nbut not cleared; phone and title are cleared with null or a blank string.",
         "properties": {
           "name": {
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "phone": {
             "anyOf": [
@@ -9551,9 +9558,6 @@
             "title": "Title"
           }
         },
-        "required": [
-          "name"
-        ],
         "title": "PortalContactPatch",
         "type": "object"
       },
@@ -33355,7 +33359,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Edit your own name, phone and title (not your email)",
+        "summary": "Edit your own name, phone and title (not your email); fields left out are kept",
         "tags": [
           "portal"
         ]

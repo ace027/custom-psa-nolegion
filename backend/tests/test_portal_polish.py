@@ -279,6 +279,29 @@ def test_me_returns_phone_and_title_and_name_only_patch_keeps_them(admin, sign_i
     assert (me["contact_name"], me["phone"], me["title"]) == ("Patricia", "555-0100", "CFO")
 
 
+def test_contact_patch_changes_only_the_fields_sent(admin, sign_in, world):
+    p = sign_in("pat@acme.com")
+    assert (
+        p.patch(
+            f"{API}/me/contact", json={"name": "Pat", "phone": "555-0100", "title": "CFO"}
+        ).status_code
+        == 200
+    )
+    # a name-only body keeps the stored phone and title (PATCH, not replace)
+    r = p.patch(f"{API}/me/contact", json={"name": "Patricia"})
+    assert r.status_code == 200
+    me = p.get(f"{API}/me").json()
+    assert (me["contact_name"], me["phone"], me["title"]) == ("Patricia", "555-0100", "CFO")
+    # a phone-only body keeps the name and title; null clears just that field
+    assert p.patch(f"{API}/me/contact", json={"phone": None}).status_code == 200
+    me = p.get(f"{API}/me").json()
+    assert (me["contact_name"], me["phone"], me["title"]) == ("Patricia", None, "CFO")
+    # the name can be left out but not cleared
+    for body in ({"name": None}, {"name": ""}):
+        assert p.patch(f"{API}/me/contact", json=body).status_code == 422, body
+    assert p.get(f"{API}/me").json()["contact_name"] == "Patricia"
+
+
 # ---- exports ----
 def test_ticket_export_is_own_org_only_and_neutralises_formulas(admin, sign_in, world):
     mk_ticket(admin, world["a"], world["pat"]["id"], subject="=HYPERLINK(1)")

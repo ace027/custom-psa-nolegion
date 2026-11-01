@@ -69,6 +69,7 @@ Fix the unresolved findings in 15-REVIEW.md, accept the phase as is, or re-plan;
 - 2026-10-31: phase 12 minor findings: add_note marks author-less notes system, timesheet API returns entry_type and automation_minutes, note-system/note-ai colour tokens, a persistent live region for note filters (F-005 and F-007 left for a design decision)
 - 2026-10-31: fix F-009 (phase 14): portal invoice list and detail tables scroll horizontally on narrow screens
 - 2026-11-01: phase 14 security fixes: first Microsoft sign-in confirmed by an emailed link bound to the same browser (M-1); aud pinned, staff client renamed entra_staff, upload lock and per-client quota before decoding, tenant-id change unlinks contacts (L-1..L-4); migration 0036
+- 2026-11-01: phase 14 F-001: PATCH /portal/me/contact changes only the fields sent (name can be left out, not cleared)
 
 ## Phase 4 Results
 (build started 2026-10-10)
