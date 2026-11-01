@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 15 of 13 (planned)
-- **Status**: Phase 15 planned -- 1 plans across 1 waves
-- **Last Activity**: Phase 15 planning (2026-11-01)
+- **Phase**: 15 of 13 (executing)
+- **Status**: Phase 15 executing — Plan 15-01 complete
+- **Last Activity**: Plan 15-01 execution (2026-11-01)
 
 ## Progress
 ```
-[###################.] 97% — 47/48 plans complete
+[####################] 100% — 48/48 plans complete
 ```
 
 ## Recent Decisions
@@ -154,3 +154,7 @@ Run `/triad:build` to execute Phase 15: Verify (owner manual testing)
 - Plan 14-02 (Wave 2): Portal attachments, contact self-service and CSV export (backend) — Complete
 - Plan 14-03 (Wave 3): Portal polish frontend and manual checks — PARTIAL: All three tasks are built and the frontend verification passes (typecheck, 333 tests, build). One gap: the My details page can't prefill phone and title, because `GET /portal/me` doesn't return them. 
 - Plan 14-03 (Wave 3): Portal polish frontend and manual checks — Complete
+
+## Phase 15 Results
+(build started 2026-11-01)
+- Plan 15-01 (Wave 1): Owner verification runbook — Complete
