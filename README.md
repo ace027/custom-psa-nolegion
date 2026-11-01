@@ -81,6 +81,9 @@ cd ../frontend && npm ci && npm run dev  # UI on :5173, dev login enabled
 4a. Optional, for email-to-ticket: [docs/MAIL_SETUP.md](docs/MAIL_SETUP.md) (the `worker` container idles until configured)
 5. Set up backups **before** you put real data in: [docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md)
 
+## Manual verification
+Owner checks for every phase, in one ordered pass with result tracking: [docs/verify/RUNBOOK.md](docs/verify/RUNBOOK.md)
+
 ## Tests
 ```sh
 cd backend && pytest          # needs local PostgreSQL, see docs/DEVELOPMENT.md
