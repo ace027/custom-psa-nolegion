@@ -155,6 +155,10 @@ def upload(ctx: PortalCtx, ticket_id: int, filename: str, content_base64: str) -
         storage_key=key,
     )
     ctx.db.add(att)
+    # A file from the client is customer activity, like a portal reply: it reopens a waiting or
+    # resolved ticket and tells the assignee (same "customer_reply" email and preference).
+    status_before = t.status
+    tsvc.reopen_on_customer_activity(ctx, t)
     try:
         ctx.db.flush()
     except BaseException:
@@ -166,8 +170,18 @@ def upload(ctx: PortalCtx, ticket_id: int, filename: str, content_base64: str) -
         "portal.attachment_upload",
         att,
         organization_id=t.organization_id,
-        detail={"contact_id": ctx.contact.id, "filename": name, "size": len(data)},
+        detail={
+            "contact_id": ctx.contact.id,
+            "filename": name,
+            "size": len(data),
+            "status_before": status_before,
+            "status_after": t.status,
+        },
     )
+    if t.assignee_id:
+        from app import notifications
+
+        notifications.notify(ctx, t.assignee_id, t, "customer_reply", f"a{att.id}")
     return _out(att)
 
 

@@ -70,6 +70,7 @@ Fix the unresolved findings in 15-REVIEW.md, accept the phase as is, or re-plan;
 - 2026-10-31: fix F-009 (phase 14): portal invoice list and detail tables scroll horizontally on narrow screens
 - 2026-11-01: phase 14 security fixes: first Microsoft sign-in confirmed by an emailed link bound to the same browser (M-1); aud pinned, staff client renamed entra_staff, upload lock and per-client quota before decoding, tenant-id change unlinks contacts (L-1..L-4); migration 0036
 - 2026-11-01: phase 14 F-001: PATCH /portal/me/contact changes only the fields sent (name can be left out, not cleared)
+- 2026-11-01: phase 14 deferred finding: a portal upload reopens a waiting or resolved ticket and emails the assignee (customer_reply), like a portal reply
 
 ## Phase 4 Results
 (build started 2026-10-10)

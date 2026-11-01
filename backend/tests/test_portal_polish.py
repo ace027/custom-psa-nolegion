@@ -130,6 +130,38 @@ def test_raising_the_setting_raises_the_cap(admin, sign_in, world, monkeypatch):
     assert upload(p, world["ticket"]["id"], data=b"x" * (11 * 1024 * 1024)).status_code == 201
 
 
+def test_upload_reopens_and_notifies_the_assignee(admin, sign_in, login, world, owner_engine):
+    from sqlalchemy import text
+
+    tech = login("tech")
+    tid = world["ticket"]["id"]
+    admin.patch(
+        f"/api/v1/tickets/{tid}",
+        json={"assignee_id": tech.user["id"], "status": "waiting_on_customer"},
+    )
+    p = sign_in("pat@acme.com")
+    assert upload(p, tid, name="screenshot.png", data=b"\x89PNG data").status_code == 201
+    assert admin.get(f"/api/v1/tickets/{tid}").json()["status"] == "open"
+    row = actions(admin, "portal.attachment_upload")[0]
+    assert (row["detail"]["status_before"], row["detail"]["status_after"]) == (
+        "waiting_on_customer",
+        "open",
+    )
+    with owner_engine.connect() as c:
+        mails = c.execute(
+            text("SELECT to_emails->>0 FROM email_messages WHERE subject LIKE 'PSA: ticket%'")
+        ).scalars()
+        assert tech.user["email"] in list(mails)
+
+
+def test_upload_on_unassigned_active_ticket_keeps_status(admin, sign_in, world):
+    tid = world["ticket"]["id"]
+    before = admin.get(f"/api/v1/tickets/{tid}").json()["status"]
+    p = sign_in("pat@acme.com")
+    assert upload(p, tid).status_code == 201
+    assert admin.get(f"/api/v1/tickets/{tid}").json()["status"] == before == "new"
+
+
 def test_closed_ticket_refuses_uploads(admin, sign_in, world):
     admin.patch(f"/api/v1/tickets/{world['ticket']['id']}", json={"status": "closed"})
     assert upload(sign_in("pat@acme.com"), world["ticket"]["id"]).status_code == 409
