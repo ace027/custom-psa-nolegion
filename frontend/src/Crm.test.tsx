@@ -47,9 +47,9 @@ beforeEach(() => { calls = []; });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("sales navigation", () => {
-  it("shows the Sales link and tabs for crm:read", async () => {
+  it("shows the Sales heading and tabs for crm:read", async () => {
     go("/crm", "read_only", READ, { "/api/v1/crm/opportunities": json([]) });
-    expect(await screen.findByRole("link", { name: "Sales" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Sales" })).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "Forecast" })).toBeInTheDocument();
     expect(await screen.findByText(/No opportunities yet/)).toBeInTheDocument();
   });

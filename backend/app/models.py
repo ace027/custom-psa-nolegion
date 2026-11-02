@@ -156,6 +156,8 @@ class User(TimestampMixin, Base):
     timezone: Mapped[str | None] = mapped_column(String(64))  # None = the Settings timezone
     # Hourly internal cost of this person's time; set and read only through admin endpoints
     cost_rate_cents: Mapped[int | None] = mapped_column(BigInteger)
+    # Ordered nav page ids pinned on this person's rail; None = use the role defaults
+    nav_bookmarks: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
 
 
 class Session(Base):

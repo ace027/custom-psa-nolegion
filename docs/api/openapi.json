@@ -1722,6 +1722,48 @@
         "title": "AvailabilityOut",
         "type": "object"
       },
+      "BookmarksIn": {
+        "description": "The ordered page ids pinned on the signed-in user's rail (ids come from the front end's\nnav config; the server only checks their shape).",
+        "properties": {
+          "items": {
+            "items": {
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BookmarksIn",
+        "type": "object"
+      },
+      "BookmarksOut": {
+        "properties": {
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BookmarksOut",
+        "type": "object"
+      },
       "BudgetOut": {
         "properties": {
           "actual_minutes": {
@@ -29763,6 +29805,66 @@
         "summary": "Mailbox connector health: last poll, errors, outbound queue (admin)",
         "tags": [
           "configuration"
+        ]
+      }
+    },
+    "/api/v1/me/bookmarks": {
+      "get": {
+        "operationId": "get_my_bookmarks_api_v1_me_bookmarks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarksOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Your rail bookmarks in order (null until you change them)",
+        "tags": [
+          "auth"
+        ]
+      },
+      "put": {
+        "operationId": "put_my_bookmarks_api_v1_me_bookmarks_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookmarksIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarksOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replace your rail bookmarks (up to 8 unique page ids, in order)",
+        "tags": [
+          "auth"
         ]
       }
     },

@@ -1,10 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Suspense, lazy, useState } from "react";
-import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { api } from "./api";
 import { can, useMe } from "./auth";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { BRAND } from "./branding";
 import Audit from "./pages/Audit";
 import Agreements from "./pages/billing/Agreements";
 import BillingLayout from "./pages/billing/BillingLayout";
@@ -61,7 +60,11 @@ import TicketDetail from "./pages/TicketDetail";
 import Search from "./pages/Search";
 import Tickets from "./pages/Tickets";
 import Users from "./pages/Users";
-import { ThemeToggle } from "./ui";
+import AdminLayout from "./nav/AdminLayout";
+import AllPages from "./nav/AllPages";
+import { NAV_SECTIONS, canOpen, itemForPath, visibleItems } from "./nav/navConfig";
+import Rail, { Icon } from "./nav/Rail";
+import { useBookmarks } from "./nav/useBookmarks";
 
 // The dispatch board pulls in react-big-calendar, so it is split into its own chunk.
 const Dispatch = lazy(() => import("./pages/Dispatch"));
@@ -76,97 +79,76 @@ function Layout() {
       qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" }); // drop cached client data
     },
   });
-  const [open, setOpen] = useState(false);
   const nav = useNavigate();
-  const link = ({ isActive }: { isActive: boolean }) =>
-    `block rounded-lg px-3 py-2 text-sm ${isActive ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-500 hover:bg-slate-100"}`;
-  const close = () => setOpen(false);
+  const { pathname } = useLocation();
+  const bookmarks = useBookmarks(me);
+  const [allOpen, setAllOpen] = useState(false);
+  const allButton = useRef<HTMLButtonElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const closeAll = useCallback(() => setAllOpen(false), []);
+  useEffect(closeAll, [pathname, closeAll]); // any navigation closes the panel
+  const page = itemForPath(pathname);
+  const current = page && canOpen(me, page) ? page : undefined;
+  const section = NAV_SECTIONS.find((s) => s.id === current?.section);
+  if (!me) return null;
   return (
     <div className="min-h-screen md:flex">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-surface px-4 py-3 md:hidden">
-        <span className="flex items-center gap-2 font-bold">
-          <BrandMark />
-        </span>
-        <button type="button" aria-expanded={open} aria-controls="sidebar" className="rounded-lg border border-slate-300 px-3 py-1 text-sm" onClick={() => setOpen(!open)}>Menu</button>
-      </div>
-      <aside id="sidebar" className={`${open ? "block" : "hidden"} border-b border-slate-200 bg-surface p-3 md:sticky md:top-0 md:block md:h-screen md:w-56 md:shrink-0 md:overflow-y-auto md:border-b-0 md:border-r`}>
-        <div className="mb-4 hidden items-center gap-2 px-3 pt-2 font-bold md:flex">
-          <BrandMark />
-        </div>
-        <form
-          role="search"
-          className="mb-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
-            if (q) {
-              nav(`/search?q=${encodeURIComponent(q)}`);
-              close();
-            }
-          }}
-        >
-          <input name="q" type="search" aria-label="Search" placeholder="Search…" className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-sm" />
-        </form>
-        <nav className="space-y-0.5" onClick={close}>
-          <NavLink to="/dashboard" className={link}>Dashboard</NavLink>
-          <NavLink to="/tickets" className={link}>Tickets</NavLink>
-          {can(me, "schedule:read") && <NavLink to="/dispatch" className={link}>Dispatch</NavLink>}
-          {can(me, "schedule:read") && <NavLink to="/oncall" className={link}>On-call</NavLink>}
-          {can(me, "ticket:read") && <NavLink to="/projects" className={link}>Projects</NavLink>}
-          <NavLink to="/organizations" className={link}>Organizations</NavLink>
-          {can(me, "time:write") && <NavLink to="/timesheet" className={link}>My timesheet</NavLink>}
-          {can(me, "time:write") && <NavLink to="/expenses" className={link}>My expenses</NavLink>}
-          {can(me, "crm:read") && <NavLink to="/crm" className={link}>Sales</NavLink>}
-          {can(me, "billing:read") && <NavLink to="/billing" className={link}>Billing</NavLink>}
-          {can(me, "procurement:read") && <NavLink to="/procurement" className={link}>Procurement</NavLink>}
-          {can(me, "quote:read") && <NavLink to="/quotes" className={link}>Quotes</NavLink>}
-          {can(me, "report:read") && (
-            <div role="group" aria-label="Reports" className="pt-1">
-              <div className="px-3 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Reports</div>
-              <NavLink to="/reports/sla" className={link}>SLA report</NavLink>
-              <NavLink to="/reports/utilisation" className={link}>Utilisation report</NavLink>
-              <NavLink to="/reports/aging" className={link}>Aging report</NavLink>
-              <NavLink to="/reports/profitability" className={link}>Profitability report</NavLink>
-              <NavLink to="/reports/schedules" className={link}>Report schedules</NavLink>
-            </div>
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-lg focus:bg-blue-600 focus:px-3 focus:py-1.5 focus:text-on-accent">
+        Skip to content
+      </a>
+      <Rail
+        me={me}
+        bookmarks={bookmarks}
+        allOpen={allOpen}
+        onToggleAll={() => setAllOpen((o) => !o)}
+        allButtonRef={allButton}
+        onGoTo={() => search.current?.focus()}
+      />
+      {allOpen && <AllPages me={me} bookmarks={bookmarks} onClose={closeAll} returnFocus={allButton} />}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 md:px-8">
+          {current && (
+            <>
+              <span className="text-sm text-slate-500">
+                <span className="hidden sm:inline">{section?.label} › </span>
+                <b className="font-semibold text-slate-900">{current.label}</b>
+              </span>
+              <button
+                type="button"
+                aria-pressed={bookmarks.isBookmarked(current.id)}
+                onClick={() => bookmarks.toggle(current.id)}
+                className={`inline-flex items-center gap-1 rounded-lg border bg-surface px-2 py-0.5 text-xs ${bookmarks.isBookmarked(current.id) ? "border-amber-700 text-amber-700" : "border-slate-300 text-slate-600 hover:bg-slate-100"}`}
+              >
+                <Icon name="star" className="h-3.5 w-3.5" filled={bookmarks.isBookmarked(current.id)} />
+                Bookmark this page
+              </button>
+            </>
           )}
-          {can(me, "report:read") && <NavLink to="/warranty" className={link}>Warranty</NavLink>}
-          <NavLink to="/users" className={link}>Users</NavLink>
-          {can(me, "integration:manage") && <NavLink to="/integrations" className={link}>Integrations</NavLink>}
-          {can(me, "apikey:manage") && <NavLink to="/api-keys" className={link}>API keys</NavLink>}
-          {can(me, "automation:manage") && <NavLink to="/webhooks" className={link}>Webhooks</NavLink>}
-          {can(me, "automation:manage") && <NavLink to="/automation" className={link}>Automation</NavLink>}
-          {can(me, "config:manage") && <NavLink to="/settings" className={link}>Settings</NavLink>}
-          {can(me, "audit:read") && <NavLink to="/audit" className={link}>Audit log</NavLink>}
-        </nav>
-        <OnCallWidget />
-        <div className="mt-6 space-y-2 border-t border-slate-200 px-3 pt-4 text-sm">
-          <Link className="block hover:underline" to="/profile" title="Your notification settings" onClick={close}>{me?.display_name} <span className="text-slate-500">({me?.role})</span></Link>
-          <div className="flex items-center gap-3">
-            <button className="text-blue-700 hover:underline" onClick={() => logout.mutate()}>Sign out</button>
-            <ThemeToggle />
+          <form
+            role="search"
+            className="ml-auto w-full max-w-xs flex-1 sm:w-auto"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
+              if (q) nav(`/search?q=${encodeURIComponent(q)}`);
+            }}
+          >
+            <input ref={search} name="q" type="search" aria-label="Search" placeholder="Search…" className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-sm" />
+          </form>
+          <div className="[&>section]:mt-0 [&>section]:py-1">
+            <OnCallWidget />
           </div>
-        </div>
-      </aside>
-      <main className="min-w-0 flex-1 p-4 md:p-8">
-        <div className="mx-auto max-w-6xl">{can(me, "time:write") && <TimerBar />}<ErrorBoundary><Outlet /></ErrorBoundary></div>
-      </main>
+          <button type="button" className="text-sm text-blue-700 hover:underline" onClick={() => logout.mutate()}>Sign out</button>
+        </header>
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 p-4 pb-24 focus:outline-none md:p-8">
+          <div className="mx-auto max-w-6xl">
+            {bookmarks.error && <p role="alert" className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{bookmarks.error}</p>}
+            {can(me, "time:write") && <TimerBar />}
+            <ErrorBoundary><Outlet /></ErrorBoundary>
+          </div>
+        </main>
+      </div>
     </div>
-  );
-}
-
-function BrandMark() {
-  return (
-    <>
-      {BRAND.logoUrl ? (
-        <img src={BRAND.logoUrl} alt={BRAND.name} className="h-7 w-auto" />
-      ) : (
-        <>
-          <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-blue-600 text-sm text-on-accent">{BRAND.mark}</span>
-          {BRAND.name}
-        </>
-      )}
-    </>
   );
 }
 
@@ -204,7 +186,6 @@ function StaffApp() {
         <Route path="/oncall" element={can(me, "schedule:read") ? <OnCall /> : <Navigate to="/" replace />} />
         <Route path="/timesheet" element={can(me, "time:write") ? <Timesheet /> : <Navigate to="/" replace />} />
         <Route path="/expenses" element={can(me, "time:write") ? <Expenses /> : <Navigate to="/" replace />} />
-        <Route path="/settings" element={can(me, "config:manage") ? <Settings /> : <Navigate to="/" replace />} />
         <Route path="/organizations" element={<Organizations />} />
         <Route path="/organizations/:id" element={<OrganizationDetail />} />
         {can(me, "billing:read") && (
@@ -268,7 +249,19 @@ function StaffApp() {
         <Route path="/automation" element={can(me, "automation:manage") ? <Automation /> : <Navigate to="/" replace />} />
         <Route path="/integrations" element={can(me, "integration:manage") ? <Integrations /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/users" element={<Users />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to={visibleItems(me).find((i) => i.section === "admin")?.route ?? "/"} replace />} />
+          {/* Users stays readable by every role (user:read); only the nav lists it for user:manage. */}
+          <Route path="users" element={<Users />} />
+          <Route
+            path="settings"
+            element={can(me, "config:manage") || can(me, "service:configure") ? <Settings /> : <Navigate to="/" replace />}
+          />
+        </Route>
+        {/* Moved and removed pages */}
+        <Route path="/settings" element={<Navigate to="/admin/settings" replace />} />
+        <Route path="/users" element={<Navigate to="/admin/users" replace />} />
+        <Route path="/kb/*" element={<Navigate to="/tickets" replace />} />
         <Route path="/audit" element={can(me, "audit:read") ? <Audit /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

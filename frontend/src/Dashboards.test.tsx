@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
@@ -63,11 +63,13 @@ describe("role dashboards", () => {
 
   it("shows the Reports nav group only with report:read", async () => {
     const { unmount } = go("/dashboard", "billing", BILLING, { "/api/v1/reports/dashboard": json(manager) });
-    expect(await screen.findByRole("link", { name: "SLA report" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "All pages" }));
+    expect(within(screen.getByRole("region", { name: "All pages" })).getByRole("button", { name: "Bookmark SLA report" })).toBeInTheDocument();
     unmount();
     go("/dashboard", "tech", TECH);
     await screen.findByRole("heading", { name: "My week" });
-    expect(screen.queryByRole("link", { name: "SLA report" })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "All pages" }));
+    expect(within(screen.getByRole("region", { name: "All pages" })).queryByRole("button", { name: "Bookmark SLA report" })).not.toBeInTheDocument();
   });
 });
 

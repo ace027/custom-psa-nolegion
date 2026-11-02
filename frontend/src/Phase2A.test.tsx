@@ -29,7 +29,7 @@ afterEach(() => {
 function mount(path: string, handlers: Record<string, (init?: RequestInit) => Response>) {
   vi.stubGlobal(
     "fetch",
-    vi.fn((url: string, init?: RequestInit) => Promise.resolve(handlers[url.split("?")[0]]?.(init) ?? new Response("[]", { status: 200 }))),
+    vi.fn((url: string, init?: RequestInit) => Promise.resolve(({ "/api/v1/dashboard/me": json({ week: { logged_minutes: 0, billable_minutes: 0, capacity_minutes: 0, utilisation_bp: null } }), ...handlers } as Record<string, (init?: RequestInit) => Response>)[url.split("?")[0]]?.(init) ?? new Response("[]", { status: 200 }))),
   );
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -65,7 +65,7 @@ describe("timer", () => {
 
   it("is hidden without a running timer or without time permission", async () => {
     mount("/dashboard", { "/api/v1/auth/me": json({ ...me, permissions: ["org:read", "ticket:read"] }), "/api/v1/timer": json(timer) });
-    await screen.findByRole("link", { name: "Dashboard" });
+    await screen.findByRole("link", { name: "Tickets" });
     expect(screen.queryByRole("status", { name: "Running timer" })).toBeNull();
     expect(screen.queryByText("My timesheet")).toBeNull();
   });
@@ -209,7 +209,7 @@ describe("expenses", () => {
 
   it("hides the page from people who cannot log time", async () => {
     mount("/dashboard", { "/api/v1/auth/me": json({ ...me, permissions: ["org:read", "ticket:read"] }) });
-    await screen.findByRole("link", { name: "Dashboard" });
+    await screen.findByRole("link", { name: "Tickets" });
     expect(screen.queryByText("My expenses")).toBeNull();
   });
 });

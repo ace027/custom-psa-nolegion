@@ -236,3 +236,4 @@ verification: 4/4 passed
 | O-143 | 2026-11-02 | dev | 16 | 16-01 | engineering-security-engineer | implementation | failed | 5 | front-end-redesign-navigation-and-layout, engineering | Permission split and manager role: Partial |
 | O-144 | 2026-11-02 | dev | 16 | 16-01 | engineering-security-engineer | implementation | failed | 5 | front-end-redesign-navigation-and-layout, engineering | Permission split and manager role: Partial |
 | O-145 | 2026-11-02 | dev | 16 | 16-01 | engineering-security-engineer | implementation | failed | 5 | front-end-redesign-navigation-and-layout, engineering | Permission split and manager role: Partial |
+| O-146 | 2026-11-02 | dev | 16 | 16-02 | engineering-frontend-developer | implementation | failed | 5 | front-end-redesign-navigation-and-layout, engineering | Icon rail, All pages and reorderable per-user bookmarks: Partial |

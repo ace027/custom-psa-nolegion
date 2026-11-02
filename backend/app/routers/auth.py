@@ -10,11 +10,19 @@ from app import repositories as repo
 from app.auth import oidc, sessions
 from app.config import get_settings
 from app.deps import Ctx, authenticated
-from app.schemas import DevLoginIn, ErrorOut, MeOut, NotificationPrefsPatch
+from app.schemas import (
+    BookmarksIn,
+    BookmarksOut,
+    DevLoginIn,
+    ErrorOut,
+    MeOut,
+    NotificationPrefsPatch,
+)
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+auth_router = APIRouter(prefix="/auth", tags=["auth"])
+me_router = APIRouter(prefix="/me", tags=["auth"])
 
 
 def _set_cookie(response: Response, token: str) -> None:
@@ -34,7 +42,7 @@ def _client(request: Request) -> tuple[str | None, str | None]:
     return (request.client.host if request.client else None), request.headers.get("user-agent")
 
 
-@router.get(
+@auth_router.get(
     "/login",
     summary="Start Entra ID sign-in (redirects to Microsoft)",
     responses={503: {"model": ErrorOut}},
@@ -47,7 +55,7 @@ async def login(request: Request):
     return await oidc.get_oauth().entra_staff.authorize_redirect(request, redirect_uri)
 
 
-@router.get(
+@auth_router.get(
     "/callback",
     summary="Entra ID redirect target; creates the session",
     responses={403: {"model": ErrorOut}, 503: {"model": ErrorOut}},
@@ -90,7 +98,7 @@ async def callback(request: Request):
     return response
 
 
-@router.post(
+@auth_router.post(
     "/dev-login",
     response_model=MeOut,
     summary="DEV ONLY: sign in as an existing user",
@@ -136,7 +144,7 @@ def dev_login(body: DevLoginIn, request: Request, response: Response):
     return out
 
 
-@router.post("/logout", status_code=204, summary="End the current session")
+@auth_router.post("/logout", status_code=204, summary="End the current session")
 def logout(request: Request, response: Response, ctx: Ctx = authenticated()):
     token = request.cookies.get(get_settings().session_cookie_name)
     if token:
@@ -147,7 +155,7 @@ def logout(request: Request, response: Response, ctx: Ctx = authenticated()):
     return response
 
 
-@router.get("/me", response_model=MeOut, summary="The signed-in user and their permissions")
+@auth_router.get("/me", response_model=MeOut, summary="The signed-in user and their permissions")
 def me(ctx: Ctx = authenticated()):
     u = ctx.user
     return MeOut(
@@ -164,7 +172,7 @@ def me(ctx: Ctx = authenticated()):
     )
 
 
-@router.patch(
+@auth_router.patch(
     "/me/notifications",
     response_model=MeOut,
     summary="Choose which ticket emails you receive (your own preferences only)",
@@ -178,3 +186,32 @@ def update_my_notifications(body: NotificationPrefsPatch, ctx: Ctx = authenticat
     ctx.db.flush()
     audit.record(ctx.db, u, "user.notification_prefs", u, before=before, after=audit.snapshot(u))
     return me(ctx)
+
+
+# Bookmarks are a personal UI preference: authenticated() refuses API keys (403), and both
+# handlers only touch ctx.user, the signed-in person's own row. No audit row: reordering the
+# rail is not a business change and would flood the log.
+@me_router.get(
+    "/bookmarks",
+    response_model=BookmarksOut,
+    summary="Your rail bookmarks in order (null until you change them)",
+)
+def get_my_bookmarks(ctx: Ctx = authenticated()):
+    return BookmarksOut(items=ctx.user.nav_bookmarks)
+
+
+@me_router.put(
+    "/bookmarks",
+    response_model=BookmarksOut,
+    summary="Replace your rail bookmarks (up to 8 unique page ids, in order)",
+)
+def put_my_bookmarks(body: BookmarksIn, ctx: Ctx = authenticated()):
+    ctx.user.nav_bookmarks = list(body.items)
+    ctx.db.flush()
+    return BookmarksOut(items=ctx.user.nav_bookmarks)
+
+
+# main.py mounts `router` under /api/v1: /auth/* plus /me/*.
+router = APIRouter()
+router.include_router(auth_router)
+router.include_router(me_router)

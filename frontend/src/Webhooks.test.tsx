@@ -81,7 +81,7 @@ describe("webhooks page", () => {
     });
     fireEvent.click(await screen.findByRole("button", { name: "Send test to Ops channel" }));
     await waitFor(() => expect(calls.some((c) => c.startsWith("POST /api/v1/webhooks/3/test"))).toBe(true));
-    expect(await screen.findByRole("status")).toHaveTextContent("Test sent");
+    expect(await screen.findByText(/Test sent/)).toHaveAttribute("role", "status");
   });
 
   it("shows the delivery log and retries a failed delivery", async () => {

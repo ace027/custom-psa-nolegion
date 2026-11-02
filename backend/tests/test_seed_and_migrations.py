@@ -46,7 +46,7 @@ def test_migration_0032_reporting_tables_and_constraints(owner_engine, make_user
     from sqlalchemy.exc import IntegrityError
 
     with owner_engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0039"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0040"
     uid = make_user("admin")["id"]
 
     def schedule(**kw):
@@ -234,3 +234,24 @@ def test_migration_0039_manager_role_and_key_permission_split(owner_engine, make
     with pytest.raises(Exception, match="ck_users_role"):
         make_user("manager", "m2@example.com")
     command.upgrade(cfg, "head")
+
+
+def test_migration_0040_user_nav_bookmarks(owner_engine, make_user):
+    def column():
+        with owner_engine.connect() as c:
+            return c.execute(
+                text(
+                    "SELECT data_type FROM information_schema.columns"
+                    " WHERE table_name = 'users' AND column_name = 'nav_bookmarks'"
+                )
+            ).scalar_one_or_none()
+
+    cfg = Config("alembic.ini")
+    assert column() == "ARRAY"
+    make_user("tech")
+    command.downgrade(cfg, "0039")
+    assert column() is None
+    command.upgrade(cfg, "head")
+    assert column() == "ARRAY"
+    with owner_engine.connect() as c:
+        assert c.execute(text("SELECT nav_bookmarks FROM users")).scalar_one() is None

@@ -54,6 +54,10 @@ export interface Me {
   notify_sla: boolean;
   notify_reply: boolean;
 }
+/** Rail bookmarks: ordered nav page ids, or null until the person changes them (role defaults). */
+export interface Bookmarks {
+  items: string[] | null;
+}
 export interface User extends Omit<Me, "permissions" | "notify_assigned" | "notify_sla" | "notify_reply"> {
   is_active: boolean;
   last_login_at: string | null;

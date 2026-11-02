@@ -1,7 +1,7 @@
 import re
 import uuid
 from datetime import date, datetime
-from typing import Any, Generic, Literal, TypeVar
+from typing import Annotated, Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
@@ -198,6 +198,27 @@ class NotificationPrefsPatch(BaseModel):
     notify_assigned: bool | None = None
     notify_sla: bool | None = None
     notify_reply: bool | None = None
+
+
+NavPageId = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9-]{0,63}$")]
+
+
+class BookmarksIn(BaseModel):
+    """The ordered page ids pinned on the signed-in user's rail (ids come from the front end's
+    nav config; the server only checks their shape)."""
+
+    items: list[NavPageId] = Field(max_length=8)
+
+    @field_validator("items")
+    @classmethod
+    def _unique(cls, v: list[str]) -> list[str]:
+        if len(set(v)) != len(v):
+            raise ValueError("bookmarks must be unique")
+        return v
+
+
+class BookmarksOut(BaseModel):
+    items: list[str] | None  # null = never set; the front end shows the role defaults
 
 
 class DevLoginIn(BaseModel):
