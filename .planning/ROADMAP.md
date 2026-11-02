@@ -190,7 +190,7 @@
 **Success Criteria**:
 - [ ] 2-3 mockups of the navigation and layout reviewed by the owner, one chosen and recorded in .planning/designs/
 - [ ] The sidebar is reorganised into the chosen structure; every existing page stays reachable and existing deep links keep working
-- [ ] Role-based visibility is unchanged (no page shown to a role that cannot use it)
+- [ ] Role access follows .planning/designs/16-navigation/DECISIONS.md (finance hidden from techs and read-only, new manager role, Users admin-only), enforced by the API, not only hidden in the navigation; no page is shown to a role that cannot use it
 - [ ] Keyboard and screen-reader navigation work; layout works at 1280px and on a tablet width
 **Plans**: TBD
 
@@ -246,7 +246,7 @@
 | 13 | 2 | 2 | Complete |
 | 14 | 3 | 3 | Complete |
 | 15 | 1 | 1 | Executed |
-| 16 | 0 | 0 | Pending |
+| 16 | 4 | 0 | Planned |
 | 17 | 0 | 0 | Pending |
 | 18 | 0 | 0 | Pending |
 | 19 | 0 | 0 | Pending |
