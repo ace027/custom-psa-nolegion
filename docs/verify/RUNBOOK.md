@@ -37,20 +37,19 @@ Load seed data: `cd backend && alembic upgrade head && python -m app.seed` (the 
 - [x] `kb:write` is limited to admin and tech (assumed default, Phase 13)
 - [x] Portal uploads are limited to 10 MB and the extension allowlist (assumed default, Phase 14)
 - [x] Update the staff Entra redirect URI to `<public_url>/api/v1/auth/callback`; the API has no `/api` alias (Phase 12, STATE.md decisions)
-- [ ] Block-hour unused hours expire at month end with no rollover (STATE.md decisions). Make this configurable. OPEN: owner to either open a fix task for configurable rollover or mark deferred (backlog).
+- [x] Block-hour unused hours expire at month end with no rollover (STATE.md decisions). Make this configurable. Deferred by owner to Phase 17 (2026-11-02), where per-agreement rollover is a success criterion.
 - [x] One tax rate per client (STATE.md decisions)
 - [x] No payment processor; portal payments stay manual (STATE.md decisions)
 - [x] Default markup stays 0% until you set it (Phase 10)
 
 ## Real-tenant Outlook spike
 
-Setup first: create the "PSA Techs" group and the Exchange RBAC for Applications scope ([docs/CALENDAR_SETUP.md](../CALENDAR_SETUP.md)). Run everything from `backend/` with the Graph env vars set. The script is read-only by default and never prints the client secret or token.
+Setup first: create the "PSA Techs" group and the Exchange RBAC for Applications scope ([docs/CALENDAR_SETUP.md](../CALENDAR_SETUP.md)). Run it in the `worker` container from the repo root (it has the Graph settings; host Python has no dependencies, see [dispatch-spike.md](dispatch-spike.md)), after `docker compose build worker`. The script is read-only by default and never prints the client secret or token.
 
 ```sh
-cd backend
-python dev/graph_calendar_spike.py --mailbox tech@example.com                 # read-only getSchedule
-python dev/graph_calendar_spike.py --mailbox tech@example.com --write         # also create, re-create (idempotency), update, delete a test event
-python dev/graph_calendar_spike.py --mailbox tech@example.com --outside other@example.com   # RBAC boundary check
+docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox tech@example.com                  # read-only getSchedule
+docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox tech@example.com --write          # also create, re-create (idempotency), update, delete a test event
+docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox tech@example.com --write --outside other@example.com   # RBAC boundary check
 ```
 
 Per VERIFY.md Phase 4, the third run is `--write --outside <someone outside the group>`; the outside call must be refused.
@@ -80,7 +79,7 @@ Checklists: [dispatch-board.md](dispatch-board.md), [dispatch-spike.md](dispatch
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P03-01 | Walk through docs/verify/dispatch-board.md | No issues | |
-| P03-02 | Walk through docs/verify/dispatch-spike.md | fail | Script failed with `ModuleNotFoundError: No module named 'pydantic_settings'` (raised from backend/dev/graph_calendar_spike.py importing app/config.py). The traceback names the Graph spike, so check which script was run. Fix: install the backend deps in the venv you run from (`cd backend && pip install -e .`; pydantic-settings is declared in pyproject.toml), then rerun. Owner to rerun and set pass. |
+| P03-02 | Walk through docs/verify/dispatch-spike.md | pass | First owner run failed on the host (`No module named pydantic_settings`): the spike must run inside the worker container, not a host venv. Re-run on the dev server (2026-11-02) with `docker compose run --rm worker python dev/graph_calendar_spike.py ...`: all steps PASS |
 | P03-03 | e2e smoke.spec.ts "ticket lifecycle" fails before phase 4; confirm it is fixed or fix it | No issues |  |
 
 ### Phase 4: Outlook push + free/busy
@@ -88,8 +87,8 @@ Checklists: [dispatch-board.md](dispatch-board.md), [dispatch-spike.md](dispatch
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P04-01 | Create the "PSA Techs" group and Exchange RBAC for Applications scope (docs/CALENDAR_SETUP.md) | No issues | |
-| P04-02 | Run `cd backend && python dev/graph_calendar_spike.py --mailbox <tech>` (read-only) on the real tenant | fail | Script failed on import: `No module named 'pydantic_settings'`. Environment issue, not a Graph result: install deps (`cd backend && pip install -e .`), rerun, set pass. |
-| P04-03 | Run it again with `--write`, then with `--write --outside <someone outside the group>`; the outside call must be refused | fail | Same import error as P04-02; RBAC boundary not yet verified. Rerun after installing deps. |
+| P04-02 | Run `docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox <tech>` (read-only) on the real tenant | pass | Dev server (2026-11-02), worker container: `PASS getSchedule read` |
+| P04-03 | Run it again with `--write`, then with `--write --outside <someone outside the group>`; the outside call must be refused | pass | Dev server (2026-11-02): create_event, idempotent create, update_event, delete_event and delete-again (404) all PASS; with `--outside`: `PASS RBAC boundary denied with 403` |
 | P04-04 | Turn on Outlook sync in Settings; book, move, reassign and cancel an appointment and check each tech's Outlook calendar | This worked without any issue | |
 | P04-05 | Put a meeting in a tech's Outlook; within 5 minutes the board shows hatched busy time with the cache-age caption | No issues | |
 | P04-06 | Force a failure (e.g. a tech outside the group); the board shows the failed badge and Retry works after fixing it | No issue | |
@@ -207,7 +206,7 @@ Checklists: [portal-polish.md](portal-polish.md), [portal.md](portal.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P14-01 | Walk through docs/verify/portal-polish.md | fail | Not run yet. Owner to walk the checklist and set pass/fail/deferred. |
+| P14-01 | Walk through docs/verify/portal-polish.md |  | Not run yet: needs a portal contact with the owner's email. Dev-server code check (2026-11-02): every line is covered by backend tests; Sign in with Microsoft section follows P14-02 (deferred) |
 | P14-02 | Real-tenant check: register the multi-tenant portal app per docs/PORTAL_SSO.md and sign in from a client tenant| deferred | Deferred by owner (2026-11-02): button shows after the compose fix (b518ccd); signing in with the client test account is not working yet |
 | P14-03 | Confirm: uploads limited to 10 MB and the extension allowlist (assumed default) | pass | Confirmed by owner (2026-11-02). Checked in code on the dev server (2026-11-02): 10 MB (config.py, api.ts) and the 18-extension allowlist match on server and browser; no live refusal yet |
 ## Other checklists
