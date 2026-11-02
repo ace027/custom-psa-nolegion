@@ -218,3 +218,5 @@ verification: 13/13 passed
 | O-132 | 2026-11-01 | dev | 15 | 15-00 | engineering-senior-developer | quality-review | partial | 5 | review, engineering | Phase 15 review ESCALATED in 2 cycle(s), 1 finding(s) |
 | O-133 | 2026-11-02 | dev | 15 | 15-00 | testing-qa-verification-specialist | quality-review | partial | 5 | review, testing | Phase 15 review ESCALATED in 2 cycle(s), 8 finding(s) |
 | O-134 | 2026-11-02 | dev | 15 | 15-00 | engineering-senior-developer | quality-review | partial | 5 | review, engineering | Phase 15 review ESCALATED in 2 cycle(s), 8 finding(s) |
+| O-135 | 2026-11-02 | dev | 15 | 15-00 | testing-qa-verification-specialist | quality-review | partial | 4 | review, testing | Phase 15 review ESCALATED in 2 cycle(s), 4 finding(s) |
+| O-136 | 2026-11-02 | dev | 15 | 15-00 | engineering-senior-developer | quality-review | partial | 5 | review, engineering | Phase 15 review ESCALATED in 2 cycle(s), 4 finding(s) |

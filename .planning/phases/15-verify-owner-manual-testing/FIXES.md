@@ -10,7 +10,5 @@ Fixes applied by the review loop, one section per cycle. Re-review decides wheth
 
 | Finding | Severity | File | Agent | Status | Notes |
 |---------|----------|------|-------|--------|-------|
-| F-001 | critical | `docs/verify/RUNBOOK.md` | engineering-senior-developer | not fixed | partial |
+| F-001 | major | `docs/verify/RUNBOOK.md` | engineering-senior-developer | not fixed | partial |
 | F-002 | major | `docs/verify/RUNBOOK.md` | engineering-senior-developer | not fixed | partial |
-| F-003 | major | `docs/verify/RUNBOOK.md` | engineering-senior-developer | not fixed | partial |
-| F-004 | major | `docs/verify/RUNBOOK.md` | engineering-senior-developer | not fixed | partial |
