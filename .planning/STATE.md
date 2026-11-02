@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Phase**: 16 of 13 (partial — 1 plan(s) failed)
-- **Status**: Phase 16 partial — 16-01 failed, stopped after wave 1, review needed
+- **Phase**: 16 of 13 (executing)
+- **Status**: Phase 16 executing — Plan 16-01 failed
 - **Last Activity**: Plan 16-01 execution (2026-11-02)
 
 ## Progress
@@ -173,3 +173,4 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 - Plan 16-01 (Wave 1): Permission split and manager role — PARTIAL: I stopped at the 20-minute budget. The permission split, manager role, migration 0039 and UI gates are on disk. The new role-by-endpoint test matrix (Task 3) is not written. The frontend suite fails: 
 - Plan 16-01 (Wave 1): Permission split and manager role — PARTIAL: Most of the plan is done and its own checks pass, but both full suites still fail because existing tests outside my file list expect the old access rules.
 - Plan 16-01 (Wave 1): Permission split and manager role — PARTIAL: The permission split, manager role, migration 0039, the role-by-endpoint tests and the frontend gates are on disk. The targeted backend tests and the whole frontend suite pass. The full backend suite 
+- Plan 16-01 (Wave 1): Permission split and manager role — PARTIAL: I ran out of time before the full backend suite finished, so I don't have a final pass/fail count for it.
