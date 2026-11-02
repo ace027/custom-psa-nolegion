@@ -2,7 +2,8 @@
 
 import csv
 import io
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import text
@@ -10,8 +11,16 @@ from sqlalchemy import text
 from tests.test_timekeeping import audit_actions
 
 
+def business_today() -> date:
+    # The API dates time by the Settings time zone (default America/Chicago), not UTC: between
+    # midnight UTC and midnight Chicago, UTC is already on the next day (and on Mondays, the next
+    # week), which made "this week" look not yet started.
+    return datetime.now(ZoneInfo("America/Chicago")).date()
+
+
 def monday(weeks_back=0):
-    d = date.today() - timedelta(days=date.today().weekday())
+    today = business_today()
+    d = today - timedelta(days=today.weekday())
     return d - timedelta(weeks=weeks_back)
 
 
