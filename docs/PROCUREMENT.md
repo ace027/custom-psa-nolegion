@@ -51,7 +51,7 @@ The price is fixed on the charge when it is made, so changing or deleting a rule
 - **Undo delivery** returns the item to stock and voids its delivery charge (items from a client order have none; the order charge stands), but only while the charge is not on an invoice. Once invoiced the server answers "Already invoiced: issue a credit memo instead" and nothing changes; use a credit memo (see BILLING.md).
 - An asset created by a delivery is kept after an undo.
 - Undoing the delivery of a row that was split does not merge it back; it returns to stock as its own row.
-- **Consume** marks in-stock items as used internally. It has its own confirmation. Stock from a billed client order cannot be consumed: deliver it, or credit the client.
+- **Consume** marks in-stock items as used internally. It has its own confirmation. Stock from a billed client order cannot be consumed: deliver it, or credit the client. If the order charge was voided by hand, its items are treated like stock again (billed at delivery, consumable).
 
 ## Permissions
 | Action | Permission |

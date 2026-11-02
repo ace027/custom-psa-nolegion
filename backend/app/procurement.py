@@ -4,7 +4,8 @@ Money rule: a billable line becomes ProductCharges at cost plus the resolved mar
 (money.marked_up). Invoice amounts and tax are never computed here; the billing run does that from
 the charge. When the charge is made (owner decision, runbook P10-02):
 - a PO linked to a client is billed when it is ORDERED: one charge per billable line for the whole
-  ordered quantity, linked from the line; its delivered items add no further charge. Cancelling the
+  ordered quantity, linked from the line; its delivered items add no further charge (unless that
+  charge was voided by hand: then they bill at delivery like stock). Cancelling the
   order voids those charges and is refused once any is invoiced (a credit memo is the fix).
 - stock (no client) and lines ordered before that rule are billed per item when DELIVERED. Undoing
   such a delivery voids its charge and is refused once invoiced.
@@ -350,6 +351,15 @@ def _charge(
         organization_id=organization_id,
     )
     return charge
+
+
+def _billed_at_order(ctx: Ctx, line: PurchaseOrderLine | None) -> bool:
+    """The line's client was billed when the PO was ordered. A charge voided by hand frees the
+    line: its items then bill at delivery like stock (owner decision 2026-11-02)."""
+    if line is None or line.product_charge_id is None:
+        return False
+    charge = ctx.db.get(ProductCharge, line.product_charge_id)
+    return charge is not None and charge.voided_at is None
 
 
 def order(ctx: Ctx, po_id: int) -> PurchaseOrder:
@@ -713,7 +723,7 @@ def deliver(
         else None
     )
     # a line billed when its client PO was ordered adds nothing here
-    if line is None or (line.billable and line.product_charge_id is None):
+    if line is None or (line.billable and not _billed_at_order(ctx, line)):
         product = ctx.db.get(Product, item.product_id) if item.product_id is not None else None
         markup_bp = (
             resolve_markup(ctx, line) if line is not None else _resolve(ctx, None, item.product_id)
@@ -805,7 +815,7 @@ def consume(ctx: Ctx, item_id: int) -> InventoryItem:
         if item.purchase_order_line_id is not None
         else None
     )
-    if line is not None and line.product_charge_id is not None:
+    if _billed_at_order(ctx, line):
         raise Conflict("This item was billed to the client when ordered: deliver it to them")
     before = audit.snapshot(item)
     item.status = "consumed"

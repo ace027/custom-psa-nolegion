@@ -232,7 +232,7 @@ Time entries of type `automation` (logged by integrations, never billable) are n
 
 ## Procurement charges
 Hardware and other goods you buy for a client are tracked in Procurement (see `docs/PROCUREMENT.md`). Billable goods become product charges at **cost plus markup** (line markup, then product rule, then category rule, then the default markup), picked up like any other charge on the client's **next run**. When the charge is made (owner decision 2026-11-02):
-- A purchase order **for a client** is billed when it is **ordered**: one charge per billable line for the whole quantity. Delivering its items adds no further charge. **Cancelling** the order voids those charges while none is invoiced; once one is invoiced, cancel is refused ("Already invoiced") and a credit memo is the fix. Its stock cannot be marked used internally.
+- A purchase order **for a client** is billed when it is **ordered**: one charge per billable line for the whole quantity. Delivering its items adds no further charge. **Cancelling** the order voids those charges while none is invoiced; once one is invoiced, cancel is refused ("Already invoiced") and a credit memo is the fix. Its stock cannot be marked used internally. If the order charge is voided by hand, the line counts as unbilled again: its items bill at delivery and can be used internally.
 - **Stock** bought with no client named is billed per item when it is **delivered**.
 - Tax follows the taxable flag on the purchase order line, which defaults from the product.
 - **Undo delivery** of stock voids its charge while it is not yet invoiced (an item from a client order has no delivery charge, so the order charge stands).

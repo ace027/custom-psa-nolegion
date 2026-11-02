@@ -501,6 +501,20 @@ def test_client_po_is_billed_when_ordered_and_delivery_adds_nothing(admin, vendo
     assert charges(owner)[0].voided_at is None  # the order charge stands
 
 
+def test_voiding_an_order_charge_frees_the_line_to_bill_at_delivery(
+    admin, biller, vendor, org_ctx, owner
+):
+    po = ordered_po(admin, vendor, [line(quantity=2)], organization_id=org_ctx["org"])
+    [c] = charges(owner)
+    assert biller.post(f"/api/v1/product-charges/{c.id}/void").status_code == 200
+    [row] = receive(admin, po, quantity=2).json()
+    out = deliver(admin, row, org_ctx["org"], quantity=1)
+    assert out.status_code == 200 and out.json()["product_charge_id"] is not None
+    assert [x.voided_at is None for x in charges(owner)] == [False, True]
+    # the unit left in stock can now be consumed
+    assert admin.post(f"{P}/inventory/{row['id']}/consume").status_code == 200
+
+
 def test_stock_po_is_not_billed_when_ordered(admin, vendor, owner):
     ordered_po(admin, vendor, [line()])
     assert charges(owner) == []
