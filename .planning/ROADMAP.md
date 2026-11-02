@@ -16,7 +16,7 @@
 - [x] Phase 12: Integration readiness (3 plans)
 - [x] Phase 13: Knowledge base (2 plans)
 - [x] Phase 14: Portal polish (3 plans)
-- [ ] Phase 15: Verify (owner manual testing) (1 plan)
+- [x] Phase 15: Verify (owner manual testing) (1 plan)
 - [ ] Phase 16: Front-end redesign (navigation and layout)
 - [ ] Phase 17: Agreement billing and profitability
 - [ ] Phase 18: Accounting mail and readable audit log
@@ -246,7 +246,7 @@
 | 12 | 4 | 4 | Shipped |
 | 13 | 2 | 2 | Complete |
 | 14 | 3 | 3 | Complete |
-| 15 | 1 | 1 | Executed |
+| 15 | 1 | 1 | Complete |
 | 16 | 4 | 0 | Planned |
 | 17 | 0 | 0 | Pending |
 | 18 | 0 | 0 | Pending |
