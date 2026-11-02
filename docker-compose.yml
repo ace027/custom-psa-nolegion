@@ -37,6 +37,9 @@ services:
       ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:?}
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:?}
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:?}
+      # Optional client-portal SSO (docs/PORTAL_SSO.md); empty keeps emailed links only.
+      PORTAL_ENTRA_CLIENT_ID: ${PORTAL_ENTRA_CLIENT_ID:-}
+      PORTAL_ENTRA_CLIENT_SECRET: ${PORTAL_ENTRA_CLIENT_SECRET:-}
       CREDENTIALS_KEY: ${CREDENTIALS_KEY:-}
       DEV_LOGIN_ENABLED: "false"
       ATTACHMENTS_DIR: /data/attachments
