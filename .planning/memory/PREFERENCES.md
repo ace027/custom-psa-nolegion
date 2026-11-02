@@ -44,3 +44,13 @@ The owner asked that all manual testing be deferred to a final phase, Phase 15: 
 Owner-approved project billing money rules (2026-10-21): (1) Fixed-fee projects bill 100% up front as one line when the project is approved; extra time is never billed. (2) T&M projects bill time at the existing rates and rounding, capped cumulatively at the project budget; anything over the cap is written off (our cost, never billed). (3) Milestones track progress only and are not billed (assumed from 'bill all up front'). (4) Project time does not draw down block hours (assumed). (5) Tax and deposits same as normal invoices.
 
 ---
+
+## PRF-003: Auto-poll the dev-server session after sending it a job
+- **Date**: 2026-11-02
+- **Type**: preference
+- **Tags**: dev-server, remote-session, workflow, polling
+- **Phase**: 15
+
+Owner preference (2026-11-02): whenever the orchestrator sends a job to the dev-server Claude session, it checks that session automatically until the job's report arrives, without waiting for the owner to say "check the session". Mechanism: the dev-server session cannot message back (the orchestrator session is trusted-device-only), and scheduled tasks fail, so after send_message start a background Bash `sleep` (about 3-5 minutes); when it exits, read the session with list_events (kinds ["result"], small limit) and compare against the last seen result id. If no new result, start another sleep, backing off up to about 60 minutes in total, then tell the owner it is still running. When a new result arrives, report it and act on it. Also read new "user" events, because the dev-server session may be waiting on an owner approval.
+
+---
