@@ -135,12 +135,12 @@ Checklists: [automation-api.md](automation-api.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P07-01 | Walk through docs/verify/automation-api.md (API keys, webhooks, automation rules) | | |
+| P07-01 | Walk through docs/verify/automation-api.md (API keys, webhooks, automation rules) | pass | Dev-server session (2026-11-02): API keys, webhooks (secret shown once, http and private hosts refused, retries logged with no secret) and rules all work; webhook test used example.com because .invalid is refused at save |
 | P07-02 | Unverified: a real Microsoft Teams Workflows webhook URL renders the adaptive card | N/A | Marked N/A by owner (2026-11-02) |
 | P07-03 | Unverified: a real n8n instance accepts the payload and the HMAC-SHA256 signature verifies | N/A | Marked N/A by owner (2026-11-02) |
 | P07-04 | Unverified: a LAN n8n works with WEBHOOK_ALLOW_PRIVATE_HOSTS=true (https only) | N/A | Marked N/A by owner (2026-11-02) |
-| P07-05 | A rule's assign, escalate, notify, webhook and create-ticket actions each work on a real ticket | | |
-| P07-06 | Rules never trigger other rules; a rule firing more than 200 times in an hour switches itself off | | |
+| P07-05 | A rule's assign, escalate, notify, webhook and create-ticket actions each work on a real ticket | pass | Dev-server session (2026-11-02): rule assigned, escalated, notified the chosen assignee and created child ticket 342; dry run changed nothing |
+| P07-06 | Rules never trigger other rules; a rule firing more than 200 times in an hour switches itself off | fail | Dev-server session (2026-11-02): a rule-assigned new ticket fired a second rule. Fixed in 1d472c4 with a regression test; re-check on the dev server pending. 200/hour cap passes by test |
 
 ### Phase 8: Projects & project billing
 
@@ -148,9 +148,9 @@ Checklists: [projects.md](projects.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P08-01 | Walk through docs/verify/projects.md (projects, phases, tasks, dependencies, board, budget, fixed-fee and T&M billing) | | |
-| P08-02 | Confirm: milestones (phase completion) are not billed | | |
-| P08-03 | Confirm: project time does not use block hours | | |
+| P08-01 | Walk through docs/verify/projects.md (projects, phases, tasks, dependencies, board, budget, fixed-fee and T&M billing) | pass | Dev-server session (2026-11-02): phases, tasks, dependencies (loop refused), budget and approval work. Billing steps, board move and tech/read-only screens not run. Remaining budget now counts logged time (owner decision, e14f9bc) |
+| P08-02 | Confirm: milestones (phase completion) are not billed |  | Observed on the dev server (2026-11-02): completing a phase created no invoices, lines or charges. Awaiting owner confirmation |
+| P08-03 | Confirm: project time does not use block hours |  | Observed on the dev server (2026-11-02): code excludes project time from block hours (billing.py), covered by a test; not shown live (no block agreement). Awaiting owner confirmation |
 
 ### Phase 9: CRM & renewals
 
@@ -158,9 +158,9 @@ Checklists: [crm.md](crm.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P09-01 | Walk through docs/verify/crm.md (leads and conversion, pipeline, quote link and win, forecast, renewal reminders) | | |
-| P09-02 | Confirm: the forecast is an estimate only and never creates invoices | | |
-| P09-03 | Confirm: the renewal worker sends one email per new reminder and never repeats it | | |
+| P09-01 | Walk through docs/verify/crm.md (leads and conversion, pipeline, quote link and win, forecast, renewal reminders) | pass | Dev-server session (2026-11-02): lead qualify and convert, pipeline (Lost needs a reason) and forecast figures checked by hand. Quote link and win not run (sends email) |
+| P09-02 | Confirm: the forecast is an estimate only and never creates invoices |  | Observed on the dev server (2026-11-02): invoices and agreements unchanged; forecast has no write path. Awaiting owner confirmation |
+| P09-03 | Confirm: the renewal worker sends one email per new reminder and never repeats it |  | Observed on the dev server (2026-11-02): code and tests: one email per new reminder, to the staff address only, never repeated. Awaiting owner confirmation |
 
 ### Phase 10: Procurement & inventory
 
@@ -168,12 +168,12 @@ Checklists: [procurement.md](procurement.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P10-01 | Walk through docs/verify/procurement.md (vendors, purchase orders, receiving with serials, delivery, undo, consume, markup rules, client card) | | |
-| P10-02 | Confirm: a client is billed when the item is delivered, not when it is received | | |
-| P10-03 | Confirm: markup order is line, then product rule, then category rule, then the default | | |
-| P10-04 | Confirm: the default markup is 0% until you set it | | |
-| P10-05 | Confirm: taxability comes from the purchase order line, which defaults from the product | | |
-| P10-06 | Confirm: undo delivery is refused once the charge is invoiced, and a credit memo is the fix | | |
+| P10-01 | Walk through docs/verify/procurement.md (vendors, purchase orders, receiving with serials, delivery, undo, consume, markup rules, client card) | pass | Dev-server session (2026-11-02): vendors, PO lines, serial checks, receiving, delivery, undo, consume and no repricing all work. Draft POs had a number; now numbered only when ordered (owner decision, e14f9bc) |
+| P10-02 | Confirm: a client is billed when the item is delivered, not when it is received |  | Observed on the dev server (2026-11-02): no charges on receipt; charges appeared on delivery. Awaiting owner confirmation |
+| P10-03 | Confirm: markup order is line, then product rule, then category rule, then the default |  | Observed on the dev server (2026-11-02): line 5%, then product 20%, then category 15%, then default, each applied as expected. Awaiting owner confirmation |
+| P10-04 | Confirm: the default markup is 0% until you set it |  | Observed on the dev server (2026-11-02): built-in default is 0%; this install is set to 25% by the owner. Awaiting owner confirmation |
+| P10-05 | Confirm: taxability comes from the purchase order line, which defaults from the product |  | Observed on the dev server (2026-11-02): a line marked not taxable overrode a taxable product; lines without an override took the product setting. Awaiting owner confirmation |
+| P10-06 | Confirm: undo delivery is refused once the charge is invoiced, and a credit memo is the fix |  | Observed on the dev server (2026-11-02): covered by test_undo_after_the_charge_is_invoiced_is_refused (409). Awaiting owner confirmation |
 
 ### Phase 11: Reporting & dashboards
 
@@ -181,13 +181,13 @@ Checklists: [reports.md](reports.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P11-01 | Walk through docs/verify/reports.md (SLA, utilisation, aging, profitability, dashboards, scheduled emails) | | |
-| P11-02 | Confirm: SLA population is tickets created in the range, and pending tickets are left out of the met percentage | | |
-| P11-03 | Confirm: utilisation capacity is work hours minus holidays and time off, and logged includes internal time | | |
-| P11-04 | Confirm: profitability cost is labour + goods (at delivery) + expenses, with revenue excluding tax by invoice date | | |
-| P11-05 | Confirm: labour comes from each user's cost rate, and time with no rate counts as $0 and is flagged | | |
-| P11-06 | Confirm: weekly reports cover the previous Monday to Sunday, monthly the previous calendar month (day 1-28) | | |
-| P11-07 | Confirm: scheduled emails go once per period, only to staff holding report:read, and failures are not retried | | |
+| P11-01 | Walk through docs/verify/reports.md (SLA, utilisation, aging, profitability, dashboards, scheduled emails) | pass | Dev-server session (2026-11-02): SLA, utilisation, aging, profitability and dashboard endpoints return 200 (query params are from, to, group). Resolving now ends the first-response clock (owner decision, e14f9bc) |
+| P11-02 | Confirm: SLA population is tickets created in the range, and pending tickets are left out of the met percentage |  | Observed on the dev server (2026-11-02): November n = 344 = tickets created; met + breached + pending + no-SLA = n. Awaiting owner confirmation |
+| P11-03 | Confirm: utilisation capacity is work hours minus holidays and time off, and logged includes internal time |  | Observed on the dev server (2026-11-02): Nov 1-7 capacity 2700 min and logged 878 min match the database; holidays, time off and internal time checked in code only. Awaiting owner confirmation |
+| P11-04 | Confirm: profitability cost is labour + goods (at delivery) + expenses, with revenue excluding tax by invoice date |  | Observed on the dev server (2026-11-02): labour $75.00 and goods $513.80 at cost matched; revenue $0 (nothing invoiced). Awaiting owner confirmation |
+| P11-05 | Confirm: labour comes from each user's cost rate, and time with no rate counts as $0 and is flagged |  | Observed on the dev server (2026-11-02): labour used the cost rate; minutes without a cost rate 0. Awaiting owner confirmation |
+| P11-06 | Confirm: weekly reports cover the previous Monday to Sunday, monthly the previous calendar month (day 1-28) |  | Observed on the dev server (2026-11-02): observed in code. Awaiting owner confirmation |
+| P11-07 | Confirm: scheduled emails go once per period, only to staff holding report:read, and failures are not retried |  | Observed on the dev server (2026-11-02): code and tests: once per period, report:read recipients only, failed run not re-run; note the outbox itself retries a queued email up to 5 times. Awaiting owner confirmation |
 
 ### Phase 12: Integration readiness
 
@@ -195,7 +195,7 @@ Checklists: [reports.md](reports.md)
 |---|-------|-----------------------------|-------|
 | P12-01 | Update the Entra app registration redirect URI to `<public_url>/api/v1/auth/callback`, then sign in | pass | Confirmed by owner (2026-11-02) |
 | P12-02 | Build with VITE_BRAND_NAME, VITE_BRAND_LOGO and VITE_BRAND_COLORS set and check the header and login page | | |
-| P12-03 | An API-key request creates a ticket with source `api` | | |
+| P12-03 | An API-key request creates a ticket with source `api` | pass | Dev-server session (2026-11-02): key with only ticket:write created ticket 340 with source api; other calls 403; revoked key gets 401; all audited |
 | P12-04 | An existing n8n/webhook consumer still works (outbound webhook URLs are unchanged) | | |
 
 ### Phase 13: Knowledge base
