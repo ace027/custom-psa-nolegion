@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 16 of 13 (partial — 1 plan(s) failed)
-- **Status**: Phase 16 partial — 16-02 failed, stopped after wave 2, review needed
-- **Last Activity**: Plan 16-02 execution (2026-11-02)
+- **Phase**: 16 of 13 (executing)
+- **Status**: Phase 16 executing — Plan 16-03 failed
+- **Last Activity**: Plan 16-03 execution (2026-11-02)
 
 ## Progress
 ```
-[##################..] 94% — 49/52 plans complete
+[###################.] 96% — 50/52 plans complete
 ```
 
 ## Recent Decisions
@@ -176,3 +176,4 @@ Fix the failed plans and run `/triad:build` again (completed plans are kept), or
 - Plan 16-01 (Wave 1): Permission split and manager role — PARTIAL: I ran out of time before the full backend suite finished, so I don't have a final pass/fail count for it.
 - Plan 16-01 (Wave 1): Permission split and manager role — PARTIAL: An earlier run had already done all three tasks, and my review found nothing wrong with them. Every check passed except the full backend pytest suite. That run was still going after about 32 minutes a
 - Plan 16-02 (Wave 2): Icon rail, All pages and reorderable per-user bookmarks — PARTIAL: All three tasks are built and their own checks pass. The full `npx vitest run` still fails 5 tests in 4 older test files that I'm not allowed to edit. Those tests look for links and a single status re
+- Plan 16-03 (Wave 3): Settings split into Admin sub-pages — PARTIAL: Settings is split into 7 sub-pages with routes, a Settings sub-nav and permission gating. Typecheck, build and SettingsSplit.test.tsx (11 tests) pass. Full vitest has 1 failure: Phase1A.test.tsx, "lis
