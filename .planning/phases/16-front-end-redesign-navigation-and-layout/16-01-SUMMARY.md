@@ -62,9 +62,9 @@
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | warning | quality-gate | The full backend suite does not pass (18 failures). One of them comes from the test_zz_api_contract fix the owner approved: the coverage test now really runs and lists about 250 routes no test calls. Writing tests for all of them is a separate piece of work. | pending | INVALID: type "quality-gate" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
-| 2 | info | api-contract | Ticket types, custom fields, canned responses, time and expense categories, and PATCH /settings (which mixes business hours and SLA settings with mail and billing) stay on config:manage, so managers cannot edit them. | pending | INVALID: type "api-contract" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
-| 3 | blocker | schema | Resolve: FAILED tests/test_credit_memos.py::test_permissions - AssertionError: assert ... | pending |  |
+| 1 | warning | quality-gate | The full backend suite does not pass (18 failures). One of them comes from the test_zz_api_contract fix the owner approved: the coverage test now really runs and lists about 250 routes no test calls. Writing tests for all of them is a separate piece of work. | approved | Owner: allowlist today's untested routes (KNOWN_UNTESTED, shrink-only) and track paying it down as follow-up work; update old-access tests to the new matrix. |
+| 2 | info | api-contract | Ticket types, custom fields, canned responses, time and expense categories, and PATCH /settings (which mixes business hours and SLA settings with mail and billing) stay on config:manage, so managers cannot edit them. | approved | Owner: correct as built. Managers configure only the service settings; the rest stays admin-only. |
+| 3 | blocker | schema | Resolve: FAILED tests/test_credit_memos.py::test_permissions - AssertionError: assert ... | approved | Update the failing old-access tests to the new matrix (all of backend/tests/ is writable). |
 
 - #1 context: Triad will see a failing full suite. Either schedule a follow-up to update the old-access tests and investigate the two test_procurement.py failures, or accept the coverage gap as a separate decision.
 - #2 context: DECISIONS.md lists only queues, categories, priorities, statuses, work types, SLA and holidays as service settings. The owner should confirm whether managers also need any of these.
