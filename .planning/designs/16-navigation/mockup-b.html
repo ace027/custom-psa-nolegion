@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tickets - Mockup B: top bar and area sub-nav</title>
+<style>
+/* Tokens copied from frontend/src/index.css (light, then .dark). */
+:root {
+  color-scheme: light;
+  --font-sans: Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --surface: #ffffff; --on-accent: #ffffff;
+  --shadow-card: 0 1px 2px rgb(20 24 60 / 0.05), 0 6px 18px rgb(20 24 60 / 0.05);
+  --s50: #f6f7fb; --s100: #eceef6; --s200: #e3e6f0; --s300: #cdd1e3; --s400: #8f95b3;
+  --s500: #6b7190; --s600: #50567a; --s700: #363b5c; --s800: #262a45; --s900: #1b1f33;
+  --b50: #eef0ff; --b100: #e0e4ff; --b200: #c7cdfd; --b300: #a5b4fc; --b500: #6366f1; --b600: #4f46e5; --b700: #4338ca; --b900: #312e81;
+  --red-bg: #fee2e2; --red-fg: #991b1b; --amber-bg: #fef3c7; --amber-fg: #92400e; --amber-strong: #b45309;
+  --green-bg: #dcfce7; --green-fg: #166534;
+}
+:root.dark {
+  color-scheme: dark;
+  --surface: #111a2b; --on-accent: #06201d; --shadow-card: none;
+  --s50: #0a111d; --s100: #1a2539; --s200: #1f2b42; --s300: #2c3b58; --s400: #6f819e;
+  --s500: #8a9ab5; --s600: #a5b3c9; --s700: #c3cee0; --s800: #dae3f0; --s900: #e6edf7;
+  --b50: #12312f; --b100: #17403d; --b200: #1f5a55; --b300: #1f5a55; --b500: #2dd4bf; --b600: #2dd4bf; --b700: #5eead4; --b900: #99f6e4;
+  --red-bg: #3a1620; --red-fg: #ff9aa9; --amber-bg: #3a2c10; --amber-fg: #ffc761; --amber-strong: #ffc761;
+  --green-bg: #10331f; --green-fg: #5be28f;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font-family: var(--font-sans); font-size: 14px; color: var(--s900); background: var(--s50); -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--b500); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: 8px; top: -40px; z-index: 100; background: var(--b600); color: var(--on-accent); padding: 6px 10px; border-radius: 8px; }
+.skip:focus { top: 8px; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Mockup controls: deliberately not app chrome (dashed, dark strip). */
+.mockbar { position: relative; z-index: 60; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 6px 14px; background: #1b1f33; color: #e6edf7; font-size: 12.5px; border-bottom: 2px dashed #8f95b3; }
+.mockbar b { font-weight: 700; }
+.mockbar .seg { display: inline-flex; border: 1px solid #50567a; border-radius: 8px; overflow: hidden; }
+.mockbar .seg button { background: transparent; border: 0; padding: 3px 10px; cursor: pointer; color: #c3cee0; }
+.mockbar .seg button[aria-pressed="true"] { background: #6366f1; color: #fff; }
+.mockbar .note { color: #8f95b3; margin-left: auto; }
+.mockbar .btn-m { background: transparent; border: 1px solid #50567a; border-radius: 8px; padding: 3px 10px; cursor: pointer; color: #c3cee0; }
+
+/* Shared app pieces */
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--b600); color: var(--on-accent); font-size: 13px; }
+.input { width: 100%; border: 1px solid var(--s300); background: var(--surface); border-radius: 8px; padding: 6px 10px; font-size: 13.5px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 6px 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; border: 1px solid var(--s300); background: var(--surface); }
+.btn.primary { background: var(--b600); border-color: var(--b600); color: var(--on-accent); }
+.link { color: var(--b700); cursor: pointer; background: none; border: 0; padding: 0; }
+.link:hover { text-decoration: underline; }
+.muted { color: var(--s500); }
+.kbd { display: inline-block; border: 1px solid var(--s300); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; font-size: 11px; color: var(--s500); background: var(--surface); }
+.page { max-width: 72rem; margin: 0 auto; }
+.page h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 14px; }
+.card { background: var(--surface); border: 1px solid var(--s200); border-radius: 12px; box-shadow: var(--shadow-card); padding: 16px; }
+.timer { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; border: 1px solid var(--b300); background: var(--b50); color: var(--b900); border-radius: 8px; padding: 8px 12px; }
+.timer b { font-variant-numeric: tabular-nums; }
+.timer .end { margin-left: auto; display: flex; gap: 8px; }
+.filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 14px; }
+.filters label.f { display: grid; gap: 4px; font-size: 12.5px; color: var(--s600); }
+.filters .chk { display: flex; align-items: center; gap: 4px; padding-bottom: 7px; font-size: 13.5px; }
+.tbl-wrap { overflow-x: auto; }
+table.t { width: 100%; min-width: 46rem; border-collapse: collapse; background: var(--surface); border: 1px solid var(--s200); border-radius: 8px; text-align: left; font-size: 13.5px; }
+table.t th { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--s500); padding: 9px 8px; border-bottom: 1px solid var(--s200); white-space: nowrap; }
+table.t td { padding: 9px 8px; border-bottom: 1px solid var(--s100); }
+table.t td a { color: var(--b700); font-weight: 500; }
+table.t td a:hover { text-decoration: underline; }
+.pill { border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.pill.breached { background: var(--red-bg); color: var(--red-fg); }
+.pill.at_risk { background: var(--amber-bg); color: var(--amber-fg); }
+.pill.ok { background: var(--green-bg); color: var(--green-fg); }
+.pill.paused { background: var(--s100); color: var(--s600); }
+.triage { color: var(--amber-strong); font-weight: 700; }
+.oncall { border: 1px solid var(--s200); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+.oncall h2 { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--s500); }
+.placeholder { display: grid; gap: 8px; max-width: 40rem; }
+.placeholder code { background: var(--s100); border-radius: 4px; padding: 1px 5px; }
+/* ---- Mockup B: top bar of areas + left sub-nav for the current area */
+.top { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 16px; height: 56px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--s200); }
+.areas ul { display: flex; gap: 2px; list-style: none; margin: 0; padding: 0; }
+.area { display: block; padding: 7px 12px; border-radius: 8px; color: var(--s600); font-weight: 500; white-space: nowrap; }
+.area:hover { background: var(--s100); }
+.area[aria-current] { background: var(--b50); color: var(--b700); font-weight: 600; }
+.tsearch { margin-left: auto; width: 16rem; }
+.chip { font-size: 12.5px; border: 1px solid var(--s200); border-radius: 999px; padding: 3px 10px; white-space: nowrap; color: var(--s600); }
+.chip b { color: var(--s900); }
+.iconbtn { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; color: var(--s600); border: 1px solid transparent; background: none; cursor: pointer; }
+.iconbtn:hover { background: var(--s100); }
+.iconbtn[aria-current] { background: var(--b50); color: var(--b700); border-color: var(--b200); }
+.avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--b100); color: var(--b700); font-weight: 700; font-size: 12px; border: 0; cursor: pointer; }
+.acct { position: relative; }
+.acct-menu { position: absolute; right: 0; top: 40px; width: 15rem; background: var(--surface); border: 1px solid var(--s200); border-radius: 10px; box-shadow: 0 8px 30px rgb(20 24 60 / .15); padding: 6px; }
+.acct-menu a, .acct-menu button { display: block; width: 100%; text-align: left; padding: 7px 10px; border-radius: 6px; background: none; border: 0; cursor: pointer; font-size: 13.5px; }
+.acct-menu a:hover, .acct-menu button:hover { background: var(--s100); }
+.acct-menu .who { padding: 6px 10px 8px; border-bottom: 1px solid var(--s200); margin-bottom: 4px; }
+.body { display: flex; min-height: calc(100vh - 56px); }
+.subnav { position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; width: 14rem; flex: none; padding: 20px 12px; border-right: 1px solid var(--s200); background: var(--surface); }
+.subnav h2 { margin: 0 10px 12px; font-size: 15px; }
+.subnav h3 { margin: 14px 10px 4px; font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--s400); }
+.subnav ul { list-style: none; margin: 0; padding: 0; }
+.sub { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; color: var(--s600); font-size: 13.5px; }
+.sub:hover { background: var(--s100); }
+.sub[aria-current] { background: var(--b50); color: var(--b700); font-weight: 600; }
+.sub .badge { margin-left: auto; font-size: 11px; border-radius: 6px; padding: 0 6px; background: var(--red-bg); color: var(--red-fg); font-weight: 600; }
+.subnav .action { margin: 0 4px 12px; width: calc(100% - 8px); justify-content: center; }
+main { flex: 1; min-width: 0; padding: 28px 32px; }
+.only-small { display: none; }
+@media (max-width: 1100px) { .chip { display: none; } .tsearch { width: 12rem; } }
+@media (max-width: 899px) {
+  .only-small { display: inline-flex; }
+  .top { gap: 10px; }
+  .areas { display: none; position: absolute; left: 0; right: 0; top: 56px; background: var(--surface); border-bottom: 1px solid var(--s200); padding: 8px; }
+  .areas.open { display: block; }
+  .areas ul { flex-direction: column; }
+  .tsearch { width: auto; flex: 1; }
+  .body { display: block; }
+  .subnav { position: static; height: auto; width: auto; border-right: 0; border-bottom: 1px solid var(--s200); padding: 8px; display: flex; gap: 4px; overflow-x: auto; white-space: nowrap; }
+  .subnav h2, .subnav h3, .subnav .action { display: none; }
+  .subnav ul { display: flex; gap: 4px; }
+  main { padding: 16px; }
+}
+</style>
+</head>
+<body data-mock="Mockup B">
+<div id="mockbar" class="mockbar" role="region" aria-label="Mockup controls"></div>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top" id="top"></header>
+<div class="body"><aside id="subnav" class="subnav"></aside><main id="main" tabindex="-1"></main></div>
+<script>
+// ---- Shared mockup data. Role access mirrors backend/app/permissions.py MATRIX and the can() checks in App.tsx.
+const ALL = ["admin", "tech", "billing", "read_only"];
+const AT = ["admin", "tech"];       // time:write
+const AB = ["admin", "billing"];    // report:read
+const AD = ["admin"];               // *:manage, audit:read
+const ROLE_LABEL = { tech: "Tech", billing: "Billing", read_only: "Read-only", admin: "Admin" };
+const ME = { tech: "Sam Ortiz", billing: "Dana Price", read_only: "Lee Morgan", admin: "Chris Walker" };
+
+const GROUPS = [
+  { id: "home", label: "Home" },
+  { id: "service", label: "Service desk" },
+  { id: "schedule", label: "Scheduling" },
+  { id: "clients", label: "Clients & sales" },
+  { id: "finance", label: "Finance" },
+  { id: "insights", label: "Reports" },
+  { id: "admin", label: "Admin" },
+];
+
+// parent = in-page tab of another item today (shown in sub-navs and the palette, not as a main nav item)
+const ITEMS = [
+  { id: "dashboard", label: "Dashboard", route: "/dashboard", roles: ALL, group: "home", icon: "home" },
+  { id: "tickets", label: "Tickets", route: "/tickets", roles: ALL, group: "service", icon: "ticket" },
+  { id: "projects", label: "Projects", route: "/projects", roles: ALL, group: "service", icon: "folder" },
+  { id: "kb", label: "Knowledge base", route: "/kb", roles: ALL, group: "service", icon: "book" },
+  { id: "dispatch", label: "Dispatch", route: "/dispatch", roles: ALL, group: "schedule", icon: "calendar" },
+  { id: "oncall", label: "On-call", route: "/oncall", roles: ALL, group: "schedule", icon: "phone" },
+  { id: "timesheet", label: "My timesheet", route: "/timesheet", roles: AT, group: "schedule", icon: "clock" },
+  { id: "expenses", label: "My expenses", route: "/expenses", roles: AT, group: "schedule", icon: "receipt" },
+  { id: "orgs", label: "Organizations", route: "/organizations", roles: ALL, group: "clients", icon: "building" },
+  { id: "crm", label: "Sales", route: "/crm", roles: ALL, group: "clients", icon: "trend" },
+  { id: "crm-pipeline", label: "Pipeline", route: "/crm/pipeline", roles: ALL, parent: "crm" },
+  { id: "crm-leads", label: "Leads", route: "/crm/leads", roles: ALL, parent: "crm" },
+  { id: "crm-forecast", label: "Forecast", route: "/crm/forecast", roles: ALL, parent: "crm" },
+  { id: "crm-renewals", label: "Renewals", route: "/crm/renewals", roles: ALL, parent: "crm" },
+  { id: "quotes", label: "Quotes", route: "/quotes", roles: ALL, group: "clients", icon: "doc" },
+  { id: "quotes-list", label: "All quotes", route: "/quotes", roles: ALL, parent: "quotes" },
+  { id: "quotes-rates", label: "Rate card", route: "/quotes/rates", roles: ALL, parent: "quotes" },
+  { id: "billing", label: "Billing", route: "/billing", roles: ALL, group: "finance", icon: "dollar" },
+  { id: "b-runs", label: "Monthly runs", route: "/billing/runs", roles: ALL, parent: "billing" },
+  { id: "b-invoices", label: "Invoices", route: "/billing/invoices", roles: ALL, parent: "billing" },
+  { id: "b-receivables", label: "Receivables", route: "/billing/receivables", roles: ALL, parent: "billing", badge: "3 overdue" },
+  { id: "b-reminders", label: "Client emails", route: "/billing/reminders", roles: ALL, parent: "billing" },
+  { id: "b-payments", label: "Payments", route: "/billing/payments", roles: ALL, parent: "billing" },
+  { id: "b-credit", label: "Credit memos", route: "/billing/credit-memos", roles: ALL, parent: "billing" },
+  { id: "b-late", label: "Late fees", route: "/billing/late-fees", roles: ALL, parent: "billing" },
+  { id: "b-agreements", label: "Agreements", route: "/billing/agreements", roles: ALL, parent: "billing" },
+  { id: "b-products", label: "Products", route: "/billing/products", roles: ALL, parent: "billing" },
+  { id: "b-rates", label: "Rates", route: "/billing/rates", roles: ALL, parent: "billing" },
+  { id: "b-reports", label: "Billing reports", route: "/billing/reports", roles: AB, parent: "billing" },
+  { id: "procurement", label: "Procurement", route: "/procurement", roles: ALL, group: "finance", icon: "cart" },
+  { id: "p-orders", label: "Orders and vendors", route: "/procurement", roles: ALL, parent: "procurement" },
+  { id: "p-inventory", label: "Inventory", route: "/procurement/inventory", roles: ALL, parent: "procurement" },
+  { id: "p-markup", label: "Markup rules", route: "/procurement/markup", roles: ALL, parent: "procurement" },
+  { id: "r-sla", label: "SLA report", route: "/reports/sla", roles: AB, group: "insights", icon: "chart" },
+  { id: "r-util", label: "Utilisation report", route: "/reports/utilisation", roles: AB, group: "insights", icon: "chart" },
+  { id: "r-aging", label: "Aging report", route: "/reports/aging", roles: AB, group: "insights", icon: "chart" },
+  { id: "r-profit", label: "Profitability report", route: "/reports/profitability", roles: AB, group: "insights", icon: "chart" },
+  { id: "warranty", label: "Warranty", route: "/warranty", roles: AB, group: "insights", icon: "shield" },
+  { id: "r-sched", label: "Report schedules", route: "/reports/schedules", roles: AB, group: "insights", icon: "mail" },
+  { id: "users", label: "Users", route: "/users", roles: ALL, group: "admin", icon: "users" },
+  { id: "settings", label: "Settings", route: "/settings", roles: AD, group: "admin", icon: "cog" },
+  { id: "integrations", label: "Integrations", route: "/integrations", roles: AD, group: "admin", icon: "plug" },
+  { id: "automation", label: "Automation", route: "/automation", roles: AD, group: "admin", icon: "bolt" },
+  { id: "webhooks", label: "Webhooks", route: "/webhooks", roles: AD, group: "admin", icon: "link" },
+  { id: "apikeys", label: "API keys", route: "/api-keys", roles: AD, group: "admin", icon: "key" },
+  { id: "audit", label: "Audit log", route: "/audit", roles: AD, group: "admin", icon: "list" },
+  { id: "profile", label: "Profile and notifications", route: "/profile", roles: ALL, group: "account", icon: "user" },
+];
+
+const PATHS = {
+  home: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z",
+  ticket: "M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4zM14 7v10",
+  folder: "M3 6h6l2 2h10v11H3z",
+  book: "M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z",
+  calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
+  phone: "M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2",
+  clock: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM12 7v5l3 2",
+  receipt: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6",
+  building: "M4 21V4h10v17M14 9h6v12M8 8h2M8 12h2M8 16h2M3 21h18",
+  trend: "M3 17l6-6 4 4 8-8M15 7h6v6",
+  doc: "M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5",
+  dollar: "M12 3v18M16 7.5C15.4 6 14 5.5 12 5.5c-2.2 0-4 1-4 3s2 2.8 4 3.3 4 1.4 4 3.4-1.8 3.3-4 3.3c-2 0-3.5-.7-4-2.2",
+  cart: "M3 4h2l2.5 11h10L20 7H6.5M9 20h.01M17 20h.01",
+  chart: "M4 20V10M10 20V4M16 20v-7M2 20h20",
+  shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
+  mail: "M3 6h18v12H3zM3 7l9 6 9-6",
+  users: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M16 3.5a4 4 0 0 1 0 7.5M22 21a7 7 0 0 0-4-6.3",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 21a7 7 0 0 1 14 0",
+  cog: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1",
+  plug: "M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4",
+  bolt: "M13 2L4 14h7l-1 8 9-12h-7z",
+  link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+  key: "M8 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 11h10M18 11v3M15 11v2",
+  list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4",
+  star: "M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z",
+  grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
+  chev: "M9 6l6 6-6 6",
+  down: "M6 9l6 6 6-6",
+  menu: "M4 6h16M4 12h16M4 18h16",
+  moon: "M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z",
+  plus: "M12 5v14M5 12h14",
+  x: "M6 6l12 12M18 6L6 18",
+};
+const icon = (n, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${PATHS[n] || PATHS.doc}"/></svg>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+let role = localStorage.getItem("nav-mock-role") || "tech";
+const can = (it) => it.roles.includes(role);
+const byId = (id) => ITEMS.find((i) => i.id === id);
+const topOf = (it) => (it.parent ? byId(it.parent) : it);
+const groupOf = (it) => topOf(it).group;
+const groupLabel = (g) => (g === "admin" && role !== "admin" ? "Team" : GROUPS.find((x) => x.id === g)?.label ?? g);
+const visibleIn = (g) => ITEMS.filter((i) => !i.parent && i.group === g && can(i));
+const childrenOf = (id) => ITEMS.filter((i) => i.parent === id && can(i));
+const route = () => decodeURIComponent(location.hash.slice(1)) || "/tickets";
+// The item for the current route: exact match first (children before parents), then longest prefix.
+function current() {
+  const r = route();
+  const exact = ITEMS.filter((i) => i.route === r && can(i));
+  if (exact.length) return exact.find((i) => i.parent) || exact[0];
+  return ITEMS.filter((i) => can(i) && r.startsWith(i.route + "/")).sort((a, b) => b.route.length - a.route.length)[0] || byId("tickets");
+}
+const crumb = (it) => [groupLabel(groupOf(it)), it.parent ? byId(it.parent).label : null, it.label].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" › ");
+
+// ---- The ticket queue screen (content mirrors pages/Tickets.tsx and TicketTable.tsx)
+const TICKETS = [
+  [10482, "Outlook keeps asking for a password after MFA reset", "Harbour Dental", "Critical", "Open", "Sam Ortiz", "breached"],
+  [10481, "\"urgent pls call\" from unknown sender", null, "Normal", "New", null, "ok"],
+  [10479, "New starter laptop for Priya Nair (starts Monday)", "Kestrel Logistics", "Normal", "New", null, "ok"],
+  [10477, "Backup job failed: NAS-01 nightly", "Fernhill Accounting", "High", "Open", "Jo Becker", "at_risk"],
+  [10474, "RMM alert: disk 92% full on FS-02", "Fernhill Accounting", "High", "Open", "Alex Chen", "at_risk"],
+  [10471, "Second-floor printer shows offline", "Marlow & Finch Legal", "Low", "Waiting on customer", "Sam Ortiz", "paused"],
+  [10468, "Firewall firmware update, after-hours window", "Kestrel Logistics", "Normal", "Open", "Alex Chen", "ok"],
+  [10466, "Shared mailbox access for accounts@", "Harbour Dental", "Normal", "Open", "Jo Becker", "ok"],
+  [10463, "Teams calls drop after 10 minutes on Wi-Fi", "Brightwater Clinic", "High", "Open", "Sam Ortiz", "ok"],
+];
+const SLA = { breached: "SLA breached", at_risk: "SLA at risk", ok: "SLA ok", paused: "SLA paused" };
+const timerBar = () => AT.includes(role)
+  ? `<div class="timer" role="status" aria-label="Running timer"><b>00:42:13</b><span><a class="link" href="#/tickets/10477" style="text-decoration:underline">#10477 Backup job failed: NAS-01 nightly</a> <span style="color:var(--b700)">&mdash; checking retention settings</span></span><span class="end"><button class="btn" type="button">Stop</button><button class="btn" type="button">Discard</button></span></div>`
+  : "";
+function ticketsPage() {
+  const write = role !== "read_only" && role !== "billing";
+  const rows = TICKETS.map(([n, s, o, p, st, a, sla]) => `<tr>
+    ${write ? `<td style="width:32px"><input type="checkbox" aria-label="Select ticket ${n}"></td>` : ""}
+    <td class="muted">${n}</td><td><a href="#/tickets/${n}">${esc(s)}</a></td>
+    <td>${o ? esc(o) : '<b class="triage">Needs triage</b>'}</td><td>${p}</td><td>${st}</td>
+    <td>${a ?? '<span style="color:var(--s400)">unassigned</span>'}</td><td><span class="pill ${sla}">${SLA[sla]}</span></td></tr>`).join("");
+  return `<div class="page">${timerBar()}
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><h1 style="margin:0">Tickets</h1>${write ? '<button class="btn primary" type="button" style="margin-left:auto">New ticket</button>' : ""}</div>
+    <div class="filters">
+      <label class="f">Search subject or #<input class="input" style="width:14rem"></label>
+      <label class="f">Status<select class="input"><option>Open</option><option>New</option><option>Waiting on customer</option></select></label>
+      <label class="f">Queue<select class="input"><option>Any</option><option>Service desk</option><option>Projects</option><option>Alerts</option></select></label>
+      <label class="f">Assignee<select class="input"><option>Anyone</option><option>Me</option><option>Unassigned</option></select></label>
+      <label class="chk"><input type="checkbox" checked> Open only</label>
+      <label class="chk"><input type="checkbox"> Needs triage</label>
+    </div>
+    <div class="tbl-wrap"><table class="t"><caption class="sr-only">Open tickets</caption><thead><tr>${write ? '<th><input type="checkbox" aria-label="Select all tickets"></th>' : ""}<th>#</th><th>Subject</th><th>Organization</th><th>Priority &#9660;</th><th>Status</th><th>Assignee</th><th>SLA due</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="muted" style="margin-top:10px">Showing 9 of 143 open tickets.</p></div>`;
+}
+function placeholderPage(it) {
+  return `<div class="page">${timerBar()}<h1>${esc(it.label)}</h1><div class="card placeholder">
+    <p style="margin:0">This page keeps its current content. Only the navigation changes.</p>
+    <p style="margin:0" class="muted">Route today: <code>${esc(route())}</code> &middot; Found under: <b>${esc(crumb(it))}</b></p>
+    <p style="margin:0"><a class="link" href="#/tickets">Back to the ticket queue</a> to judge the navigation against real content.</p></div></div>`;
+}
+const pageFor = (it) => (route().startsWith("/tickets") ? ticketsPage() : placeholderPage(it));
+const onCallWidget = () => `<section class="oncall" aria-label="On call now"><h2>On call</h2><span class="muted" style="display:block;font-size:12px">After-hours rotation</span><b>Alex Chen</b> <span class="muted" style="font-size:12px">until Mon 3 Nov 08:00</span></section>`;
+
+// ---- Mockup controls (role switcher, dark mode). Each mockup defines render().
+function mockBar(name) {
+  const bar = document.getElementById("mockbar");
+  bar.innerHTML = `<b>${name}</b><span>View as</span><span class="seg" role="group" aria-label="View as role">${Object.keys(ROLE_LABEL).map((r) => `<button type="button" data-role="${r}" aria-pressed="${r === role}">${ROLE_LABEL[r]}</button>`).join("")}</span>
+    <button type="button" class="btn-m" id="mock-dark" aria-pressed="${document.documentElement.classList.contains("dark")}">Dark mode</button>
+    <span class="note">Static mockup. Nothing is saved to the server.</span>`;
+  bar.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.role) {
+      role = b.dataset.role;
+      localStorage.setItem("nav-mock-role", role);
+      bar.querySelectorAll("[data-role]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.role === role));
+      const r = route(); // a role that cannot open this page is sent to the queue, as App.tsx redirects today
+      if (!ITEMS.some((i) => can(i) && (r === i.route || r.startsWith(i.route + "/")))) location.hash = "#/tickets";
+      render();
+    } else if (b.id === "mock-dark") toggleDark();
+  });
+}
+function toggleDark() {
+  const on = document.documentElement.classList.toggle("dark");
+  localStorage.setItem("nav-mock-dark", on ? "1" : "");
+  document.querySelectorAll("#mock-dark,[data-dark]").forEach((x) => x.setAttribute("aria-pressed", on));
+}
+if (localStorage.getItem("nav-mock-dark")) document.documentElement.classList.add("dark");
+// After a page change: update the title and move focus to the new page heading, so screen readers announce it.
+window.addEventListener("hashchange", () => {
+  render();
+  document.title = `${current().label} - ${document.body.dataset.mock}`;
+  const h = document.querySelector("#main h1");
+  if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+});
+// ---- Mockup B
+const AREAS = ["home", "service", "schedule", "clients", "finance", "insights"];
+// Pages of an area, in sub-nav order: an item with in-page tabs today becomes a heading over those tabs.
+function areaPages(g) {
+  return visibleIn(g).flatMap((i) => (childrenOf(i.id).length ? childrenOf(i.id) : [i]));
+}
+const areaHome = (g) => areaPages(g)[0];
+let menuOpen = false, acctOpen = false;
+
+function topbar(g) {
+  const areas = AREAS.filter((a) => visibleIn(a).length).map((a) => {
+    const on = a === g;
+    return `<li><a class="area" href="#${areaHome(a).route}"${on ? ' aria-current="true"' : ""}>${a === "home" ? "Home" : groupLabel(a)}</a></li>`;
+  }).join("");
+  const adminOn = g === "admin";
+  const dark = document.documentElement.classList.contains("dark");
+  return `<button type="button" class="btn only-small" id="menu" aria-expanded="${menuOpen}" aria-controls="areas">${icon("menu")}<span class="sr-only">Areas</span></button>
+    <a class="brand" href="#/dashboard"><span class="mark" aria-hidden="true">N</span><span>Northwind IT</span></a>
+    <nav aria-label="Areas" id="areas" class="areas${menuOpen ? " open" : ""}"><ul>${areas}</ul></nav>
+    <form role="search" class="tsearch" onsubmit="event.preventDefault()"><input class="input" type="search" aria-label="Search" placeholder="Search tickets, clients, articles…"></form>
+    <span class="chip" title="On call now">On call: <b>Alex Chen</b> until Mon 08:00</span>
+    <a class="iconbtn" href="#${areaHome("admin").route}" aria-label="${groupLabel("admin")}" title="${groupLabel("admin")}"${adminOn ? ' aria-current="true"' : ""}>${icon(role === "admin" ? "cog" : "users")}</a>
+    <div class="acct"><button type="button" class="avatar" id="acct" aria-expanded="${acctOpen}" aria-controls="acct-menu" aria-label="Account: ${ME[role]}">${ME[role].split(" ").map((w) => w[0]).join("")}</button>
+      <div class="acct-menu" id="acct-menu"${acctOpen ? "" : " hidden"}><div class="who"><b>${ME[role]}</b><br><span class="muted">${ROLE_LABEL[role]}</span></div>
+        <a href="#/profile">Profile and notifications</a><button type="button" data-dark aria-pressed="${dark}">Dark mode</button><button type="button">Sign out</button></div></div>`;
+}
+
+function subnav(g, cur) {
+  if (g === "home" || g === "account") return "";
+  const link = (i, label = i.label) => {
+    const on = i.id === cur.id;
+    return `<li><a class="sub" href="#${i.route}"${on ? ' aria-current="page"' : ""}>${esc(label)}${i.badge && role !== "tech" && role !== "read_only" ? `<span class="badge">${i.badge}</span>` : ""}</a></li>`;
+  };
+  let h = `<h2>${groupLabel(g)}</h2>`;
+  if (g === "service" && role !== "read_only" && role !== "billing") h += `<button type="button" class="btn primary action">${icon("plus")}New ticket</button>`;
+  // Items without tabs share one list; items with tabs get their own heading.
+  let plain = [];
+  const flush = () => { if (plain.length) h += `<ul>${plain.join("")}</ul>`; plain = []; };
+  for (const i of visibleIn(g)) {
+    const kids = childrenOf(i.id);
+    if (!kids.length) { plain.push(link(i)); continue; }
+    flush();
+    h += `<h3 id="h-${i.id}">${esc(i.label)}</h3><ul aria-labelledby="h-${i.id}">${kids.map((k) => link(k)).join("")}</ul>`;
+  }
+  flush();
+  return h;
+}
+
+function render() {
+  const cur = current(), g = groupOf(cur);
+  document.getElementById("top").innerHTML = topbar(g);
+  const sn = document.getElementById("subnav");
+  sn.innerHTML = subnav(g, cur);
+  sn.hidden = !sn.innerHTML;
+  sn.setAttribute("aria-label", `${groupLabel(g)} pages`);
+  document.getElementById("main").innerHTML = pageFor(cur);
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.closest("#menu")) { menuOpen = !menuOpen; render(); document.getElementById("menu").focus(); return; }
+  if (t.closest("#acct")) { acctOpen = !acctOpen; render(); document.getElementById("acct").focus(); return; }
+  if (t.closest("[data-dark]")) { toggleDark(); return; }
+  if ((menuOpen || acctOpen) && !t.closest(".acct-menu")) { menuOpen = acctOpen = false; render(); }
+  else if (t.closest(".acct-menu a")) { acctOpen = false; }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && (menuOpen || acctOpen)) {
+    const back = acctOpen ? "acct" : "menu";
+    menuOpen = acctOpen = false; render(); document.getElementById(back).focus();
+  }
+});
+mockBar("Mockup B: top bar + area sub-nav");
+render();
+</script>
+</body>
+</html>

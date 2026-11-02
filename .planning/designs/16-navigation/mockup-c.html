@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tickets - Mockup C: icon rail and command palette</title>
+<style>
+/* Tokens copied from frontend/src/index.css (light, then .dark). */
+:root {
+  color-scheme: light;
+  --font-sans: Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --surface: #ffffff; --on-accent: #ffffff;
+  --shadow-card: 0 1px 2px rgb(20 24 60 / 0.05), 0 6px 18px rgb(20 24 60 / 0.05);
+  --s50: #f6f7fb; --s100: #eceef6; --s200: #e3e6f0; --s300: #cdd1e3; --s400: #8f95b3;
+  --s500: #6b7190; --s600: #50567a; --s700: #363b5c; --s800: #262a45; --s900: #1b1f33;
+  --b50: #eef0ff; --b100: #e0e4ff; --b200: #c7cdfd; --b300: #a5b4fc; --b500: #6366f1; --b600: #4f46e5; --b700: #4338ca; --b900: #312e81;
+  --red-bg: #fee2e2; --red-fg: #991b1b; --amber-bg: #fef3c7; --amber-fg: #92400e; --amber-strong: #b45309;
+  --green-bg: #dcfce7; --green-fg: #166534;
+}
+:root.dark {
+  color-scheme: dark;
+  --surface: #111a2b; --on-accent: #06201d; --shadow-card: none;
+  --s50: #0a111d; --s100: #1a2539; --s200: #1f2b42; --s300: #2c3b58; --s400: #6f819e;
+  --s500: #8a9ab5; --s600: #a5b3c9; --s700: #c3cee0; --s800: #dae3f0; --s900: #e6edf7;
+  --b50: #12312f; --b100: #17403d; --b200: #1f5a55; --b300: #1f5a55; --b500: #2dd4bf; --b600: #2dd4bf; --b700: #5eead4; --b900: #99f6e4;
+  --red-bg: #3a1620; --red-fg: #ff9aa9; --amber-bg: #3a2c10; --amber-fg: #ffc761; --amber-strong: #ffc761;
+  --green-bg: #10331f; --green-fg: #5be28f;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font-family: var(--font-sans); font-size: 14px; color: var(--s900); background: var(--s50); -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--b500); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: 8px; top: -40px; z-index: 100; background: var(--b600); color: var(--on-accent); padding: 6px 10px; border-radius: 8px; }
+.skip:focus { top: 8px; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Mockup controls: deliberately not app chrome (dashed, dark strip). */
+.mockbar { position: relative; z-index: 60; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 6px 14px; background: #1b1f33; color: #e6edf7; font-size: 12.5px; border-bottom: 2px dashed #8f95b3; }
+.mockbar b { font-weight: 700; }
+.mockbar .seg { display: inline-flex; border: 1px solid #50567a; border-radius: 8px; overflow: hidden; }
+.mockbar .seg button { background: transparent; border: 0; padding: 3px 10px; cursor: pointer; color: #c3cee0; }
+.mockbar .seg button[aria-pressed="true"] { background: #6366f1; color: #fff; }
+.mockbar .note { color: #8f95b3; margin-left: auto; }
+.mockbar .btn-m { background: transparent; border: 1px solid #50567a; border-radius: 8px; padding: 3px 10px; cursor: pointer; color: #c3cee0; }
+
+/* Shared app pieces */
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--b600); color: var(--on-accent); font-size: 13px; }
+.input { width: 100%; border: 1px solid var(--s300); background: var(--surface); border-radius: 8px; padding: 6px 10px; font-size: 13.5px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 6px 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; border: 1px solid var(--s300); background: var(--surface); }
+.btn.primary { background: var(--b600); border-color: var(--b600); color: var(--on-accent); }
+.link { color: var(--b700); cursor: pointer; background: none; border: 0; padding: 0; }
+.link:hover { text-decoration: underline; }
+.muted { color: var(--s500); }
+.kbd { display: inline-block; border: 1px solid var(--s300); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; font-size: 11px; color: var(--s500); background: var(--surface); }
+.page { max-width: 72rem; margin: 0 auto; }
+.page h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 14px; }
+.card { background: var(--surface); border: 1px solid var(--s200); border-radius: 12px; box-shadow: var(--shadow-card); padding: 16px; }
+.timer { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; border: 1px solid var(--b300); background: var(--b50); color: var(--b900); border-radius: 8px; padding: 8px 12px; }
+.timer b { font-variant-numeric: tabular-nums; }
+.timer .end { margin-left: auto; display: flex; gap: 8px; }
+.filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 14px; }
+.filters label.f { display: grid; gap: 4px; font-size: 12.5px; color: var(--s600); }
+.filters .chk { display: flex; align-items: center; gap: 4px; padding-bottom: 7px; font-size: 13.5px; }
+.tbl-wrap { overflow-x: auto; }
+table.t { width: 100%; min-width: 46rem; border-collapse: collapse; background: var(--surface); border: 1px solid var(--s200); border-radius: 8px; text-align: left; font-size: 13.5px; }
+table.t th { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--s500); padding: 9px 8px; border-bottom: 1px solid var(--s200); white-space: nowrap; }
+table.t td { padding: 9px 8px; border-bottom: 1px solid var(--s100); }
+table.t td a { color: var(--b700); font-weight: 500; }
+table.t td a:hover { text-decoration: underline; }
+.pill { border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.pill.breached { background: var(--red-bg); color: var(--red-fg); }
+.pill.at_risk { background: var(--amber-bg); color: var(--amber-fg); }
+.pill.ok { background: var(--green-bg); color: var(--green-fg); }
+.pill.paused { background: var(--s100); color: var(--s600); }
+.triage { color: var(--amber-strong); font-weight: 700; }
+.oncall { border: 1px solid var(--s200); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+.oncall h2 { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--s500); }
+.placeholder { display: grid; gap: 8px; max-width: 40rem; }
+.placeholder code { background: var(--s100); border-radius: 4px; padding: 1px 5px; }
+/* ---- Mockup C: icon rail with pinned pages + command palette */
+.app { display: flex; min-height: 100vh; }
+.rail { position: sticky; top: 0; height: 100vh; width: 80px; flex: none; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 10px 6px; background: var(--surface); border-right: 1px solid var(--s200); z-index: 30; overflow-y: auto; }
+.rail .mark { margin: 0 auto 8px; }
+.rail ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ritem { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; padding: 7px 2px 6px; border-radius: 10px; border: 0; background: none; cursor: pointer; color: var(--s600); font-size: 10px; line-height: 1.2; text-align: center; }
+.ritem span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 100%; }
+.ritem .ic { width: 20px; height: 20px; }
+.ritem:hover { background: var(--s100); }
+.ritem[aria-current], .ritem[aria-expanded="true"] { background: var(--b50); color: var(--b700); font-weight: 600; }
+.rail .divider { border-top: 1px solid var(--s200); margin: 6px 8px; }
+.rail .spacer { flex: 1; }
+.rail .empty { font-size: 10.5px; color: var(--s400); text-align: center; padding: 4px; }
+.wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 24px; background: var(--s50); border-bottom: 1px solid var(--s200); }
+.bar .crumb { color: var(--s500); font-size: 13px; }
+.bar .crumb b { color: var(--s900); }
+.pinbtn { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--s300); background: var(--surface); border-radius: 8px; padding: 3px 8px; font-size: 12.5px; cursor: pointer; color: var(--s600); }
+.pinbtn[aria-pressed="true"] { color: var(--amber-strong); border-color: var(--amber-strong); }
+.pinbtn[aria-pressed="true"] .ic, .star-on .ic { fill: currentColor; }
+.jump { margin-left: auto; display: flex; align-items: center; gap: 8px; width: 22rem; max-width: 45vw; border: 1px solid var(--s300); background: var(--surface); border-radius: 8px; padding: 6px 10px; color: var(--s500); cursor: pointer; text-align: left; }
+.jump .kbd { margin-left: auto; }
+.chip { font-size: 12.5px; border: 1px solid var(--s200); border-radius: 999px; padding: 3px 10px; white-space: nowrap; color: var(--s600); }
+main { padding: 24px 32px; }
+/* All pages flyout */
+.flyout { position: fixed; left: 80px; top: 0; bottom: 0; width: 34rem; max-width: calc(100vw - 80px); overflow-y: auto; background: var(--surface); border-right: 1px solid var(--s200); box-shadow: 8px 0 30px rgb(20 24 60 / .12); padding: 20px; z-index: 65; }
+.flyout h2 { margin: 0 0 4px; font-size: 18px; }
+.flyout .cols { columns: 2 14rem; column-gap: 24px; margin-top: 14px; }
+.flyout section { break-inside: avoid; margin-bottom: 14px; }
+.flyout h3 { margin: 0 0 4px; font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--s400); }
+.flyout ul { list-style: none; margin: 0; padding: 0; }
+.flyout li { display: flex; align-items: center; gap: 4px; }
+.flyout li a { flex: 1; padding: 4px 6px; border-radius: 6px; color: var(--s700); }
+.flyout li a:hover { background: var(--s100); }
+.flyout li a.child { padding-left: 20px; color: var(--s600); }
+.star { border: 0; background: none; cursor: pointer; color: var(--s400); padding: 3px; border-radius: 6px; display: grid; }
+.star:hover { background: var(--s100); }
+.star-on { color: var(--amber-strong); }
+/* Palette */
+.scrim { position: fixed; inset: 0; background: rgb(10 17 29 / .45); z-index: 70; display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; }
+.scrim[hidden] { display: none; }
+.palette { width: 38rem; max-width: calc(100vw - 24px); background: var(--surface); border: 1px solid var(--s200); border-radius: 14px; box-shadow: 0 20px 60px rgb(10 17 29 / .35); overflow: hidden; }
+.palette .q { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--s200); }
+.palette input { flex: 1; border: 0; outline: 0; background: none; font-size: 16px; }
+.palette ul { list-style: none; margin: 0; padding: 6px; max-height: 52vh; overflow-y: auto; }
+.palette .grp { padding: 8px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--s400); }
+.opt { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.opt .where { margin-left: auto; font-size: 12px; color: var(--s500); }
+.opt[aria-selected="true"] { background: var(--b50); color: var(--b700); }
+.opt .pin { color: var(--s300); display: grid; }
+.opt .pin.star-on { color: var(--amber-strong); }
+.palette .help { display: flex; flex-wrap: wrap; gap: 14px; padding: 8px 16px; border-top: 1px solid var(--s200); font-size: 12px; color: var(--s500); }
+@media (max-width: 767px) {
+  .app { display: block; }
+  .rail { position: fixed; top: auto; bottom: 0; left: 0; right: 0; height: 64px; width: auto; flex-direction: row; padding: 4px; border-right: 0; border-top: 1px solid var(--s200); }
+  .rail .mark, .rail .divider, .rail .spacer, .rail .empty, .rail .theme, .rail .me { display: none; }
+  .rail ul { flex-direction: row; }
+  .rail ul.pins { flex: 1; }
+  .rail ul.pins li { flex: 1; }
+  .rail ul.pins li:nth-child(n+5) { display: none; } /* phones show the first 4 pins; the rest are under All pages */
+  .ritem { width: auto; flex: 1; }
+  .bar { padding: 0 12px; }
+  .bar .crumb span, .chip { display: none; }
+  .jump { width: auto; max-width: none; flex: 1; }
+  .jump .kbd { display: none; }
+  main { padding: 16px 16px 84px; }
+  .flyout { left: 0; bottom: 64px; width: auto; max-width: none; }
+}
+</style>
+</head>
+<body data-mock="Mockup C">
+<div id="mockbar" class="mockbar" role="region" aria-label="Mockup controls"></div>
+<a class="skip" href="#main">Skip to content</a>
+<div class="app">
+  <nav class="rail" id="rail" aria-label="Main"></nav>
+  <div class="flyout" id="allpanel" role="region" aria-label="All pages" hidden></div>
+  <div class="wrap"><header class="bar" id="bar"></header><main id="main" tabindex="-1"></main></div>
+</div>
+<div class="sr-only" role="status" id="live"></div>
+<div class="scrim" id="scrim" hidden>
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Go to anything">
+    <div class="q"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4"/></svg><input id="pal-input" role="combobox" aria-expanded="true" aria-controls="pal-list" aria-autocomplete="list" aria-describedby="pal-help" autocomplete="off" spellcheck="false" placeholder="Type a page, a ticket number or an action…"></div>
+    <ul id="pal-list" role="listbox" aria-label="Results"></ul>
+    <div class="help" id="pal-help"><span><span class="kbd">&uarr;</span> <span class="kbd">&darr;</span> move</span><span><span class="kbd">Enter</span> open</span><span><span class="kbd">Alt</span> + <span class="kbd">P</span> pin or unpin</span><span><span class="kbd">Esc</span> close</span></div>
+  </div>
+</div>
+<script>
+// ---- Shared mockup data. Role access mirrors backend/app/permissions.py MATRIX and the can() checks in App.tsx.
+const ALL = ["admin", "tech", "billing", "read_only"];
+const AT = ["admin", "tech"];       // time:write
+const AB = ["admin", "billing"];    // report:read
+const AD = ["admin"];               // *:manage, audit:read
+const ROLE_LABEL = { tech: "Tech", billing: "Billing", read_only: "Read-only", admin: "Admin" };
+const ME = { tech: "Sam Ortiz", billing: "Dana Price", read_only: "Lee Morgan", admin: "Chris Walker" };
+
+const GROUPS = [
+  { id: "home", label: "Home" },
+  { id: "service", label: "Service desk" },
+  { id: "schedule", label: "Scheduling" },
+  { id: "clients", label: "Clients & sales" },
+  { id: "finance", label: "Finance" },
+  { id: "insights", label: "Reports" },
+  { id: "admin", label: "Admin" },
+];
+
+// parent = in-page tab of another item today (shown in sub-navs and the palette, not as a main nav item)
+const ITEMS = [
+  { id: "dashboard", label: "Dashboard", route: "/dashboard", roles: ALL, group: "home", icon: "home" },
+  { id: "tickets", label: "Tickets", route: "/tickets", roles: ALL, group: "service", icon: "ticket" },
+  { id: "projects", label: "Projects", route: "/projects", roles: ALL, group: "service", icon: "folder" },
+  { id: "kb", label: "Knowledge base", route: "/kb", roles: ALL, group: "service", icon: "book" },
+  { id: "dispatch", label: "Dispatch", route: "/dispatch", roles: ALL, group: "schedule", icon: "calendar" },
+  { id: "oncall", label: "On-call", route: "/oncall", roles: ALL, group: "schedule", icon: "phone" },
+  { id: "timesheet", label: "My timesheet", route: "/timesheet", roles: AT, group: "schedule", icon: "clock" },
+  { id: "expenses", label: "My expenses", route: "/expenses", roles: AT, group: "schedule", icon: "receipt" },
+  { id: "orgs", label: "Organizations", route: "/organizations", roles: ALL, group: "clients", icon: "building" },
+  { id: "crm", label: "Sales", route: "/crm", roles: ALL, group: "clients", icon: "trend" },
+  { id: "crm-pipeline", label: "Pipeline", route: "/crm/pipeline", roles: ALL, parent: "crm" },
+  { id: "crm-leads", label: "Leads", route: "/crm/leads", roles: ALL, parent: "crm" },
+  { id: "crm-forecast", label: "Forecast", route: "/crm/forecast", roles: ALL, parent: "crm" },
+  { id: "crm-renewals", label: "Renewals", route: "/crm/renewals", roles: ALL, parent: "crm" },
+  { id: "quotes", label: "Quotes", route: "/quotes", roles: ALL, group: "clients", icon: "doc" },
+  { id: "quotes-list", label: "All quotes", route: "/quotes", roles: ALL, parent: "quotes" },
+  { id: "quotes-rates", label: "Rate card", route: "/quotes/rates", roles: ALL, parent: "quotes" },
+  { id: "billing", label: "Billing", route: "/billing", roles: ALL, group: "finance", icon: "dollar" },
+  { id: "b-runs", label: "Monthly runs", route: "/billing/runs", roles: ALL, parent: "billing" },
+  { id: "b-invoices", label: "Invoices", route: "/billing/invoices", roles: ALL, parent: "billing" },
+  { id: "b-receivables", label: "Receivables", route: "/billing/receivables", roles: ALL, parent: "billing", badge: "3 overdue" },
+  { id: "b-reminders", label: "Client emails", route: "/billing/reminders", roles: ALL, parent: "billing" },
+  { id: "b-payments", label: "Payments", route: "/billing/payments", roles: ALL, parent: "billing" },
+  { id: "b-credit", label: "Credit memos", route: "/billing/credit-memos", roles: ALL, parent: "billing" },
+  { id: "b-late", label: "Late fees", route: "/billing/late-fees", roles: ALL, parent: "billing" },
+  { id: "b-agreements", label: "Agreements", route: "/billing/agreements", roles: ALL, parent: "billing" },
+  { id: "b-products", label: "Products", route: "/billing/products", roles: ALL, parent: "billing" },
+  { id: "b-rates", label: "Rates", route: "/billing/rates", roles: ALL, parent: "billing" },
+  { id: "b-reports", label: "Billing reports", route: "/billing/reports", roles: AB, parent: "billing" },
+  { id: "procurement", label: "Procurement", route: "/procurement", roles: ALL, group: "finance", icon: "cart" },
+  { id: "p-orders", label: "Orders and vendors", route: "/procurement", roles: ALL, parent: "procurement" },
+  { id: "p-inventory", label: "Inventory", route: "/procurement/inventory", roles: ALL, parent: "procurement" },
+  { id: "p-markup", label: "Markup rules", route: "/procurement/markup", roles: ALL, parent: "procurement" },
+  { id: "r-sla", label: "SLA report", route: "/reports/sla", roles: AB, group: "insights", icon: "chart" },
+  { id: "r-util", label: "Utilisation report", route: "/reports/utilisation", roles: AB, group: "insights", icon: "chart" },
+  { id: "r-aging", label: "Aging report", route: "/reports/aging", roles: AB, group: "insights", icon: "chart" },
+  { id: "r-profit", label: "Profitability report", route: "/reports/profitability", roles: AB, group: "insights", icon: "chart" },
+  { id: "warranty", label: "Warranty", route: "/warranty", roles: AB, group: "insights", icon: "shield" },
+  { id: "r-sched", label: "Report schedules", route: "/reports/schedules", roles: AB, group: "insights", icon: "mail" },
+  { id: "users", label: "Users", route: "/users", roles: ALL, group: "admin", icon: "users" },
+  { id: "settings", label: "Settings", route: "/settings", roles: AD, group: "admin", icon: "cog" },
+  { id: "integrations", label: "Integrations", route: "/integrations", roles: AD, group: "admin", icon: "plug" },
+  { id: "automation", label: "Automation", route: "/automation", roles: AD, group: "admin", icon: "bolt" },
+  { id: "webhooks", label: "Webhooks", route: "/webhooks", roles: AD, group: "admin", icon: "link" },
+  { id: "apikeys", label: "API keys", route: "/api-keys", roles: AD, group: "admin", icon: "key" },
+  { id: "audit", label: "Audit log", route: "/audit", roles: AD, group: "admin", icon: "list" },
+  { id: "profile", label: "Profile and notifications", route: "/profile", roles: ALL, group: "account", icon: "user" },
+];
+
+const PATHS = {
+  home: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z",
+  ticket: "M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4zM14 7v10",
+  folder: "M3 6h6l2 2h10v11H3z",
+  book: "M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z",
+  calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
+  phone: "M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2",
+  clock: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM12 7v5l3 2",
+  receipt: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6",
+  building: "M4 21V4h10v17M14 9h6v12M8 8h2M8 12h2M8 16h2M3 21h18",
+  trend: "M3 17l6-6 4 4 8-8M15 7h6v6",
+  doc: "M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5",
+  dollar: "M12 3v18M16 7.5C15.4 6 14 5.5 12 5.5c-2.2 0-4 1-4 3s2 2.8 4 3.3 4 1.4 4 3.4-1.8 3.3-4 3.3c-2 0-3.5-.7-4-2.2",
+  cart: "M3 4h2l2.5 11h10L20 7H6.5M9 20h.01M17 20h.01",
+  chart: "M4 20V10M10 20V4M16 20v-7M2 20h20",
+  shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
+  mail: "M3 6h18v12H3zM3 7l9 6 9-6",
+  users: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M16 3.5a4 4 0 0 1 0 7.5M22 21a7 7 0 0 0-4-6.3",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 21a7 7 0 0 1 14 0",
+  cog: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1",
+  plug: "M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4",
+  bolt: "M13 2L4 14h7l-1 8 9-12h-7z",
+  link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+  key: "M8 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 11h10M18 11v3M15 11v2",
+  list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4",
+  star: "M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z",
+  grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
+  chev: "M9 6l6 6-6 6",
+  down: "M6 9l6 6 6-6",
+  menu: "M4 6h16M4 12h16M4 18h16",
+  moon: "M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z",
+  plus: "M12 5v14M5 12h14",
+  x: "M6 6l12 12M18 6L6 18",
+};
+const icon = (n, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${PATHS[n] || PATHS.doc}"/></svg>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+let role = localStorage.getItem("nav-mock-role") || "tech";
+const can = (it) => it.roles.includes(role);
+const byId = (id) => ITEMS.find((i) => i.id === id);
+const topOf = (it) => (it.parent ? byId(it.parent) : it);
+const groupOf = (it) => topOf(it).group;
+const groupLabel = (g) => (g === "admin" && role !== "admin" ? "Team" : GROUPS.find((x) => x.id === g)?.label ?? g);
+const visibleIn = (g) => ITEMS.filter((i) => !i.parent && i.group === g && can(i));
+const childrenOf = (id) => ITEMS.filter((i) => i.parent === id && can(i));
+const route = () => decodeURIComponent(location.hash.slice(1)) || "/tickets";
+// The item for the current route: exact match first (children before parents), then longest prefix.
+function current() {
+  const r = route();
+  const exact = ITEMS.filter((i) => i.route === r && can(i));
+  if (exact.length) return exact.find((i) => i.parent) || exact[0];
+  return ITEMS.filter((i) => can(i) && r.startsWith(i.route + "/")).sort((a, b) => b.route.length - a.route.length)[0] || byId("tickets");
+}
+const crumb = (it) => [groupLabel(groupOf(it)), it.parent ? byId(it.parent).label : null, it.label].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" › ");
+
+// ---- The ticket queue screen (content mirrors pages/Tickets.tsx and TicketTable.tsx)
+const TICKETS = [
+  [10482, "Outlook keeps asking for a password after MFA reset", "Harbour Dental", "Critical", "Open", "Sam Ortiz", "breached"],
+  [10481, "\"urgent pls call\" from unknown sender", null, "Normal", "New", null, "ok"],
+  [10479, "New starter laptop for Priya Nair (starts Monday)", "Kestrel Logistics", "Normal", "New", null, "ok"],
+  [10477, "Backup job failed: NAS-01 nightly", "Fernhill Accounting", "High", "Open", "Jo Becker", "at_risk"],
+  [10474, "RMM alert: disk 92% full on FS-02", "Fernhill Accounting", "High", "Open", "Alex Chen", "at_risk"],
+  [10471, "Second-floor printer shows offline", "Marlow & Finch Legal", "Low", "Waiting on customer", "Sam Ortiz", "paused"],
+  [10468, "Firewall firmware update, after-hours window", "Kestrel Logistics", "Normal", "Open", "Alex Chen", "ok"],
+  [10466, "Shared mailbox access for accounts@", "Harbour Dental", "Normal", "Open", "Jo Becker", "ok"],
+  [10463, "Teams calls drop after 10 minutes on Wi-Fi", "Brightwater Clinic", "High", "Open", "Sam Ortiz", "ok"],
+];
+const SLA = { breached: "SLA breached", at_risk: "SLA at risk", ok: "SLA ok", paused: "SLA paused" };
+const timerBar = () => AT.includes(role)
+  ? `<div class="timer" role="status" aria-label="Running timer"><b>00:42:13</b><span><a class="link" href="#/tickets/10477" style="text-decoration:underline">#10477 Backup job failed: NAS-01 nightly</a> <span style="color:var(--b700)">&mdash; checking retention settings</span></span><span class="end"><button class="btn" type="button">Stop</button><button class="btn" type="button">Discard</button></span></div>`
+  : "";
+function ticketsPage() {
+  const write = role !== "read_only" && role !== "billing";
+  const rows = TICKETS.map(([n, s, o, p, st, a, sla]) => `<tr>
+    ${write ? `<td style="width:32px"><input type="checkbox" aria-label="Select ticket ${n}"></td>` : ""}
+    <td class="muted">${n}</td><td><a href="#/tickets/${n}">${esc(s)}</a></td>
+    <td>${o ? esc(o) : '<b class="triage">Needs triage</b>'}</td><td>${p}</td><td>${st}</td>
+    <td>${a ?? '<span style="color:var(--s400)">unassigned</span>'}</td><td><span class="pill ${sla}">${SLA[sla]}</span></td></tr>`).join("");
+  return `<div class="page">${timerBar()}
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><h1 style="margin:0">Tickets</h1>${write ? '<button class="btn primary" type="button" style="margin-left:auto">New ticket</button>' : ""}</div>
+    <div class="filters">
+      <label class="f">Search subject or #<input class="input" style="width:14rem"></label>
+      <label class="f">Status<select class="input"><option>Open</option><option>New</option><option>Waiting on customer</option></select></label>
+      <label class="f">Queue<select class="input"><option>Any</option><option>Service desk</option><option>Projects</option><option>Alerts</option></select></label>
+      <label class="f">Assignee<select class="input"><option>Anyone</option><option>Me</option><option>Unassigned</option></select></label>
+      <label class="chk"><input type="checkbox" checked> Open only</label>
+      <label class="chk"><input type="checkbox"> Needs triage</label>
+    </div>
+    <div class="tbl-wrap"><table class="t"><caption class="sr-only">Open tickets</caption><thead><tr>${write ? '<th><input type="checkbox" aria-label="Select all tickets"></th>' : ""}<th>#</th><th>Subject</th><th>Organization</th><th>Priority &#9660;</th><th>Status</th><th>Assignee</th><th>SLA due</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="muted" style="margin-top:10px">Showing 9 of 143 open tickets.</p></div>`;
+}
+function placeholderPage(it) {
+  return `<div class="page">${timerBar()}<h1>${esc(it.label)}</h1><div class="card placeholder">
+    <p style="margin:0">This page keeps its current content. Only the navigation changes.</p>
+    <p style="margin:0" class="muted">Route today: <code>${esc(route())}</code> &middot; Found under: <b>${esc(crumb(it))}</b></p>
+    <p style="margin:0"><a class="link" href="#/tickets">Back to the ticket queue</a> to judge the navigation against real content.</p></div></div>`;
+}
+const pageFor = (it) => (route().startsWith("/tickets") ? ticketsPage() : placeholderPage(it));
+const onCallWidget = () => `<section class="oncall" aria-label="On call now"><h2>On call</h2><span class="muted" style="display:block;font-size:12px">After-hours rotation</span><b>Alex Chen</b> <span class="muted" style="font-size:12px">until Mon 3 Nov 08:00</span></section>`;
+
+// ---- Mockup controls (role switcher, dark mode). Each mockup defines render().
+function mockBar(name) {
+  const bar = document.getElementById("mockbar");
+  bar.innerHTML = `<b>${name}</b><span>View as</span><span class="seg" role="group" aria-label="View as role">${Object.keys(ROLE_LABEL).map((r) => `<button type="button" data-role="${r}" aria-pressed="${r === role}">${ROLE_LABEL[r]}</button>`).join("")}</span>
+    <button type="button" class="btn-m" id="mock-dark" aria-pressed="${document.documentElement.classList.contains("dark")}">Dark mode</button>
+    <span class="note">Static mockup. Nothing is saved to the server.</span>`;
+  bar.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.role) {
+      role = b.dataset.role;
+      localStorage.setItem("nav-mock-role", role);
+      bar.querySelectorAll("[data-role]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.role === role));
+      const r = route(); // a role that cannot open this page is sent to the queue, as App.tsx redirects today
+      if (!ITEMS.some((i) => can(i) && (r === i.route || r.startsWith(i.route + "/")))) location.hash = "#/tickets";
+      render();
+    } else if (b.id === "mock-dark") toggleDark();
+  });
+}
+function toggleDark() {
+  const on = document.documentElement.classList.toggle("dark");
+  localStorage.setItem("nav-mock-dark", on ? "1" : "");
+  document.querySelectorAll("#mock-dark,[data-dark]").forEach((x) => x.setAttribute("aria-pressed", on));
+}
+if (localStorage.getItem("nav-mock-dark")) document.documentElement.classList.add("dark");
+// After a page change: update the title and move focus to the new page heading, so screen readers announce it.
+window.addEventListener("hashchange", () => {
+  render();
+  document.title = `${current().label} - ${document.body.dataset.mock}`;
+  const h = document.querySelector("#main h1");
+  if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+});
+// ---- Mockup C
+const MAX_PINS = 8;
+const DEFAULT_PINS = {
+  tech: ["tickets", "dispatch", "timesheet", "kb", "orgs"],
+  billing: ["b-invoices", "b-receivables", "b-runs", "orgs", "r-aging"],
+  read_only: ["tickets", "orgs", "kb"],
+  admin: ["dashboard", "tickets", "dispatch", "b-runs", "crm-pipeline", "r-sla", "settings"],
+};
+const KEYWORDS = {
+  tickets: "service desk queue incidents requests", dispatch: "schedule calendar appointments board", oncall: "rotation after hours pager",
+  timesheet: "time hours log approve", expenses: "mileage receipts", orgs: "clients customers companies contacts sites assets",
+  "crm-pipeline": "deals opportunities", kb: "articles docs how to", "b-receivables": "overdue unpaid debtors statements",
+  "b-runs": "invoice month end", "r-aging": "overdue debtors", warranty: "assets expiry", "r-util": "billable hours techs",
+  settings: "queues statuses priorities categories mailbox sla business hours holidays canned responses portal",
+  users: "staff team people roles", audit: "history changes", apikeys: "tokens", procurement: "purchase po vendors stock",
+  "p-orders": "purchase po vendors", integrations: "rmm accounting microsoft 365 xero", automation: "rules triage assign",
+};
+const ACTIONS = [
+  { id: "a-ticket", label: "New ticket", route: "/tickets", roles: AT, icon: "plus" },
+  { id: "a-timer", label: "Start a timer", route: "/timesheet", roles: AT, icon: "clock" },
+  { id: "a-book", label: "Book an appointment", route: "/dispatch", roles: AT, icon: "calendar" },
+  { id: "a-quote", label: "New quote", route: "/quotes", roles: AT, icon: "doc" },
+  { id: "a-article", label: "New knowledge-base article", route: "/kb/new", roles: AT, icon: "book" },
+  { id: "a-payment", label: "Record a payment", route: "/billing/payments", roles: AB, icon: "dollar" },
+];
+const iconOf = (it) => it.icon || topOf(it).icon;
+const short = (it) => it.label.replace(/^My /, "").replace(/ report$/, "").replace(/^\w/, (c) => c.toUpperCase());
+const pinKey = () => "nav-mock-c-pins-" + role;
+const pins = () => (JSON.parse(localStorage.getItem(pinKey()) || "null") || DEFAULT_PINS[role]).map(byId).filter((i) => i && can(i));
+const isPinned = (it) => pins().some((p) => p.id === it.id);
+function togglePin(it) {
+  const ids = pins().map((p) => p.id);
+  if (ids.includes(it.id)) ids.splice(ids.indexOf(it.id), 1);
+  else if (ids.length >= MAX_PINS) { announce(`You can pin up to ${MAX_PINS} pages. Unpin one first.`); return; }
+  else ids.push(it.id);
+  localStorage.setItem(pinKey(), JSON.stringify(ids));
+  announce(`${it.label} ${ids.includes(it.id) ? "pinned" : "unpinned"}`);
+}
+// Pages that can be opened: an item whose route equals one of its tabs is shown once, as the tab.
+const pages = () => ITEMS.filter((i) => can(i) && !childrenOf(i.id).some((k) => k.route === i.route));
+const recentKey = () => "nav-mock-c-recent-" + role;
+const recent = () => (JSON.parse(localStorage.getItem(recentKey()) || "[]")).map(byId).filter((i) => i && can(i));
+
+function rail(cur) {
+  const p = pins();
+  const item = (i) => {
+    const on = i.id === cur.id || (topOf(cur).id === i.id && !p.some((x) => x.id === cur.id));
+    return `<li><a class="ritem" href="#${i.route}"${short(i) !== i.label ? ` aria-label="${esc(i.label)}"` : ""} title="${esc(crumb(i))}"${on ? ' aria-current="page"' : ""}>${icon(iconOf(i))}<span>${esc(short(i))}</span></a></li>`;
+  };
+  const dark = document.documentElement.classList.contains("dark");
+  return `<a href="#/dashboard" class="mark" aria-label="Northwind IT home">N</a>
+    <ul>
+      <li><button type="button" class="ritem" id="open-palette" aria-keyshortcuts="Control+K Meta+K" aria-haspopup="dialog">${icon("search")}<span>Go to</span></button></li>
+    </ul>
+    <div class="divider"></div>
+    <ul aria-label="Pinned pages" class="pins">${p.map(item).join("")}${p.length ? "" : '<li class="empty">Pin pages with the star</li>'}</ul>
+    <ul><li><button type="button" class="ritem" id="all" aria-expanded="${!document.getElementById("allpanel").hidden}" aria-controls="allpanel">${icon("grid")}<span>All pages</span></button></li></ul>
+    <div class="spacer"></div>
+    <a class="ritem me" href="#/profile" aria-label="Profile and notifications: ${ME[role]}">${icon("user")}<span>${ME[role].split(" ")[0]}</span></a>
+    <button type="button" class="ritem theme" data-dark aria-pressed="${dark}">${icon("moon")}<span>Dark mode</span></button>`;
+}
+
+function bar(cur) {
+  const pinned = isPinned(cur);
+  return `<span class="crumb"><span>${esc(crumb(cur).split(" › ").slice(0, -1).join(" › "))}${crumb(cur).includes("›") ? " › " : ""}</span><b>${esc(cur.label)}</b></span>
+    <button type="button" class="pinbtn" id="pin-page" aria-pressed="${pinned}">${icon("star")}${pinned ? "Pinned" : "Pin this page"}</button>
+    <button type="button" class="jump" id="jump" aria-haspopup="dialog">${icon("search")}<span>Go to a page, ticket # or action</span><span class="kbd">Ctrl K</span></button>
+    <span class="chip">On call: <b>Alex Chen</b></span>`;
+}
+const announce = (msg) => { const l = document.getElementById("live"); if (l) l.textContent = msg; };
+
+function allPanel() {
+  const sections = GROUPS.map((g) => {
+    const tops = visibleIn(g.id);
+    if (!tops.length) return "";
+    const rows = tops.flatMap((i) => { // a page with tabs today lists its tabs, indented
+      const kids = childrenOf(i.id);
+      return [[i, false], ...kids.filter((k) => k.route !== i.route).map((k) => [k, true])].map(([it, child]) => {
+        const on = isPinned(it);
+        return `<li><a href="#${it.route}" class="${child ? "child" : ""}">${child ? `<span class="sr-only">${esc(i.label)}: </span>` : ""}${esc(it.label)}</a><button type="button" class="star${on ? " star-on" : ""}" data-pin="${it.id}" aria-pressed="${on}" aria-label="Pin ${esc(child ? i.label + " " + it.label : it.label)}">${icon("star")}</button></li>`;
+      });
+    });
+    return `<section><h3>${groupLabel(g.id)}</h3><ul>${rows.join("")}</ul></section>`;
+  }).join("");
+  return `<h2>All pages</h2><p class="muted" style="margin:0">Star a page to pin it to the rail (up to ${MAX_PINS}). Or press <span class="kbd">Ctrl K</span> anywhere and type.</p><div class="cols">${sections}</div>`;
+}
+
+// ---- Command palette: a combobox over pages, actions and ticket numbers.
+let results = [], active = 0, opener = null;
+function score(it, q) {
+  const label = it.label.toLowerCase(), hay = `${label} ${crumb(it).toLowerCase()} ${(KEYWORDS[it.id] || "")}`;
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.every((w) => hay.includes(w))) return 0;
+  return label.startsWith(words[0]) ? 3 : label.includes(words[0]) ? 2 : 1;
+}
+function search(q) {
+  q = q.trim();
+  const out = [];
+  const num = q.match(/^#?(\d{3,})$/);
+  if (num) out.push({ group: "Tickets", it: { id: "t-" + num[1], label: `Open ticket #${num[1]}`, route: `/tickets/${num[1]}`, icon: "ticket" }, where: "Service desk › Tickets" });
+  if (!q) {
+    pins().forEach((it) => out.push({ group: "Pinned", it }));
+    recent().filter((i) => !isPinned(i)).slice(0, 4).forEach((it) => out.push({ group: "Recent", it }));
+    ACTIONS.filter(can).forEach((it) => out.push({ group: "Actions", it }));
+    return out;
+  }
+  pages().map((it) => [it, score(it, q)]).filter(([, s]) => s).sort((a, b) => b[1] - a[1]).slice(0, 10).forEach(([it]) => out.push({ group: "Pages", it }));
+  ACTIONS.filter(can).filter((a) => score(a, q)).forEach((it) => out.push({ group: "Actions", it }));
+  return out;
+}
+function drawResults() {
+  const list = document.getElementById("pal-list"), input = document.getElementById("pal-input");
+  let h = "", last = "";
+  results.forEach((r, n) => {
+    if (r.group !== last) { h += `<li class="grp" role="presentation">${r.group}</li>`; last = r.group; }
+    const pinnable = !!byId(r.it.id), on = pinnable && isPinned(r.it);
+    h += `<li class="opt" role="option" id="opt-${n}" data-n="${n}" aria-selected="${n === active}">${icon(iconOf(r.it) || r.it.icon)}<span>${esc(r.it.label)}${on ? '<span class="sr-only"> (pinned)</span>' : ""}</span><span class="where">${esc(r.where || (pinnable ? crumb(r.it).split(" › ").slice(0, -1).join(" › ") : "Action"))}</span>${pinnable ? `<span class="pin${on ? " star-on" : ""}" data-pin-opt="${n}" title="${on ? "Unpin" : "Pin"} (Alt+P)">${icon("star")}</span>` : ""}</li>`;
+  });
+  if (!results.length) h = `<li class="grp" role="presentation">Nothing matches "${esc(input.value)}". Try a page name, a client, or a ticket number.</li>`;
+  list.innerHTML = h;
+  input.setAttribute("aria-activedescendant", results.length ? `opt-${active}` : "");
+  document.getElementById(`opt-${active}`)?.scrollIntoView({ block: "nearest" });
+}
+function openPalette() {
+  opener = document.activeElement;
+  closeAll();
+  document.getElementById("scrim").hidden = false;
+  const input = document.getElementById("pal-input");
+  input.value = ""; active = 0; results = search(""); drawResults(); input.focus();
+}
+function closePalette(restore = true) {
+  document.getElementById("scrim").hidden = true;
+  if (restore && opener && document.contains(opener)) opener.focus();
+}
+function choose(n) {
+  const r = results[n];
+  if (!r) return;
+  closePalette(false);
+  location.hash = "#" + r.it.route;
+}
+function closeAll() {
+  const p = document.getElementById("allpanel");
+  if (!p.hidden) { p.hidden = true; render(); }
+}
+
+function render() {
+  const cur = current();
+  if (byId(cur.id)) { // remember for "Recent"
+    const ids = [cur.id, ...recent().map((i) => i.id).filter((id) => id !== cur.id)].slice(0, 6);
+    localStorage.setItem(recentKey(), JSON.stringify(ids));
+  }
+  document.getElementById("rail").innerHTML = rail(cur);
+  document.getElementById("bar").innerHTML = bar(cur);
+  const panel = document.getElementById("allpanel");
+  if (!panel.hidden) panel.innerHTML = allPanel();
+  document.getElementById("main").innerHTML = pageFor(cur);
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.closest("#open-palette, #jump")) return openPalette();
+  if (t.closest("[data-dark]")) return toggleDark();
+  if (t.closest("#pin-page")) { togglePin(current()); render(); document.getElementById("pin-page").focus(); return; }
+  const star = t.closest("[data-pin]");
+  if (star) { const id = star.dataset.pin; togglePin(byId(id)); render(); document.querySelector(`[data-pin="${id}"]`)?.focus(); return; }
+  if (t.closest("#all")) {
+    const p = document.getElementById("allpanel");
+    p.hidden = !p.hidden;
+    render();
+    (p.hidden ? document.getElementById("all") : p.querySelector("a"))?.focus();
+    return;
+  }
+  const pinOpt = t.closest("[data-pin-opt]");
+  if (pinOpt) { togglePin(results[+pinOpt.dataset.pinOpt].it); drawResults(); render(); document.getElementById("pal-input").focus(); return; }
+  const opt = t.closest(".opt");
+  if (opt) return choose(+opt.dataset.n);
+  if (t.id === "scrim") return closePalette();
+  if (!t.closest("#allpanel") && !document.getElementById("allpanel").hidden) closeAll();
+  else if (t.closest("#allpanel a")) closeAll();
+});
+document.addEventListener("keydown", (e) => {
+  const paletteOpen = !document.getElementById("scrim").hidden;
+  const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName);
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); return paletteOpen ? closePalette() : openPalette(); }
+  if (!paletteOpen && e.key === "/" && !typing) { e.preventDefault(); return openPalette(); }
+  if (!paletteOpen) {
+    if (e.key === "Escape" && !document.getElementById("allpanel").hidden) { closeAll(); document.getElementById("all").focus(); }
+    return;
+  }
+  if (e.key === "Escape") { e.preventDefault(); closePalette(); }
+  else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (results.length) { active = (active + (e.key === "ArrowDown" ? 1 : -1) + results.length) % results.length; drawResults(); }
+  } else if (e.key === "Enter") { e.preventDefault(); choose(active); }
+  else if (e.altKey && e.code === "KeyP" && results[active] && byId(results[active].it.id)) {
+    e.preventDefault(); togglePin(results[active].it); drawResults(); render();
+  } else if (e.key === "Tab") e.preventDefault(); // focus stays in the dialog: the input is its only stop
+});
+document.getElementById("pal-input").addEventListener("input", (e) => { active = 0; results = search(e.target.value); drawResults(); });
+mockBar("Mockup C: icon rail + command palette");
+render();
+</script>
+</body>
+</html>
