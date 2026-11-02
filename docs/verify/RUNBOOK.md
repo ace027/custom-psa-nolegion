@@ -114,7 +114,7 @@ Checklists: [rmm-alerts.md](rmm-alerts.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P06-01 | Walk through docs/verify/rmm-alerts.md | | |
+| P06-01 | Walk through docs/verify/rmm-alerts.md | Cannot map clients after successfully testing API connection to NinjaOne. Clicked on clients and history and the screen went blank | No other tests could be performed |
 | P06-02 | Check the NinjaOne alert field names (uid, deviceId, severity, sourceConfigUid) against a live tenant first | | |
 | P06-03 | Enable alerts with defaults on the Integrations card | | |
 | P06-04 | A MODERATE+ alert on a mapped device makes one RMM ticket with device link and severity priority | | |
