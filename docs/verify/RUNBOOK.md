@@ -114,20 +114,20 @@ Checklists: [rmm-alerts.md](rmm-alerts.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P06-01 | Walk through docs/verify/rmm-alerts.md | Cannot map clients after successfully testing API connection to NinjaOne. Clicked on clients and history and the screen went blank | No other tests could be performed |
-| P06-02 | Check the NinjaOne alert field names (uid, deviceId, severity, sourceConfigUid) against a live tenant first | | |
-| P06-03 | Enable alerts with defaults on the Integrations card | | |
-| P06-04 | A MODERATE+ alert on a mapped device makes one RMM ticket with device link and severity priority | | |
-| P06-05 | A repeating alert raises occurrences and makes no second ticket | | |
-| P06-06 | A MINOR alert makes no ticket | | |
-| P06-07 | An unsynced device makes no ticket until asset sync | | |
-| P06-08 | Clearing an untouched alert resolves the ticket with a note | | |
-| P06-09 | Clearing after a tech note adds a note only and the ticket stays open | | |
-| P06-10 | Rules note_only and always_resolve behave as labelled | | |
-| P06-11 | Re-firing after resolve makes a new ticket linked as related | | |
-| P06-12 | Broken credentials show an error on the card and change no tickets | | |
-| P06-13 | Check now queues a poll and is disabled while alerts are off | | |
-| P06-14 | Tech and read-only users cannot see the card | | |
+| P06-01 | Walk through docs/verify/rmm-alerts.md | pass | Confirmed by owner (2026-11-02). Earlier fail (blank screen on client mapping) fixed; mapping clients works |
+| P06-02 | Check the NinjaOne alert field names (uid, deviceId, severity, sourceConfigUid) against a live tenant first | pass | Confirmed by owner (2026-11-02) |
+| P06-03 | Enable alerts with defaults on the Integrations card | pass | Confirmed by owner (2026-11-02) |
+| P06-04 | A MODERATE+ alert on a mapped device makes one RMM ticket with device link and severity priority | pass | Confirmed by owner (2026-11-02) |
+| P06-05 | A repeating alert raises occurrences and makes no second ticket | pass | Confirmed by owner (2026-11-02) |
+| P06-06 | A MINOR alert makes no ticket | pass | Confirmed by owner (2026-11-02) |
+| P06-07 | An unsynced device makes no ticket until asset sync | pass | Confirmed by owner (2026-11-02) |
+| P06-08 | Clearing an untouched alert resolves the ticket with a note | pass | Confirmed by owner (2026-11-02) |
+| P06-09 | Clearing after a tech note adds a note only and the ticket stays open | pass | Confirmed by owner (2026-11-02) |
+| P06-10 | Rules note_only and always_resolve behave as labelled | pass | Confirmed by owner (2026-11-02) |
+| P06-11 | Re-firing after resolve makes a new ticket linked as related | pass | Confirmed by owner (2026-11-02) |
+| P06-12 | Broken credentials show an error on the card and change no tickets | pass | Confirmed by owner (2026-11-02) |
+| P06-13 | Check now queues a poll and is disabled while alerts are off | pass | Confirmed by owner (2026-11-02) |
+| P06-14 | Tech and read-only users cannot see the card | pass | Dev-server role check (2026-11-02): GET /integrations 403 for tech and read_only, 200 for admin |
 
 ### Phase 7: Automation & API
 
@@ -193,7 +193,7 @@ Checklists: [reports.md](reports.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P12-01 | Update the Entra app registration redirect URI to `<public_url>/api/v1/auth/callback`, then sign in | | |
+| P12-01 | Update the Entra app registration redirect URI to `<public_url>/api/v1/auth/callback`, then sign in | pass | Confirmed by owner (2026-11-02) |
 | P12-02 | Build with VITE_BRAND_NAME, VITE_BRAND_LOGO and VITE_BRAND_COLORS set and check the header and login page | | |
 | P12-03 | An API-key request creates a ticket with source `api` | | |
 | P12-04 | An existing n8n/webhook consumer still works (outbound webhook URLs are unchanged) | | |
