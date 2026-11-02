@@ -140,7 +140,7 @@ Checklists: [automation-api.md](automation-api.md)
 | P07-03 | Unverified: a real n8n instance accepts the payload and the HMAC-SHA256 signature verifies | N/A | Marked N/A by owner (2026-11-02) |
 | P07-04 | Unverified: a LAN n8n works with WEBHOOK_ALLOW_PRIVATE_HOSTS=true (https only) | N/A | Marked N/A by owner (2026-11-02) |
 | P07-05 | A rule's assign, escalate, notify, webhook and create-ticket actions each work on a real ticket | pass | Dev-server session (2026-11-02): rule assigned, escalated, notified the chosen assignee and created child ticket 342; dry run changed nothing |
-| P07-06 | Rules never trigger other rules; a rule firing more than 200 times in an hour switches itself off | fail | Dev-server session (2026-11-02): a rule-assigned new ticket fired a second rule. Fixed in 1d472c4 with a regression test; re-check on the dev server pending. 200/hour cap passes by test |
+| P07-06 | Rules never trigger other rules; a rule firing more than 200 times in an hour switches itself off | pass | Failed on the dev server (2026-11-02), fixed in 1d472c4; re-check passed: new ticket 346 went High via rule 2, rule 1 did not run. 200/hour cap passes by test |
 
 ### Phase 8: Projects & project billing
 
@@ -194,7 +194,7 @@ Checklists: [reports.md](reports.md)
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P12-01 | Update the Entra app registration redirect URI to `<public_url>/api/v1/auth/callback`, then sign in | pass | Confirmed by owner (2026-11-02) |
-| P12-02 | Build with VITE_BRAND_NAME, VITE_BRAND_LOGO and VITE_BRAND_COLORS set and check the header and login page | | |
+| P12-02 | Build with VITE_BRAND_NAME, VITE_BRAND_LOGO and VITE_BRAND_COLORS set and check the header and login page |  | Dev server (2026-11-02), placeholder brand: name and mark work; colours only work with the JSON single-quoted in .env (docs fixed). Live on psa.dev.local for the owner to look at; not checked visually |
 | P12-03 | An API-key request creates a ticket with source `api` | pass | Dev-server session (2026-11-02): key with only ticket:write created ticket 340 with source api; other calls 403; revoked key gets 401; all audited |
 | P12-04 | An existing n8n/webhook consumer still works (outbound webhook URLs are unchanged) | | |
 
@@ -215,7 +215,7 @@ Checklists: [portal-polish.md](portal-polish.md), [portal.md](portal.md)
 |---|-------|-----------------------------|-------|
 | P14-01 | Walk through docs/verify/portal-polish.md | | |
 | P14-02 | Real-tenant check: register the multi-tenant portal app per docs/PORTAL_SSO.md and sign in from a client tenant| deferred | Deferred by owner (2026-11-02): button shows after the compose fix (b518ccd); signing in with the client test account is not working yet |
-| P14-03 | Confirm: uploads limited to 10 MB and the extension allowlist (assumed default) | | |
+| P14-03 | Confirm: uploads limited to 10 MB and the extension allowlist (assumed default) |  | Checked in code on the dev server (2026-11-02): 10 MB (config.py, api.ts) and the 18-extension allowlist match on server and browser; no live refusal yet. Awaiting owner confirmation |
 ## Other checklists
 
 These files are not tied to a single phase above. Walk through any that still apply to what you use.

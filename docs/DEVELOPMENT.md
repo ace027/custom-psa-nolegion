@@ -118,6 +118,6 @@ The product name, mark, logo and colours come from `frontend/src/branding.ts`, r
 | `VITE_BRAND_LOGO_URL` | Logo image; when set it replaces the text mark (alt text is the name) | none |
 | `VITE_BRAND_COLORS` | JSON object mapping existing `@theme` colour token names to values, for example `{"blue-600":"#0a7"}` | none |
 
-Invalid `VITE_BRAND_COLORS` JSON is ignored with a console warning. `frontend/index.html` keeps `PSA` as the static fallback title until the app loads.
+In `.env`, wrap the JSON in single quotes, for example `VITE_BRAND_COLORS='{"blue-600":"#0a7"}'`: unquoted, the `#` starts a comment and the value is cut off. Invalid `VITE_BRAND_COLORS` JSON is ignored with a console warning. `frontend/index.html` keeps `PSA` as the static fallback title until the app loads.
 
 Client-scoped API paths and links are built only through `frontend/src/clientScope.ts` (`clientApiPath`, `clientRoute`, `useClientScope`).
