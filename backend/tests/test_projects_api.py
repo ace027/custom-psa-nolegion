@@ -83,7 +83,7 @@ def test_admin_full_flow(admin, org, wt, log, make_user):
         "billable_minutes": 90,
         "cost_at_rates_cents": 22_500,
         "billed_cents": 0,
-        "remaining_cents": 50_000,
+        "remaining_cents": 27_500,  # 500.00 budget - 225.00 logged at rates
         "over_budget": False,
     }
     assert admin.get(f"/api/v1/projects/{pid}").json()["budget"] == b.json()
