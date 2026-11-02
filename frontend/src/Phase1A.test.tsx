@@ -107,7 +107,7 @@ describe("search page", () => {
 });
 
 describe("settings: holidays and email automation (slice B)", () => {
-  const admin = { ...me, role: "admin", permissions: [...me.permissions, "config:manage"] };
+  const admin = { ...me, role: "admin", permissions: [...me.permissions, "config:manage", "service:configure"] };
   const settings = {
     timezone: "America/Chicago", business_days: [0, 1, 2, 3, 4], business_start_minute: 480, business_end_minute: 1020,
     billing_increment_minutes: 15, sla_at_risk_percent: 25, portal_enabled: false, auto_ack_enabled: false,
@@ -115,7 +115,7 @@ describe("settings: holidays and email automation (slice B)", () => {
   };
   it("lists holidays and adds a closed day", async () => {
     const bodies: string[] = [];
-    run("/settings", {
+    run("/admin/settings/scheduling", {  // holidays moved to the Scheduling settings page (Phase 16)
       ...base,
       "/api/v1/auth/me": json(admin),
       "/api/v1/settings": json(settings),

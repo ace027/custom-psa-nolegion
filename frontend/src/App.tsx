@@ -52,7 +52,14 @@ import OnCallWidget from "./OnCallWidget";
 import Login from "./pages/Login";
 import OrganizationDetail from "./pages/OrganizationDetail";
 import Organizations from "./pages/Organizations";
-import Settings from "./pages/Settings";
+import Settings, { SettingsLayout } from "./pages/Settings";
+import GeneralSettings from "./pages/admin/settings/GeneralSettings";
+import MailCalendarSettings from "./pages/admin/settings/MailCalendarSettings";
+import TicketSettings from "./pages/admin/settings/TicketSettings";
+import BillingSettings from "./pages/admin/settings/BillingSettings";
+import PortalSettings from "./pages/admin/settings/PortalSettings";
+import SalesSettings from "./pages/admin/settings/SalesSettings";
+import SchedulingSettings from "./pages/admin/settings/SchedulingSettings";
 import Expenses from "./pages/Expenses";
 import Timesheet from "./pages/Timesheet";
 import TimerBar from "./pages/TimerBar";
@@ -255,8 +262,21 @@ function StaffApp() {
           <Route path="users" element={<Users />} />
           <Route
             path="settings"
-            element={can(me, "config:manage") || can(me, "service:configure") ? <Settings /> : <Navigate to="/" replace />}
-          />
+            element={can(me, "config:manage") || can(me, "service:configure") ? <SettingsLayout /> : <Navigate to="/" replace />}
+          >
+            <Route index element={<Settings />} />
+            {([
+              ["tickets", "service:configure", <TicketSettings />],
+              ["scheduling", "service:configure", <SchedulingSettings />],
+              ["mail", "config:manage", <MailCalendarSettings />],
+              ["billing", "config:manage", <BillingSettings />],
+              ["portal", "config:manage", <PortalSettings />],
+              ["sales", "config:manage", <SalesSettings />],
+              ["general", "config:manage", <GeneralSettings />],
+            ] as const).map(([path, perm, page]) => (
+              <Route key={path} path={path} element={can(me, perm) ? page : <Navigate to="/admin/settings" replace />} />
+            ))}
+          </Route>
         </Route>
         {/* Moved and removed pages */}
         <Route path="/settings" element={<Navigate to="/admin/settings" replace />} />

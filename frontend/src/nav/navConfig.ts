@@ -140,6 +140,28 @@ export function visibleSections(me: Me | null | undefined): (NavSection & { item
   return NAV_SECTIONS.map((s) => ({ ...s, items: items.filter((i) => i.section === s.id) })).filter((s) => s.items.length > 0);
 }
 
+/** Sub-pages of Settings (decision 5). Kept out of NAV_ITEMS on purpose: the rail, All pages and the
+ *  palette list Settings once; these are reached from the Settings page and its own sub-nav. */
+export interface SettingsPage {
+  id: string;
+  label: string;
+  path: string;
+  permission: string;
+  about: string;
+}
+
+export const SETTINGS_PAGES: SettingsPage[] = [
+  { id: "tickets", label: "Tickets", path: "tickets", permission: "service:configure", about: "Queues, categories, work types, priorities and SLA targets, statuses, ticket types, canned responses" },
+  { id: "scheduling", label: "Scheduling", path: "scheduling", permission: "service:configure", about: "Holidays" },
+  { id: "mail", label: "Mail and calendar", path: "mail", permission: "config:manage", about: "Mailbox, Outlook sync, appointment emails, auto-acknowledgement and escalation" },
+  { id: "billing", label: "Billing", path: "billing", permission: "config:manage", about: "Reminders, late fees, mileage rate, time and expense categories" },
+  { id: "portal", label: "Portal", path: "portal", permission: "config:manage", about: "Turn the client portal on or off" },
+  { id: "sales", label: "Sales", path: "sales", permission: "config:manage", about: "Renewal reminders and pipeline stages" },
+  { id: "general", label: "General", path: "general", permission: "config:manage", about: "Time zone, business hours, company details" },
+];
+
+export const settingsPages = (me: Me | null | undefined) => SETTINGS_PAGES.filter((p) => can(me, p.permission));
+
 export const allRoutes = () => NAV_ITEMS.map((i) => i.route);
 
 /** The nav item a URL belongs to: the longest route that is the path or a parent of it. */

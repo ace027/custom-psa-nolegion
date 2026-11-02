@@ -1,7 +1,7 @@
 # Plan 16-03 Summary: Settings split into Admin sub-pages
 
 ## Result
-**Status**: Partial
+**Status**: Complete
 **Wave**: 3
 **Agent**: engineering-frontend-developer
 **Completed**: 2026-11-02
@@ -66,9 +66,9 @@
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | warning | out-of-scope-file | Approve a small edit to frontend/src/Phase1A.test.tsx so the full vitest run passes. | pending | INVALID: type "out-of-scope-file" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
-| 2 | info | plan-deviation | Confirm the Settings sub-nav stays outside NAV_ITEMS. | pending | INVALID: type "plan-deviation" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
-| 3 | blocker | quality | Resolve: 128/     expect(await screen.findByText("Christmas", { exact: false })).toB… | pending |  |
+| 1 | warning | out-of-scope-file | Approve a small edit to frontend/src/Phase1A.test.tsx so the full vitest run passes. | approved | Done: Phase1A holidays test now opens /admin/settings/scheduling with service:configure. Full vitest 44/44. |
+| 2 | info | plan-deviation | Confirm the Settings sub-nav stays outside NAV_ITEMS. | approved | Accepted: the Settings sub-nav stays in its own config, outside NAV_ITEMS (keeps the rail and All pages free of admin sub-pages). |
+| 3 | blocker | quality | Resolve: 128/     expect(await screen.findByText("Christmas", { exact: false })).toB… | approved | Fixed via #1. |
 
 - #1 context: The holidays test visits /settings and expects Holidays there. It needs the route changed to /admin/settings/scheduling and "service:configure" added to its permissions. Its pass-after-edit is expected but I did not run it.
 - #2 context: The plan said "Admin sub-nav entries in navConfig". Adding them to NAV_ITEMS would break the Navigation.test.tsx manager and sub-nav assertions, and that file is outside my list. If you do want them in NAV_ITEMS, Navigation.test.tsx needs updating too.
