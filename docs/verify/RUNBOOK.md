@@ -149,8 +149,8 @@ Checklists: [projects.md](projects.md)
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P08-01 | Walk through docs/verify/projects.md (projects, phases, tasks, dependencies, board, budget, fixed-fee and T&M billing) | pass | Dev-server session (2026-11-02): phases, tasks, dependencies (loop refused), budget and approval work. Billing steps, board move and tech/read-only screens not run. Remaining budget now counts logged time (owner decision, e14f9bc) |
-| P08-02 | Confirm: milestones (phase completion) are not billed |  | Observed on the dev server (2026-11-02): completing a phase created no invoices, lines or charges. Awaiting owner confirmation |
-| P08-03 | Confirm: project time does not use block hours |  | Observed on the dev server (2026-11-02): code excludes project time from block hours (billing.py), covered by a test; not shown live (no block agreement). Awaiting owner confirmation |
+| P08-02 | Confirm: milestones (phase completion) are not billed | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): completing a phase created no invoices, lines or charges |
+| P08-03 | Confirm: project time does not use block hours | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): code excludes project time from block hours (billing.py), covered by a test; not shown live (no block agreement) |
 
 ### Phase 9: CRM & renewals
 
@@ -159,8 +159,8 @@ Checklists: [crm.md](crm.md)
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P09-01 | Walk through docs/verify/crm.md (leads and conversion, pipeline, quote link and win, forecast, renewal reminders) | pass | Dev-server session (2026-11-02): lead qualify and convert, pipeline (Lost needs a reason) and forecast figures checked by hand. Quote link and win not run (sends email) |
-| P09-02 | Confirm: the forecast is an estimate only and never creates invoices |  | Observed on the dev server (2026-11-02): invoices and agreements unchanged; forecast has no write path. Awaiting owner confirmation |
-| P09-03 | Confirm: the renewal worker sends one email per new reminder and never repeats it |  | Observed on the dev server (2026-11-02): code and tests: one email per new reminder, to the staff address only, never repeated. Awaiting owner confirmation |
+| P09-02 | Confirm: the forecast is an estimate only and never creates invoices | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): invoices and agreements unchanged; forecast has no write path |
+| P09-03 | Confirm: the renewal worker sends one email per new reminder and never repeats it | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): code and tests: one email per new reminder, to the staff address only, never repeated |
 
 ### Phase 10: Procurement & inventory
 
@@ -169,11 +169,11 @@ Checklists: [procurement.md](procurement.md)
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P10-01 | Walk through docs/verify/procurement.md (vendors, purchase orders, receiving with serials, delivery, undo, consume, markup rules, client card) | pass | Dev-server session (2026-11-02): vendors, PO lines, serial checks, receiving, delivery, undo, consume and no repricing all work. Draft POs had a number; now numbered only when ordered (owner decision, e14f9bc) |
-| P10-02 | Confirm: a client is billed when the item is delivered, not when it is received |  | Observed on the dev server (2026-11-02): no charges on receipt; charges appeared on delivery. Awaiting owner confirmation |
-| P10-03 | Confirm: markup order is line, then product rule, then category rule, then the default |  | Observed on the dev server (2026-11-02): line 5%, then product 20%, then category 15%, then default, each applied as expected. Awaiting owner confirmation |
-| P10-04 | Confirm: the default markup is 0% until you set it |  | Observed on the dev server (2026-11-02): built-in default is 0%; this install is set to 25% by the owner. Awaiting owner confirmation |
-| P10-05 | Confirm: taxability comes from the purchase order line, which defaults from the product |  | Observed on the dev server (2026-11-02): a line marked not taxable overrode a taxable product; lines without an override took the product setting. Awaiting owner confirmation |
-| P10-06 | Confirm: undo delivery is refused once the charge is invoiced, and a credit memo is the fix |  | Observed on the dev server (2026-11-02): covered by test_undo_after_the_charge_is_invoiced_is_refused (409). Awaiting owner confirmation |
+| P10-02 | Confirm: a client is billed when the item is delivered, not when it is received | fail | Owner decision (2026-11-02): bill client-linked POs when the PO is ordered, not at delivery; stock POs keep billing at delivery. Change pending |
+| P10-03 | Confirm: markup order is line, then product rule, then category rule, then the default | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): line 5%, then product 20%, then category 15%, then default, each applied as expected |
+| P10-04 | Confirm: the default markup is 0% until you set it | pass | Confirmed by owner (2026-11-02): built-in default stays 0%; this install uses 25% |
+| P10-05 | Confirm: taxability comes from the purchase order line, which defaults from the product | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): a line marked not taxable overrode a taxable product; lines without an override took the product setting |
+| P10-06 | Confirm: undo delivery is refused once the charge is invoiced, and a credit memo is the fix | pass | Confirmed by owner (2026-11-02); with billing at PO order the rule is: an uninvoiced client charge can be voided, once invoiced it is refused and a credit memo is the fix |
 
 ### Phase 11: Reporting & dashboards
 
@@ -182,19 +182,19 @@ Checklists: [reports.md](reports.md)
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P11-01 | Walk through docs/verify/reports.md (SLA, utilisation, aging, profitability, dashboards, scheduled emails) | pass | Dev-server session (2026-11-02): SLA, utilisation, aging, profitability and dashboard endpoints return 200 (query params are from, to, group). Resolving now ends the first-response clock (owner decision, e14f9bc) |
-| P11-02 | Confirm: SLA population is tickets created in the range, and pending tickets are left out of the met percentage |  | Observed on the dev server (2026-11-02): November n = 344 = tickets created; met + breached + pending + no-SLA = n. Awaiting owner confirmation |
-| P11-03 | Confirm: utilisation capacity is work hours minus holidays and time off, and logged includes internal time |  | Observed on the dev server (2026-11-02): Nov 1-7 capacity 2700 min and logged 878 min match the database; holidays, time off and internal time checked in code only. Awaiting owner confirmation |
-| P11-04 | Confirm: profitability cost is labour + goods (at delivery) + expenses, with revenue excluding tax by invoice date |  | Observed on the dev server (2026-11-02): labour $75.00 and goods $513.80 at cost matched; revenue $0 (nothing invoiced). Awaiting owner confirmation |
-| P11-05 | Confirm: labour comes from each user's cost rate, and time with no rate counts as $0 and is flagged |  | Observed on the dev server (2026-11-02): labour used the cost rate; minutes without a cost rate 0. Awaiting owner confirmation |
-| P11-06 | Confirm: weekly reports cover the previous Monday to Sunday, monthly the previous calendar month (day 1-28) |  | Observed on the dev server (2026-11-02): observed in code. Awaiting owner confirmation |
-| P11-07 | Confirm: scheduled emails go once per period, only to staff holding report:read, and failures are not retried |  | Observed on the dev server (2026-11-02): code and tests: once per period, report:read recipients only, failed run not re-run; note the outbox itself retries a queued email up to 5 times. Awaiting owner confirmation |
+| P11-02 | Confirm: SLA population is tickets created in the range, and pending tickets are left out of the met percentage | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): November n = 344 = tickets created; met + breached + pending + no-SLA = n |
+| P11-03 | Confirm: utilisation capacity is work hours minus holidays and time off, and logged includes internal time | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): Nov 1-7 capacity 2700 min and logged 878 min match the database; holidays, time off and internal time checked in code only |
+| P11-04 | Confirm: profitability cost is labour + goods (at delivery) + expenses, with revenue excluding tax by invoice date | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): labour $75.00 and goods $513.80 at cost matched; revenue $0 (nothing invoiced) |
+| P11-05 | Confirm: labour comes from each user's cost rate, and time with no rate counts as $0 and is flagged | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): labour used the cost rate; minutes without a cost rate 0 |
+| P11-06 | Confirm: weekly reports cover the previous Monday to Sunday, monthly the previous calendar month (day 1-28) | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): observed in code |
+| P11-07 | Confirm: scheduled emails go once per period, only to staff holding report:read, and failures are not retried | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): code and tests: once per period, report:read recipients only, failed run not re-run; note the outbox itself retries a queued email up to 5 times |
 
 ### Phase 12: Integration readiness
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P12-01 | Update the Entra app registration redirect URI to `<public_url>/api/v1/auth/callback`, then sign in | pass | Confirmed by owner (2026-11-02) |
-| P12-02 | Build with VITE_BRAND_NAME, VITE_BRAND_LOGO and VITE_BRAND_COLORS set and check the header and login page |  | Dev server (2026-11-02), placeholder brand: name and mark work; colours only work with the JSON single-quoted in .env (docs fixed). Live on psa.dev.local for the owner to look at; not checked visually |
+| P12-02 | Build with VITE_BRAND_NAME, VITE_BRAND_LOGO and VITE_BRAND_COLORS set and check the header and login page | pass | Owner checked placeholder branding on psa.dev.local (2026-11-02); reverted. Colours need the JSON single-quoted in .env (docs fixed) |
 | P12-03 | An API-key request creates a ticket with source `api` | pass | Dev-server session (2026-11-02): key with only ticket:write created ticket 340 with source api; other calls 403; revoked key gets 401; all audited |
 | P12-04 | An existing n8n/webhook consumer still works (outbound webhook URLs are unchanged) | | |
 
@@ -215,7 +215,7 @@ Checklists: [portal-polish.md](portal-polish.md), [portal.md](portal.md)
 |---|-------|-----------------------------|-------|
 | P14-01 | Walk through docs/verify/portal-polish.md | | |
 | P14-02 | Real-tenant check: register the multi-tenant portal app per docs/PORTAL_SSO.md and sign in from a client tenant| deferred | Deferred by owner (2026-11-02): button shows after the compose fix (b518ccd); signing in with the client test account is not working yet |
-| P14-03 | Confirm: uploads limited to 10 MB and the extension allowlist (assumed default) |  | Checked in code on the dev server (2026-11-02): 10 MB (config.py, api.ts) and the 18-extension allowlist match on server and browser; no live refusal yet. Awaiting owner confirmation |
+| P14-03 | Confirm: uploads limited to 10 MB and the extension allowlist (assumed default) | pass | Confirmed by owner (2026-11-02). Checked in code on the dev server (2026-11-02): 10 MB (config.py, api.ts) and the 18-extension allowlist match on server and browser; no live refusal yet |
 ## Other checklists
 
 These files are not tied to a single phase above. Walk through any that still apply to what you use.
