@@ -74,6 +74,7 @@ Run `/triad:build` to execute Phase 16: Front-end redesign (navigation and layou
 - 2026-11-01: phase 14 deferred cleanup: staff sign-in no longer matches on preferred_username (owner decision); sign-in token-exchange failures are logged; portal exports send X-Export-Truncated; failed exports and downloads show an error instead of saving it; uploaded files are removed when the transaction does not commit (savepoint-safe); attachment list loading state; read-only email styling
 - 2026-11-02: owner test notes: customer replies no longer get a "ticket received" ack (notice subjects carry a matchable token, outbound Message-IDs stored via Graph draft+send); Graph calendar spike runs in the worker container; NinjaOne client mapping blank screen fixed (Page shape) plus error boundaries; time zone dropdown; ticket back button, description wrap, searchable ticket-link picker
 - 2026-11-02: built-in knowledge base replaced by Hudu article suggestions on tickets (migration 0037 drops kb_articles; GET /tickets/{id}/hudu-articles)
+- 2026-11-02: runbook P07-06 fix: a rule assigning a ticket on creation no longer fires ticket.assigned rules (create_ticket emitted a second, rule-visible assigned event)
 
 ## Phase 4 Results
 (build started 2026-10-10)

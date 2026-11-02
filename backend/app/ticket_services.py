@@ -193,10 +193,13 @@ def create_ticket(
         )
     from app import events
 
+    # Read before emitting: a rule on ticket.created may assign the ticket, and that rule's own
+    # ticket.assigned event is already emitted inside the rule run (so other rules skip it).
+    created_assignee = ticket.assignee_id
     events.emit(ctx, "ticket.created", ticket)
-    if ticket.assignee_id:
+    if created_assignee:
         events.emit(
-            ctx, "ticket.assigned", ticket, changes={"assignee_id": [None, ticket.assignee_id]}
+            ctx, "ticket.assigned", ticket, changes={"assignee_id": [None, created_assignee]}
         )
     return ticket
 

@@ -318,6 +318,33 @@ def test_loop_guard_rules_do_not_trigger_rules_but_webhooks_fire(admin, tech, ow
     assert [r.rule_id for r in runs(owner, second["id"])] == [second["id"]]
 
 
+def test_rule_assigning_on_create_does_not_trigger_rules(admin, tech, owner, make_ticket):
+    """Runbook P07-06: an assign rule on ticket.created must not fire a ticket.assigned rule."""
+    add_endpoint(admin.user["id"], events=["ticket.assigned"])
+    first = mkrule(
+        admin,
+        name="assign on create",
+        trigger="ticket.created",
+        actions=[{"type": "assign", "user_id": tech.user["id"]}],
+    )
+    second = mkrule(
+        admin,
+        name="on assigned",
+        trigger="ticket.assigned",
+        actions=[{"type": "set_priority", "priority_id": pri(admin, "Low")}],
+    )
+    t = make_ticket()
+    assert [r.rule_id for r in runs(owner)] == [first["id"]]  # the second never ran
+    row = ticket_row(owner, t["id"])
+    assert row.assignee_id == tech.user["id"]
+    assert row.priority_id == t["priority_id"]
+    hooks = owner.execute(
+        text("SELECT payload FROM webhook_deliveries WHERE event_type='ticket.assigned'")
+    ).all()
+    assert len(hooks) == 1  # once, from the rule's assign; no duplicate from create_ticket
+    assert second["enabled"] is True
+
+
 # ---- idempotency ----
 def test_on_event_twice_with_the_same_event_runs_once(admin, owner, make_ticket):
     rule = mkrule(admin, trigger="ticket.status_changed", actions=[{"type": "escalate"}])
