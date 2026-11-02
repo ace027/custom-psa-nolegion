@@ -65,13 +65,13 @@ Checklists: [billing-block-hours.md](billing-block-hours.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P01-01 | Walk through docs/verify/billing-block-hours.md | | |
+| P01-01 | Walk through docs/verify/billing-block-hours.md | All checks pass | Flat fee clients are considered AYCE, so all time should attach to that flat fee agreement, but no extra time should be billed for the client. This allows for profitability to be tracked for AYCE clients |
 
 ### Phase 2: Scheduling: availability & appointments
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P02-01 | (no manual checks; covered by automated tests) | | |
+| P02-01 | (no manual checks; covered by automated tests) | No issues | |
 
 ### Phase 3: Dispatch board
 
@@ -79,20 +79,26 @@ Checklists: [dispatch-board.md](dispatch-board.md), [dispatch-spike.md](dispatch
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P03-01 | Walk through docs/verify/dispatch-board.md | | |
-| P03-02 | Walk through docs/verify/dispatch-spike.md | | |
-| P03-03 | e2e smoke.spec.ts "ticket lifecycle" fails before phase 4; confirm it is fixed or fix it | | |
+| P03-01 | Walk through docs/verify/dispatch-board.md | No issues | |
+| P03-02 | Walk through docs/verify/dispatch-spike.md | dispatch-spike test scripts did not work | Traceback (most recent call last):
+  File "/docker/custom-psa-nolegion/backend/dev/graph_calendar_spike.py", line 19, in <module>
+    from app.config import get_settings  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/docker/custom-psa-nolegion/backend/app/config.py", line 5, in <module>
+    from pydantic_settings import BaseSettings, SettingsConfigDict
+ModuleNotFoundError: No module named 'pydantic_settings' |
+| P03-03 | e2e smoke.spec.ts "ticket lifecycle" fails before phase 4; confirm it is fixed or fix it | No issues |  |
 
 ### Phase 4: Outlook push + free/busy
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P04-01 | Create the "PSA Techs" group and Exchange RBAC for Applications scope (docs/CALENDAR_SETUP.md) | | |
-| P04-02 | Run `cd backend && python dev/graph_calendar_spike.py --mailbox <tech>` (read-only) on the real tenant | | |
-| P04-03 | Run it again with `--write`, then with `--write --outside <someone outside the group>`; the outside call must be refused | | |
-| P04-04 | Turn on Outlook sync in Settings; book, move, reassign and cancel an appointment and check each tech's Outlook calendar | | |
-| P04-05 | Put a meeting in a tech's Outlook; within 5 minutes the board shows hatched busy time with the cache-age caption | | |
-| P04-06 | Force a failure (e.g. a tech outside the group); the board shows the failed badge and Retry works after fixing it | | |
+| P04-01 | Create the "PSA Techs" group and Exchange RBAC for Applications scope (docs/CALENDAR_SETUP.md) | No issues | |
+| P04-02 | Run `cd backend && python dev/graph_calendar_spike.py --mailbox <tech>` (read-only) on the real tenant | script did not work. See above for error | |
+| P04-03 | Run it again with `--write`, then with `--write --outside <someone outside the group>`; the outside call must be refused | Script did not work. Same error as P04-02 | |
+| P04-04 | Turn on Outlook sync in Settings; book, move, reassign and cancel an appointment and check each tech's Outlook calendar | This worked without any issue | |
+| P04-05 | Put a meeting in a tech's Outlook; within 5 minutes the board shows hatched busy time with the cache-age caption | No issues | |
+| P04-06 | Force a failure (e.g. a tech outside the group); the board shows the failed badge and Retry works after fixing it | No issue | |
 
 ### Phase 5: Client confirmations + on-call
 
@@ -100,7 +106,7 @@ Checklists: [client-notices-oncall.md](client-notices-oncall.md), [notifications
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P05-01 | Walk through docs/verify/client-notices-oncall.md | | |
+| P05-01 | Walk through docs/verify/client-notices-oncall.md | No issues | |
 
 ### Phase 6: RMM alerts to tickets
 
