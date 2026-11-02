@@ -2,8 +2,8 @@
 
 ## Current Position
 - **Phase**: 16 of 13 (planned)
-- **Status**: Phase 15 under review — cycle 1/2, 0 blocker(s) remaining
-- **Last Activity**: Phase 15 review cycle 1 (2026-11-02)
+- **Status**: Phase 15 review escalated — 5 unresolved finding(s) (2 blocker/critical) after 2 cycles
+- **Last Activity**: Phase 15 review (2026-11-02)
 
 ## Progress
 ```
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:build` to execute Phase 16: Front-end redesign (navigation and layout)
+Fix the unresolved findings in 15-REVIEW.md, accept the phase as is, or re-plan; then run `/triad:review --phase 15`
 
 ## Phase 1 Results
 (build started 2026-10-09)

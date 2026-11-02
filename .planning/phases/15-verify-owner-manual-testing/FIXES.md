@@ -4,10 +4,13 @@ Fixes applied by the review loop, one section per cycle. Re-review decides wheth
 
 ## Cycle 1
 
-**Date**: 2026-11-01
+**Date**: 2026-11-02
 **Checks**: 9/9 passed
-**Files changed**: none
+**Files changed**: `docs/verify/RUNBOOK.md`
 
 | Finding | Severity | File | Agent | Status | Notes |
 |---------|----------|------|-------|--------|-------|
-| F-001 | critical | `docs/verify/RUNBOOK.md` | engineering-senior-developer | not fixed | F-001 needs the owner to run the checks against a real tenant and record the results. A code or doc edit by me can't satisfy it. |
+| F-001 | critical | `docs/verify/RUNBOOK.md` | engineering-senior-developer | not fixed | partial |
+| F-002 | major | `docs/verify/RUNBOOK.md` | engineering-senior-developer | not fixed | partial |
+| F-003 | major | `docs/verify/RUNBOOK.md` | engineering-senior-developer | not fixed | partial |
+| F-004 | major | `docs/verify/RUNBOOK.md` | engineering-senior-developer | not fixed | partial |
