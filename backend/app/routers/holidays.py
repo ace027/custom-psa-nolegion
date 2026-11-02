@@ -35,7 +35,7 @@ def list_holidays(
     responses=ERR,
     summary="Add a closed day or a shortened day",
 )
-def create_holiday(body: HolidayIn, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def create_holiday(body: HolidayIn, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.create_holiday(ctx, body.model_dump())
 
 
@@ -45,7 +45,7 @@ def create_holiday(body: HolidayIn, ctx: Ctx = require(P.CONFIG_MANAGE)):
     responses=ERR,
     summary="Change a holiday",
 )
-def update_holiday(holiday_id: int, body: HolidayIn, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def update_holiday(holiday_id: int, body: HolidayIn, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.update_holiday(ctx, holiday_id, body.model_dump())
 
 
@@ -55,5 +55,5 @@ def update_holiday(holiday_id: int, body: HolidayIn, ctx: Ctx = require(P.CONFIG
     responses=ERR,
     summary="Remove a holiday (calendar data only; audited)",
 )
-def delete_holiday(holiday_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def delete_holiday(holiday_id: int, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     svc.delete_holiday(ctx, holiday_id)

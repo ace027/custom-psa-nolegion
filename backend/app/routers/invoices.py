@@ -132,7 +132,7 @@ def list_invoices(
     ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    ctx: Ctx = require(P.BILLING_READ),
+    ctx: Ctx = require(P.INVOICE_READ),
 ):
     items, total = brepo.list_invoices(
         ctx.db,
@@ -166,7 +166,7 @@ def create_invoice(body: InvoiceIn, ctx: Ctx = require(P.BILLING_WRITE)):
     responses=ERR,
     summary="Get an invoice with its lines",
 )
-def get_invoice(invoice_id: int, ctx: Ctx = require(P.BILLING_READ)):
+def get_invoice(invoice_id: int, ctx: Ctx = require(P.INVOICE_READ)):
     return _detail(ctx, _invoice_or_404(ctx, invoice_id))
 
 
@@ -253,7 +253,7 @@ def void_invoice(
     responses=ERR,
     summary="Download the invoice as a PDF (drafts are watermarked)",
 )
-def invoice_pdf(invoice_id: int, ctx: Ctx = require(P.BILLING_READ)):
+def invoice_pdf(invoice_id: int, ctx: Ctx = require(P.INVOICE_READ)):
     inv = _invoice_or_404(ctx, invoice_id)
     lines = brepo.invoice_lines(ctx.db, ctx.scope, inv.id)
     pdf = render_invoice_pdf(inv, lines, repo.get_settings_row(ctx.db))
@@ -270,7 +270,7 @@ def invoice_pdf(invoice_id: int, ctx: Ctx = require(P.BILLING_READ)):
 
 # ---- billing runs ----
 @router.get("/billing-runs", response_model=list[RunOut], summary="List monthly billing runs")
-def list_runs(ctx: Ctx = require(P.BILLING_READ)):
+def list_runs(ctx: Ctx = require(P.INVOICE_READ)):
     return [_run_out(ctx, r) for r in brepo.list_runs(ctx.db)]
 
 
@@ -291,7 +291,7 @@ def create_run(body: RunIn, ctx: Ctx = require(P.BILLING_WRITE)):
     responses=ERR,
     summary="A billing run with its invoices and warnings",
 )
-def get_run(run_id: int, ctx: Ctx = require(P.BILLING_READ)):
+def get_run(run_id: int, ctx: Ctx = require(P.INVOICE_READ)):
     run = brepo.get_run(ctx.db, run_id)
     if run is None:
         raise HTTPException(404, "Billing run not found")

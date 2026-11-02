@@ -72,7 +72,7 @@ def list_payments(
     status: str | None = Query(None, pattern="^(active|void)$"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    ctx: Ctx = require(P.BILLING_READ),
+    ctx: Ctx = require(P.INVOICE_READ),
 ):
     items, total = prepo.list_payments(
         ctx.db, ctx.scope, org_id=organization_id, status=status, limit=limit, offset=offset
@@ -97,7 +97,7 @@ def create_payment(body: PaymentIn, ctx: Ctx = require(P.PAYMENT_WRITE)):
     responses=ERR,
     summary="A payment with its applications",
 )
-def get_payment(payment_id: int, ctx: Ctx = require(P.BILLING_READ)):
+def get_payment(payment_id: int, ctx: Ctx = require(P.INVOICE_READ)):
     payment = prepo.get_payment(ctx.db, ctx.scope, payment_id)
     if payment is None:
         raise HTTPException(404, "Payment not found")
@@ -182,5 +182,5 @@ def void_write_off(write_off_id: int, body: ReasonIn, ctx: Ctx = require(P.BILLI
     response_model=ReceivablesOut,
     summary="Open balances by client, aged by days past due, plus unapplied credit",
 )
-def receivables(ctx: Ctx = require(P.BILLING_READ)):
+def receivables(ctx: Ctx = require(P.INVOICE_READ)):
     return svc.receivables(ctx)

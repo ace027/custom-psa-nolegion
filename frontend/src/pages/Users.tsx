@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ROLES, Role, User, api, getCostRate, putCostRate } from "../api";
+import { ROLES, ROLE_HELP, Role, User, api, getCostRate, putCostRate } from "../api";
 import { can, useMe } from "../auth";
 import { money, parseMoney } from "../money";
 import { Button, ErrorMsg, Field, inputCls } from "../ui";
@@ -44,7 +44,7 @@ export default function Users() {
               <td>
                 {admin && u.id !== me?.id ? (
                   <select className={inputCls} aria-label={`Role for ${u.display_name}`} value={u.role} onChange={(e) => patch.mutate({ id: u.id, role: e.target.value as Role })}>
-                    {ROLES.map((r) => <option key={r}>{r}</option>)}
+                    {ROLES.map((r) => <option key={r} title={ROLE_HELP[r]}>{r}</option>)}
                   </select>
                 ) : u.role}
               </td>
@@ -73,10 +73,11 @@ export default function Users() {
           <Field label="Display name"><input className={inputCls} required value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} /></Field>
           <Field label="Role">
             <select className={inputCls} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
-              {ROLES.map((r) => <option key={r}>{r}</option>)}
+              {ROLES.map((r) => <option key={r} title={ROLE_HELP[r]}>{r}</option>)}
             </select>
           </Field>
           <Button type="submit">Pre-provision user</Button>
+          <p className="w-full text-sm text-slate-600">{form.role}: {ROLE_HELP[form.role]}</p>
         </form>
       )}
     </div>

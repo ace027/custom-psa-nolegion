@@ -80,7 +80,7 @@ def _org_billing(ctx: Ctx, org_id: int) -> OrgBillingOut:
     responses=ERR,
     summary="An organization's payment terms, tax rate and hourly-rate overrides",
 )
-def get_org_billing(org_id: int, ctx: Ctx = require(P.BILLING_READ)):
+def get_org_billing(org_id: int, ctx: Ctx = require(P.INVOICE_READ)):
     return _org_billing(ctx, org_id)
 
 

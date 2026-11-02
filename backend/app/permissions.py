@@ -9,7 +9,10 @@ TICKET_READ = "ticket:read"  # tickets, notes, time entries, queues/categories/p
 TICKET_WRITE = "ticket:write"  # tickets and notes
 TIME_WRITE = "time:write"
 TIMESHEET_APPROVE = "timesheet:approve"  # approve / return timesheets, payroll export (admins)
-BILLING_READ = "billing:read"  # agreements, products, rates, charges, invoices, runs
+BILLING_READ = "billing:read"  # the catalog: agreements, products, rates, ticket charges
+# invoices, runs, payments, statements, reminders/notices, credit memos, write-offs, late fees,
+# receivables (finance; not for techs or read-only)
+INVOICE_READ = "invoice:read"
 BILLING_WRITE = "billing:write"  # edit those, and DRAFT invoices
 BILLING_FINALIZE = "billing:finalize"  # finalize / void invoices, review and finalize runs
 PAYMENT_WRITE = "payment:write"  # record payments, apply them to invoices, unapply
@@ -22,7 +25,9 @@ QUOTE_READ = "quote:read"  # surveys, quotes, the rate card
 QUOTE_WRITE = "quote:write"  # run surveys, build / adjust / send quotes (techs)
 QUOTE_MANAGE = "quote:manage"  # approve adjusted prices, record accept/decline, edit the rate card
 INTEGRATION_MANAGE = "integration:manage"  # vendor connections, credentials, client mapping
-CONFIG_MANAGE = "config:manage"  # queues, categories, priorities, work types, settings, mail status
+CONFIG_MANAGE = "config:manage"  # general settings: mail, billing, portal, security, CRM stages
+# service settings: queues, categories, priorities (SLA), statuses, work types, holidays
+SERVICE_CONFIGURE = "service:configure"
 SCHEDULE_READ = "schedule:read"  # schedules, appointments, availability, time off
 # book/move/cancel any tech's appointments; own working hours and time-off requests
 SCHEDULE_WRITE = "schedule:write"
@@ -39,8 +44,9 @@ PROCUREMENT_WRITE = "procurement:write"  # edit those, receive stock, deliver to
 # API keys can never carry these, whatever the owner's role
 KEY_FORBIDDEN = frozenset({USER_MANAGE, APIKEY_MANAGE, PORTAL_MANAGE})
 
-ROLES = ("admin", "tech", "billing", "read_only")
+ROLES = ("admin", "manager", "tech", "billing", "read_only")
 
+# what every staff role may read; finance (invoice:read) and procurement are granted per role
 _READ = {
     ORG_READ,
     USER_READ,
@@ -49,13 +55,26 @@ _READ = {
     QUOTE_READ,
     SCHEDULE_READ,
     CRM_READ,
-    PROCUREMENT_READ,
+}
+
+_TECH = _READ | {
+    ORG_WRITE,
+    TICKET_WRITE,
+    TIME_WRITE,
+    CHARGE_WRITE,
+    QUOTE_WRITE,
+    SCHEDULE_WRITE,
+    PROJECT_WRITE,
+    CRM_WRITE,
 }
 
 MATRIX: dict[str, frozenset[str]] = {
     "admin": frozenset(
         _READ
         | {
+            INVOICE_READ,
+            PROCUREMENT_READ,
+            SERVICE_CONFIGURE,
             ORG_WRITE,
             USER_MANAGE,
             AUDIT_READ,
@@ -77,23 +96,25 @@ MATRIX: dict[str, frozenset[str]] = {
         }
         | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE, PAYMENT_WRITE, REPORT_READ}
     ),
-    "tech": frozenset(
-        _READ
+    "manager": frozenset(
+        # service manager: tech work plus approvals, reports, audit, read-only invoices and
+        # service settings; no billing writes, payments, procurement, admin or general settings
+        _TECH
         | {
-            ORG_WRITE,
-            TICKET_WRITE,
-            TIME_WRITE,
-            CHARGE_WRITE,
-            QUOTE_WRITE,
-            SCHEDULE_WRITE,
-            PROJECT_WRITE,
-            CRM_WRITE,
-            PROCUREMENT_WRITE,
+            TIMESHEET_APPROVE,
+            TIMEOFF_APPROVE,
+            REPORT_READ,
+            AUDIT_READ,
+            INVOICE_READ,
+            SERVICE_CONFIGURE,
         }
     ),
+    "tech": frozenset(_TECH),
     "billing": frozenset(
         _READ
         | {
+            INVOICE_READ,
+            PROCUREMENT_READ,
             BILLING_WRITE,
             BILLING_FINALIZE,
             CHARGE_WRITE,

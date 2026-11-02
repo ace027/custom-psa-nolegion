@@ -40,7 +40,7 @@ def list_statuses(include_archived: bool = False, ctx: Ctx = require(P.TICKET_RE
     responses=ERR,
     summary="Add a status that behaves like one of the five built-in states",
 )
-def create_status(body: TicketStatusIn, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def create_status(body: TicketStatusIn, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.create_ticket_status(ctx, body.model_dump())
 
 
@@ -50,7 +50,7 @@ def create_status(body: TicketStatusIn, ctx: Ctx = require(P.CONFIG_MANAGE)):
     responses=ERR,
     summary="Rename or reorder a status (its behaviour cannot change)",
 )
-def update_status(status_id: int, body: TicketStatusPatch, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def update_status(status_id: int, body: TicketStatusPatch, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.update_ticket_status(ctx, status_id, body.model_dump(exclude_unset=True))
 
 
@@ -60,7 +60,7 @@ def update_status(status_id: int, body: TicketStatusPatch, ctx: Ctx = require(P.
     responses=ERR,
     summary="Hide a status from new choices (tickets that have it keep it)",
 )
-def archive_status(status_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def archive_status(status_id: int, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.set_ticket_status_archived(ctx, status_id, True)
 
 
@@ -70,7 +70,7 @@ def archive_status(status_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
     responses=ERR,
     summary="Bring an archived status back",
 )
-def unarchive_status(status_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def unarchive_status(status_id: int, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.set_ticket_status_archived(ctx, status_id, False)
 
 
@@ -100,7 +100,7 @@ def list_fields(type_id: int, include_archived: bool = False, ctx: Ctx = require
     responses=ERR,
     summary="Add a custom field to a ticket type",
 )
-def create_field(type_id: int, body: CustomFieldIn, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def create_field(type_id: int, body: CustomFieldIn, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.create_custom_field(ctx, type_id, body.model_dump())
 
 
@@ -110,7 +110,7 @@ def create_field(type_id: int, body: CustomFieldIn, ctx: Ctx = require(P.CONFIG_
     responses=ERR,
     summary="Rename, reorder or change options/required/visibility (type cannot change)",
 )
-def update_field(field_id: int, body: CustomFieldPatch, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def update_field(field_id: int, body: CustomFieldPatch, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.update_custom_field(ctx, field_id, body.model_dump(exclude_unset=True))
 
 
@@ -120,7 +120,7 @@ def update_field(field_id: int, body: CustomFieldPatch, ctx: Ctx = require(P.CON
     responses=ERR,
     summary="Hide a custom field (tickets keep their stored values)",
 )
-def archive_field(field_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def archive_field(field_id: int, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.set_custom_field_archived(ctx, field_id, True)
 
 
@@ -130,7 +130,7 @@ def archive_field(field_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
     responses=ERR,
     summary="Bring an archived custom field back",
 )
-def unarchive_field(field_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def unarchive_field(field_id: int, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.set_custom_field_archived(ctx, field_id, False)
 
 

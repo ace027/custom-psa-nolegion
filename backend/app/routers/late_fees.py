@@ -22,7 +22,7 @@ ERR = {409: {"model": ErrorOut}}
     response_model=LateFeePreviewOut,
     summary="Invoices that qualify for a late fee under the Settings rule (changes nothing)",
 )
-def preview(organization_id: int | None = None, ctx: Ctx = require(P.BILLING_READ)):
+def preview(organization_id: int | None = None, ctx: Ctx = require(P.INVOICE_READ)):
     rule, configured, rows = svc.candidates(ctx, organization_id)
     return LateFeePreviewOut(configured=configured, **rule, rows=[LateFeeRow(**r) for r in rows])
 
@@ -43,5 +43,5 @@ def apply(body: LateFeeApplyIn, ctx: Ctx = require(P.BILLING_FINALIZE)):
     response_model=list[LateFeeAppliedOut],
     summary="Late fees already applied, newest first",
 )
-def applied(organization_id: int | None = None, ctx: Ctx = require(P.BILLING_READ)):
+def applied(organization_id: int | None = None, ctx: Ctx = require(P.INVOICE_READ)):
     return svc.applied(ctx, organization_id)

@@ -5,8 +5,8 @@ import { can, useMe } from "../../auth";
 import { money } from "../../money";
 import { Button, ErrorMsg, fmt, inputCls } from "../../ui";
 
-export function usePendingNotices() {
-  return useQuery({ queryKey: ["notices", "pending"], queryFn: () => api<Page<Notice>>("/billing-notices?status=pending&limit=200"), refetchInterval: 60_000 });
+export function usePendingNotices(enabled = true) {
+  return useQuery({ queryKey: ["notices", "pending"], queryFn: () => api<Page<Notice>>("/billing-notices?status=pending&limit=200"), refetchInterval: 60_000, enabled });
 }
 
 export default function Reminders() {

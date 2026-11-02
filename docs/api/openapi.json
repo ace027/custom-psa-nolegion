@@ -19324,6 +19324,7 @@
           "role": {
             "enum": [
               "admin",
+              "manager",
               "tech",
               "billing",
               "read_only"
@@ -19428,6 +19429,7 @@
               {
                 "enum": [
                   "admin",
+                  "manager",
                   "tech",
                   "billing",
                   "read_only"
