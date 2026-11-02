@@ -247,7 +247,7 @@
 | 13 | 2 | 2 | Complete |
 | 14 | 3 | 3 | Complete |
 | 15 | 1 | 1 | Shipped |
-| 16 | 4 | 2 | Partial |
+| 16 | 4 | 4 | Executed |
 | 17 | 0 | 0 | Pending |
 | 18 | 0 | 0 | Pending |
 | 19 | 0 | 0 | Pending |
