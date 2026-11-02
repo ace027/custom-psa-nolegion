@@ -1968,6 +1968,10 @@ class PurchaseOrderLine(TimestampMixin, Base):
     billable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     markup_bp: Mapped[int | None] = mapped_column(Integer)
+    # set when a client PO is ordered: the line was billed then, so delivery adds no charge
+    product_charge_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_charges.id"), unique=True
+    )
 
 
 class InventoryItem(TimestampMixin, Base):

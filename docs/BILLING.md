@@ -231,9 +231,11 @@ never runs a client-supplied name as a formula.
 Time entries of type `automation` (logged by integrations, never billable) are never billable, never invoiced and never drawn from block hours. Billing runs, block drawdown, project T&M billing and the unbilled report select labour entries only. Automation minutes are shown separately in the utilisation report (owner decision 2026-10-30).
 
 ## Procurement charges
-Hardware and other goods you buy for a client are tracked in Procurement (see `docs/PROCUREMENT.md`). When a **billable** inventory item is delivered to a client it becomes one product charge at **cost plus markup** (line markup, then product rule, then category rule, then the default markup). That charge is picked up like any other and bills on the client's **next run**.
+Hardware and other goods you buy for a client are tracked in Procurement (see `docs/PROCUREMENT.md`). Billable goods become product charges at **cost plus markup** (line markup, then product rule, then category rule, then the default markup), picked up like any other charge on the client's **next run**. When the charge is made (owner decision 2026-11-02):
+- A purchase order **for a client** is billed when it is **ordered**: one charge per billable line for the whole quantity. Delivering its items adds no further charge. **Cancelling** the order voids those charges while none is invoiced; once one is invoiced, cancel is refused ("Already invoiced") and a credit memo is the fix. Its stock cannot be marked used internally.
+- **Stock** bought with no client named is billed per item when it is **delivered**.
 - Tax follows the taxable flag on the purchase order line, which defaults from the product.
-- **Undo delivery** voids the charge while it is not yet invoiced.
+- **Undo delivery** of stock voids its charge while it is not yet invoiced (an item from a client order has no delivery charge, so the order charge stands).
 - Once the charge is on an invoice, undo is refused ("Already invoiced"); correct it with a credit memo instead.
 - Items marked "used internally" and non-billable lines never create a charge.
 

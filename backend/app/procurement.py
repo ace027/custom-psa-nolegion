@@ -1,9 +1,15 @@
 """Procurement: vendors, purchase orders, receiving, inventory, delivery to clients and markup.
 
-Money rule: a delivered billable item becomes ONE ProductCharge at cost plus the resolved markup
+Money rule: a billable line becomes ProductCharges at cost plus the resolved markup
 (money.marked_up). Invoice amounts and tax are never computed here; the billing run does that from
-the charge. Hard deletes are used only for draft PO lines and markup rules; everything else
-archives or changes status. Undoing a delivery voids the charge and is refused once invoiced."""
+the charge. When the charge is made (owner decision, runbook P10-02):
+- a PO linked to a client is billed when it is ORDERED: one charge per billable line for the whole
+  ordered quantity, linked from the line; its delivered items add no further charge. Cancelling the
+  order voids those charges and is refused once any is invoiced (a credit memo is the fix).
+- stock (no client) and lines ordered before that rule are billed per item when DELIVERED. Undoing
+  such a delivery voids its charge and is refused once invoiced.
+Hard deletes are used only for draft PO lines and markup rules; everything else archives or changes
+status."""
 
 from datetime import date
 from decimal import Decimal
@@ -310,6 +316,42 @@ def delete_line(ctx: Ctx, po_id: int, line_id: int) -> None:
     )
 
 
+def _charge(
+    ctx: Ctx,
+    *,
+    organization_id: int,
+    product_id: int | None,
+    description: str,
+    quantity: int,
+    unit_cost_cents: int,
+    markup_bp: int,
+    taxable: bool,
+    on: date,
+) -> ProductCharge:
+    charge = ProductCharge(
+        organization_id=organization_id,
+        product_id=product_id,
+        ticket_id=None,
+        description=description,
+        quantity=Decimal(quantity),
+        unit_price_cents=marked_up(unit_cost_cents, markup_bp),
+        taxable=taxable,
+        charged_on=on,
+        created_by=ctx.user.id if ctx.user else None,
+    )
+    ctx.db.add(charge)
+    ctx.db.flush()
+    audit.record(
+        ctx.db,
+        ctx.user,
+        "charge.create",
+        charge,
+        after=audit.snapshot(charge),
+        organization_id=organization_id,
+    )
+    return charge
+
+
 def order(ctx: Ctx, po_id: int) -> PurchaseOrder:
     po = get_po(ctx, po_id, lock=True)
     _require_draft(po)
@@ -321,6 +363,21 @@ def order(ctx: Ctx, po_id: int) -> PurchaseOrder:
         po.number = f"PO-{po.id}"
     if po.ordered_on is None:
         po.ordered_on = today(ctx)
+    if po.organization_id is not None:  # a client order is billed now, not at delivery
+        for line in po.lines:
+            if not line.billable:
+                continue
+            line.product_charge_id = _charge(
+                ctx,
+                organization_id=po.organization_id,
+                product_id=line.product_id,
+                description=f"{line.description} ({po.number})",
+                quantity=line.quantity,
+                unit_cost_cents=line.unit_cost_cents,
+                markup_bp=resolve_markup(ctx, line),
+                taxable=line.taxable,
+                on=today(ctx),
+            ).id
     ctx.db.flush()
     ctx.db.refresh(po)
     audit.record(
@@ -341,10 +398,34 @@ def cancel(ctx: Ctx, po_id: int) -> PurchaseOrder:
         raise Conflict(f"A {po.status} purchase order cannot be cancelled")
     if any(ln.received_quantity > 0 for ln in po.lines):
         raise Conflict("Goods have been received against this order; it cannot be cancelled")
+    charge_ids = [ln.product_charge_id for ln in po.lines if ln.product_charge_id is not None]
+    charges = (
+        list(
+            ctx.db.execute(
+                select(ProductCharge).where(ProductCharge.id.in_(charge_ids)).with_for_update()
+            ).scalars()
+        )
+        if charge_ids
+        else []
+    )
+    if any(c.invoice_line_id is not None for c in charges):
+        raise Conflict("Already invoiced: issue a credit memo instead")
     before = audit.snapshot(po)
     po.status = "cancelled"
+    voided = [c for c in charges if c.voided_at is None]
+    for charge in voided:
+        charge.voided_at = now()
     ctx.db.flush()
     ctx.db.refresh(po)
+    for charge in voided:
+        audit.record(
+            ctx.db,
+            ctx.user,
+            "charge.void",
+            charge,
+            after=audit.snapshot(charge),
+            organization_id=charge.organization_id,
+        )
     audit.record(
         ctx.db,
         ctx.user,
@@ -631,7 +712,8 @@ def deliver(
         if item.purchase_order_line_id is not None
         else None
     )
-    if line is None or line.billable:
+    # a line billed when its client PO was ordered adds nothing here
+    if line is None or (line.billable and line.product_charge_id is None):
         product = ctx.db.get(Product, item.product_id) if item.product_id is not None else None
         markup_bp = (
             resolve_markup(ctx, line) if line is not None else _resolve(ctx, None, item.product_id)
@@ -643,29 +725,19 @@ def deliver(
         description = item.description
         if item.serial_number:
             description += f" (S/N {item.serial_number})"
-        charge = ProductCharge(
+        charge = _charge(
+            ctx,
             organization_id=organization_id,
             product_id=item.product_id,
-            ticket_id=None,
             description=description,
-            quantity=Decimal(qty),
-            unit_price_cents=marked_up(item.unit_cost_cents, markup_bp),
+            quantity=qty,
+            unit_cost_cents=item.unit_cost_cents,
+            markup_bp=markup_bp,
             taxable=taxable,
-            charged_on=on,
-            created_by=ctx.user.id if ctx.user else None,
+            on=on,
         )
-        ctx.db.add(charge)
-        ctx.db.flush()
         item.markup_bp = markup_bp
         item.product_charge_id = charge.id
-        audit.record(
-            ctx.db,
-            ctx.user,
-            "charge.create",
-            charge,
-            after=audit.snapshot(charge),
-            organization_id=organization_id,
-        )
     _flush(ctx, "Could not deliver this item")
     ctx.db.refresh(item)
     audit.record(
@@ -728,6 +800,13 @@ def consume(ctx: Ctx, item_id: int) -> InventoryItem:
     item = get_item(ctx, item_id, lock=True)
     if item.status != "in_stock":
         raise Conflict("Only in-stock items can be marked as consumed")
+    line = (
+        ctx.db.get(PurchaseOrderLine, item.purchase_order_line_id)
+        if item.purchase_order_line_id is not None
+        else None
+    )
+    if line is not None and line.product_charge_id is not None:
+        raise Conflict("This item was billed to the client when ordered: deliver it to them")
     before = audit.snapshot(item)
     item.status = "consumed"
     ctx.db.flush()

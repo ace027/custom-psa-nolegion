@@ -25,7 +25,10 @@ def test_every_route_responds(admin, tech, reader, vendor, org_ctx):
     assert reader.get(f"{P}/markup-rules").status_code == 200
     assert reader.get(f"{P}/inventory").status_code == 200
     assert reader.get(f"{P}/purchase-orders").status_code == 200
-    po = make_po(admin, vendor, [line(serialised=True)], organization_id=org_ctx["org"])
+    # not billable: a billed client line cannot be consumed
+    po = make_po(
+        admin, vendor, [line(serialised=True, billable=False)], organization_id=org_ctx["org"]
+    )
     url = f"{P}/purchase-orders/{po['id']}"
     assert reader.get(url).status_code == 200
     assert admin.patch(url, json={"notes": "n"}).status_code == 200

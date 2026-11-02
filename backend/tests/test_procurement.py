@@ -446,7 +446,7 @@ def test_consume_is_internal_and_never_billed(admin, vendor, org_ctx, owner):
 
 # ---- undoing a delivery -----------------------------------------------------------------------
 def test_undo_before_invoicing_voids_the_charge_and_restores_stock(admin, vendor, org_ctx, owner):
-    po = ordered_po(admin, vendor, [line(serialised=True)], organization_id=org_ctx["org"])
+    po = ordered_po(admin, vendor, [line(serialised=True)])  # stock: billed at delivery
     [item] = receive(admin, po, serials=["SN-undo-1"]).json()
     out = deliver(admin, item, org_ctx["org"], create_asset=True).json()
     asset_id = out["asset_id"]
@@ -456,7 +456,7 @@ def test_undo_before_invoicing_voids_the_charge_and_restores_stock(admin, vendor
     assert back["status"] == "in_stock" and back["asset_id"] is None
     assert back["product_charge_id"] is None and back["markup_bp"] is None
     assert back["delivered_on"] is None
-    assert back["organization_id"] == org_ctx["org"]  # the PO's reservation is restored
+    assert back["organization_id"] is None  # back to unreserved stock
     [c] = charges(owner)
     assert c.voided_at is not None
     assert (
@@ -483,6 +483,73 @@ def test_undo_after_the_charge_is_invoiced_is_refused(
     r = admin.post(f"{P}/inventory/{item['id']}/undo-delivery")
     assert r.status_code == 409 and "Already invoiced" in r.json()["detail"]
     assert admin.get(f"{P}/inventory/{item['id']}").json()["status"] == "delivered"
+
+
+# ---- client POs are billed when ordered (owner decision, runbook P10-02) ----------------------
+def test_client_po_is_billed_when_ordered_and_delivery_adds_nothing(admin, vendor, org_ctx, owner):
+    lines = [line(quantity=2, markup_bp=1500), line(description="Cable", billable=False)]
+    po = ordered_po(admin, vendor, lines, organization_id=org_ctx["org"])
+    [c] = charges(owner)  # one charge for the billable line, none for the other
+    assert (float(c.quantity), c.unit_price_cents, c.taxable) == (2, 14197, True)
+    assert c.voided_at is None and po["number"] in c.description
+    items = receive(admin, po, quantity=2).json()
+    out = deliver(admin, items[0], org_ctx["org"], quantity=1)
+    assert out.status_code == 200, out.text
+    assert out.json()["product_charge_id"] is None
+    assert len(charges(owner)) == 1  # delivery made no second charge
+    assert admin.post(f"{P}/inventory/{out.json()['id']}/undo-delivery").status_code == 200
+    assert charges(owner)[0].voided_at is None  # the order charge stands
+
+
+def test_stock_po_is_not_billed_when_ordered(admin, vendor, owner):
+    ordered_po(admin, vendor, [line()])
+    assert charges(owner) == []
+
+
+def test_billed_client_stock_cannot_be_consumed(admin, vendor, org_ctx):
+    po = ordered_po(admin, vendor, [line()], organization_id=org_ctx["org"])
+    [item] = receive(admin, po).json()
+    r = admin.post(f"{P}/inventory/{item['id']}/consume")
+    assert r.status_code == 409 and "billed to the client" in r.json()["detail"]
+
+
+def test_cancelling_a_client_po_voids_its_order_charges(admin, vendor, org_ctx, owner):
+    po = ordered_po(
+        admin, vendor, [line(), line(description="Dock")], organization_id=org_ctx["org"]
+    )
+    assert admin.post(f"{P}/purchase-orders/{po['id']}/cancel").status_code == 200
+    assert [c.voided_at is not None for c in charges(owner)] == [True, True]
+    assert audit_actions(owner).count("charge.void") == 2
+
+
+def test_cancelling_is_refused_once_an_order_charge_is_invoiced(
+    admin, biller, vendor, org_ctx, company, owner
+):
+    po = ordered_po(admin, vendor, [line()], organization_id=org_ctx["org"])
+    run = biller.post("/api/v1/billing-runs", json={"period": biz_today().strftime("%Y-%m")})
+    assert run.status_code == 201, run.text
+    assert charges(owner)[0].invoice_line_id is not None
+    r = admin.post(f"{P}/purchase-orders/{po['id']}/cancel")
+    assert r.status_code == 409 and "Already invoiced" in r.json()["detail"]
+    assert admin.get(f"{P}/purchase-orders/{po['id']}").json()["status"] == "ordered"
+    assert charges(owner)[0].voided_at is None
+
+
+def test_profitability_counts_order_billed_goods_once_at_delivery(admin, biller, vendor, org_ctx):
+    p = product(admin)  # cost 12,345: would be counted again if the order charge counted too
+    po = ordered_po(
+        admin, vendor, [line(quantity=2, product_id=p["id"])], organization_id=org_ctx["org"]
+    )
+    params = {"from": str(biz_today()), "to": str(biz_today())}
+
+    def goods():
+        rows = biller.get("/api/v1/reports/profitability", params=params).json()["rows"]
+        return sum(r["goods_cost_cents"] for r in rows if r["organization_id"] == org_ctx["org"])
+
+    assert goods() == 0  # ordered, not delivered: no goods cost yet
+    [item] = receive(admin, po, quantity=2).json()
+    assert deliver(admin, item, org_ctx["org"], quantity=1).status_code == 200
+    assert goods() == 12345  # the one delivered unit, at cost
 
 
 def test_undo_needs_a_delivered_item(admin, vendor):

@@ -31,7 +31,8 @@ Needs: an admin login, a read-only login, a client, a catalog product with a cos
 - [ ] Consume an in-stock unit: confirm, then it shows "Used internally" and is never billed.
 
 ## Rules to confirm
-- [ ] Billing happens on delivery, not on receipt.
+- [ ] A PO for a client is billed when ordered (one charge per billable line); receiving and delivering its items add no charge. Stock with no client is billed on delivery, not on receipt.
+- [ ] Cancelling an ordered client PO voids its charges; once a charge is invoiced, cancel says "Already invoiced".
 - [ ] Markup order: set a rule on the product (20) and a markup on a PO line (5); the line value wins, then the product rule over the category rule.
 - [ ] Changing a rule afterwards does not reprice an item already delivered.
 

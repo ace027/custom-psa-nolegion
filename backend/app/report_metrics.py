@@ -80,6 +80,7 @@ from app.models import (
     Priority,
     Product,
     ProductCharge,
+    PurchaseOrderLine,
     Ticket,
     TimeEntry,
     User,
@@ -461,6 +462,10 @@ def profitability(ctx: Ctx, start: date | None, end: date | None) -> dict:
             ProductCharge.charged_on <= end,
             ~select(InventoryItem.id)
             .where(InventoryItem.product_charge_id == ProductCharge.id)
+            .exists(),
+            # billed at PO order: its goods cost is counted per item at delivery above
+            ~select(PurchaseOrderLine.id)
+            .where(PurchaseOrderLine.product_charge_id == ProductCharge.id)
             .exists(),
         )
         .group_by(ProductCharge.organization_id, ProductCharge.quantity, Product.cost_cents),
