@@ -37,7 +37,7 @@ Load seed data: `cd backend && alembic upgrade head && python -m app.seed` (the 
 - [x] `kb:write` is limited to admin and tech (assumed default, Phase 13)
 - [x] Portal uploads are limited to 10 MB and the extension allowlist (assumed default, Phase 14)
 - [x] Update the staff Entra redirect URI to `<public_url>/api/v1/auth/callback`; the API has no `/api` alias (Phase 12, STATE.md decisions)
-- [x] Block-hour unused hours expire at month end with no rollover (STATE.md decisions). Make this configurable. Deferred by owner to Phase 17 (2026-11-02), where per-agreement rollover is a success criterion.
+- [ ] (deferred) Block-hour unused hours expire at month end with no rollover (STATE.md decisions). Make this configurable. Deferred by owner to Phase 17 (2026-11-02), where per-agreement rollover is a success criterion.
 - [x] One tax rate per client (STATE.md decisions)
 - [x] No payment processor; portal payments stay manual (STATE.md decisions)
 - [x] Default markup stays 0% until you set it (Phase 10)
@@ -52,7 +52,7 @@ docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox tech
 docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox tech@example.com --write --outside other@example.com   # RBAC boundary check
 ```
 
-Per VERIFY.md Phase 4, the third run is `--write --outside <someone outside the group>`; the outside call must be refused.
+These container commands replace the host command `cd backend && python dev/graph_calendar_spike.py` in VERIFY.md Phase 4, which fails on the host. Per VERIFY.md Phase 4, the third run is `--write --outside <someone outside the group>`; the outside call must be refused.
 
 What a pass looks like: every line printed starts with `PASS` and the exit code is 0 (any `FAIL` gives exit code 1). Expected steps: `getSchedule read`; with `--write`: `create_event`, `idempotent create`, `update_event`, `delete_event`, `delete again tolerated (404)`; with `--outside`: `RBAC boundary` PASS with "denied with <status>". A `WARN` on `RBAC boundary` means the outside mailbox was readable, so the scope is not enforced; treat that as a fail. Paste the final PASS/FAIL block into the Notes of P04-02 and P04-03.
 
@@ -195,7 +195,7 @@ Checklists: [reports.md](reports.md)
 
 ### Phase 13: Knowledge base
 
-Checklists: [kb.md](kb.md)
+Checklists: none (knowledge base removed)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
@@ -211,6 +211,7 @@ Checklists: [portal-polish.md](portal-polish.md), [portal.md](portal.md)
 | P14-01 | Walk through docs/verify/portal-polish.md | deferred (owner-accepted): not walked yet, needs a portal contact with the owner's email; to be walked with P14-02 | Deferred by owner (2026-11-02). Emailed sign-in link confirmed working by the owner; every checklist line is covered by backend tests (dev-server code check, 2026-11-02) |
 | P14-02 | Real-tenant check: register the multi-tenant portal app per docs/PORTAL_SSO.md and sign in from a client tenant| deferred (owner-accepted): client test-account sign-in not working yet | Deferred by owner (2026-11-02): button shows after the compose fix (b518ccd); signing in with the client test account is not working yet |
 | P14-03 | Confirm: uploads limited to 10 MB and the extension allowlist (assumed default) | pass | Confirmed by owner (2026-11-02). Checked in code on the dev server (2026-11-02): 10 MB (config.py, api.ts) and the 18-extension allowlist match on server and browser; no live refusal yet |
+
 ## Other checklists
 
 These files are not tied to a single phase above. Walk through any that still apply to what you use.
