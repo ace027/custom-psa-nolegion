@@ -246,7 +246,7 @@
 | 12 | 4 | 4 | Shipped |
 | 13 | 2 | 2 | Complete |
 | 14 | 3 | 3 | Complete |
-| 15 | 1 | 1 | Complete |
+| 15 | 1 | 1 | Shipped |
 | 16 | 4 | 0 | Planned |
 | 17 | 0 | 0 | Pending |
 | 18 | 0 | 0 | Pending |
