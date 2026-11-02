@@ -196,7 +196,7 @@ Checklists: [reports.md](reports.md)
 | P12-01 | Update the Entra app registration redirect URI to `<public_url>/api/v1/auth/callback`, then sign in | pass | Confirmed by owner (2026-11-02) |
 | P12-02 | Build with VITE_BRAND_NAME, VITE_BRAND_LOGO and VITE_BRAND_COLORS set and check the header and login page | pass | Owner checked placeholder branding on psa.dev.local (2026-11-02); reverted. Colours need the JSON single-quoted in .env (docs fixed) |
 | P12-03 | An API-key request creates a ticket with source `api` | pass | Dev-server session (2026-11-02): key with only ticket:write created ticket 340 with source api; other calls 403; revoked key gets 401; all audited |
-| P12-04 | An existing n8n/webhook consumer still works (outbound webhook URLs are unchanged) | | |
+| P12-04 | An existing n8n/webhook consumer still works (outbound webhook URLs are unchanged) | N/A | Marked N/A by owner (2026-11-02) |
 
 ### Phase 13: Knowledge base
 
