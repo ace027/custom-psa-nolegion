@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
-import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { api } from "./api";
 import { can, useMe } from "./auth";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -69,6 +69,7 @@ import Tickets from "./pages/Tickets";
 import Users from "./pages/Users";
 import AdminLayout from "./nav/AdminLayout";
 import AllPages from "./nav/AllPages";
+import CommandPalette from "./nav/CommandPalette";
 import { NAV_SECTIONS, canOpen, itemForPath, visibleItems } from "./nav/navConfig";
 import Rail, { Icon } from "./nav/Rail";
 import { useBookmarks } from "./nav/useBookmarks";
@@ -86,14 +87,28 @@ function Layout() {
       qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" }); // drop cached client data
     },
   });
-  const nav = useNavigate();
   const { pathname } = useLocation();
   const bookmarks = useBookmarks(me);
   const [allOpen, setAllOpen] = useState(false);
   const allButton = useRef<HTMLButtonElement>(null);
-  const search = useRef<HTMLInputElement>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const closeAll = useCallback(() => setAllOpen(false), []);
   useEffect(closeAll, [pathname, closeAll]); // any navigation closes the panel
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const typing = !!t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k") {
+        e.preventDefault(); // works inside inputs too; also beats the browser's own Ctrl+K
+        setPaletteOpen(true);
+      } else if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey && !typing && !paletteOpen) {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [paletteOpen]);
   const page = itemForPath(pathname);
   const current = page && canOpen(me, page) ? page : undefined;
   const section = NAV_SECTIONS.find((s) => s.id === current?.section);
@@ -109,8 +124,9 @@ function Layout() {
         allOpen={allOpen}
         onToggleAll={() => setAllOpen((o) => !o)}
         allButtonRef={allButton}
-        onGoTo={() => search.current?.focus()}
+        onGoTo={() => setPaletteOpen(true)}
       />
+      <CommandPalette me={me} bookmarks={bookmarks} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       {allOpen && <AllPages me={me} bookmarks={bookmarks} onClose={closeAll} returnFocus={allButton} />}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 md:px-8">
@@ -131,17 +147,16 @@ function Layout() {
               </button>
             </>
           )}
-          <form
-            role="search"
-            className="ml-auto w-full max-w-xs flex-1 sm:w-auto"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
-              if (q) nav(`/search?q=${encodeURIComponent(q)}`);
-            }}
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-keyshortcuts="Control+K Meta+K"
+            onClick={() => setPaletteOpen(true)}
+            className="ml-auto flex w-full max-w-xs flex-1 items-center gap-2 rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-left text-sm text-slate-500 hover:bg-slate-100 sm:w-auto"
           >
-            <input ref={search} name="q" type="search" aria-label="Search" placeholder="Search…" className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-sm" />
-          </form>
+            <Icon name="search" className="h-4 w-4" />
+            Go to (Ctrl K)
+          </button>
           <div className="[&>section]:mt-0 [&>section]:py-1">
             <OnCallWidget />
           </div>

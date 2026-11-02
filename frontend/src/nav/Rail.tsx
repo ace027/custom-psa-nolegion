@@ -34,7 +34,7 @@ interface Props {
   allOpen: boolean;
   onToggleAll: () => void;
   allButtonRef: RefObject<HTMLButtonElement | null>;
-  /** Placeholder until the command palette (16-04): focuses the header search. */
+  /** Opens the command palette. */
   onGoTo: () => void;
 }
 
@@ -90,7 +90,7 @@ export default function Rail({ me, bookmarks, allOpen, onToggleAll, allButtonRef
       </Link>
       <ul className="flex md:flex-col">
         <li className="flex flex-1">
-          <button type="button" className={ritem} onClick={onGoTo} aria-keyshortcuts="Control+K Meta+K">
+          <button type="button" className={ritem} onClick={onGoTo} aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K">
             <Icon name="search" />
             <span>Go to</span>
           </button>
