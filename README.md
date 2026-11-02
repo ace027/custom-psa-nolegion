@@ -43,8 +43,8 @@ A small, self-hosted PSA for an MSP/MSSP. Boring on purpose: FastAPI + PostgreSQ
 - Email-to-ticket and email replies through Microsoft Graph (one shared mailbox, scoped by Exchange RBAC), threaded by ticket number and headers, with triage for unknown senders
 - Dashboard: my tickets, unassigned, SLA at risk; admin settings for queues, categories, priorities, work types, business hours
 
-**Phase 13: knowledge base**
-- Knowledge base: staff write, search and archive plain-text articles (internal or client-visible, draft/published), tickets suggest matching published articles, and portal contacts browse published client articles only. See [docs/verify/kb.md](docs/verify/kb.md)
+**Phase 13: Hudu articles and portal polish**
+- Hudu articles: Hudu is the knowledge base. Each ticket shows up to 5 Hudu articles matching its subject (the client's company plus global articles), as links that open in Hudu; article content never passes through the PSA
 - Portal polish: clients can sign in with Microsoft (per-client Entra tenant), attach files to their tickets, edit their own details and export tickets, invoices and devices as CSV. See [docs/verify/portal-polish.md](docs/verify/portal-polish.md)
 
 **Phase 1: foundation**

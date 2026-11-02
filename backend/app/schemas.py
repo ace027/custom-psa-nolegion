@@ -1902,3 +1902,19 @@ class RuleTestOut(BaseModel):
     trigger: str
     conditions: list[TraceCondition]
     actions: list[TraceAction]
+
+
+class HuduArticleOut(BaseModel):
+    """A link to a Hudu article. The article content never leaves the server."""
+
+    id: str
+    title: str
+    url: str
+    updated_at: datetime | None
+    scope: Literal["client", "global"]
+
+
+class HuduArticlesOut(BaseModel):
+    configured: bool
+    articles: list[HuduArticleOut]
+    error: str | None = None

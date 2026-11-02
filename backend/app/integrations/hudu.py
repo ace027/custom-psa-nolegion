@@ -7,15 +7,20 @@ import (and what kind each is) and which field label holds the warranty end date
    "warranty_end_field": "Warranty Expiration", "warranty_start_field": null}
 
 Layouts that are not listed are never imported (Hudu also holds documents and applications).
+Ticket pages also search Hudu articles (`search_articles`), returning references only.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 
-from app.integrations.base import KINDS, RemoteAsset, RemoteClient, VendorError
+from app.integrations.base import KINDS, RemoteArticle, RemoteAsset, RemoteClient, VendorError
 
 MAX_PAGES = 1000
+SEARCH_TIMEOUT = 5  # seconds per article request: a ticket page is waiting on it
+SEARCH_PAGE_SIZE = 25
+OLDEST = datetime.min.replace(tzinfo=UTC)
 
 
 def _date(value) -> date | None:
@@ -53,9 +58,9 @@ class HuduClient:
         self._http = httpx.Client(timeout=30, transport=transport, headers={"x-api-key": api_key})
         self._layout_kinds: dict[int, str] | None = None
 
-    def _get(self, path: str, params: dict | None = None):
+    def _get(self, path: str, params: dict | None = None, timeout=httpx.USE_CLIENT_DEFAULT):
         try:
-            r = self._http.get(f"{self.base}/api/v1{path}", params=params)
+            r = self._http.get(f"{self.base}/api/v1{path}", params=params, timeout=timeout)
         except httpx.HTTPError as exc:
             raise VendorError(f"Hudu request failed: {type(exc).__name__}") from exc
         if r.status_code != 200:
@@ -120,3 +125,48 @@ class HuduClient:
                 )
             )
         return out
+
+    def _article(self, a: dict, scope: str) -> RemoteArticle | None:
+        if not a.get("id") or not a.get("url"):
+            return None
+        url = str(a["url"])
+        if not urlsplit(url).scheme:  # relative: under the configured Hudu base URL
+            url = urljoin(self.base + "/", url.lstrip("/"))
+        if urlsplit(url).scheme not in ("http", "https"):  # never hand the browser javascript: etc.
+            return None
+        try:
+            updated = datetime.fromisoformat(str(a.get("updated_at") or ""))
+            updated = updated if updated.tzinfo else updated.replace(tzinfo=UTC)
+        except ValueError:
+            updated = None
+        return RemoteArticle(str(a["id"]), str(a.get("name") or "Untitled"), url, updated, scope)
+
+    def search_articles(
+        self, query: str, company_external_id: str | None, limit: int = 5
+    ) -> list[RemoteArticle]:
+        """Articles matching `query` in the company plus global ones (no company), newest first.
+
+        UNVERIFIED AGAINST A LIVE TENANT: GET /api/v1/articles with search, company_id, page and
+        page_size, and the article fields id, name, url, company_id, updated_at, follow Hudu's
+        public API docs. Hudu cannot filter on "no company", so global articles come from an
+        unfiltered search keeping company_id null; company results are re-checked by company_id.
+        shortcut: only the first page of each search is read; page further if matches get missed.
+        """
+        searches = [("global", None)]
+        if company_external_id:
+            searches.insert(0, ("client", str(company_external_id)))
+        found: dict[str, RemoteArticle] = {}
+        for scope, company in searches:
+            params = {"search": query, "page": 1, "page_size": SEARCH_PAGE_SIZE}
+            if company:
+                params["company_id"] = company
+            body = self._get("/articles", params, timeout=SEARCH_TIMEOUT)
+            for a in body.get("articles", []) if isinstance(body, dict) else body:
+                owner = a.get("company_id")
+                if (str(owner) if owner is not None else None) != company:
+                    continue
+                article = self._article(a, scope)
+                if article and article.id not in found:
+                    found[article.id] = article
+        newest = sorted(found.values(), key=lambda x: x.updated_at or OLDEST, reverse=True)
+        return newest[:limit]

@@ -39,6 +39,7 @@ describe("ticket type and custom fields", () => {
         return new Response(JSON.stringify(ticket));
       },
       "/api/v1/tickets/5/notes": json([]),
+      "/api/v1/tickets/5/hudu-articles": json({ configured: false, articles: [], error: null }),
     };
     vi.stubGlobal(
       "fetch",
@@ -67,6 +68,7 @@ describe("linked tickets", () => {
     const handlers: Record<string, (init?: RequestInit) => Response> = {
       "/api/v1/auth/me": json(me),
       "/api/v1/tickets/5": json(ticket),
+      "/api/v1/tickets/5/hudu-articles": json({ configured: false, articles: [], error: null }),
       "/api/v1/tickets/5/links": (init) => {
         if (init?.method === "POST") { posts.push(`links ${init.body}`); return new Response("[]", { status: 201 }); }
         return new Response(JSON.stringify([{ id: 3, relation: "parent", ticket_id: 9, number: 10009, subject: "Big job", status: "open", status_name: "Open" }]));

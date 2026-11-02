@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.exc import IntegrityError
 
+from app import hudu_articles
 from app import permissions as P
 from app import repositories as repo
 from app import ticket_services as svc
@@ -17,6 +18,7 @@ from app.schemas import (
     BulkTicketsOut,
     DashboardOut,
     ErrorOut,
+    HuduArticlesOut,
     NoteIn,
     NoteOut,
     Page,
@@ -131,6 +133,16 @@ def bulk_tickets(body: BulkTicketsIn, ctx: Ctx = require(P.TICKET_WRITE)):
 @router.get("/tickets/{ticket_id}", response_model=TicketOut, responses=ERR, summary="Get a ticket")
 def get_ticket(ticket_id: int, ctx: Ctx = require(P.TICKET_READ)):
     return _view(ctx)(_ticket_or_404(ctx, ticket_id))
+
+
+@router.get(
+    "/tickets/{ticket_id}/hudu-articles",
+    response_model=HuduArticlesOut,
+    responses=ERR,
+    summary="Hudu articles related to a ticket (titles and links only; up to 5)",
+)
+def ticket_hudu_articles(ticket_id: int, ctx: Ctx = require(P.TICKET_READ)):
+    return hudu_articles.articles_for(ctx.db, _ticket_or_404(ctx, ticket_id))
 
 
 @router.patch(

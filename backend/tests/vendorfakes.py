@@ -9,7 +9,13 @@ from app import db as dbmod
 from app.asset_sync import sync_integration
 from app.deps import Ctx
 from app.integrations import registry
-from app.integrations.base import RemoteAlert, RemoteAsset, RemoteClient, VendorError
+from app.integrations.base import (
+    RemoteAlert,
+    RemoteArticle,
+    RemoteAsset,
+    RemoteClient,
+    VendorError,
+)
 from app.models import Integration
 from app.scope import Scope
 
@@ -25,6 +31,9 @@ class FakeVendor:
         self.fail_test = False
         self.alerts: list[RemoteAlert] = []
         self.fail_alerts = False
+        self.articles: list[RemoteArticle] = []
+        self.fail_articles = False
+        self.article_searches: list[tuple[str, str | None]] = []
 
     def test_connection(self):
         if self.fail_test:
@@ -44,6 +53,12 @@ class FakeVendor:
         if self.fail_alerts:
             raise VendorError("NinjaOne returned HTTP 500 for /v2/alerts")
         return list(self.alerts)
+
+    def search_articles(self, query, company_external_id, limit=5):
+        self.article_searches.append((query, company_external_id))
+        if self.fail_articles:
+            raise VendorError("Hudu request failed: ReadTimeout")
+        return list(self.articles)
 
 
 def alert(device, cond="c1", uid=None, severity="MAJOR", message="Disk low"):

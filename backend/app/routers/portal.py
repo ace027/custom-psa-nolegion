@@ -7,13 +7,12 @@ out."""
 import logging
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app import audit
 from app import billing_repo as brepo
-from app import kb as kbsvc
 from app import portal as svc
 from app import portal_files as pfiles
 from app import repositories as repo
@@ -23,7 +22,6 @@ from app.auth import oidc, portal_sessions
 from app.config import get_settings
 from app.context import client_ip_var
 from app.invoice_pdf import render_invoice_pdf
-from app.kb_schemas import PortalKbArticleOut, PortalKbSummary, snippet_of
 from app.notices import build_statement
 from app.portal_deps import (
     PortalCtx,
@@ -491,38 +489,3 @@ def download_attachment(attachment_id: int, ctx: PortalCtx = portal_required()):
 )
 def reply(ticket_id: int, body: PortalReplyIn, ctx: PortalCtx = portal_required()):
     return svc.reply(ctx, ticket_id, body.body)
-
-
-# ---- knowledge base (published, client-facing articles only; others are 404) ----
-@router.get(
-    "/kb",
-    response_model=list[PortalKbSummary],
-    summary="Search the client-facing knowledge base",
-)
-def kb_list(
-    q: str | None = Query(default=None, min_length=2, max_length=100),
-    ctx: PortalCtx = portal_required(),
-):
-    return [
-        PortalKbSummary(
-            id=a.id,
-            title=a.title,
-            tags=a.tags,
-            updated_at=a.updated_at,
-            snippet=snippet_of(a.body),
-        )
-        for a in kbsvc.portal_list(ctx, q, 50)
-    ]
-
-
-@router.get(
-    "/kb/{article_id}",
-    response_model=PortalKbArticleOut,
-    responses=ERR,
-    summary="One client-facing knowledge-base article",
-)
-def kb_get(article_id: int, ctx: PortalCtx = portal_required()):
-    a = kbsvc.portal_get(ctx, article_id)
-    return PortalKbArticleOut(
-        id=a.id, title=a.title, body=a.body, tags=a.tags, updated_at=a.updated_at
-    )

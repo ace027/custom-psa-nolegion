@@ -24,7 +24,6 @@ from app.routers import (
     holidays,
     integrations,
     invoices,
-    kb,
     late_fees,
     notices,
     oncall,
@@ -138,7 +137,6 @@ def create_app() -> FastAPI:
         projects.router,
         crm.router,
         procurement.router,
-        kb.router,
     ):
         app.include_router(r, prefix="/api/v1")
     return app

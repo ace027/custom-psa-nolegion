@@ -6,7 +6,6 @@ import { money } from "../money";
 import { Button, Card, ErrorMsg, Field, StatTile, ThemeToggle, WarrantyBadge, fmt, inputCls } from "../ui";
 import AppointmentsPage from "./AppointmentsPage";
 import ExportButton from "./ExportButton";
-import { KbArticlePage, KbList } from "./KbPages";
 import MyDetailsPage from "./MyDetailsPage";
 import PortalAttachments from "./PortalAttachments";
 import PortalLogin from "./PortalLogin";
@@ -111,7 +110,6 @@ function Signed({ me }: { me: PortalMe }) {
         <NavLink to="/portal/appointments" className={tab}>Appointments</NavLink>
         {me.can_see_billing && <NavLink to="/portal/invoices" className={tab}>Invoices</NavLink>}
         {me.can_see_devices && <NavLink to="/portal/devices" className={tab}>Devices</NavLink>}
-        <NavLink to="/portal/kb" className={tab}>Help articles</NavLink>
         <NavLink to="/portal/me" className={tab}>My details</NavLink>
       </nav>
       <Routes>
@@ -119,8 +117,6 @@ function Signed({ me }: { me: PortalMe }) {
         <Route path="tickets" element={<Tickets />} />
         <Route path="tickets/:id" element={<TicketPage />} />
         <Route path="appointments" element={<AppointmentsPage />} />
-        <Route path="kb" element={<KbList />} />
-        <Route path="kb/:id" element={<KbArticlePage />} />
         <Route path="me" element={<MyDetailsPage me={me} />} />
         {me.can_see_billing && <Route path="invoices" element={<Invoices />} />}
         {me.can_see_billing && <Route path="invoices/:id" element={<InvoicePage />} />}

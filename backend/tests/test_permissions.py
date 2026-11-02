@@ -208,14 +208,3 @@ def test_missing_csrf_header_is_rejected(admin):
     admin.headers.pop("X-Requested-With")
     assert admin.post("/api/v1/organizations", json={"name": "x"}).status_code == 403
     assert admin.get("/api/v1/organizations").status_code == 200  # safe methods unaffected
-
-
-def test_kb_permissions():
-    assert P.KB_READ == "kb:read"
-    assert P.KB_WRITE == "kb:write"
-    for role in ROLES:
-        assert P.has_permission(role, P.KB_READ)
-    for role in ("admin", "tech"):
-        assert P.has_permission(role, P.KB_WRITE)
-    for role in ("billing", "read_only"):
-        assert not P.has_permission(role, P.KB_WRITE)

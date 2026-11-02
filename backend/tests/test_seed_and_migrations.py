@@ -46,7 +46,7 @@ def test_migration_0032_reporting_tables_and_constraints(owner_engine, make_user
     from sqlalchemy.exc import IntegrityError
 
     with owner_engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0036"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0037"
     uid = make_user("admin")["id"]
 
     def schedule(**kw):
@@ -153,3 +153,41 @@ def test_migration_0035_portal_columns_and_constraints(owner_engine, make_org):
                 text("SELECT has_column_privilege('psa_app', :t, :c, 'UPDATE')"),
                 dict(t=table, c=col),
             ).scalar_one()
+
+
+def test_migration_0037_drops_kb_and_downgrade_recreates_it(owner_engine, make_user):
+    def kb_state():
+        with owner_engine.connect() as c:
+            if c.execute(text("SELECT to_regclass('kb_articles')")).scalar_one() is None:
+                return None
+            idx = c.execute(
+                text("SELECT indexname FROM pg_indexes WHERE tablename = 'kb_articles'")
+            ).scalars()
+            grants = {
+                p
+                for p in ("SELECT", "INSERT", "UPDATE", "DELETE")
+                if c.execute(
+                    text("SELECT has_table_privilege('psa_app', 'kb_articles', :p)"), {"p": p}
+                ).scalar_one()
+            }
+            return set(idx), grants
+
+    cfg = Config("alembic.ini")
+    assert kb_state() is None
+    command.downgrade(cfg, "0036")
+    indexes, grants = kb_state()
+    assert {"ix_kb_articles_search", "ix_kb_articles_status_visibility"} <= indexes
+    assert grants == {"SELECT", "INSERT", "UPDATE"}
+    uid = make_user("admin")["id"]
+    with owner_engine.begin() as c:
+        c.execute(
+            text(
+                "INSERT INTO api_keys (name, prefix, key_hash, user_id, permissions)"
+                " VALUES ('k', 'p1', 'h1', :u, ARRAY['kb:read', 'ticket:read', 'kb:write'])"
+            ),
+            {"u": uid},
+        )
+    command.upgrade(cfg, "head")
+    assert kb_state() is None
+    with owner_engine.connect() as c:
+        assert c.execute(text("SELECT permissions FROM api_keys")).scalar_one() == ["ticket:read"]

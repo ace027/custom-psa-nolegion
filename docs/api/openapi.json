@@ -4339,6 +4339,84 @@
         "title": "HolidayOut",
         "type": "object"
       },
+      "HuduArticleOut": {
+        "description": "A link to a Hudu article. The article content never leaves the server.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "client",
+              "global"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url",
+          "updated_at",
+          "scope"
+        ],
+        "title": "HuduArticleOut",
+        "type": "object"
+      },
+      "HuduArticlesOut": {
+        "properties": {
+          "articles": {
+            "items": {
+              "$ref": "#/components/schemas/HuduArticleOut"
+            },
+            "title": "Articles",
+            "type": "array"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "required": [
+          "configured",
+          "articles"
+        ],
+        "title": "HuduArticlesOut",
+        "type": "object"
+      },
       "IntegrationIn": {
         "properties": {
           "base_url": {
@@ -5606,273 +5684,6 @@
           "void_reason"
         ],
         "title": "InvoicePaymentLine",
-        "type": "object"
-      },
-      "KbArticleIn": {
-        "properties": {
-          "body": {
-            "maxLength": 50000,
-            "minLength": 1,
-            "title": "Body",
-            "type": "string"
-          },
-          "status": {
-            "default": "draft",
-            "enum": [
-              "draft",
-              "published",
-              "archived"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "maxItems": 10,
-            "title": "Tags",
-            "type": "array"
-          },
-          "title": {
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Title",
-            "type": "string"
-          },
-          "visibility": {
-            "enum": [
-              "internal",
-              "client"
-            ],
-            "title": "Visibility",
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "body",
-          "visibility"
-        ],
-        "title": "KbArticleIn",
-        "type": "object"
-      },
-      "KbArticleOut": {
-        "properties": {
-          "body": {
-            "title": "Body",
-            "type": "string"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "created_by_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Created By Name"
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "status": {
-            "enum": [
-              "draft",
-              "published",
-              "archived"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Tags",
-            "type": "array"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          },
-          "updated_by_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updated By Name"
-          },
-          "visibility": {
-            "enum": [
-              "internal",
-              "client"
-            ],
-            "title": "Visibility",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "body",
-          "visibility",
-          "status",
-          "tags",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "KbArticleOut",
-        "type": "object"
-      },
-      "KbArticlePatch": {
-        "properties": {
-          "body": {
-            "anyOf": [
-              {
-                "maxLength": 50000,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Body"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "enum": [
-                  "draft",
-                  "published",
-                  "archived"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status"
-          },
-          "tags": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 10,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tags"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          },
-          "visibility": {
-            "anyOf": [
-              {
-                "enum": [
-                  "internal",
-                  "client"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Visibility"
-          }
-        },
-        "title": "KbArticlePatch",
-        "type": "object"
-      },
-      "KbArticleSummary": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "snippet": {
-            "title": "Snippet",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "draft",
-              "published",
-              "archived"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Tags",
-            "type": "array"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          },
-          "visibility": {
-            "enum": [
-              "internal",
-              "client"
-            ],
-            "title": "Visibility",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "visibility",
-          "status",
-          "tags",
-          "updated_at",
-          "snippet"
-        ],
-        "title": "KbArticleSummary",
         "type": "object"
       },
       "LateFeeAppliedOut": {
@@ -8646,37 +8457,6 @@
         "title": "Page[InvoiceOut]",
         "type": "object"
       },
-      "Page_KbArticleSummary_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/KbArticleSummary"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          },
-          "offset": {
-            "title": "Offset",
-            "type": "integer"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "limit",
-          "offset"
-        ],
-        "title": "Page[KbArticleSummary]",
-        "type": "object"
-      },
       "Page_NoticeOut_": {
         "properties": {
           "items": {
@@ -9726,80 +9506,6 @@
           "days_past_due"
         ],
         "title": "PortalInvoiceOut",
-        "type": "object"
-      },
-      "PortalKbArticleOut": {
-        "properties": {
-          "body": {
-            "title": "Body",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Tags",
-            "type": "array"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "body",
-          "tags",
-          "updated_at"
-        ],
-        "title": "PortalKbArticleOut",
-        "type": "object"
-      },
-      "PortalKbSummary": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "snippet": {
-            "title": "Snippet",
-            "type": "string"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Tags",
-            "type": "array"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "tags",
-          "updated_at",
-          "snippet"
-        ],
-        "title": "PortalKbSummary",
         "type": "object"
       },
       "PortalLineOut": {
@@ -29880,328 +29586,6 @@
         ]
       }
     },
-    "/api/v1/kb/articles": {
-      "get": {
-        "operationId": "list_articles_api_v1_kb_articles_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "q",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "maxLength": 100,
-                  "minLength": 2,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Q"
-            }
-          },
-          {
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "enum": [
-                    "draft",
-                    "published",
-                    "archived"
-                  ],
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Status"
-            }
-          },
-          {
-            "in": "query",
-            "name": "visibility",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "enum": [
-                    "internal",
-                    "client"
-                  ],
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Visibility"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 25,
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Offset",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Page_KbArticleSummary_"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Search and list knowledge-base articles",
-        "tags": [
-          "knowledge base"
-        ]
-      },
-      "post": {
-        "operationId": "create_article_api_v1_kb_articles_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/KbArticleIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KbArticleOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Write a knowledge-base article",
-        "tags": [
-          "knowledge base"
-        ]
-      }
-    },
-    "/api/v1/kb/articles/{article_id}": {
-      "get": {
-        "operationId": "get_article_api_v1_kb_articles__article_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "article_id",
-            "required": true,
-            "schema": {
-              "title": "Article Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KbArticleOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "One knowledge-base article",
-        "tags": [
-          "knowledge base"
-        ]
-      },
-      "patch": {
-        "operationId": "update_article_api_v1_kb_articles__article_id__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "article_id",
-            "required": true,
-            "schema": {
-              "title": "Article Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/KbArticlePatch"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KbArticleOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Edit, publish or archive a knowledge-base article",
-        "tags": [
-          "knowledge base"
-        ]
-      }
-    },
-    "/api/v1/kb/suggestions": {
-      "get": {
-        "operationId": "suggestions_api_v1_kb_suggestions_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "ticket_id",
-            "required": true,
-            "schema": {
-              "title": "Ticket Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/KbArticleSummary"
-                  },
-                  "title": "Response Suggestions Api V1 Kb Suggestions Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Published articles that may help with a ticket (up to 5)",
-        "tags": [
-          "knowledge base"
-        ]
-      }
-    },
     "/api/v1/late-fees/applied": {
       "get": {
         "operationId": "applied_api_v1_late_fees_applied_get",
@@ -33141,123 +32525,6 @@
           }
         },
         "summary": "Download an invoice PDF (billing contacts)",
-        "tags": [
-          "portal"
-        ]
-      }
-    },
-    "/api/v1/portal/kb": {
-      "get": {
-        "operationId": "kb_list_api_v1_portal_kb_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "q",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "maxLength": 100,
-                  "minLength": 2,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Q"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PortalKbSummary"
-                  },
-                  "title": "Response Kb List Api V1 Portal Kb Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Search the client-facing knowledge base",
-        "tags": [
-          "portal"
-        ]
-      }
-    },
-    "/api/v1/portal/kb/{article_id}": {
-      "get": {
-        "operationId": "kb_get_api_v1_portal_kb__article_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "article_id",
-            "required": true,
-            "schema": {
-              "title": "Article Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PortalKbArticleOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "One client-facing knowledge-base article",
         "tags": [
           "portal"
         ]
@@ -42454,6 +41721,68 @@
         "summary": "The custom fields of this ticket's type, with the ticket's values",
         "tags": [
           "configuration"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/hudu-articles": {
+      "get": {
+        "operationId": "ticket_hudu_articles_api_v1_tickets__ticket_id__hudu_articles_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "title": "Ticket Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HuduArticlesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hudu articles related to a ticket (titles and links only; up to 5)",
+        "tags": [
+          "tickets"
         ]
       }
     },

@@ -35,8 +35,6 @@ CRM_READ = "crm:read"  # leads, opportunities, pipeline, forecast, renewals (eve
 CRM_WRITE = "crm:write"  # create / edit / convert leads and opportunities (admin, tech)
 PROCUREMENT_READ = "procurement:read"  # vendors, purchase orders, inventory, markup rules
 PROCUREMENT_WRITE = "procurement:write"  # edit those, receive stock, deliver to clients
-KB_READ = "kb:read"  # knowledge-base articles and ticket suggestions (every staff role)
-KB_WRITE = "kb:write"  # create / edit / publish / archive articles (admin, tech)
 
 # API keys can never carry these, whatever the owner's role
 KEY_FORBIDDEN = frozenset({USER_MANAGE, APIKEY_MANAGE, PORTAL_MANAGE})
@@ -52,7 +50,6 @@ _READ = {
     SCHEDULE_READ,
     CRM_READ,
     PROCUREMENT_READ,
-    KB_READ,
 }
 
 MATRIX: dict[str, frozenset[str]] = {
@@ -77,7 +74,6 @@ MATRIX: dict[str, frozenset[str]] = {
             PROJECT_WRITE,
             CRM_WRITE,
             PROCUREMENT_WRITE,
-            KB_WRITE,
         }
         | {BILLING_WRITE, BILLING_FINALIZE, CHARGE_WRITE, PAYMENT_WRITE, REPORT_READ}
     ),
@@ -93,7 +89,6 @@ MATRIX: dict[str, frozenset[str]] = {
             PROJECT_WRITE,
             CRM_WRITE,
             PROCUREMENT_WRITE,
-            KB_WRITE,
         }
     ),
     "billing": frozenset(

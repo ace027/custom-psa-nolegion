@@ -8,7 +8,7 @@ import { can, useMe } from "../auth";
 import { useLookups } from "../lookups";
 import { money } from "../money";
 import { Button, Card, ErrorMsg, Field, SlaBadge, fmt, inputCls } from "../ui";
-import KbSuggestionsCard from "./KbSuggestionsCard";
+import HuduArticlesCard from "./HuduArticlesCard";
 import TicketPicker from "./TicketPicker";
 import TicketAppointmentsCard from "./TicketAppointmentsCard";
 import { clientApiPath, clientRoute } from "../clientScope";
@@ -78,7 +78,7 @@ export default function TicketDetail() {
           <p className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{t.description}</p>
         </Card>
       )}
-      {can(me, "kb:read") && <KbSuggestionsCard ticketId={t.id} />}
+      <HuduArticlesCard ticketId={t.id} isAdmin={can(me, "integration:manage")} />
       <NotesCard ticket={t} notes={notes.data ?? []} canWrite={canWrite} onDone={refresh} />
       <TimeCard ticket={t} entries={time.data ?? []} canWrite={can(me, "time:write")} meId={me?.id ?? 0} isAdmin={me?.role === "admin"} onDone={refresh} />
       {can(me, "schedule:read") && <TicketAppointmentsCard ticket={t} />}

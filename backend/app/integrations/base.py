@@ -55,6 +55,17 @@ class RemoteAlert:
     created_at: datetime | None = None
 
 
+@dataclass
+class RemoteArticle:
+    """A Hudu article reference. Never carries the article content."""
+
+    id: str
+    title: str
+    url: str
+    updated_at: datetime | None
+    scope: str  # "client" (the ticket's company) or "global" (no company)
+
+
 class Adapter(Protocol):
     def test_connection(self) -> None: ...
     def list_clients(self) -> list[RemoteClient]: ...

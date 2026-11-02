@@ -1652,48 +1652,16 @@ export const getCostRate = (userId: number) => api<{ user_id: number; cost_rate_
 export const putCostRate = (userId: number, cost_rate_cents: number | null) =>
   api<{ user_id: number; cost_rate_cents: number | null }>(`/users/${userId}/cost-rate`, { method: "PUT", json: { cost_rate_cents } });
 
-// Knowledge base (Phase 13). Bodies are plain text and must be rendered as text, never HTML.
-export type KbVisibility = "internal" | "client";
-export type KbStatus = "draft" | "published" | "archived";
-export interface KbArticleSummary {
-  id: number;
+// Hudu articles related to a ticket: links only, the content stays in Hudu.
+export interface HuduArticle {
+  id: string;
   title: string;
-  visibility: KbVisibility;
-  status: KbStatus;
-  tags: string[];
-  updated_at: string;
-  snippet: string;
+  url: string;
+  updated_at: string | null;
+  scope: "client" | "global";
 }
-export interface KbArticle {
-  id: number;
-  title: string;
-  body: string;
-  visibility: KbVisibility;
-  status: KbStatus;
-  tags: string[];
-  created_by_name: string | null;
-  updated_by_name: string | null;
-  created_at: string;
-  updated_at: string;
-}
-export interface KbArticleInput {
-  title: string;
-  body: string;
-  visibility: KbVisibility;
-  status: KbStatus;
-  tags: string[];
-}
-export interface PortalKbSummary {
-  id: number;
-  title: string;
-  tags: string[];
-  updated_at: string;
-  snippet: string;
-}
-export interface PortalKbArticle {
-  id: number;
-  title: string;
-  body: string;
-  tags: string[];
-  updated_at: string;
+export interface HuduArticles {
+  configured: boolean;
+  articles: HuduArticle[];
+  error: string | null;
 }
