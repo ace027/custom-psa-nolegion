@@ -189,7 +189,8 @@
 **Recommended Agents**: design-ux-architect, design-ui-designer, engineering-frontend-developer
 **Success Criteria**:
 - [ ] 2-3 mockups of the navigation and layout reviewed by the owner, one chosen and recorded in .planning/designs/
-- [ ] The sidebar is reorganised into the chosen structure; every existing page stays reachable and existing deep links keep working
+- [ ] The sidebar is replaced by the chosen structure (mockup C: icon rail, All pages, command palette); every existing page stays reachable and existing deep links keep working
+- [ ] Each user's bookmarks follow them between machines and can be reordered at any time (drag, menu or keyboard) without unpinning
 - [ ] Role access follows .planning/designs/16-navigation/DECISIONS.md (finance hidden from techs and read-only, new manager role, Users admin-only), enforced by the API, not only hidden in the navigation; no page is shown to a role that cannot use it
 - [ ] Keyboard and screen-reader navigation work; layout works at 1280px and on a tablet width
 **Plans**: TBD

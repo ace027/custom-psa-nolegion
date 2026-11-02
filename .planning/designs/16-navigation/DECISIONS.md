@@ -4,13 +4,13 @@ Mockups and comparison: README.md, mockup-a.html, mockup-b.html, mockup-c.html i
 
 | # | Question | Decision |
 |---|----------|----------|
-| 1 | Direction | **Mockup A (grouped, collapsible sidebar) plus the command palette from C** (Ctrl/Cmd+K: pages, tabs, ticket-number jump, quick actions). No pins for now. |
+| 1 | Direction | **Mockup C** (changed 2026-11-02, was A): icon rail of bookmarked (pinned) pages, an "All pages" panel grouped by section, and the Ctrl/Cmd+K command palette (pages, tabs, ticket-number jump, quick actions). |
 | 2 | Should techs and read-only users see Finance (Billing, Procurement)? | **No.** Not in their navigation, and not reachable by URL or API beyond what their ticket work needs (the plan must list exactly which billing/procurement reads a tech still needs on tickets, e.g. product charges on a ticket, and keep only those). |
 | 3 | Service-manager role? | **Yes.** Add a "manager" role: dispatch, reports, SLA, time-off/timesheet approval and service settings; no billing finalisation, no admin (users, integrations, API keys, security settings). |
 | 4 | Users page | **Admin only** (moves under Admin). |
 | 5 | Split Settings | **Yes.** Settings becomes sub-pages under Admin (for example Mail and calendar, Tickets, Billing, Portal, Sales, Scheduling); existing settings keep their values and API. |
 | 6 | Labels | Assumed default (not answered): keep "Organizations" and "Sales". |
-| 7 | Where to remember open/closed sections | Assumed default (not answered): per browser (localStorage). |
+| 7 | Where to keep bookmarks | **Per user on the server** (owner, 2026-11-02): the rail follows the person to any computer or phone. |
 | 8 | Billing reports location | Assumed default (not answered): stay under Billing, with a link from Reports. |
 
 Also decided 2026-11-02: the built-in knowledge base is removed and replaced by Hudu article suggestions on tickets, so the new navigation has no Knowledge base entry.
@@ -20,3 +20,8 @@ Also decided 2026-11-02: the built-in knowledge base is removed and replaced by 
 - Techs and read-only lose `invoice:read` and all procurement (`procurement:read`, `procurement:write`); purchasing, receiving and delivery are billing/admin work, and the client page's Inventory card is hidden from them.
 - New role `manager`: everything a tech has (minus procurement) plus timesheet and time-off approval, reports including profitability and aging (`report:read`), the audit log (`audit:read`), read-only invoices (`invoice:read`), and service settings through a new `service:configure` permission (queues, categories, priorities, statuses, work types, SLA, holidays). No billing write/finalize, payments, user management, integrations, API keys, automation, portal management or the general settings (`config:manage`: mail, billing, portal, security).
 - The Users page is admin-only in the navigation; `user:read` stays for every role because assignee and technician pickers need it.
+
+## Bookmarks (owner, 2026-11-02)
+- Mockup C replaces A. Bookmarks are the pinned pages on the rail: up to 8, with role defaults until the person changes them (no Knowledge base pin).
+- Bookmarks can be **reordered at any time** without unpinning: drag a rail item to a new spot, or use Move up / Move down in the item's menu, or Alt+ArrowUp / Alt+ArrowDown on a focused rail item (keyboard and touch screens). The new order is announced and saved.
+- Saved per user on the server, so they follow the person between machines.
