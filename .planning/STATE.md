@@ -76,6 +76,7 @@ Run `/triad:build` to execute Phase 16: Front-end redesign (navigation and layou
 - 2026-11-02: built-in knowledge base replaced by Hudu article suggestions on tickets (migration 0037 drops kb_articles; GET /tickets/{id}/hudu-articles)
 - 2026-11-02: runbook P07-06 fix: a rule assigning a ticket on creation no longer fires ticket.assigned rules (create_ticket emitted a second, rule-visible assigned event)
 - 2026-11-02: owner decisions from runbook batch 2: resolving a ticket ends its first-response SLA clock in the SLA report (met if resolved before the first-response due time); a PO gets its number when ordered, not when drafted; T&M project remaining budget counts logged time at rates as soon as it is logged (budget minus the larger of logged and billed); the 25% default markup on the dev instance is intentional
+- 2026-11-02: NinjaOne all-devices import was a mapping error (two NinjaOne orgs mapped to one client), not a df filter bug; owner ignored org 2, deleted the 4 stray assets on the dev server, and asked to roll back the organizationId filter (7dc8d5b code reverted, runbook N/A rows kept)
 
 ## Phase 4 Results
 (build started 2026-10-10)

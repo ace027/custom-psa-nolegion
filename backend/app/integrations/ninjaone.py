@@ -192,13 +192,7 @@ class NinjaOneClient:
             if after is not None:
                 params["after"] = after
             page = self._get("/v2/devices-detailed", params)
-            # Never trust the df filter alone: a device is this client's only if its own
-            # organizationId says so (runbook P06: every org's devices landed on one client).
-            out += [
-                _to_asset(d)
-                for d in page
-                if isinstance(d, dict) and str(d.get("organizationId")) == str(client_external_id)
-            ]
+            out += [_to_asset(d) for d in page]
             if len(page) < PAGE:
                 return out
             after = page[-1]["id"]
