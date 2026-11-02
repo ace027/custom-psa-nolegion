@@ -33,12 +33,16 @@ def test_ninjaone_signs_in_with_client_credentials_and_maps_devices():
             json=[
                 {
                     "id": 11,
+                    "organizationId": 7,
                     "nodeClass": "WINDOWS_SERVER",
                     "systemName": "DC01",
                     "lastContact": 1790000000,
                     "system": {"manufacturer": "Dell", "model": "R740", "serialNumber": "ABC123"},
                     "warranty": {"startDate": "2024-01-01", "endDate": "2027-01-01"},
-                }
+                },
+                # another client's device and one with no organization: never this client's
+                {"id": 12, "organizationId": 8, "systemName": "OTHER-PC"},
+                {"id": 13, "systemName": "NO-ORG"},
             ],
         )
 

@@ -136,9 +136,9 @@ Checklists: [automation-api.md](automation-api.md)
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P07-01 | Walk through docs/verify/automation-api.md (API keys, webhooks, automation rules) | | |
-| P07-02 | Unverified: a real Microsoft Teams Workflows webhook URL renders the adaptive card | | |
-| P07-03 | Unverified: a real n8n instance accepts the payload and the HMAC-SHA256 signature verifies | | |
-| P07-04 | Unverified: a LAN n8n works with WEBHOOK_ALLOW_PRIVATE_HOSTS=true (https only) | | |
+| P07-02 | Unverified: a real Microsoft Teams Workflows webhook URL renders the adaptive card | N/A | Marked N/A by owner (2026-11-02) |
+| P07-03 | Unverified: a real n8n instance accepts the payload and the HMAC-SHA256 signature verifies | N/A | Marked N/A by owner (2026-11-02) |
+| P07-04 | Unverified: a LAN n8n works with WEBHOOK_ALLOW_PRIVATE_HOSTS=true (https only) | N/A | Marked N/A by owner (2026-11-02) |
 | P07-05 | A rule's assign, escalate, notify, webhook and create-ticket actions each work on a real ticket | | |
 | P07-06 | Rules never trigger other rules; a rule firing more than 200 times in an hour switches itself off | | |
 
@@ -204,8 +204,8 @@ Checklists: [kb.md](kb.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P13-01 | Walk through docs/verify/kb.md | | |
-| P13-02 | Confirm: kb:write for admin and tech only (assumed default) | | |
+| P13-01 | Walk through docs/verify/kb.md | N/A | Knowledge base removed; Hudu articles replace it (2026-11-02) |
+| P13-02 | Confirm: kb:write for admin and tech only (assumed default) | N/A | Knowledge base removed; Hudu articles replace it (2026-11-02) |
 
 ### Phase 14: Portal polish
 
