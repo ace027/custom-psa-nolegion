@@ -141,7 +141,8 @@ Checklists: [projects.md](projects.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P08-01 | Walk through docs/verify/projects.md (projects, phases, tasks, dependencies, board, budget, fixed-fee and T&M billing) | pass | Dev-server session (2026-11-02): phases, tasks, dependencies (loop refused), budget and approval work. Billing steps, board move and tech/read-only screens not run. Remaining budget now counts logged time (owner decision, e14f9bc) |
+| P08-01 | Walk through docs/verify/projects.md (projects, phases, tasks, dependencies, budget and approval) | pass | Dev-server session (2026-11-02): phases, tasks, dependencies (loop refused), budget and approval work. Remaining budget now counts logged time (owner decision, e14f9bc) |
+| P08-01b | Walk through the untested part of docs/verify/projects.md: fixed-fee and T&M billing, board move, tech/read-only screens | deferred | Not run in the 2026-11-02 dev-server session; billing touches money. Run it, or the owner writes `deferred (owner-accepted)` |
 | P08-02 | Confirm: milestones (phase completion) are not billed | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): completing a phase created no invoices, lines or charges |
 | P08-03 | Confirm: project time does not use block hours | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): code excludes project time from block hours (billing.py), covered by a test; not shown live (no block agreement) |
 
@@ -151,7 +152,8 @@ Checklists: [crm.md](crm.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P09-01 | Walk through docs/verify/crm.md (leads and conversion, pipeline, quote link and win, forecast, renewal reminders) | pass | Dev-server session (2026-11-02): lead qualify and convert, pipeline (Lost needs a reason) and forecast figures checked by hand. Quote link and win not run (sends email) |
+| P09-01 | Walk through docs/verify/crm.md (leads and conversion, pipeline, forecast, renewal reminders) | pass | Dev-server session (2026-11-02): lead qualify and convert, pipeline (Lost needs a reason) and forecast figures checked by hand |
+| P09-01b | Walk through the untested part of docs/verify/crm.md: quote link and win | deferred | Not run in the 2026-11-02 dev-server session (sends email). Run it, or the owner writes `deferred (owner-accepted)` |
 | P09-02 | Confirm: the forecast is an estimate only and never creates invoices | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): invoices and agreements unchanged; forecast has no write path |
 | P09-03 | Confirm: the renewal worker sends one email per new reminder and never repeats it | pass | Confirmed by owner (2026-11-02). Observed on the dev server (2026-11-02): code and tests: one email per new reminder, to the staff address only, never repeated |
 
@@ -207,7 +209,7 @@ Checklists: [portal-polish.md](portal-polish.md), [portal.md](portal.md)
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P14-01 | Walk through docs/verify/portal-polish.md | deferred (owner-accepted): not walked yet, needs a portal contact with the owner's email; to be walked with P14-02 | Deferred by owner (2026-11-02). Emailed sign-in link confirmed working by the owner; every checklist line is covered by backend tests (dev-server code check, 2026-11-02) |
-| P14-02 | Real-tenant check: register the multi-tenant portal app per docs/PORTAL_SSO.md and sign in from a client tenant| deferred | Deferred by owner (2026-11-02): button shows after the compose fix (b518ccd); signing in with the client test account is not working yet |
+| P14-02 | Real-tenant check: register the multi-tenant portal app per docs/PORTAL_SSO.md and sign in from a client tenant| deferred (owner-accepted): client test-account sign-in not working yet | Deferred by owner (2026-11-02): button shows after the compose fix (b518ccd); signing in with the client test account is not working yet |
 | P14-03 | Confirm: uploads limited to 10 MB and the extension allowlist (assumed default) | pass | Confirmed by owner (2026-11-02). Checked in code on the dev server (2026-11-02): 10 MB (config.py, api.ts) and the 18-extension allowlist match on server and browser; no live refusal yet |
 ## Other checklists
 
