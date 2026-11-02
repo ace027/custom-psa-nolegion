@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Phase**: 16 of 13 (executing)
-- **Status**: Phase 16 executing — Plan 16-04 complete
+- **Phase**: 16 of 13 (executed, pending review)
+- **Status**: Phase 16 complete — all plans executed successfully
 - **Last Activity**: Plan 16-04 execution (2026-11-02)
 
 ## Progress
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Fix the failed plans and run `/triad:build` again (completed plans are kept), or run `/triad:review`
+Run `/triad:review` to verify Phase 16: Front-end redesign (navigation and layout)
 
 ## Phase 1 Results
 (build started 2026-10-09)
