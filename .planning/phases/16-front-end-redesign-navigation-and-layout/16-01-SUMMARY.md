@@ -22,32 +22,15 @@
 
 ## Completed Tasks
 - [x] Task 1: Permission split and roles (done)
-- [ ] Task 2: Manager role in the database, users API and UI gates (partial)
-- [ ] Task 3: Role-by-endpoint test matrix (failed)
+- [x] Task 2: Manager role in the database, users API and UI gates (done)
+- [ ] Task 3: Role-by-endpoint test matrix (partial)
 
 ## Files Modified
-- `backend/alembic/versions/0039_manager_role_and_permission_split.py`
-- `backend/app/permissions.py`
-- `backend/app/routers/billing.py`
-- `backend/app/routers/config.py`
-- `backend/app/routers/credit_memos.py`
-- `backend/app/routers/holidays.py`
-- `backend/app/routers/invoices.py`
-- `backend/app/routers/late_fees.py`
-- `backend/app/routers/notices.py`
-- `backend/app/routers/payments.py`
-- `backend/app/routers/ticket_config.py`
-- `backend/app/schemas.py`
-- `docs/api/openapi.json`
-- `frontend/src/api.ts`
-- `frontend/src/pages/OrganizationDetail.tsx`
-- `frontend/src/pages/Users.tsx`
-- `frontend/src/pages/billing/BillingLayout.tsx`
-- `frontend/src/pages/billing/Receivables.tsx`
-- `frontend/src/pages/billing/Reminders.tsx`
+- `backend/tests/test_role_matrix.py`
+- `backend/tests/test_seed_and_migrations.py`
 
 ## Verification Results
-5/8 verification commands passed (run by Triad after the agent finished).
+6/8 verification commands passed (run by Triad after the agent finished).
 
 ## Verification Commands
 | Command | Exit Code | Result |
@@ -59,29 +42,38 @@
 | `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/python -c "from app import permissions as P; assert 'manager' in P.ROLES; m=P.MATRIX; assert 'invoice:read' not in m['tech'] and 'procurement:read' not in m['tech'] and 'procurement:read' not in m['read_only']; assert {'invoice:read','service:configure','report:read','audit:read','timesheet:approve'} <= m['manager']; assert 'config:manage' not in m['manager'] and 'billing:finalize' not in m['manager']"` | 0 | PASS |
 | `cd backend && grep -q "manager" alembic/versions/0039_manager_role_and_permission_split.py` | 0 | PASS |
 | `cd frontend && npm run -s typecheck` | 0 | PASS |
-| `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/pytest -q -p no:warnings tests/test_role_matrix.py tests/test_seed_and_migrations.py tests/test_zz_api_contract.py` | 4 | FAIL |
+| `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/pytest -q -p no:warnings tests/test_role_matrix.py tests/test_seed_and_migrations.py tests/test_zz_api_contract.py` | 0 | PASS |
 
 ## Key Decisions
-- Re-gated routes, method path old -> new: GET /invoices, /invoices/{id}, /invoices/{id}/pdf, /billing-runs, /billing-runs/{id}, /payments, /payments/{id}, /receivables, /credit-memos, /credit-memos/{id}, /late-fees preview and applied, /billing/reminder-stages, statements list/get/pdf, /billing-notices, /billing-notices/{id}, /organizations/{id}/billing: billing:read -> invoice:read
+- `GET /organizations/{id}/billing` (rate overrides plus payment terms, tax and reminder/late-fee flags) mixes catalog and invoice data, so it needs invoice:read. As a result the client page's OrgBillingCard is hidden from tech and read-only users.
+- Every lookup created through config.py now needs service:configure for writes: queues, categories, priorities, work types, ticket types, canned responses, time categories and expense categories. Ticket statuses and custom fields also need it. CRM stages, report schedules, `PATCH /settings` and `GET /mail/status` stay config:manage.
+- Product charges, products, work-type rates, agreements and markup-rule reads keep their existing permissions.
+- An API key is still limited to its owner's role (`api_keys.effective_permission`, unchanged). A test confirms that a key whose owner is a tech gets 403 on /invoices even with invoice:read in its list.
 
 ## Issues Encountered
-- Started the local postgresql service, which was down, so the backend tests could run
+- Old tests outside my file list assert the old access (at least `backend/tests/test_billing_config.py`), plus the 5 frontend test files above. Each needs invoice:read added to its test users, or its asserted status changed for tech/read_only.
+- `test_zz_api_contract.py` checks nothing on this FastAPI version (0.162): `app.routes` now holds wrapper objects instead of the actual route entries, so "every route declares a permission" and "every route is exercised" find no routes. This was already the case before this plan, and it hides missing permission checks. `test_role_matrix._routes()` shows the fix (expand `effective_route_contexts()`), but switching the contract test over may surface routes no test calls.
+- Two pytest runs against the shared psa_test database at the same time deadlock, so run the suites one after another.
 - BLOCKER: FAILED tests/test_credit_memos.py::test_permissions - AssertionError: assert ...
 
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | warning; type: out-of-scope files; decision: allow editing frontend/src/billing.test.tsx, payments.test.tsx, reminders.test.tsx and the other 2 failing test files to add "invoice:read"/"procurement:read" to their test users; context: these tests pin the old access where billing:read showed invoices, and they are not in files_modified, so the frontend suite cannot go green within this plan's scope. | (missing) | (missing) | pending | INVALID: missing type; missing decision; missing context; severity "warning; type: out-of-scope files; decision: allow editing frontend/src/billing.test.tsx, payments.test.tsx, reminders.test.tsx and the other 2 failing test files to add "invoice:read"/"procurement:read" to their test users; context: these tests pin the old access where billing:read showed invoices, and they are not in files_modified, so the frontend suite cannot go green within this plan's scope." is not one of info, warning, blocker |
-| 2 | info; type: requirement; decision: should 'manager' join assignable_roles (app/ticket_services.py) and bookable_roles (app/scheduling.py)?; context: decisions.md says a manager has everything a tech has, but both files are outside this plan's list. | (missing) | (missing) | pending | INVALID: missing type; missing decision; missing context; severity "info; type: requirement; decision: should 'manager' join assignable_roles (app/ticket_services.py) and bookable_roles (app/scheduling.py)?; context: decisions.md says a manager has everything a tech has, but both files are outside this plan's list." is not one of info, warning, blocker |
-| 3 | blocker | schema | Resolve: FAILED tests/test_credit_memos.py::test_permissions - AssertionError: assert ... | pending |  |
+| 1 | blocker | out-of-scope-files | Allow updates to existing tests that assume the old access: backend/tests/test_billing_config.py (and any others the full backend run turns up), plus frontend/src/Billing.test.tsx, Payments.test.tsx, Phase3B.test.tsx, Phase3C.test.tsx and Reminders.test.tsx (add "invoice:read" next to "billing:read" in their test users; tried on copies, 27/27 pass). | pending | INVALID: type "out-of-scope-files" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
+| 2 | warning | quality-gate | Fix tests/test_zz_api_contract.api_routes to expand the wrapped routes FastAPI 0.162 puts in app.routes (as test_role_matrix._routes does), so the permission and coverage checks actually run. | pending | INVALID: type "quality-gate" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
+| 3 | info | architecture | Should managers be assignable to tickets and bookable for appointments (`ticket_services.ASSIGNABLE_ROLES`, `scheduling.BOOKABLE_ROLES`)? | pending |  |
+| 4 | blocker | schema | Resolve: FAILED tests/test_credit_memos.py::test_permissions - AssertionError: assert ... | pending |  |
 
-- #3 context: Verification failed (cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/pytest -q -p no:warnings; cd frontend && npm run -s typecheck && npx vitest run; cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/pytest -q -p no:warnings tests/test_role_matrix.py tests/test_seed_and_migrations.py tests/test_zz_api_contract.py); a BLOCKER is not auto-fixed.
+- #1 context: These tests encode the old access rules. The plan requires the full suites to pass but does not list these files as writable.
+- #2 context: The contract tests currently pass while checking no routes. This was already the case before this plan, so CI would not catch a new route without a permission check.
+- #3 context: The decisions give managers dispatch work; both lists are currently admin and tech only.
+- #4 context: Verification failed (cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/pytest -q -p no:warnings; cd frontend && npm run -s typecheck && npx vitest run); a BLOCKER is not auto-fixed.
 
 ## Handoff Context
-- **Key outputs**: backend/alembic/versions/0039_manager_role_and_permission_split.py; backend/app/permissions.py; backend/app/routers/billing.py; backend/app/routers/config.py; backend/app/routers/credit_memos.py; backend/app/routers/holidays.py; backend/app/routers/invoices.py; backend/app/routers/late_fees.py; backend/app/routers/notices.py; backend/app/routers/payments.py; backend/app/routers/ticket_config.py; backend/app/schemas.py; docs/api/openapi.json; frontend/src/api.ts; frontend/src/pages/OrganizationDetail.tsx; frontend/src/pages/Users.tsx; frontend/src/pages/billing/BillingLayout.tsx; frontend/src/pages/billing/Receivables.tsx; frontend/src/pages/billing/Reminders.tsx
-- **Decisions made**: Re-gated routes, method path old -> new: GET /invoices, /invoices/{id}, /invoices/{id}/pdf, /billing-runs, /billing-runs/{id}, /payments, /payments/{id}, /receivables, /credit-memos, /credit-memos/{id}, /late-fees preview and applied, /billing/reminder-stages, statements list/get/pdf, /billing-notices, /billing-notices/{id}, /organizations/{id}/billing: billing:read -> invoice:read
+- **Key outputs**: backend/tests/test_role_matrix.py; backend/tests/test_seed_and_migrations.py
+- **Decisions made**: `GET /organizations/{id}/billing` (rate overrides plus payment terms, tax and reminder/late-fee flags) mixes catalog and invoice data, so it needs invoice:read. As a result the client page's OrgBillingCard is hidden from tech and read-only users.; Every lookup created through config.py now needs service:configure for writes: queues, categories, priorities, work types, ticket types, canned responses, time categories and expense categories. Ticket statuses and custom fields also need it. CRM stages, report schedules, `PATCH /settings` and `GET /mail/status` stay config:manage.; Product charges, products, work-type rates, agreements and markup-rule reads keep their existing permissions.; An API key is still limited to its owner's role (`api_keys.effective_permission`, unchanged). A test confirms that a key whose owner is a tech gets 403 on /invoices even with invoice:read in its list.
 - **Open questions**: (none)
-- **Conventions established**: Manager cannot open the Settings page yet, because App.tsx (forbidden here) gates it on config:manage. The next navigation wave should expose the service-settings pages on service:configure
+- **Conventions established**: Gate invoice screens on invoice:read and catalog screens on billing:read. Service settings use service:configure; general settings keep config:manage.; App.tsx still shows Billing in the navigation for billing:read. Users without invoice:read are redirected to Agreements, and Phase 16 navigation decides what to show them.; Managers are not assignable or bookable yet (`ticket_services.ASSIGNABLE_ROLES` and `scheduling.BOOKABLE_ROLES` are still admin and tech only), so "dispatch" for managers needs work outside this plan.
 
 ## Requirements Covered
 (none)
@@ -89,7 +81,8 @@
 ### Failed verification output
 `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/pytest -q -p no:warnings`
 ```
-.py::test_only_billing_roles_can_change_billing_settings
+========= short test summary info ============================
+FAILED tests/test_billing_config.py::test_only_billing_roles_can_change_billing_settings
 FAILED tests/test_billing_permissions_audit.py::test_billing_role_matrix[tech]
 FAILED tests/test_billing_permissions_audit.py::test_billing_role_matrix[read_only]
 FAILED tests/test_billing_runs.py::test_run_endpoint_errors_and_permissions
@@ -106,8 +99,7 @@ FAILED tests/test_procurement.py::test_markup_rule_crud_and_duplicates - Asse...
 FAILED tests/test_procurement_api.py::test_every_route_responds - AssertionEr...
 FAILED tests/test_procurement_api.py::test_permissions - AssertionError: asse...
 FAILED tests/test_scheduling_schema.py::test_scheduling_permissions - Asserti...
-FAILED tests/test_seed_and_migrations.py::test_migration_0032_reporting_tables_and_constraints
-18 failed, 1601 passed in 1249.93s (0:20:49)
+17 failed, 1607 passed in 1412.75s (0:23:32)
 
 ```
 `cd frontend && npm run -s typecheck && npx vitest run`
@@ -141,27 +133,15 @@ px-3 py-1.5 text-sm font-medium disabled:opacity-50 bg-blue-600 text-on-accent h
 
  Test Files  5 failed | 36 passed (41)
       Tests  26 failed | 313 passed (339)
-   Start at  09:46:30
-   Duration  58.99s (tests 35%, import 33%, environment 27%, setup 4%, transform 1%)
+   Start at  10:43:13
+   Duration  65.88s (environment 32%, import 31%, tests 30%, setup 5%, transform 1%)
 
-Environment  jsdom was created 41 times · 45.42s total, 27% of tracked time
+Environment  jsdom was created 41 times · 60.82s total, 32% of tracked time
              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
              learn more: https://vitest.dev/guide/improving-performance#test-environments
 
 
 ```
-`cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/pytest -q -p no:warnings tests/test_role_matrix.py tests/test_seed_and_migrations.py tests/test_zz_api_contract.py`
-```
-
-no tests ran in 0.00s
-/tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
-  from starlette.testclient import TestClient as TestClient  # noqa
-/tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/lib/python3.12/site-packages/authlib/integrations/httpx_client/assertion_client.py:5: AuthlibDeprecationWarning: The httpx module is deprecated; please use httpx2 instead.
-  from ._compat import httpx2
-ERROR: file or directory not found: tests/test_role_matrix.py
-
-
-```
 
 ## Token Usage
-36 requests, 2052473 input tokens (1852737 cached), 18330 output tokens, $1.7358
+48 requests, 3021904 input tokens (2769477 cached), 25072 output tokens, $2.3174
