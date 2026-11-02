@@ -17,6 +17,10 @@
 - [x] Phase 13: Knowledge base (2 plans)
 - [x] Phase 14: Portal polish (3 plans)
 - [ ] Phase 15: Verify (owner manual testing) (1 plan)
+- [ ] Phase 16: Front-end redesign (navigation and layout)
+- [ ] Phase 17: Agreement billing and profitability
+- [ ] Phase 18: Accounting mail and readable audit log
+- [ ] Phase 19: Azure deployment and onboarding wizard
 
 ## Phase Details
 
@@ -179,6 +183,50 @@
 - [ ] Real-tenant Outlook spike (graph_calendar_spike.py, including --write and --outside) passes
 **Plans**: 1
 
+### Phase 16: Front-end redesign (navigation and layout)
+**Goal**: Staff find what they need without scanning a long sidebar. The owner compares 2-3 navigation/layout mockups, picks one, and the app moves to it.
+**Requirements**: owner test note 4 (too many options in the left sidebar)
+**Recommended Agents**: design-ux-architect, design-ui-designer, engineering-frontend-developer
+**Success Criteria**:
+- [ ] 2-3 mockups of the navigation and layout reviewed by the owner, one chosen and recorded in .planning/designs/
+- [ ] The sidebar is reorganised into the chosen structure; every existing page stays reachable and existing deep links keep working
+- [ ] Role-based visibility is unchanged (no page shown to a role that cannot use it)
+- [ ] Keyboard and screen-reader navigation work; layout works at 1280px and on a tablet width
+**Plans**: TBD
+
+### Phase 17: Agreement billing and profitability
+**Goal**: Every ticket and time entry is billed to an agreement, so utilisation and per-agreement profitability are true, including flat-fee all-you-can-eat clients.
+**Requirements**: owner test note 8; P01-01 note (flat-fee AYCE: all time attaches to the flat-fee agreement, nothing extra billed, profitability tracked); block-hour rollover configurable (runbook owner decision)
+**Recommended Agents**: engineering-backend-architect, support-finance-tracker, engineering-frontend-developer
+**Success Criteria**:
+- [ ] Tickets and time entries carry an agreement (defaulted from the client's active agreement, changeable by staff)
+- [ ] Time on a flat-fee agreement is recorded and costed but never billed as extra
+- [ ] Profitability and utilisation reports break down by agreement, including flat-fee agreements
+- [ ] Block-hour unused-hour handling is configurable per agreement (expire at period end, or roll over with an optional cap)
+**Plans**: TBD
+
+### Phase 18: Accounting mail and readable audit log
+**Goal**: Statements and payment reminders come from the accounting mailbox, and the audit log reads like plain English.
+**Requirements**: owner test notes 2 and 9
+**Recommended Agents**: engineering-backend-architect, engineering-frontend-developer, product-technical-writer
+**Success Criteria**:
+- [ ] Settings has an accounting sender address (e.g. accounting@mymsp.com, a mailbox in the same Microsoft 365 tenant); statements and reminders are sent from it, everything else from the support mailbox
+- [ ] docs/MAIL_SETUP.md covers adding the accounting mailbox to the mail app's access scope; a missing permission shows a clear error
+- [ ] Each audit entry shows a one-line human sentence (who did what to which record), with field-level before/after shown as readable changes; raw JSON stays available on demand
+- [ ] The audit log can be filtered by person, record type and date
+**Plans**: TBD
+
+### Phase 19: Azure deployment and onboarding wizard
+**Goal**: The PSA runs on Azure in Docker with its secrets in Azure Key Vault, and a first-run wizard creates and connects the SSO, Mail and Calendar app registrations.
+**Requirements**: owner test note 3
+**Recommended Agents**: engineering-infrastructure-devops, engineering-security-engineer, engineering-backend-architect
+**Success Criteria**:
+- [ ] A documented, repeatable Azure deployment (container hosting, PostgreSQL, storage for attachments) with secrets read from Key Vault, none in .env
+- [ ] A first-run onboarding wizard, admin-only, that creates or connects the staff SSO, portal SSO, Mail and Calendar app registrations with least-privilege permissions, and verifies each
+- [ ] Secrets created by the wizard go straight to Key Vault and are never shown again or logged
+- [ ] Security review passes with no unresolved CRITICAL/HIGH findings
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Plans | Completed | Status |
@@ -198,3 +246,7 @@
 | 13 | 2 | 2 | Complete |
 | 14 | 3 | 3 | Complete |
 | 15 | 1 | 1 | Executed |
+| 16 | 0 | 0 | Pending |
+| 17 | 0 | 0 | Pending |
+| 18 | 0 | 0 | Pending |
+| 19 | 0 | 0 | Pending |
