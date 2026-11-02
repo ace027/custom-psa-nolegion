@@ -11,10 +11,11 @@ there are no values.
 
 SLA performance (by priority, organization or assignee)
   Population  tickets created in the range (business time zone dates).
-  First response  met: first_responded_at <= sla_first_response_due. breached: first_responded_at
-    > due, or no response and now > due. pending: no response and not yet due. no_sla: the ticket
-    has no due date. met_bp = met / (met + breached); pending and no_sla are counted separately
-    and are not in the percentage.
+  First response  the response time is first_responded_at, else the resolution time (resolving a
+    ticket ends its first-response clock; owner decision 2026-11-02). met: response <=
+    sla_first_response_due. breached: response > due, or no response and now > due. pending: no
+    response and not yet due. no_sla: the ticket has no due date. met_bp = met / (met +
+    breached); pending and no_sla are counted separately and are not in the percentage.
   Resolution  the same with resolved_at (closed_at when resolved_at is null) against
     sla_resolution_due.
   Durations  business minutes (sla.business_minutes_between with the SLA calendar) from created_at
@@ -223,6 +224,8 @@ def sla(ctx: Ctx, start: date | None, end: date | None, group: SlaGroup = "prior
             order = (1 if assignee_id is None else 0, label.lower())
         g = groups.setdefault(key, _Group(key, label, order))
         res_end = resolved or closed
+        # Resolving a ticket also ends its first-response clock (owner decision 2026-11-02).
+        responded = responded or res_end
         for bucket in (g, total):
             bucket.n += 1
             bucket.first_response.add(fr_due, responded, at)

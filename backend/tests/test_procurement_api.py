@@ -154,7 +154,7 @@ def test_validation_is_422(admin, vendor):
 
 def test_response_shapes(admin, vendor, org_ctx):
     po = make_po(admin, vendor, [line()], organization_id=org_ctx["org"], vendor_reference="V-1")
-    assert po["number"] == f"PO-{po['id']}" and po["vendor_name"] == "Ingram"
+    assert po["number"] is None and po["vendor_name"] == "Ingram"
     assert po["vendor_reference"] == "V-1" and po["created_by"] == admin.user["id"]
     [ln] = po["lines"]
     assert {"id", "position", "received_quantity", "serialised", "billable", "markup_bp"} <= set(ln)

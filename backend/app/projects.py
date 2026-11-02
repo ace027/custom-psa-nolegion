@@ -625,7 +625,9 @@ def budget(ctx: Ctx, project_id: int) -> dict:
     remaining = None
     cap = None
     if project.billing_mode == "tm" and project.budget_cents:
-        remaining = max(0, project.budget_cents - billed)
+        # Logged time counts as soon as it is logged (owner decision); billing above the time's
+        # value at rates (e.g. project products) also uses up budget.
+        remaining = max(0, project.budget_cents - max(cost, billed))
         cap = project.budget_cents
     elif project.billing_mode == "fixed_fee":
         cap = project.fixed_fee_cents

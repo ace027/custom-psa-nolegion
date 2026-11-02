@@ -75,6 +75,7 @@ Run `/triad:build` to execute Phase 16: Front-end redesign (navigation and layou
 - 2026-11-02: owner test notes: customer replies no longer get a "ticket received" ack (notice subjects carry a matchable token, outbound Message-IDs stored via Graph draft+send); Graph calendar spike runs in the worker container; NinjaOne client mapping blank screen fixed (Page shape) plus error boundaries; time zone dropdown; ticket back button, description wrap, searchable ticket-link picker
 - 2026-11-02: built-in knowledge base replaced by Hudu article suggestions on tickets (migration 0037 drops kb_articles; GET /tickets/{id}/hudu-articles)
 - 2026-11-02: runbook P07-06 fix: a rule assigning a ticket on creation no longer fires ticket.assigned rules (create_ticket emitted a second, rule-visible assigned event)
+- 2026-11-02: owner decisions from runbook batch 2: resolving a ticket ends its first-response SLA clock in the SLA report (met if resolved before the first-response due time); a PO gets its number when ordered, not when drafted; T&M project remaining budget counts logged time at rates as soon as it is logged (budget minus the larger of logged and billed); the 25% default markup on the dev instance is intentional
 
 ## Phase 4 Results
 (build started 2026-10-10)

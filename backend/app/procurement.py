@@ -187,8 +187,7 @@ def create_po(ctx: Ctx, data: dict) -> PurchaseOrder:
         **{k: data.get(k) for k in PO_HEADER_EDITABLE},
     )
     ctx.db.add(po)
-    ctx.db.flush()
-    po.number = f"PO-{po.id}"
+    ctx.db.flush()  # no number yet: a PO is numbered when it is ordered (owner decision)
     for position, line in enumerate(data.get("lines") or []):
         _build_line(ctx, po, line, position)
     ctx.db.flush()
@@ -318,6 +317,8 @@ def order(ctx: Ctx, po_id: int) -> PurchaseOrder:
         raise Conflict("Add at least one line before ordering")
     before = audit.snapshot(po)
     po.status = "ordered"
+    if po.number is None:
+        po.number = f"PO-{po.id}"
     if po.ordered_on is None:
         po.ordered_on = today(ctx)
     ctx.db.flush()

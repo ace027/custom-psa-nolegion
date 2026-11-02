@@ -145,15 +145,38 @@ def test_sla_classification_percentiles_and_totals(biller, sla_data):
     assert high["first_response"]["met_bp"] == 10000
     assert by["Low"]["resolution"]["p50_minutes"] == 0  # floored at 0
     assert by["Low"]["first_response"]["no_sla"] == 1
+    # resolving ends the first-response clock, so the Low ticket's 30 min counts as its response
     assert (
         by["Low"]["first_response"]["met_bp"] is None
-        and by["Low"]["first_response"]["p50_minutes"] is None
+        and by["Low"]["first_response"]["p50_minutes"] == 30
     )
     t = d["totals"]
     assert t["n"] == sum(r["n"] for r in d["rows"]) == 7
     for clock in ("first_response", "resolution"):
         for k in ("met", "breached", "pending", "no_sla"):
             assert t[clock][k] == sum(r[clock][k] for r in d["rows"])
+
+
+def test_sla_resolving_without_a_response_ends_the_first_response_clock(
+    biller, owner, make_org, utc_always_open
+):
+    """Owner decision 2026-11-02: a ticket resolved with no separate first response is not left
+    pending; it is met when resolved before the first-response due time, else breached."""
+    org = make_org("Gamma Co")["id"]
+    c = now_utc() - timedelta(days=1)
+    m = lambda n: c + timedelta(minutes=n)  # noqa: E731
+    add_ticket(
+        owner, org, "Urgent", c, None,
+        sla_first_response_due=m(60), sla_resolution_due=m(240), resolved_at=m(45),
+    )  # fmt: skip
+    add_ticket(
+        owner, org, "Urgent", c, None,
+        sla_first_response_due=m(60), sla_resolution_due=m(240), closed_at=m(90),
+    )  # fmt: skip
+    d = biller.get("/api/v1/reports/sla", params=sla_params()).json()
+    fr = d["totals"]["first_response"]
+    assert (fr["met"], fr["breached"], fr["pending"], fr["no_sla"]) == (1, 1, 0, 0)
+    assert (fr["p50_minutes"], fr["p90_minutes"]) == (45, 90)
 
 
 def test_sla_groups_by_organization_and_assignee(biller, sla_data):

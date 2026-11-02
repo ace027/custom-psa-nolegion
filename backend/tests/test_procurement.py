@@ -107,7 +107,7 @@ def test_vendor_crud_archive_and_duplicates(admin, tech, vendor, owner):
 # ---- purchase orders --------------------------------------------------------------------------
 def test_order_lifecycle_and_draft_only_edits(admin, vendor, owner):
     po = make_po(admin, vendor, [line()])
-    assert po["number"] == f"PO-{po['id']}" and po["status"] == "draft"
+    assert po["number"] is None and po["status"] == "draft"  # numbered only when ordered
     assert po["vendor_name"] == "Ingram" and len(po["lines"]) == 1
     url = f"{P}/purchase-orders/{po['id']}"
     r = admin.post(f"{url}/lines", json=line(description="Dock", quantity=2))
@@ -125,6 +125,7 @@ def test_order_lifecycle_and_draft_only_edits(admin, vendor, owner):
     r = admin.post(f"{url}/order")
     assert r.status_code == 200
     assert r.json()["status"] == "ordered" and r.json()["ordered_on"] == biz_today().isoformat()
+    assert r.json()["number"] == f"PO-{po['id']}"
     # no longer a draft: lines are frozen, and it can't be ordered twice
     assert admin.post(f"{url}/lines", json=line()).status_code == 409
     first = r.json()["lines"][0]["id"]

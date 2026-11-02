@@ -119,7 +119,7 @@ class BudgetOut(BaseModel):
     billable_minutes: int
     cost_at_rates_cents: int
     billed_cents: int
-    remaining_cents: int | None  # T&M: max(0, budget - billed); fixed fee: null
+    remaining_cents: int | None  # T&M: max(0, budget - max(logged at rates, billed)); fixed: null
     over_budget: bool
 
 

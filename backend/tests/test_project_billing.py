@@ -420,7 +420,8 @@ def test_voiding_a_tm_invoice_restores_the_budget(admin, biller, client_org, wt,
     assert lines(inv) == [("time", "1.0000", 20000, 20000)]
     assert biller.post(f"/api/v1/invoices/{inv['id']}/void", json={}).status_code == 200
     assert linked(owner, [e]) == {e: (None, 0)}
-    assert budget(biller, p["id"])["remaining_cents"] == 20000
+    # the logged 300.00 already uses up the 200.00 budget, billed or not
+    assert budget(biller, p["id"])["remaining_cents"] == 0
     assert biller.post(f"/api/v1/billing-runs/{inv['billing_run_id']}/cancel").status_code == 200
     again = run(biller, JUL)
     assert lines(again) == [("time", "1.0000", 20000, 20000)]

@@ -431,9 +431,10 @@ def test_budget_exact_cents(run, org, wt, log, owner, admin):
         assert b["estimate_minutes"] == 180
         assert b["actual_minutes"] == 127 and b["billable_minutes"] == 105  # 90 + 7 + 30 worked
         assert b["cost_at_rates_cents"] == 26_250  # 1.75 h x 150.00
+        # remaining moves as soon as time is logged (owner decision 2026-11-02)
         assert (b["billed_cents"], b["remaining_cents"], b["over_budget"]) == (
             0,
-            40_000,
+            13_750,
             False,
         )
         rows = {r["ticket_id"]: r for r in svc.task_rows(ctx, svc.get_project(ctx, pid))}
@@ -470,11 +471,35 @@ def test_budget_billed_remaining_and_over_budget(run, org, wt, log, owner):
     )
     with run() as ctx:
         b = svc.budget(ctx, pid)
-        assert b["billed_cents"] == 12_345 and b["remaining_cents"] == 17_655
+        assert b["billed_cents"] == 12_345
+        # remaining counts logged time (600.00 at rates) as soon as it is logged: never negative
+        assert b["remaining_cents"] == 0
         assert b["cost_at_rates_cents"] == 60_000 and b["over_budget"] is True
     line(inv["draft"], 20_000)
     with run() as ctx:
-        assert svc.budget(ctx, pid)["remaining_cents"] == 0  # never negative
+        assert svc.budget(ctx, pid)["remaining_cents"] == 0
+
+
+def test_budget_remaining_uses_billed_when_it_exceeds_logged_time(run, org, wt, log, owner):
+    with run() as ctx:
+        p = mk_tm(ctx, org, 30_000)
+        pid, tid = p.id, task(ctx, p).ticket_id
+    log(tid, wt["Remote"], 60)  # 1 h = 150.00 at rates
+    with run() as ctx:
+        assert svc.budget(ctx, pid)["remaining_cents"] == 15_000
+    invoice = owner.execute(
+        text("INSERT INTO invoices (organization_id) VALUES (:o) RETURNING id"), {"o": org}
+    ).scalar_one()
+    owner.execute(
+        text(
+            "INSERT INTO invoice_lines (invoice_id, organization_id, kind, description, "
+            "quantity, unit_price_cents, amount_cents, project_id) "
+            "VALUES (:i, :o, 'time', 'x', 1, 20000, 20000, :p)"
+        ),
+        {"i": invoice, "o": org, "p": pid},
+    )
+    with run() as ctx:  # billed 200.00 is more than the 150.00 logged
+        assert svc.budget(ctx, pid)["remaining_cents"] == 10_000
 
 
 def test_budget_fixed_fee_has_no_remaining(run, org, wt, log):
