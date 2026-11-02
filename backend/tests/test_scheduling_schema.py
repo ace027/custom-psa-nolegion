@@ -203,5 +203,9 @@ def test_scheduling_permissions():
     assert P.TIMEOFF_APPROVE == "timeoff:approve"
     for role in P.ROLES:
         assert P.has_permission(role, P.SCHEDULE_READ)
-    assert {r for r in P.ROLES if P.has_permission(r, P.SCHEDULE_WRITE)} == {"admin", "tech"}
-    assert {r for r in P.ROLES if P.has_permission(r, P.TIMEOFF_APPROVE)} == {"admin"}
+    assert {r for r in P.ROLES if P.has_permission(r, P.SCHEDULE_WRITE)} == {
+        "admin",
+        "manager",
+        "tech",
+    }
+    assert {r for r in P.ROLES if P.has_permission(r, P.TIMEOFF_APPROVE)} == {"admin", "manager"}

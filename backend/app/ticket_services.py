@@ -27,7 +27,7 @@ from app.models import (
 )
 from app.sla import Calendar, business_minutes_between, compute_due_dates
 
-ASSIGNABLE_ROLES = ("admin", "tech")
+ASSIGNABLE_ROLES = ("admin", "manager", "tech")
 
 
 def calendar(ctx: Ctx) -> Calendar:
@@ -60,7 +60,7 @@ def _check_assignee(ctx: Ctx, user_id: int | None) -> None:
         return
     user = repo.get_user(ctx.db, user_id)
     if user is None or not user.is_active or user.role not in ASSIGNABLE_ROLES:
-        raise Conflict("Assignee must be an active admin or tech")
+        raise Conflict("Assignee must be an active admin, manager or tech")
 
 
 def _check_org_refs(ctx: Ctx, org_id: int | None, contact_id: int | None, site_id: int | None):

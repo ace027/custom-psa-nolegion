@@ -36,7 +36,7 @@ ERR = {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
     response_model=list[ReminderStageOut],
     summary="The reminder schedule: stages, days past due, and message text",
 )
-def list_stages(ctx: Ctx = require(P.BILLING_READ)):
+def list_stages(ctx: Ctx = require(P.INVOICE_READ)):
     return (
         ctx.db.execute(select(ReminderStage).order_by(ReminderStage.days_past_due)).scalars().all()
     )
@@ -85,7 +85,7 @@ def create_statement(org_id: int, ctx: Ctx = require(P.BILLING_WRITE)):
     responses=ERR,
     summary="A client's past statements, newest first",
 )
-def list_statements(org_id: int, ctx: Ctx = require(P.BILLING_READ)):
+def list_statements(org_id: int, ctx: Ctx = require(P.INVOICE_READ)):
     return [_statement_out(s) for s in svc.list_statements(ctx, org_id)]
 
 
@@ -95,7 +95,7 @@ def list_statements(org_id: int, ctx: Ctx = require(P.BILLING_READ)):
     responses=ERR,
     summary="One statement",
 )
-def get_statement(statement_id: int, ctx: Ctx = require(P.BILLING_READ)):
+def get_statement(statement_id: int, ctx: Ctx = require(P.INVOICE_READ)):
     return _statement_out(svc.get_statement(ctx, statement_id))
 
 
@@ -105,7 +105,7 @@ def get_statement(statement_id: int, ctx: Ctx = require(P.BILLING_READ)):
     responses=ERR,
     summary="Download the statement as a PDF",
 )
-def statement_pdf(statement_id: int, ctx: Ctx = require(P.BILLING_READ)):
+def statement_pdf(statement_id: int, ctx: Ctx = require(P.INVOICE_READ)):
     s = svc.get_statement(ctx, statement_id)
     return Response(
         render_statement_pdf(s.snapshot),
@@ -185,7 +185,7 @@ def list_notices(
     organization_id: int | None = None,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    ctx: Ctx = require(P.BILLING_READ),
+    ctx: Ctx = require(P.INVOICE_READ),
 ):
     items, total = svc.list_notices(
         ctx, status=status, kind=kind, org_id=organization_id, limit=limit, offset=offset
@@ -196,7 +196,7 @@ def list_notices(
 @router.get(
     "/billing-notices/{notice_id}", response_model=NoticeOut, responses=ERR, summary="One notice"
 )
-def get_notice(notice_id: int, ctx: Ctx = require(P.BILLING_READ)):
+def get_notice(notice_id: int, ctx: Ctx = require(P.INVOICE_READ)):
     return _notice_out(ctx, svc.get_notice(ctx, notice_id))
 
 

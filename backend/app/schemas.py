@@ -5,7 +5,7 @@ from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
-Role = Literal["admin", "tech", "billing", "read_only"]
+Role = Literal["admin", "manager", "tech", "billing", "read_only"]
 OrgStatus = Literal["active", "inactive", "prospect"]
 # 'project' is set by project tasks (app/projects.py); the other six are the integration sources
 TicketSource = Literal["manual", "email", "portal", "rmm", "api", "rule", "project"]

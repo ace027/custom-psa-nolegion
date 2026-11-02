@@ -73,6 +73,9 @@ def test_create_validates_references(admin, org_ctx, make_org, make_ticket, logi
         admin.post("/api/v1/tickets", json={**base, "assignee_id": billing.user["id"]}).status_code
         == 409
     )
+    manager = login("manager")  # managers can take tickets
+    r = admin.post("/api/v1/tickets", json={**base, "assignee_id": manager.user["id"]})
+    assert r.status_code == 201, r.text
     assert admin.post("/api/v1/tickets", json={**base, "queue_id": 999}).status_code == 409
     assert admin.post("/api/v1/tickets", json={**base, "subject": ""}).status_code == 422
     ok = admin.post(

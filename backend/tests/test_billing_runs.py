@@ -334,8 +334,8 @@ def test_run_endpoint_errors_and_permissions(login, biller, two_clients):
     run = start_run(biller)
     tech, ro = login("tech"), login("read_only")
     assert tech.post("/api/v1/billing-runs", json={"period": period(1)}).status_code == 403
-    assert ro.get("/api/v1/billing-runs").status_code == 200
-    assert ro.get(f"/api/v1/billing-runs/{run['id']}").status_code == 200
+    assert ro.get("/api/v1/billing-runs").status_code == 403  # finance only (invoice:read)
+    assert ro.get(f"/api/v1/billing-runs/{run['id']}").status_code == 403
     for c in (tech, ro):
         assert c.post(f"/api/v1/billing-runs/{run['id']}/review").status_code == 403
         assert c.post(f"/api/v1/billing-runs/{run['id']}/finalize").status_code == 403

@@ -4,7 +4,7 @@ import pytest
 
 from app import permissions as P
 
-ROLES = ["admin", "tech", "billing", "read_only"]
+ROLES = ["admin", "manager", "tech", "billing", "read_only"]
 
 
 def test_matrix_shape():
@@ -48,11 +48,11 @@ def test_crm_permissions():
 def test_procurement_permissions():
     assert P.PROCUREMENT_READ == "procurement:read"
     assert P.PROCUREMENT_WRITE == "procurement:write"
+    # procurement is admin and billing only (Phase 16)
     for role in ROLES:
-        assert P.has_permission(role, P.PROCUREMENT_READ)
-    for role in ("admin", "tech", "billing"):
-        assert P.has_permission(role, P.PROCUREMENT_WRITE)
-    assert not P.has_permission("read_only", P.PROCUREMENT_WRITE)
+        allowed = role in ("admin", "billing")
+        assert P.has_permission(role, P.PROCUREMENT_READ) is allowed, role
+        assert P.has_permission(role, P.PROCUREMENT_WRITE) is allowed, role
     assert not {P.PROCUREMENT_READ, P.PROCUREMENT_WRITE} & P.KEY_FORBIDDEN
 
 
@@ -117,7 +117,7 @@ def calls(ids):
             "admin",
         ),
         ("PATCH", "/api/v1/users/1", {"display_name": "Z"}, "admin"),
-        ("GET", "/api/v1/audit", None, "admin"),
+        ("GET", "/api/v1/audit", None, "audit"),
         # Phase 2
         ("GET", "/api/v1/tickets", None, "read"),
         ("GET", f"/api/v1/tickets/{t}", None, "read"),
@@ -144,30 +144,32 @@ def calls(ids):
         ("POST", f"/api/v1/time-entries/{e}/void", None, "write"),
         ("PATCH", "/api/v1/settings", {"sla_at_risk_percent": 30}, "admin"),
         ("GET", "/api/v1/mail/status", None, "admin"),
-        ("POST", "/api/v1/queues", {"name": "Q2"}, "admin"),
-        ("PATCH", f"/api/v1/queues/{x['queues']}", {"name": "Q3"}, "admin"),
-        ("POST", f"/api/v1/queues/{x['queues']}/archive", None, "admin"),
-        ("POST", f"/api/v1/queues/{x['queues']}/unarchive", None, "admin"),
-        ("POST", "/api/v1/categories", {"name": "C2"}, "admin"),
-        ("PATCH", f"/api/v1/categories/{x['categories']}", {"name": "C3"}, "admin"),
-        ("POST", f"/api/v1/categories/{x['categories']}/archive", None, "admin"),
-        ("POST", f"/api/v1/categories/{x['categories']}/unarchive", None, "admin"),
-        ("POST", "/api/v1/work-types", {"name": "W2"}, "admin"),
-        ("PATCH", f"/api/v1/work-types/{x['work-types']}", {"name": "W3"}, "admin"),
-        ("POST", f"/api/v1/work-types/{x['work-types']}/archive", None, "admin"),
-        ("POST", f"/api/v1/work-types/{x['work-types']}/unarchive", None, "admin"),
-        ("POST", "/api/v1/priorities", {"name": "P2", "rank": 7}, "admin"),
-        ("PATCH", f"/api/v1/priorities/{x['priorities']}", {"rank": 6}, "admin"),
-        ("POST", f"/api/v1/priorities/{x['priorities']}/archive", None, "admin"),
-        ("POST", f"/api/v1/priorities/{x['priorities']}/unarchive", None, "admin"),
+        ("POST", "/api/v1/queues", {"name": "Q2"}, "service"),
+        ("PATCH", f"/api/v1/queues/{x['queues']}", {"name": "Q3"}, "service"),
+        ("POST", f"/api/v1/queues/{x['queues']}/archive", None, "service"),
+        ("POST", f"/api/v1/queues/{x['queues']}/unarchive", None, "service"),
+        ("POST", "/api/v1/categories", {"name": "C2"}, "service"),
+        ("PATCH", f"/api/v1/categories/{x['categories']}", {"name": "C3"}, "service"),
+        ("POST", f"/api/v1/categories/{x['categories']}/archive", None, "service"),
+        ("POST", f"/api/v1/categories/{x['categories']}/unarchive", None, "service"),
+        ("POST", "/api/v1/work-types", {"name": "W2"}, "service"),
+        ("PATCH", f"/api/v1/work-types/{x['work-types']}", {"name": "W3"}, "service"),
+        ("POST", f"/api/v1/work-types/{x['work-types']}/archive", None, "service"),
+        ("POST", f"/api/v1/work-types/{x['work-types']}/unarchive", None, "service"),
+        ("POST", "/api/v1/priorities", {"name": "P2", "rank": 7}, "service"),
+        ("PATCH", f"/api/v1/priorities/{x['priorities']}", {"rank": 6}, "service"),
+        ("POST", f"/api/v1/priorities/{x['priorities']}/archive", None, "service"),
+        ("POST", f"/api/v1/priorities/{x['priorities']}/unarchive", None, "service"),
     ]
 
 
 ALLOWED = {
     "any": set(ROLES),
     "read": set(ROLES),
-    "write": {"admin", "tech"},
+    "write": {"admin", "manager", "tech"},
     "admin": {"admin"},
+    "audit": {"admin", "manager"},
+    "service": {"admin", "manager"},  # service:configure (Phase 16)
     "file": set(ROLES),
 }
 
@@ -175,7 +177,11 @@ ALLOWED = {
 @pytest.mark.parametrize("role", ROLES)
 def test_role_matrix(role, login, seeded):
     client = login(role)
-    if role in ("admin", "tech"):  # editing time is limited to your own entries (or admin)
+    if role in (
+        "admin",
+        "manager",
+        "tech",
+    ):  # editing time is limited to your own entries (or admin)
         wt = seeded["extras"]["work-types"]
         seeded["entry"] = client.post(
             f"/api/v1/tickets/{seeded['ticket']}/time", json={"work_type_id": wt, "minutes": 5}

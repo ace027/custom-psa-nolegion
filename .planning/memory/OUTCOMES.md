@@ -233,3 +233,6 @@ pr: N/A
 verification: 4/4 passed
 | O-141 | 2026-11-02 | dev | 16 | 16-01 | engineering-security-engineer | implementation | failed | 5 | front-end-redesign-navigation-and-layout, engineering | Permission split and manager role: Partial |
 | O-142 | 2026-11-02 | dev | 16 | 16-01 | engineering-security-engineer | implementation | failed | 5 | front-end-redesign-navigation-and-layout, engineering | Permission split and manager role: Partial |
+| O-143 | 2026-11-02 | dev | 16 | 16-01 | engineering-security-engineer | implementation | failed | 5 | front-end-redesign-navigation-and-layout, engineering | Permission split and manager role: Partial |
+| O-144 | 2026-11-02 | dev | 16 | 16-01 | engineering-security-engineer | implementation | failed | 5 | front-end-redesign-navigation-and-layout, engineering | Permission split and manager role: Partial |
+| O-145 | 2026-11-02 | dev | 16 | 16-01 | engineering-security-engineer | implementation | failed | 5 | front-end-redesign-navigation-and-layout, engineering | Permission split and manager role: Partial |

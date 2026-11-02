@@ -40,7 +40,7 @@ def list_statuses(include_archived: bool = False, ctx: Ctx = require(P.TICKET_RE
     responses=ERR,
     summary="Add a status that behaves like one of the five built-in states",
 )
-def create_status(body: TicketStatusIn, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def create_status(body: TicketStatusIn, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.create_ticket_status(ctx, body.model_dump())
 
 
@@ -50,7 +50,7 @@ def create_status(body: TicketStatusIn, ctx: Ctx = require(P.CONFIG_MANAGE)):
     responses=ERR,
     summary="Rename or reorder a status (its behaviour cannot change)",
 )
-def update_status(status_id: int, body: TicketStatusPatch, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def update_status(status_id: int, body: TicketStatusPatch, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.update_ticket_status(ctx, status_id, body.model_dump(exclude_unset=True))
 
 
@@ -60,7 +60,7 @@ def update_status(status_id: int, body: TicketStatusPatch, ctx: Ctx = require(P.
     responses=ERR,
     summary="Hide a status from new choices (tickets that have it keep it)",
 )
-def archive_status(status_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def archive_status(status_id: int, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.set_ticket_status_archived(ctx, status_id, True)
 
 
@@ -70,7 +70,7 @@ def archive_status(status_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
     responses=ERR,
     summary="Bring an archived status back",
 )
-def unarchive_status(status_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
+def unarchive_status(status_id: int, ctx: Ctx = require(P.SERVICE_CONFIGURE)):
     return svc.set_ticket_status_archived(ctx, status_id, False)
 
 

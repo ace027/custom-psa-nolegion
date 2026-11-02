@@ -300,7 +300,12 @@ def test_appointment_role_rules(admin, tech, ticket, login):
     assert book(ro, ticket["id"], tech.user["id"], at(15), at(16)).status_code == 403
     for target in (biller, ro):
         r = book(admin, ticket["id"], target.user["id"], at(15), at(16))
-        assert r.status_code == 409 and "admins and techs" in r.json()["detail"]
+        assert r.status_code == 409 and "managers and techs" in r.json()["detail"]
+    manager = login("manager")  # managers do field work too, so they can be booked
+    assert (
+        book(admin, ticket["id"], manager.user["id"], at(17, day=2), at(18, day=2)).status_code
+        == 201
+    )
     a = book(admin, ticket["id"], tech.user["id"], at(15), at(16)).json()
     for reader in (biller, ro):
         assert reader.get(f"/api/v1/appointments/{a['id']}").status_code == 200

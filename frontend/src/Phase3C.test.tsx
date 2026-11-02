@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
 const json = (body: unknown, status = 200) => () => new Response(JSON.stringify(body), { status });
-const me = { id: 1, email: "b@example.com", display_name: "Bea Biller", role: "billing", permissions: ["org:read", "user:read", "ticket:read", "billing:read", "billing:write", "billing:finalize", "payment:write"] };
+const me = { id: 1, email: "b@example.com", display_name: "Bea Biller", role: "billing", permissions: ["org:read", "user:read", "ticket:read", "billing:read", "invoice:read", "billing:write", "billing:finalize", "payment:write"] };
 const row = {
   invoice_id: 9, invoice_number: "INV-2026-0042", organization_id: 1, organization_name: "Acme", due_date: "2026-08-29", days_overdue: 40,
   balance_cents: 100000, base_cents: 100000, percent_bp: 150, percent_fee_cents: 1500, flat_fee_cents: 1000, fee_cents: 2500, fees_so_far: 0,

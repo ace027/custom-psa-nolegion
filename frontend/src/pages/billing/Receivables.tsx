@@ -6,8 +6,8 @@ import { money } from "../../money";
 import { ErrorMsg } from "../../ui";
 import StatementActions from "./StatementActions";
 
-export function useReceivables() {
-  return useQuery({ queryKey: ["receivables"], queryFn: () => api<ReceivablesData>("/receivables"), refetchInterval: 60_000 });
+export function useReceivables(enabled = true) {
+  return useQuery({ queryKey: ["receivables"], queryFn: () => api<ReceivablesData>("/receivables"), refetchInterval: 60_000, enabled });
 }
 
 export default function Receivables() {

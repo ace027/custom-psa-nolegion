@@ -38,7 +38,7 @@ export default function OrganizationDetail() {
         {org.data.archived_at && <span className="ml-2 text-sm text-slate-500">(archived)</span>}
       </h1>
       <OrgForm org={org.data} canWrite={canWrite} onDone={refresh} />
-      {can(me, "billing:read") && <OrgBillingCard />}
+      {can(me, "invoice:read") && <OrgBillingCard />}
       {can(me, "crm:read") && <OrgOpportunitiesCard orgId={org.data.id} />}
       {can(me, "procurement:read") && <OrgInventoryCard />}
       {can(me, "ticket:read") && <OrgProjectsCard orgId={org.data.id} />}

@@ -90,7 +90,8 @@ def test_only_billing_roles_can_change_billing_settings(login, org_ctx):
     org = org_ctx["org"]
     for role in ("tech", "read_only"):
         c = login(role)
-        assert c.get(f"/api/v1/organizations/{org}/billing").status_code == 200
+        # terms, reminders and late-fee flags are receivables data: invoice:read (phase 16)
+        assert c.get(f"/api/v1/organizations/{org}/billing").status_code == 403
         assert (
             c.patch(f"/api/v1/organizations/{org}/billing", json={"tax_rate_bp": 1}).status_code
             == 403

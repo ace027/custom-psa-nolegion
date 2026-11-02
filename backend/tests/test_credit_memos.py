@@ -445,7 +445,8 @@ def test_permissions(login, biller, org, company):
     m = memo(biller, org).json()
     p = pay(biller, org, 1000).json()
     for client in (tech, ro):
-        assert client.get("/api/v1/credit-memos").status_code == 200
+        # invoices are finance (invoice:read)
+        assert client.get("/api/v1/credit-memos").status_code == 403
         assert memo(client, org).status_code == 403
         assert (
             client.post(

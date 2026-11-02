@@ -46,7 +46,7 @@ def test_migration_0032_reporting_tables_and_constraints(owner_engine, make_user
     from sqlalchemy.exc import IntegrityError
 
     with owner_engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0038"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0039"
     uid = make_user("admin")["id"]
 
     def schedule(**kw):
@@ -191,3 +191,46 @@ def test_migration_0037_drops_kb_and_downgrade_recreates_it(owner_engine, make_u
     assert kb_state() is None
     with owner_engine.connect() as c:
         assert c.execute(text("SELECT permissions FROM api_keys")).scalar_one() == ["ticket:read"]
+
+
+def test_migration_0039_manager_role_and_key_permission_split(owner_engine, make_user):
+    def keys():
+        with owner_engine.connect() as c:
+            return dict(c.execute(text("SELECT name, permissions FROM api_keys")).all())
+
+    cfg = Config("alembic.ini")
+    uid = make_user("admin")["id"]
+    command.downgrade(cfg, "0038")
+    with owner_engine.begin() as c:
+        for name, perms in (
+            ("fin", ["billing:read", "ticket:read"]),
+            ("cfg", ["config:manage"]),
+            ("plain", ["ticket:read"]),
+        ):
+            c.execute(
+                text(
+                    "INSERT INTO api_keys (name, prefix, key_hash, user_id, permissions)"
+                    " VALUES (:n, :n, :n, :u, :p)"
+                ),
+                {"n": name, "u": uid, "p": perms},
+            )
+    command.upgrade(cfg, "head")
+    assert keys() == {
+        "fin": ["billing:read", "invoice:read", "ticket:read"],
+        "cfg": ["config:manage", "service:configure"],
+        "plain": ["ticket:read"],
+    }
+    make_user("manager")
+    with pytest.raises(RuntimeError, match="manager role"):
+        command.downgrade(cfg, "0038")
+    with owner_engine.begin() as c:
+        c.execute(text("UPDATE users SET role = 'tech' WHERE role = 'manager'"))
+    command.downgrade(cfg, "0038")
+    assert keys() == {
+        "fin": ["billing:read", "ticket:read"],
+        "cfg": ["config:manage"],
+        "plain": ["ticket:read"],
+    }
+    with pytest.raises(Exception, match="ck_users_role"):
+        make_user("manager", "m2@example.com")
+    command.upgrade(cfg, "head")

@@ -33,7 +33,7 @@ from app.models import (
 )
 from app.scheduling_schemas import ClientNoticeOut
 
-BOOKABLE_ROLES = ("admin", "tech")
+BOOKABLE_ROLES = ("admin", "manager", "tech")
 MAX_APPOINTMENT = timedelta(hours=24)
 MAX_TIME_OFF = timedelta(days=366)
 MAX_APPOINTMENT_RANGE = timedelta(days=62)
@@ -56,7 +56,7 @@ def _is_approver(ctx: Ctx) -> bool:
 def _bookable(ctx: Ctx, user_id: int) -> User:
     user = repo.get_user(ctx.db, user_id)
     if user is None or not user.is_active or user.role not in BOOKABLE_ROLES:
-        raise Conflict("Appointments and working hours are for active admins and techs")
+        raise Conflict("Appointments and working hours are for active admins, managers and techs")
     return user
 
 

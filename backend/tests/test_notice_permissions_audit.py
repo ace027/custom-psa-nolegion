@@ -3,8 +3,13 @@ import pytest
 from tests.test_notices import notices, overdue, prepare, set_gap
 from tests.test_statements import statement
 
-ROLES = ["admin", "tech", "billing", "read_only"]
-ALLOWED = {"read": set(ROLES), "write": {"admin", "billing"}, "finalize": {"admin", "billing"}}
+ROLES = ["admin", "manager", "tech", "billing", "read_only"]
+# every notice read is finance (invoice:read)
+ALLOWED = {
+    "read": {"admin", "manager", "billing"},
+    "write": {"admin", "billing"},
+    "finalize": {"admin", "billing"},
+}
 
 CALLS = [
     ("GET", "/api/v1/billing/reminder-stages", None, "read"),

@@ -2,18 +2,19 @@
 
 import pytest
 
-ROLES = ["admin", "tech", "billing", "read_only"]
+ROLES = ["admin", "manager", "tech", "billing", "read_only"]
 ALLOWED = {
     "read": set(ROLES),
+    "invoice": {"admin", "manager", "billing"},  # finance reads (invoice:read)
     "write": {"admin", "billing"},
     "finalize": {"admin", "billing"},
-    "charge": {"admin", "tech", "billing"},
+    "charge": {"admin", "manager", "tech", "billing"},
 }
 
 CALLS = [
     ("GET", "/api/v1/billing/work-types", None, "read"),
     ("PATCH", "/api/v1/billing/work-types/1", {"rate_cents": 100}, "write"),
-    ("GET", "/api/v1/organizations/1/billing", None, "read"),
+    ("GET", "/api/v1/organizations/1/billing", None, "invoice"),
     ("PATCH", "/api/v1/organizations/1/billing", {"tax_rate_bp": 1}, "write"),
     ("PUT", "/api/v1/organizations/1/billing/rates/1", {"rate_cents": 1}, "write"),
     ("DELETE", "/api/v1/organizations/1/billing/rates/1", None, "write"),
@@ -46,9 +47,9 @@ CALLS = [
         "charge",
     ),
     ("POST", "/api/v1/product-charges/1/void", None, "charge"),
-    ("GET", "/api/v1/invoices", None, "read"),
+    ("GET", "/api/v1/invoices", None, "invoice"),
     ("POST", "/api/v1/invoices", {"organization_id": 1}, "write"),
-    ("GET", "/api/v1/invoices/1", None, "read"),
+    ("GET", "/api/v1/invoices/1", None, "invoice"),
     ("PATCH", "/api/v1/invoices/1", {"memo": "m"}, "write"),
     ("POST", "/api/v1/invoices/1/add-unbilled", None, "write"),
     ("POST", "/api/v1/invoices/1/lines", {"description": "x", "unit_price_cents": 1}, "write"),
@@ -56,10 +57,10 @@ CALLS = [
     ("DELETE", "/api/v1/invoice-lines/1", None, "write"),
     ("POST", "/api/v1/invoices/1/finalize", None, "finalize"),
     ("POST", "/api/v1/invoices/1/void", {"reason": "because"}, "finalize"),
-    ("GET", "/api/v1/invoices/1/pdf", None, "read"),
-    ("GET", "/api/v1/billing-runs", None, "read"),
+    ("GET", "/api/v1/invoices/1/pdf", None, "invoice"),
+    ("GET", "/api/v1/billing-runs", None, "invoice"),
     ("POST", "/api/v1/billing-runs", {"period": "2026-01"}, "write"),
-    ("GET", "/api/v1/billing-runs/1", None, "read"),
+    ("GET", "/api/v1/billing-runs/1", None, "invoice"),
     ("POST", "/api/v1/billing-runs/1/review", None, "finalize"),
     ("POST", "/api/v1/billing-runs/1/finalize", None, "finalize"),
     ("POST", "/api/v1/billing-runs/1/cancel", None, "finalize"),

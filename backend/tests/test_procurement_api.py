@@ -10,17 +10,21 @@ from tests.test_procurement import (  # noqa: F401
     ordered_po,
     receive,
     stock,
-    tech,
     vendor,
 )
 
 
 @pytest.fixture
 def reader(login):
-    return login("read_only")
+    return login("billing")  # procurement is admin and billing only (Phase 16)
 
 
-def test_every_route_responds(admin, tech, reader, vendor, org_ctx):
+@pytest.fixture
+def denied(login):
+    return [login("tech"), login("read_only"), login("manager")]
+
+
+def test_every_route_responds(admin, reader, vendor, org_ctx):
     assert reader.get(f"{P}/vendors").status_code == 200
     assert reader.get(f"{P}/markup-rules").status_code == 200
     assert reader.get(f"{P}/inventory").status_code == 200
@@ -58,7 +62,7 @@ def test_listing_filters_for_purchase_orders(admin, vendor, org_ctx):
     assert admin.get(f"{P}/purchase-orders?status=bogus").status_code == 422
 
 
-def test_permissions(admin, tech, reader, vendor, org_ctx):
+def test_permissions(admin, denied, vendor, org_ctx):
     po = make_po(admin, vendor, [line()])
     rule = admin.post(f"{P}/markup-rules", json={"category": "other", "markup_bp": 100}).json()
     [item] = stock(admin, vendor)
@@ -75,18 +79,19 @@ def test_permissions(admin, tech, reader, vendor, org_ctx):
         ("post", f"{P}/inventory/{item['id']}/undo-delivery", None),
         ("post", f"{P}/inventory/{item['id']}/consume", None),
     ]
-    for method, path, body in writes:
-        r = getattr(reader, method)(path, **({} if body is None else {"json": body}))
-        assert r.status_code == 403, (method, path)
-    # techs can work with procurement but not change markup (a billing decision)
-    assert tech.post(f"{P}/vendors", json={"name": "Tech vendor"}).status_code == 201
-    for method, path, body in (
+    writes += [
         ("post", f"{P}/markup-rules", {"category": "license", "markup_bp": 1}),
         ("patch", f"{P}/markup-rules/{rule['id']}", {"markup_bp": 5}),
         ("delete", f"{P}/markup-rules/{rule['id']}", None),
-    ):
-        r = getattr(tech, method)(path, **({} if body is None else {"json": body}))
-        assert r.status_code == 403, (method, path)
+    ]
+    reads = [f"{P}/vendors", f"{P}/markup-rules", f"{P}/inventory", f"{P}/purchase-orders"]
+    # techs, managers and read-only have no procurement access at all (Phase 16)
+    for client in denied:
+        for path in reads:
+            assert client.get(path).status_code == 403, path
+        for method, path, body in writes:
+            r = getattr(client, method)(path, **({} if body is None else {"json": body}))
+            assert r.status_code == 403, (method, path)
     assert admin.get(f"{P}/markup-rules").json()[0]["markup_bp"] == 100
 
 

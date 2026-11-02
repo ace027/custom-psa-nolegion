@@ -67,7 +67,7 @@ def list_memos(
     status: str | None = Query(None, pattern="^(active|void)$"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    ctx: Ctx = require(P.BILLING_READ),
+    ctx: Ctx = require(P.INVOICE_READ),
 ):
     items, total = prepo.list_memos(
         ctx.db, ctx.scope, org_id=organization_id, status=status, limit=limit, offset=offset
@@ -92,7 +92,7 @@ def create_memo(body: CreditMemoIn, ctx: Ctx = require(P.BILLING_FINALIZE)):
     responses=ERR,
     summary="A credit memo with its lines and applications",
 )
-def get_memo(memo_id: int, ctx: Ctx = require(P.BILLING_READ)):
+def get_memo(memo_id: int, ctx: Ctx = require(P.INVOICE_READ)):
     memo = prepo.get_memo(ctx.db, ctx.scope, memo_id)
     if memo is None:
         raise HTTPException(404, "Credit memo not found")

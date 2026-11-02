@@ -184,7 +184,7 @@ def test_isolation_between_clients_and_permissions(
     assert {r["organization_id"] for r in preview(biller)["rows"]} == {a, b}
     assert {r["organization_id"] for r in preview(biller, organization_id=b)["rows"]} == {b}
     tech = login("tech")
-    assert tech.get("/api/v1/late-fees/preview").status_code == 200
+    assert tech.get("/api/v1/late-fees/preview").status_code == 403  # finance only (invoice:read)
     assert tech.post("/api/v1/late-fees/apply", json={"invoice_ids": [1]}).status_code == 403
     flags = owner.execute(
         text(

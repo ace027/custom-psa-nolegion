@@ -6,7 +6,7 @@ import App from "./App";
 
 const json = (body: unknown, status = 200) => () => new Response(JSON.stringify(body), { status });
 const me = (role: string, permissions: string[]) => ({ id: 1, email: "u@example.com", display_name: "Una User", role, permissions });
-const READ = ["org:read", "user:read", "ticket:read", "billing:read"];
+const READ = ["org:read", "user:read", "ticket:read", "billing:read", "invoice:read"];
 const BILL = [...READ, "billing:write", "billing:finalize", "charge:write", "payment:write"];
 
 const inv = (over = {}) => ({

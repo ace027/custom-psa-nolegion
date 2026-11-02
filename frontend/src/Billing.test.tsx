@@ -6,7 +6,7 @@ import App from "./App";
 
 const json = (body: unknown, status = 200) => () => new Response(JSON.stringify(body), { status });
 const me = (role: string, permissions: string[]) => ({ id: 1, email: "u@example.com", display_name: "Una User", role, permissions });
-const READ = ["org:read", "user:read", "ticket:read", "billing:read"];
+const READ = ["org:read", "user:read", "ticket:read", "billing:read", "invoice:read"];
 const BILL = [...READ, "billing:write", "billing:finalize", "charge:write", "payment:write"];
 
 const invoice = (over = {}) => ({
@@ -118,5 +118,19 @@ describe("navigation", () => {
     });
     expect(await screen.findByText("Dashboard", { selector: "h1" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Billing" })).not.toBeInTheDocument();
+  });
+});
+
+describe("catalog-only access (billing:read without invoice:read)", () => {
+  it("shows only the catalog tabs and sends invoice URLs to Agreements", async () => {
+    const CATALOG = ["org:read", "user:read", "ticket:read", "billing:read"];
+    go("/billing/invoices/5", { "/api/v1/auth/me": json(me("tech", CATALOG)), "/api/v1/agreements": json([]) });
+    expect(await screen.findByRole("link", { name: "Agreements" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Products" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Invoices" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Receivables/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("Draft invoice #5")).not.toBeInTheDocument();
+    const urls = (fetch as unknown as { mock: { calls: string[][] } }).mock.calls.map((c) => c[0]);
+    expect(urls.filter((u) => /invoices|receivables|billing-notices/.test(u))).toEqual([]);
   });
 });

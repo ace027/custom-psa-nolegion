@@ -13,11 +13,6 @@ P = "/api/v1/procurement"
 
 
 @pytest.fixture
-def tech(login):
-    return login("tech")
-
-
-@pytest.fixture
 def vendor(admin):
     r = admin.post(f"{P}/vendors", json={"name": "Ingram"})
     assert r.status_code == 201, r.text
@@ -86,15 +81,15 @@ def product(admin, **kw):
 
 
 # ---- vendors ----------------------------------------------------------------------------------
-def test_vendor_crud_archive_and_duplicates(admin, tech, vendor, owner):
+def test_vendor_crud_archive_and_duplicates(admin, biller, vendor, owner):
     assert admin.post(f"{P}/vendors", json={"name": "INGRAM"}).status_code == 409
     other = admin.post(f"{P}/vendors", json={"name": "CDW", "email": "a@cdw.example"}).json()
     r = admin.patch(f"{P}/vendors/{other['id']}", json={"phone": "555-0100"})
     assert r.status_code == 200 and r.json()["phone"] == "555-0100"
     assert admin.patch(f"{P}/vendors/{other['id']}", json={"name": "ingram"}).status_code == 409
     assert admin.patch(f"{P}/vendors/{other['id']}", json={"archived": True}).status_code == 200
-    assert [v["name"] for v in tech.get(f"{P}/vendors").json()] == ["Ingram"]
-    names = [v["name"] for v in tech.get(f"{P}/vendors?include_archived=true").json()]
+    assert [v["name"] for v in biller.get(f"{P}/vendors").json()] == ["Ingram"]
+    names = [v["name"] for v in biller.get(f"{P}/vendors?include_archived=true").json()]
     assert names == ["CDW", "Ingram"]
     assert admin.patch(f"{P}/vendors/999", json={"notes": "x"}).status_code == 404
     acts = audit_actions(owner)
@@ -189,7 +184,7 @@ def test_cancel_rules(admin, vendor, owner):
 
 
 # ---- markup rules and resolution --------------------------------------------------------------
-def test_markup_rule_crud_and_duplicates(admin, tech, vendor, owner):
+def test_markup_rule_crud_and_duplicates(admin, biller, vendor, owner):
     p = product(admin)
     r = admin.post(f"{P}/markup-rules", json={"category": "hardware", "markup_bp": 2000})
     assert r.status_code == 201, r.text
@@ -210,7 +205,7 @@ def test_markup_rule_crud_and_duplicates(admin, tech, vendor, owner):
     assert admin.post(f"{P}/markup-rules", json={"markup_bp": 1}).status_code == 422
     r = admin.patch(f"{P}/markup-rules/{rule['id']}", json={"markup_bp": 2500})
     assert r.status_code == 200 and r.json()["markup_bp"] == 2500
-    assert len(tech.get(f"{P}/markup-rules").json()) == 2
+    assert len(biller.get(f"{P}/markup-rules").json()) == 2
     assert admin.delete(f"{P}/markup-rules/{rule['id']}").status_code == 204
     assert admin.delete(f"{P}/markup-rules/{rule['id']}").status_code == 404
     assert {"markup_rule.create", "markup_rule.update", "markup_rule.delete"} <= set(

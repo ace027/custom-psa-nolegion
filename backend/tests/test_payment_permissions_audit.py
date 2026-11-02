@@ -2,8 +2,13 @@ import pytest
 
 from tests.test_payments import final_invoice, pay
 
-ROLES = ["admin", "tech", "billing", "read_only"]
-ALLOWED = {"read": set(ROLES), "write": {"admin", "billing"}, "finalize": {"admin", "billing"}}
+ROLES = ["admin", "manager", "tech", "billing", "read_only"]
+# payment and receivable reads are finance (invoice:read)
+ALLOWED = {
+    "read": {"admin", "manager", "billing"},
+    "write": {"admin", "billing"},
+    "finalize": {"admin", "billing"},
+}
 
 CALLS = [
     ("GET", "/api/v1/payments", None, "read"),
@@ -39,12 +44,17 @@ def test_unauthenticated_payment_requests_get_401(anon):
         assert anon.request(method, path, json=body).status_code == 401, (method, path)
 
 
-def test_techs_can_see_balances_but_not_change_them(login, biller, org_ctx, company):
+def test_managers_see_balances_but_techs_do_not_and_neither_changes_them(
+    login, biller, org_ctx, company
+):
     inv = final_invoice(biller, org_ctx["org"], 1000)
-    tech = login("tech")
-    assert tech.get(f"/api/v1/invoices/{inv['id']}").json()["balance_cents"] == 1000
-    assert tech.get("/api/v1/receivables").status_code == 200
-    assert pay(tech, org_ctx["org"], 100).status_code == 403
+    manager, tech = login("manager"), login("tech")
+    assert manager.get(f"/api/v1/invoices/{inv['id']}").json()["balance_cents"] == 1000
+    assert manager.get("/api/v1/receivables").status_code == 200
+    assert tech.get(f"/api/v1/invoices/{inv['id']}").status_code == 403
+    assert tech.get("/api/v1/receivables").status_code == 403
+    for c in (manager, tech):
+        assert pay(c, org_ctx["org"], 100).status_code == 403
 
 
 def count(admin):

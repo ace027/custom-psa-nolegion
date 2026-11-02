@@ -54,26 +54,31 @@ LOOKUPS = [
 ]
 
 
+# service settings (service:configure); the other lookups stay general settings (config:manage)
+SERVICE_LOOKUPS = {"queues", "categories", "priorities", "work-types"}
+
+
 def _register(path, model, label, schema_in, schema_patch, schema_out):
     pretty = label.replace("_", " ")
+    write = P.SERVICE_CONFIGURE if path in SERVICE_LOOKUPS else P.CONFIG_MANAGE
 
     def list_(include_archived: bool = False, ctx: Ctx = require(P.TICKET_READ)):
         return repo.list_lookup(ctx.db, model, include_archived)
 
-    def create(body: schema_in, ctx: Ctx = require(P.CONFIG_MANAGE)):  # type: ignore[valid-type]
+    def create(body: schema_in, ctx: Ctx = require(write)):  # type: ignore[valid-type]
         return svc.create_lookup(ctx, model, label, body.model_dump())
 
     def update(
         item_id: int,
         body: schema_patch,  # type: ignore[valid-type]
-        ctx: Ctx = require(P.CONFIG_MANAGE),
+        ctx: Ctx = require(write),
     ):
         return svc.update_lookup(ctx, model, label, item_id, body.model_dump(exclude_unset=True))
 
-    def archive(item_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
+    def archive(item_id: int, ctx: Ctx = require(write)):
         return svc.set_lookup_archived(ctx, model, label, item_id, True)
 
-    def unarchive(item_id: int, ctx: Ctx = require(P.CONFIG_MANAGE)):
+    def unarchive(item_id: int, ctx: Ctx = require(write)):
         return svc.set_lookup_archived(ctx, model, label, item_id, False)
 
     for fn, suffix in (

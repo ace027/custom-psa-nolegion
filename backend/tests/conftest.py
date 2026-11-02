@@ -65,7 +65,9 @@ DELETE FROM quote_settings; INSERT INTO quote_settings (id) VALUES (1);
 ALTER SEQUENCE ticket_number_seq RESTART WITH 10001;
 UPDATE work_types SET rate_cents = NULL, taxable = false;
 """
-HIT_ROUTES: set[tuple[str, str]] = set()
+# (method, id of the route): FastAPI puts the router's own route (path without the include prefix)
+# in scope["route"], so routes are matched by id(), not by path (routes are unhashable)
+HIT_ROUTES: set[tuple[str, int]] = set()
 STAGE_DEFAULTS: list[dict] = []
 
 
@@ -78,7 +80,7 @@ class RouteRecorder:
     async def __call__(self, scope, receive, send):
         await self.inner(scope, receive, send)
         if scope["type"] == "http" and scope.get("route") is not None:
-            HIT_ROUTES.add((scope["method"], scope["route"].path))
+            HIT_ROUTES.add((scope["method"], id(scope["route"])))
 
 
 @pytest.fixture(scope="session")

@@ -34,8 +34,15 @@ export async function api<T>(path: string, init: RequestInit & { json?: unknown 
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
 }
 
-export type Role = "admin" | "tech" | "billing" | "read_only";
-export const ROLES: Role[] = ["admin", "tech", "billing", "read_only"];
+export type Role = "admin" | "manager" | "tech" | "billing" | "read_only";
+export const ROLES: Role[] = ["admin", "manager", "tech", "billing", "read_only"];
+export const ROLE_HELP: Record<Role, string> = {
+  admin: "Everything, including users, integrations, API keys and settings.",
+  manager: "Tech work plus approvals, reports, the audit log, read-only invoices and service settings.",
+  tech: "Tickets, time, schedule, quotes and parts on tickets; no invoices or purchasing.",
+  billing: "Invoices, payments, purchasing and billing reports.",
+  read_only: "Can look at tickets, clients and the catalog; changes nothing.",
+};
 
 export interface Me {
   id: number;
