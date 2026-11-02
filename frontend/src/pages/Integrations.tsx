@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ClientMap, Integration, Organization, SyncRun, api } from "../api";
+import { ClientMap, Integration, Organization, Page, SyncRun, api } from "../api";
+import ErrorBoundary from "../components/ErrorBoundary";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../ui";
 import RmmAlertsCard from "./RmmAlertsCard";
 
@@ -16,6 +17,10 @@ const HUDU_CONFIG = JSON.stringify(
 );
 
 export default function Integrations() {
+  return <ErrorBoundary><IntegrationsPage /></ErrorBoundary>;
+}
+
+function IntegrationsPage() {
   const list = useQuery({ queryKey: ["integrations"], queryFn: () => api<Integration[]>("/integrations") });
   return (
     <div className="space-y-4">
@@ -99,7 +104,7 @@ function Detail({ integration: i }: { integration: Integration }) {
   const qc = useQueryClient();
   const clients = useQuery({ queryKey: ["integration-clients", i.id], queryFn: () => api<ClientMap[]>(`/integrations/${i.id}/clients`) });
   const runs = useQuery({ queryKey: ["integration-runs", i.id], queryFn: () => api<SyncRun[]>(`/integrations/${i.id}/runs`) });
-  const orgs = useQuery({ queryKey: ["orgs-all"], queryFn: () => api<Organization[]>("/organizations") });
+  const orgs = useQuery({ queryKey: ["integration-orgs"], queryFn: () => api<Page<Organization>>("/organizations?limit=200") });
   const reload = () => qc.invalidateQueries({ queryKey: ["integration-clients", i.id] });
   const fetchClients = useMutation({ mutationFn: () => api(`/integrations/${i.id}/clients/refresh`, { method: "POST" }), onSuccess: reload });
   const map = useMutation({
@@ -133,7 +138,7 @@ function Detail({ integration: i }: { integration: Integration }) {
                   >
                     <option value="">Not mapped yet</option>
                     <option value="ignore">Ignore this client</option>
-                    {orgs.data?.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    {orgs.data?.items.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                   </select>
                 </td>
                 <td className="p-1 text-xs text-slate-500">

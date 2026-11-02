@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Attachment, CannedResponse, Charge, CustomFieldDef, Csat, LinkRelation, TicketLink, Contact, Note, Organization, Page, Product, Ticket, TimeEntry, api,
 } from "../api";
@@ -9,11 +9,14 @@ import { useLookups } from "../lookups";
 import { money } from "../money";
 import { Button, Card, ErrorMsg, Field, SlaBadge, fmt, inputCls } from "../ui";
 import KbSuggestionsCard from "./KbSuggestionsCard";
+import TicketPicker from "./TicketPicker";
 import TicketAppointmentsCard from "./TicketAppointmentsCard";
 import { clientApiPath, clientRoute } from "../clientScope";
 
 export default function TicketDetail() {
   const id = Number(useParams().id);
+  const navigate = useNavigate();
+  const location = useLocation();
   const { data: me } = useMe();
   const qc = useQueryClient();
   const refresh = () => qc.invalidateQueries();
@@ -29,6 +32,14 @@ export default function TicketDetail() {
   if (!t) return <ErrorMsg error={ticket.error ?? "Not found"} />;
   return (
     <div className="space-y-4">
+      <button
+        type="button"
+        aria-label="Back"
+        className="text-sm text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        onClick={() => (location.key !== "default" ? navigate(-1) : navigate("/tickets"))}
+      >
+        ← Back
+      </button>
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold tracking-tight">
           #{t.number} {t.subject}
@@ -64,7 +75,7 @@ export default function TicketDetail() {
       <CustomFieldsCard key={`${t.id}-${t.type_id ?? 0}-${t.updated_at}`} ticket={t} canWrite={canWrite} onDone={refresh} />
       {t.description && (
         <Card title="Description">
-          <p className="whitespace-pre-wrap text-sm">{t.description}</p>
+          <p className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{t.description}</p>
         </Card>
       )}
       {can(me, "kb:read") && <KbSuggestionsCard ticketId={t.id} />}
@@ -165,12 +176,12 @@ function LinksCard({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: 
   const key = ["links", t.id];
   const qc = useQueryClient();
   const links = useQuery({ queryKey: key, queryFn: () => api<TicketLink[]>(`/tickets/${t.id}/links`) });
-  const [f, setF] = useState({ relation: "related", number: "" });
+  const [f, setF] = useState<{ relation: string; other: Ticket | null }>({ relation: "related", other: null });
   const [dup, setDup] = useState("");
   const done = () => { qc.invalidateQueries({ queryKey: key }); onDone(); };
   const add = useMutation({
-    mutationFn: () => api(`/tickets/${t.id}/links`, { method: "POST", json: { relation: f.relation, other_number: Number(f.number) } }),
-    onSuccess: () => { setF({ ...f, number: "" }); done(); },
+    mutationFn: () => api(`/tickets/${t.id}/links`, { method: "POST", json: { relation: f.relation, other_number: f.other?.number } }),
+    onSuccess: () => { setF({ ...f, other: null }); done(); },
   });
   const remove = useMutation({ mutationFn: (id: number) => api(`/tickets/${t.id}/links/${id}`, { method: "DELETE" }), onSuccess: done });
   const close = useMutation({
@@ -197,7 +208,7 @@ function LinksCard({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: 
       )}
       {canWrite && (
         <>
-          <form className="mt-2 flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+          <form className="mt-2 flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); if (f.other) add.mutate(); }}>
             <Field label="This ticket is">
               <select className={inputCls} value={f.relation} onChange={(e) => setF({ ...f, relation: e.target.value })}>
                 <option value="related">related to</option>
@@ -207,8 +218,11 @@ function LinksCard({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: 
                 <option value="child">the parent of</option>
               </select>
             </Field>
-            <Field label="Ticket number"><input className={inputCls} required inputMode="numeric" value={f.number} onChange={(e) => setF({ ...f, number: e.target.value })} /></Field>
-            <Button type="submit" disabled={add.isPending}>Link</Button>
+            <div className="text-sm">
+              <span className="mb-1 block font-medium text-slate-700">Ticket</span>
+              <TicketPicker key={items.length} exclude={[t.id, ...items.map((l) => l.ticket_id)]} value={f.other} onChange={(other) => setF((p) => ({ ...p, other }))} />
+            </div>
+            <Button type="submit" disabled={add.isPending || !f.other}>Link</Button>
           </form>
           {t.status !== "closed" && (
             <form className="mt-3 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3" onSubmit={(e) => { e.preventDefault(); close.mutate(); }}>
@@ -397,7 +411,7 @@ export function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Tick
               </span>
               <span>{fmt(n.created_at)}</span>
             </div>
-            <p className="whitespace-pre-wrap">{n.body}</p>
+            <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{n.body}</p>
           </li>
         ))}
         {notes.length === 0 && <li className="text-sm text-slate-500">No notes yet.</li>}

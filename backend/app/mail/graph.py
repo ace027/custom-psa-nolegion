@@ -8,6 +8,7 @@ import base64
 import logging
 import re
 import time
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol
@@ -115,7 +116,7 @@ class MailClient(Protocol):
         body_text: str,
         attachments: list[tuple[str, str, bytes]] | None = None,
         headers: dict[str, str] | None = None,
-    ) -> None: ...
+    ) -> str | None: ...  # the RFC 5322 Message-ID we gave the mail, when known
 
 
 def _addr(obj: dict | None) -> str | None:
@@ -325,10 +326,18 @@ class GraphClient:
         body_text: str,
         attachments: list[tuple[str, str, bytes]] | None = None,
         headers: dict[str, str] | None = None,
-    ) -> None:
-        """attachments: (filename, content_type, bytes). Graph inline limit is ~3 MB per file.
+    ) -> str:
+        """Returns the Message-ID the mail went out with.
+
+        Why draft + send instead of /sendMail: /sendMail answers 202 with no id, and a customer's
+        reply carries our Message-ID in In-Reply-To/References. Graph lets us set
+        internetMessageId only when creating a message, so we create the draft with our own id
+        (stored by the caller for thread matching) and then send it.
+        attachments: (filename, content_type, bytes). Graph inline limit is ~3 MB per file.
         headers: Graph only accepts custom headers whose names start with "x-"."""
+        message_id = f"<{uuid.uuid4().hex}@{self.mailbox.rsplit('@', 1)[-1]}>"
         message: dict = {
+            "internetMessageId": message_id,
             "subject": subject,
             "body": {"contentType": "Text", "content": body_text},
             "toRecipients": [{"emailAddress": {"address": a}} for a in to],
@@ -350,4 +359,6 @@ class GraphClient:
                 }
                 for name, content_type, data in attachments
             ]
-        self._request("POST", "/sendMail", json={"message": message, "saveToSentItems": True})
+        draft = self._request("POST", "/messages", json=message).json()
+        self._request("POST", f"/messages/{quote(draft['id'], safe='')}/send")
+        return message_id

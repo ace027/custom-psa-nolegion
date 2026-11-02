@@ -81,3 +81,4 @@ class FakeMail:
                 **({"headers": headers} if headers else {}),
             }
         )
+        return f"<out{len(self.sent)}@msp.test>"

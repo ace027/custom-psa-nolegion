@@ -62,7 +62,7 @@ describe("integrations", () => {
       "/api/v1/integrations": json([integ()]),
       "/api/v1/integrations/1/clients": json([{ id: 9, external_id: "7", external_name: "Acme", organization_id: null, ignored: false, needs_mapping: true, suggested_organization_id: 3 }]),
       "/api/v1/integrations/1/runs": json([]),
-      "/api/v1/organizations": json([{ id: 3, name: "Acme Corp", status: "active" }]),
+      "/api/v1/organizations?limit=200": json({ items: [{ id: 3, name: "Acme Corp", status: "active" }], total: 1, limit: 200, offset: 0 }),
       "PUT /api/v1/integrations/1/clients/9": json({}),
     });
     fireEvent.click(await screen.findByRole("button", { name: "Clients and history" }));

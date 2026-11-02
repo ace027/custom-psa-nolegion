@@ -171,6 +171,38 @@ def test_ack_is_not_sent_to_unknown_senders_automated_mail_or_replies(admin, org
     assert len(acks()) == 1  # a reply never triggers another acknowledgement
 
 
+def test_replies_to_our_mail_append_and_are_never_acknowledged(admin, org_ctx, mail, acks):
+    enable_ack(admin)
+    mail.add(msg(subject="Printer down"))
+    ingest.poll_once(mail, MAILBOX)
+    assert len(acks()) == 1
+    ingest.send_pending(mail, MAILBOX)  # the ack goes out and its Message-ID is stored
+    sent_id = "<out1@msp.test>"
+    number = admin.get("/api/v1/tickets").json()["items"][0]["number"]
+    mail.add(msg(subject=f"AW: RE: [#{number}] Printer down"))  # token after prefixes
+    mail.add(msg(subject="Totally different", headers={"In-Reply-To": sent_id}))  # headers only
+    assert ingest.poll_once(mail, MAILBOX) == {"appended": 2}
+    assert len(acks()) == 1 and len(admin.get("/api/v1/tickets").json()["items"]) == 1
+
+
+def test_no_ack_for_a_fall_through_reply_but_new_mail_gets_exactly_one(
+    admin, org_ctx, mail, acks, owner
+):
+    enable_ack(admin)
+    mail.add(msg(subject="Printer down"))
+    ingest.poll_once(mail, MAILBOX)
+    ingest.send_pending(mail, MAILBOX)
+    number = admin.get("/api/v1/tickets").json()["items"][0]["number"]
+    # same organization's domain colleague (not a contact) quotes our ack: a stranger to the
+    # ticket, so a new ticket is made, but it must not be acknowledged
+    mail.add(msg(sender="newhire@acme.com", subject=f"RE: [#{number}] Printer down"))
+    assert ingest.poll_once(mail, MAILBOX) == {"ticket_created": 1}
+    assert len(acks()) == 1
+    mail.add(msg(subject="Brand new problem"))
+    ingest.poll_once(mail, MAILBOX)
+    assert len(acks()) == 2
+
+
 def test_ack_is_capped_per_sender_per_day(admin, org_ctx, mail, acks):
     enable_ack(admin)
     for i in range(5):

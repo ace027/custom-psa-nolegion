@@ -9,6 +9,7 @@ RUN python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml
 COPY alembic.ini ./
 COPY alembic ./alembic
 COPY app ./app
+COPY dev ./dev
 RUN useradd --system --uid 10001 psa \
  && mkdir -p /data/attachments && chown -R psa /app /data
 ENV ATTACHMENTS_DIR=/data/attachments

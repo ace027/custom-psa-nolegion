@@ -89,6 +89,8 @@ Then `docker compose up -d worker`. Open **Settings → Mailbox connector** in t
 - **Sending**: emailing a customer-visible note queues it; the worker sends it as the shared mailbox with the
   ticket number in the subject `[#10234]`, so replies thread back automatically. Failed sends retry for
   5 cycles, then show as *failed* (audit log: `email.send_failed`; Settings shows the count).
+  Each message is sent as a draft we create with our own `Message-ID` (stored on the email row; this needs the
+  `Mail.ReadWrite` role above), so a reply whose subject lost the token still threads via In-Reply-To/References.
 - **No automatic acknowledgement email** is sent (avoids loops); it's in `docs/BACKLOG.md`.
 - **Spoofing**: the PSA trusts the `From` address that Exchange Online delivered. Keep your Microsoft 365
   anti-spoofing (SPF/DKIM/DMARC enforcement) enabled; that is what stops a forged `From` header, not the PSA.

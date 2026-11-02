@@ -3,6 +3,7 @@ import { Suspense, lazy, useState } from "react";
 import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { api } from "./api";
 import { can, useMe } from "./auth";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { BRAND } from "./branding";
 import Audit from "./pages/Audit";
 import Agreements from "./pages/billing/Agreements";
@@ -151,7 +152,7 @@ function Layout() {
         </div>
       </aside>
       <main className="min-w-0 flex-1 p-4 md:p-8">
-        <div className="mx-auto max-w-6xl">{can(me, "time:write") && <TimerBar />}<Outlet /></div>
+        <div className="mx-auto max-w-6xl">{can(me, "time:write") && <TimerBar />}<ErrorBoundary><Outlet /></ErrorBoundary></div>
       </main>
     </div>
   );

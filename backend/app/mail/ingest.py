@@ -23,7 +23,8 @@ from app.scope import Scope
 
 log = logging.getLogger("psa.mail")
 
-TOKEN_RE = re.compile(r"\[#(\d{4,12})\]")
+# "[#10001]" (tickets mails) and "[Ticket #10001]" (appointment notices)
+TOKEN_RE = re.compile(r"\[(?:Ticket )?#(\d{4,12})\]")
 FREEMAIL = {
     "gmail.com",
     "googlemail.com",
@@ -104,16 +105,19 @@ def _sender_allowed_on(ctx: Ctx, ticket, sender: str) -> bool:
     )
 
 
+def _thread_ids(msg: InboundMessage) -> list[str]:
+    return re.findall(
+        r"<[^>]+>", msg.headers.get("in-reply-to", "") + " " + msg.headers.get("references", "")
+    )
+
+
 def _find_ticket(ctx: Ctx, msg: InboundMessage):
     m = TOKEN_RE.search(msg.subject)
     if m:
         t = repo.get_ticket_by_number(ctx.db, ctx.scope, int(m.group(1)))
         if t:
             return t, f"subject token #{m.group(1)}"
-    ids = re.findall(
-        r"<[^>]+>", msg.headers.get("in-reply-to", "") + " " + msg.headers.get("references", "")
-    )
-    tid = repo.find_ticket_by_internet_message_ids(ctx.db, ids)
+    tid = repo.find_ticket_by_internet_message_ids(ctx.db, _thread_ids(msg))
     if tid:
         t = repo.get_ticket(ctx.db, ctx.scope, tid)
         if t:
@@ -229,7 +233,21 @@ def process_message(db: Session, client: MailClient, msg: InboundMessage, mailbo
             written = (
                 _store_attachments(ctx, client, msg, email, new) if msg.has_attachments else []
             )
-            maybe_acknowledge(ctx, new, sender, mailbox)
+            # Defence in depth: a reply (valid ticket token, or headers pointing at mail we
+            # sent) that fell through to here is never acknowledged as a "new" request.
+            ids = _thread_ids(msg)
+            replied_to_us = (
+                bool(ids)
+                and db.execute(
+                    select(EmailMessage.id)
+                    .where(
+                        EmailMessage.direction == "out", EmailMessage.internet_message_id.in_(ids)
+                    )
+                    .limit(1)
+                ).first()
+            )
+            if ticket is None and not replied_to_us:
+                maybe_acknowledge(ctx, new, sender, mailbox)
             outcome = "ticket_created"
         db.flush()
     except BaseException:
@@ -297,7 +315,7 @@ def send_pending(client: MailClient, mailbox: str, batch: int = 20) -> dict[str,
                     ).scalars()
                 ]
                 extra = {"headers": AUTO_HEADERS} if e.auto_generated else {}
-                client.send_mail(
+                e.internet_message_id = client.send_mail(
                     e.to_emails, e.subject or "", e.body_text or "", attachments or None, **extra
                 )
                 e.send_status, e.sent_at, e.send_error = "sent", datetime.now(UTC), None

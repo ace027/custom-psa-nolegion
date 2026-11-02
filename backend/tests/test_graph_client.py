@@ -163,35 +163,49 @@ def test_mark_read_and_send_mail_payloads():
         seen["patch"] = json.loads(request.content)
         return httpx.Response(200, json={})
 
-    def send(request):
+    def draft(request):
         seen["send"] = json.loads(request.content)
+        return httpx.Response(201, json={"id": "D1"})
+
+    def send(request):
+        seen["sent"] = True
         return httpx.Response(202)
 
-    client, _ = make_client(router(**{"PATCH /messages/AAA": patch, "POST /sendMail": send}))
+    client, _ = make_client(
+        router(
+            **{
+                "PATCH /messages/AAA": patch,
+                "POST /messages": draft,
+                "POST /messages/D1/send": send,
+            }
+        )
+    )
     client.mark_read("AAA")
-    client.send_mail(["pat@acme.com"], "[#10001] Hi", "Body text")
-    assert seen["patch"] == {"isRead": True}
-    msg = seen["send"]["message"]
+    mid = client.send_mail(["pat@acme.com"], "[#10001] Hi", "Body text")
+    assert seen["patch"] == {"isRead": True} and seen["sent"]
+    msg = seen["send"]
+    assert msg["internetMessageId"] == mid and mid.startswith("<") and mid.endswith("@msp.com>")
     assert msg["subject"] == "[#10001] Hi" and msg["body"] == {
         "contentType": "Text",
         "content": "Body text",
     }
     assert msg["toRecipients"] == [{"emailAddress": {"address": "pat@acme.com"}}]
-    assert seen["send"]["saveToSentItems"] is True
 
 
 def test_send_mail_attaches_files_as_base64():
     seen = {}
 
-    def send(request):
+    def draft(request):
         seen["send"] = json.loads(request.content)
-        return httpx.Response(202)
+        return httpx.Response(201, json={"id": "D1"})
 
-    client, _ = make_client(router(**{"POST /sendMail": send}))
+    client, _ = make_client(
+        router(**{"POST /messages": draft, "POST /messages/D1/send": lambda r: httpx.Response(202)})
+    )
     client.send_mail(
         ["pat@acme.com"], "Statement", "Body", [("statement.pdf", "application/pdf", b"%PDF-1")]
     )
-    assert seen["send"]["message"]["attachments"] == [
+    assert seen["send"]["attachments"] == [
         {
             "@odata.type": "#microsoft.graph.fileAttachment",
             "name": "statement.pdf",

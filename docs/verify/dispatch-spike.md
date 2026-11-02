@@ -31,3 +31,17 @@ Checks:
   library does not contribute to.
 
 Result: GO
+
+## Graph calendar spike (needs the Docker stack, not host Python)
+
+The dispatch board's Graph calendar check lives in `backend/dev/graph_calendar_spike.py`. The host's
+Python has no dependencies installed, so run it in the `worker` service (it has the `GRAPH_*` values), after
+`docker compose build worker` so the image includes `dev/`:
+
+```bash
+docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox <tech>
+docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox <tech> --write
+docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox <tech> --write --outside <other-mailbox>
+```
+
+See docs/CALENDAR_SETUP.md section 3 for what PASS looks like. The frontend checks above need only npm.

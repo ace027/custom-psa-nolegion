@@ -71,6 +71,7 @@ describe("linked tickets", () => {
         if (init?.method === "POST") { posts.push(`links ${init.body}`); return new Response("[]", { status: 201 }); }
         return new Response(JSON.stringify([{ id: 3, relation: "parent", ticket_id: 9, number: 10009, subject: "Big job", status: "open", status_name: "Open" }]));
       },
+      "/api/v1/tickets?limit=20&sort=number&open_only=true": () => new Response(JSON.stringify({ items: [{ id: 2, number: 10002, subject: "Other ticket" }], total: 1, limit: 20, offset: 0 })),
       "/api/v1/tickets/5/close-as-duplicate": (init) => { posts.push(`dup ${init?.body}`); return new Response(JSON.stringify(ticket)); },
     };
     vi.stubGlobal(
@@ -86,7 +87,8 @@ describe("linked tickets", () => {
     expect(await screen.findByText("#10009 Big job")).toBeInTheDocument();
     expect(screen.getByText("Parent")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("This ticket is"), { target: { value: "duplicate_of" } });
-    fireEvent.change(screen.getByLabelText("Ticket number"), { target: { value: "10002" } });
+    fireEvent.focus(screen.getByRole("combobox", { name: /search tickets/i }));
+    fireEvent.mouseDown(await screen.findByRole("option", { name: "#10002 — Other ticket" }));
     fireEvent.click(screen.getByRole("button", { name: "Link" }));
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(JSON.parse(posts[0].slice(6))).toEqual({ relation: "duplicate_of", other_number: 10002 });

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppSettings, CannedResponse, Stage, CustomFieldDef, FieldType, Holiday, Lookup, TicketStatusRow, MailStatus, Priority, Queue, api } from "../api";
+import TimezoneSelect from "../components/TimezoneSelect";
 import LateFeesCard from "./LateFeesCard";
 import RemindersCard from "./RemindersCard";
 import { can, useMe } from "../auth";
@@ -154,7 +155,7 @@ function HoursCard() {
   return (
     <Card title="Business hours, SLA and billing">
       <div className="grid gap-3 sm:grid-cols-4">
-        <Field label="Time zone (IANA)"><input className={inputCls} value={s.timezone} onChange={(e) => upd({ timezone: e.target.value })} /></Field>
+        <TimezoneSelect value={s.timezone} onChange={(timezone) => upd({ timezone })} />
         <Field label="Opens"><input className={inputCls} type="time" value={hhmm(s.business_start_minute)} onChange={(e) => upd({ business_start_minute: toMin(e.target.value) })} /></Field>
         <Field label="Closes"><input className={inputCls} type="time" value={hhmm(s.business_end_minute)} onChange={(e) => upd({ business_end_minute: toMin(e.target.value) })} /></Field>
         <Field label="Billing increment (min)"><input className={inputCls} type="number" min={1} value={s.billing_increment_minutes} onChange={(e) => upd({ billing_increment_minutes: Number(e.target.value) })} /></Field>

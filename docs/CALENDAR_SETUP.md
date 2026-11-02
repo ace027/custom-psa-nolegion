@@ -59,17 +59,20 @@ time to reach the scope.
 
 ## 3. Try it against the real tenant before switching it on
 `backend/dev/graph_calendar_spike.py` uses the same Graph client as the worker and the credentials in your `.env`
-(`GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`). Run it from `backend/`:
+(`GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`). The host's Python has none of the app's
+dependencies, so run it inside the stack with the `worker` service (it has the `GRAPH_*` values). From the folder with
+`docker-compose.yml`, rebuild once so the image contains `dev/`, then run:
 
 ```bash
+docker compose build worker
 # Read-only: asks for the mailbox's busy time and creates nothing
-python dev/graph_calendar_spike.py --mailbox tech1@yourmsp.com
+docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox tech1@yourmsp.com
 
 # Also creates a test event, creates it again (must return the same event), moves it, then deletes it
-python dev/graph_calendar_spike.py --mailbox tech1@yourmsp.com --write
+docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox tech1@yourmsp.com --write
 
 # Also checks the boundary: a mailbox outside the group must be refused
-python dev/graph_calendar_spike.py --mailbox tech1@yourmsp.com --write --outside someone.else@yourmsp.com
+docker compose run --rm worker python dev/graph_calendar_spike.py --mailbox tech1@yourmsp.com --write --outside someone.else@yourmsp.com
 ```
 
 **What PASS looks like.** Each step prints a line, then a `== SPIKE SUMMARY ==` block repeats them:
