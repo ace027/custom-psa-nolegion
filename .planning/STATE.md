@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 15 of 13 (complete)
-- **Status**: Phase 15 shipped (2026-11-02)
-- **Last Activity**: Phase 15 shipped (2026-11-02)
+- **Phase**: 16 of 13 (executing)
+- **Status**: Phase 16 executing — Plan 16-01 failed
+- **Last Activity**: Plan 16-01 execution (2026-11-02)
 
 ## Progress
 ```
-[####################] 100% — 48/48 plans complete
+[##################..] 92% — 48/52 plans complete
 ```
 
 ## Recent Decisions
@@ -167,3 +167,7 @@ Run `/triad:plan 16` to plan Phase 16: Front-end redesign (navigation and layout
 ## Phase 15 Results
 (build started 2026-11-01)
 - Plan 15-01 (Wave 1): Owner verification runbook — Complete
+
+## Phase 16 Results
+(build started 2026-11-02)
+- Plan 16-01 (Wave 1): Permission split and manager role — PARTIAL: I stopped at the 20-minute budget. The permission split, manager role, migration 0039 and UI gates are on disk. The new role-by-endpoint test matrix (Task 3) is not written. The frontend suite fails: 
