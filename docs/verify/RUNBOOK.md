@@ -214,7 +214,7 @@ Checklists: [portal-polish.md](portal-polish.md), [portal.md](portal.md)
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P14-01 | Walk through docs/verify/portal-polish.md | | |
-| P14-02 | Real-tenant check: register the multi-tenant portal app per docs/PORTAL_SSO.md and sign in from a client tenant | | |
+| P14-02 | Real-tenant check: register the multi-tenant portal app per docs/PORTAL_SSO.md and sign in from a client tenant| deferred | Deferred by owner (2026-11-02): button shows after the compose fix (b518ccd); signing in with the client test account is not working yet |
 | P14-03 | Confirm: uploads limited to 10 MB and the extension allowlist (assumed default) | | |
 ## Other checklists
 
