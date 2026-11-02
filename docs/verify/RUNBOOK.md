@@ -129,9 +129,9 @@ Checklists: [automation-api.md](automation-api.md)
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
 | P07-01 | Walk through docs/verify/automation-api.md (API keys, webhooks, automation rules) | pass | Dev-server session (2026-11-02): API keys, webhooks (secret shown once, http and private hosts refused, retries logged with no secret) and rules all work; webhook test used example.com because .invalid is refused at save |
-| P07-02 | Unverified: a real Microsoft Teams Workflows webhook URL renders the adaptive card | deferred (owner-accepted): unverified | Marked N/A by owner (2026-11-02) |
-| P07-03 | Unverified: a real n8n instance accepts the payload and the HMAC-SHA256 signature verifies | deferred (owner-accepted): unverified | Marked N/A by owner (2026-11-02) |
-| P07-04 | Unverified: a LAN n8n works with WEBHOOK_ALLOW_PRIVATE_HOSTS=true (https only) | deferred (owner-accepted): unverified | Marked N/A by owner (2026-11-02) |
+| P07-02 | Unverified: a real Microsoft Teams Workflows webhook URL renders the adaptive card | N/A | Marked N/A by owner (2026-11-02) |
+| P07-03 | Unverified: a real n8n instance accepts the payload and the HMAC-SHA256 signature verifies | N/A | Marked N/A by owner (2026-11-02) |
+| P07-04 | Unverified: a LAN n8n works with WEBHOOK_ALLOW_PRIVATE_HOSTS=true (https only) | N/A | Marked N/A by owner (2026-11-02) |
 | P07-05 | A rule's assign, escalate, notify, webhook and create-ticket actions each work on a real ticket | pass | Dev-server session (2026-11-02): rule assigned, escalated, notified the chosen assignee and created child ticket 342; dry run changed nothing |
 | P07-06 | Rules never trigger other rules; a rule firing more than 200 times in an hour switches itself off | pass | Failed on the dev server (2026-11-02), fixed in 1d472c4; re-check passed: new ticket 346 went High via rule 2, rule 1 did not run. 200/hour cap passes by test |
 
@@ -189,7 +189,7 @@ Checklists: [reports.md](reports.md)
 | P12-01 | Update the Entra app registration redirect URI to `<public_url>/api/v1/auth/callback`, then sign in | pass | Confirmed by owner (2026-11-02) |
 | P12-02 | Build with VITE_BRAND_NAME, VITE_BRAND_LOGO and VITE_BRAND_COLORS set and check the header and login page | pass | Owner checked placeholder branding on psa.dev.local (2026-11-02); reverted. Colours need the JSON single-quoted in .env (docs fixed) |
 | P12-03 | An API-key request creates a ticket with source `api` | pass | Dev-server session (2026-11-02): key with only ticket:write created ticket 340 with source api; other calls 403; revoked key gets 401; all audited |
-| P12-04 | An existing n8n/webhook consumer still works (outbound webhook URLs are unchanged) | deferred (owner-accepted): unverified | Marked N/A by owner (2026-11-02) |
+| P12-04 | An existing n8n/webhook consumer still works (outbound webhook URLs are unchanged) | N/A | Marked N/A by owner (2026-11-02) |
 
 ### Phase 13: Knowledge base
 
@@ -197,8 +197,8 @@ Checklists: [kb.md](kb.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P13-01 | Walk through docs/verify/kb.md | deferred (owner-accepted): removed | Knowledge base removed; Hudu articles replace it (2026-11-02) |
-| P13-02 | Confirm: kb:write for admin and tech only (assumed default) | deferred (owner-accepted): removed | Knowledge base removed; Hudu articles replace it (2026-11-02) |
+| P13-01 | Walk through docs/verify/kb.md | N/A | Knowledge base removed; Hudu articles replace it (2026-11-02) |
+| P13-02 | Confirm: kb:write for admin and tech only (assumed default) | N/A | Knowledge base removed; Hudu articles replace it (2026-11-02) |
 
 ### Phase 14: Portal polish
 
@@ -206,7 +206,7 @@ Checklists: [portal-polish.md](portal-polish.md), [portal.md](portal.md)
 
 | # | Check | Result (pass/fail/deferred) | Notes |
 |---|-------|-----------------------------|-------|
-| P14-01 | Walk through docs/verify/portal-polish.md |  | Not run yet: needs a portal contact with the owner's email. Dev-server code check (2026-11-02): every line is covered by backend tests; Sign in with Microsoft section follows P14-02 (deferred) |
+| P14-01 | Walk through docs/verify/portal-polish.md | deferred (owner-accepted): not walked yet, needs a portal contact with the owner's email; to be walked with P14-02 | Deferred by owner (2026-11-02). Emailed sign-in link confirmed working by the owner; every checklist line is covered by backend tests (dev-server code check, 2026-11-02) |
 | P14-02 | Real-tenant check: register the multi-tenant portal app per docs/PORTAL_SSO.md and sign in from a client tenant| deferred | Deferred by owner (2026-11-02): button shows after the compose fix (b518ccd); signing in with the client test account is not working yet |
 | P14-03 | Confirm: uploads limited to 10 MB and the extension allowlist (assumed default) | pass | Confirmed by owner (2026-11-02). Checked in code on the dev server (2026-11-02): 10 MB (config.py, api.ts) and the 18-extension allowlist match on server and browser; no live refusal yet |
 ## Other checklists
@@ -241,3 +241,5 @@ For each `fail`:
 3. Change the Result to `pass`.
 
 If you accept the failure instead, write `deferred (owner-accepted): reason` in the Result or Notes cell.
+
+A check the owner decides does not apply (the feature is not used or was removed) is recorded as `N/A` with the reason and date in Notes. `N/A` counts as closed.
