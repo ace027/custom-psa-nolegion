@@ -138,3 +138,9 @@ def test_config_maps_unset_to_empty(monkeypatch):
     assert not s.mail_configured
     monkeypatch.setenv("GRAPH_CLIENT_SECRET", "real")
     assert Settings().graph_client_secret == "real"
+
+
+def test_malformed_identity_response_is_a_keyvault_error(identity):
+    http = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, text="<html>")))
+    with pytest.raises(KeyVaultError, match="token response invalid"):
+        KeyVault(VAULT, http=http).set_secret("a", "v")

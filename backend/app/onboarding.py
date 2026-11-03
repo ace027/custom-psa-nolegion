@@ -245,18 +245,23 @@ def create_mail_app(ctx: Ctx, mailbox: str) -> dict:
     }
 
 
-def _differences(kind: str, app: dict, token: str) -> list[str]:
-    graph = [r for r in app.get("requiredResourceAccess") or [] if r.get("resourceAppId")]
-    if kind == "mail":
-        out = []
-        for r in graph:
-            if any(a.get("type") == "Role" for a in r.get("resourceAccess") or []):
-                which = "Microsoft Graph" if r["resourceAppId"] == GRAPH_APP_ID else "API"
-                out.append(
-                    f"Remove the {which} application permissions: "
-                    "they apply to every mailbox and cancel the Exchange scoping"
-                )
-        return out
+def _graph_resources(app: dict) -> list[dict]:
+    return [r for r in app.get("requiredResourceAccess") or [] if r.get("resourceAppId")]
+
+
+def _mail_differences(app: dict) -> list[str]:
+    out = []
+    for r in _graph_resources(app):
+        if any(a.get("type") == "Role" for a in r.get("resourceAccess") or []):
+            which = "Microsoft Graph" if r["resourceAppId"] == GRAPH_APP_ID else "API"
+            out.append(
+                f"Remove the {which} application permissions: "
+                "they apply to every mailbox and cancel the Exchange scoping"
+            )
+    return out
+
+
+def _portal_differences(app: dict, token: str) -> list[str]:
     out = []
     if app.get("signInAudience") != "AzureADMultipleOrgs":
         out.append("Set the supported account types to any organizational directory")
@@ -265,7 +270,7 @@ def _differences(kind: str, app: dict, token: str) -> list[str]:
     wanted = {i: name for name, i in _portal_scope_ids(token).items()}
     have = {
         (r["resourceAppId"], a.get("id"), a.get("type"))
-        for r in graph
+        for r in _graph_resources(app)
         for a in r.get("resourceAccess") or []
     }
     extra = [h for h in have if not (h[0] == GRAPH_APP_ID and h[2] == "Scope" and h[1] in wanted)]
@@ -290,7 +295,9 @@ def connect_existing(ctx: Ctx, kind: str, app_id: str, mailbox: str | None = Non
     out = {
         "kind": kind,
         "app_id": app_id,
-        "differences": _differences(kind, app, token),
+        "differences": (
+            _portal_differences(app, token) if kind == "portal" else _mail_differences(app)
+        ),
         "connected": False,
         "secret_created": False,
         "service_principal_object_id": sp["id"] if sp else None,
@@ -336,9 +343,8 @@ def _step(step: str, status: str, message: str) -> dict:
     return {"step": step, "status": status, "message": message}
 
 
-def _not_running(step: str, secret_name: str, what: str) -> dict:
+def _not_running(vault: KeyVault | None, step: str, secret_name: str, what: str) -> dict:
     """Missing from the running config: restart_needed when Key Vault already holds it."""
-    vault = KeyVault.from_settings()
     try:
         if vault is not None and vault.secret_exists(secret_name):
             return _step(step, "restart_needed", f"{what} is saved in Key Vault. {RESTART}")
@@ -347,10 +353,12 @@ def _not_running(step: str, secret_name: str, what: str) -> dict:
     return _step(step, "missing", f"{what} is not set up yet")
 
 
-def _check_portal(ctx: Ctx) -> dict:
+def _check_portal(ctx: Ctx, vault: KeyVault | None) -> dict:
     s = get_settings()
     if not s.portal_sso_configured:
-        return _not_running("portal_sso", "portal-entra-client-secret", "Client portal sign-in")
+        return _not_running(
+            vault, "portal_sso", "portal-entra-client-secret", "Client portal sign-in"
+        )
     try:
         token = onboarding_auth.get_admin_token(ctx)
     except Conflict:  # no admin token: the running config is all we can check
@@ -380,12 +388,12 @@ def _mail_status(client: GraphClient, user: str, path: str) -> int:
     return 200
 
 
-def _check_mail_and_calendar(ctx: Ctx) -> list[dict]:
+def _check_mail_and_calendar(ctx: Ctx, vault: KeyVault | None) -> list[dict]:
     s = get_settings()
     if not s.mail_configured:
         return [
-            _not_running("mail", "graph-client-secret", "Mail"),
-            _not_running("calendar", "graph-client-secret", "Calendar"),
+            _not_running(vault, "mail", "graph-client-secret", "Mail"),
+            _not_running(vault, "calendar", "graph-client-secret", "Calendar"),
         ]
     http = _http_client()
     client = GraphClient(
@@ -411,7 +419,10 @@ def _check_mail_and_calendar(ctx: Ctx) -> list[dict]:
         else:
             # Only a 403 on a mailbox outside the scope proves the Exchange scoping works.
             outside = _mail_status(client, ctx.user.email, "/mailFolders/inbox")
-            if outside == 403:
+            if ctx.user.email.lower() == s.mail_mailbox.lower():
+                # the admin signed in as the support mailbox: the probe cannot show the scope
+                mail = _step("mail", "ok", f"Mail works for {s.mail_mailbox} (scope not checked)")
+            elif outside == 403:
                 mail = _step("mail", "ok", f"Mail works for {s.mail_mailbox} and only that mailbox")
             elif outside == 200:
                 mail = _step(
@@ -456,7 +467,8 @@ def verify(ctx: Ctx) -> list[dict]:
         if s.entra_configured
         else _step("staff_sso", "missing", "Staff sign-in with Microsoft is not configured")
     )
-    return [staff, _check_portal(ctx), *_check_mail_and_calendar(ctx)]
+    vault = KeyVault.from_settings()  # one instance: it caches the managed identity token
+    return [staff, _check_portal(ctx, vault), *_check_mail_and_calendar(ctx, vault)]
 
 
 # ---- finish ----

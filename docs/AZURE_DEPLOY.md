@@ -11,7 +11,7 @@ is unchanged (see [DEVELOPMENT.md](DEVELOPMENT.md) and [ENTRA_SETUP.md](ENTRA_SE
 | Resource group | `$RESOURCE_GROUP` | Everything below lives in it |
 | Entra app registration | `<prefix> PSA staff sign-in` | Single tenant, redirects `https://$PUBLIC_HOST/api/v1/auth/callback` and `https://$PUBLIC_HOST/api/v1/onboarding/consent/callback`, delegated `openid profile email User.Read` only |
 | Key Vault | `<prefix>-kv-<suffix>` | RBAC mode, purge protection, 90-day soft delete |
-| Managed identity | `<prefix>-id` | Key Vault Secrets User + Secrets Officer on the vault, AcrPull on the registry |
+| Managed identity | `<prefix>-id` | Key Vault Secrets User on the vault; Secrets Officer only on the six wizard-managed secrets (`portal-entra-client-id`, `portal-entra-client-secret`, `graph-tenant-id`, `graph-client-id`, `graph-client-secret`, `mail-mailbox`); AcrPull on the registry |
 | Container registry | `<prefix>acr<suffix>` | Basic, admin user disabled; images `psa-api`, `psa-web`, `psa-proxy` |
 | Log Analytics | `<prefix>-logs` | All container logs, 30 days |
 | Virtual network | `<prefix>-vnet` | `apps` subnet (Container Apps) and `postgres` subnet (delegated) |

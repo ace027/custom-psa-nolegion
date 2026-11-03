@@ -61,13 +61,17 @@ class KeyVault:
             ) from None
         if r.status_code != 200:
             raise KeyVaultError(f"Managed identity token request failed (HTTP {r.status_code})")
-        body = r.json()
-        self._token = body["access_token"]
-        if body.get("expires_on"):
-            self._token_expires = float(body["expires_on"])
-        else:
-            self._token_expires = time.time() + float(body.get("expires_in", 300))
-        return self._token
+        try:
+            body = r.json()
+            token = body["access_token"]
+            if body.get("expires_on"):
+                expires = float(body["expires_on"])
+            else:
+                expires = time.time() + float(body.get("expires_in", 300))
+        except (ValueError, KeyError, TypeError, AttributeError):
+            raise KeyVaultError("Managed identity token response invalid") from None
+        self._token, self._token_expires = token, expires
+        return token
 
     def _secret_url(self, name: str) -> str:
         if not isinstance(name, str) or not NAME_RE.fullmatch(name):
@@ -100,7 +104,12 @@ class KeyVault:
         if not 200 <= r.status_code < 300:
             logger.warning("key vault GET %s failed: HTTP %s", name, r.status_code)
             raise KeyVaultError(f"Key Vault read of secret '{name}' failed (HTTP {r.status_code})")
-        value = r.json().get("value")
+        try:
+            value = r.json().get("value")
+        except (ValueError, AttributeError):
+            raise KeyVaultError(
+                f"Key Vault read of secret '{name}' returned an invalid response"
+            ) from None
         return bool(value) and value != PLACEHOLDER
 
 

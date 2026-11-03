@@ -238,7 +238,7 @@ execution=$(az containerapp job start -n migrate -g "$RESOURCE_GROUP" --query na
 status=""
 for _ in $(seq 1 120); do
   status=$(az containerapp job execution show -n migrate -g "$RESOURCE_GROUP" --job-execution-name "$execution" \
-    --query properties.status -o tsv)
+    --query properties.status -o tsv 2>/dev/null) || status=Unknown
   case "$status" in
     Succeeded) break ;;
     Failed|Stopped|Degraded)
