@@ -67,6 +67,7 @@ import TicketDetail from "./pages/TicketDetail";
 import Search from "./pages/Search";
 import Tickets from "./pages/Tickets";
 import Users from "./pages/Users";
+import Setup from "./pages/admin/Setup";
 import AdminLayout from "./nav/AdminLayout";
 import AllPages from "./nav/AllPages";
 import CommandPalette from "./nav/CommandPalette";
@@ -275,6 +276,7 @@ function StaffApp() {
         <Route path="/webhooks" element={can(me, "automation:manage") ? <Webhooks /> : <Navigate to="/" replace />} />
         <Route path="/automation" element={can(me, "automation:manage") ? <Automation /> : <Navigate to="/" replace />} />
         <Route path="/integrations" element={can(me, "integration:manage") ? <Integrations /> : <Navigate to="/" replace />} />
+        <Route path="/setup" element={can(me, "config:manage") && me.role === "admin" ? <Setup /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to={visibleItems(me).find((i) => i.section === "admin")?.route ?? "/"} replace />} />

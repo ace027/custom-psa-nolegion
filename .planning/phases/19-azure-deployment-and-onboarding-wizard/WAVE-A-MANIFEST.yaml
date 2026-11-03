@@ -1,17 +1,29 @@
 wave: A
 phase: 19
-status: failed
-timestamp: "2026-11-03T06:11:47Z"
+status: complete
+timestamp: "2026-11-03T06:38:32Z"
 service_groups:
   default:
     status: complete
     plans: [19-01]
-    files: [deploy/azure/deploy.sh, deploy/azure/main.bicep, deploy/azure/main.parameters.example.json, docs/AZURE_DEPLOY.md, docs/ENTRA_SETUP.md]
+    files: []
   backend:
     status: complete
     plans: [19-02, 19-03]
-    files: [backend/alembic/versions/0043_onboarding_tokens.py, backend/app/bootstrap_admin.py, backend/app/config.py, backend/app/keyvault.py, backend/app/main.py, backend/app/models.py, backend/app/onboarding_auth.py, backend/app/routers/onboarding.py, backend/tests/test_bootstrap_admin.py, backend/tests/test_keyvault.py, backend/tests/test_onboarding_auth.py, backend/tests/test_seed_and_migrations.py, docs/api/openapi.json, backend/app/onboarding.py, backend/app/schemas.py, backend/tests/test_onboarding.py]
+    files: []
   frontend:
-    status: failed
+    status: complete
     plans: [19-04]
-    files: [frontend/src/App.tsx, frontend/src/api.ts, frontend/src/pages/admin/Setup.test.tsx, frontend/src/pages/admin/Setup.tsx]
+    files: [frontend/src/nav/navConfig.ts]
+analysis_findings:
+  count: 2
+  by_agent:
+    engineering-backend-architect: {blockers: 0, warnings: 2}
+    engineering-security-engineer: {blockers: 0, warnings: 0}
+outputs:
+  total_files: 1
+  total_plans: 4
+  passed: 4
+  failed: 0
+gate: architecture
+gate_status: passed

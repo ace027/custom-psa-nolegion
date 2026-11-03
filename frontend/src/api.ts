@@ -1693,3 +1693,25 @@ export interface HuduArticles {
   articles: HuduArticle[];
   error: string | null;
 }
+
+export interface OnboardingStep {
+  step: "staff_sso" | "portal_sso" | "mail" | "calendar";
+  status: "ok" | "missing" | "error" | "restart_needed";
+  message: string;
+}
+export interface OnboardingStatus {
+  steps: OnboardingStep[];
+}
+export interface OnboardingCreated {
+  app_id: string;
+  created: boolean;
+  powershell?: string;
+}
+export interface OnboardingConnected {
+  kind: "portal" | "mail";
+  app_id: string;
+  connected: boolean;
+  secret_created: boolean;
+  differences: string[];
+  powershell: string | null;
+}
