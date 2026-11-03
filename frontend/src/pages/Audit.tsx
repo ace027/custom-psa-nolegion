@@ -31,7 +31,7 @@ export default function Audit() {
   const [offset, setOffset] = useState(0);
   const limit = 50;
   const users = useQuery({ queryKey: ["users"], queryFn: () => api<User[]>("/users") });
-  const types = useQuery({ queryKey: ["audit-entity-types"], queryFn: () => api<string[]>("/audit/entity-types") });
+  const types = useQuery({ queryKey: ["audit-entity-types"], queryFn: () => api<{ value: string; label: string }[]>("/audit/entity-types") });
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   for (const [k, v] of Object.entries({ action, actor_id: actorId, entity_type: entityType, date_from: from, date_to: to })) if (v) params.set(k, v);
   const q = useQuery({ queryKey: ["audit", params.toString()], queryFn: () => api<Page<AuditEntry>>(`/audit?${params}`) });
@@ -49,7 +49,7 @@ export default function Audit() {
         <Field label="Record type">
           <select className={inputCls} value={entityType} onChange={set(setEntityType)}>
             <option value="">Any</option>
-            {types.data?.map((t) => <option key={t} value={t}>{t}</option>)}
+            {types.data?.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </Field>
         <Field label="From"><input type="date" className={inputCls} value={from} onChange={set(setFrom)} /></Field>

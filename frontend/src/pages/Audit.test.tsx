@@ -17,7 +17,7 @@ function setup(typesFail = false) {
     if (path === "/api/v1/audit/entity-types" && typesFail) return Promise.resolve(new Response(JSON.stringify({ detail: "types broke" }), { status: 500 }));
     const body = path === "/api/v1/audit" ? { items: [ENTRY, { ...ENTRY, id: 2, summary: "Ann signed in", changes: [] }], total: 2, limit: 50, offset: 0 }
       : path === "/api/v1/users" ? [{ id: 7, display_name: "Ann" }]
-      : path === "/api/v1/audit/entity-types" ? ["contact"] : [];
+      : path === "/api/v1/audit/entity-types" ? [{ value: "contact", label: "Contact" }] : [];
     return Promise.resolve(new Response(JSON.stringify(body)));
   }));
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Audit /></QueryClientProvider>);
@@ -43,6 +43,14 @@ describe("Audit page", () => {
     fireEvent.change(screen.getByLabelText("Person"), { target: { value: "7" } });
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-01-01" } });
     await waitFor(() => expect(urls.some((u) => u.includes("actor_id=7") && u.includes("date_from=2026-01-01"))).toBe(true));
+  });
+
+  it("renders entity type labels and sends the value as entity_type", async () => {
+    const urls = setup();
+    await screen.findByText("Ann changed contact Bob");
+    await screen.findByRole("option", { name: "Contact" });
+    fireEvent.change(screen.getByLabelText("Record type"), { target: { value: "contact" } });
+    await waitFor(() => expect(urls.some((u) => u.includes("entity_type=contact"))).toBe(true));
   });
 
   it("keeps only Any and shows the error when entity types fail", async () => {
