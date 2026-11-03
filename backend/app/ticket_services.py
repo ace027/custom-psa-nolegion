@@ -260,6 +260,12 @@ def update_ticket(ctx: Ctx, ticket_id: int, data: dict) -> Ticket:
         ticket.organization_id = data["organization_id"]
         _propagate_org(ctx, ticket, ticket.organization_id)
         detail["triage"] = True
+        if (
+            "agreement_id" not in data
+        ):  # matched to a client now: default its agreement as create does
+            ticket.agreement_id = default_agreement_id(
+                ctx, ticket.organization_id, _entry_date(ctx, None)
+            )
     org_id = ticket.organization_id
 
     if "contact_id" in data or "site_id" in data:

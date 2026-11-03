@@ -10487,14 +10487,23 @@
         "title": "ProductPatch",
         "type": "object"
       },
-      "ProfitabilityReportOut": {
+      "ProfitabilityByReportOut": {
         "properties": {
+          "group": {
+            "default": "client",
+            "enum": [
+              "client",
+              "agreement"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
           "range": {
             "$ref": "#/components/schemas/RangeOut"
           },
           "rows": {
             "items": {
-              "$ref": "#/components/schemas/ProfitabilityRowOut"
+              "$ref": "#/components/schemas/ProfitabilityByRowOut"
             },
             "title": "Rows",
             "type": "array"
@@ -10508,11 +10517,50 @@
           "rows",
           "totals"
         ],
-        "title": "ProfitabilityReportOut",
+        "title": "ProfitabilityByReportOut",
         "type": "object"
       },
-      "ProfitabilityRowOut": {
+      "ProfitabilityByRowOut": {
         "properties": {
+          "agreement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement Id"
+          },
+          "agreement_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement Name"
+          },
+          "agreement_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "per_user",
+                  "per_device",
+                  "flat",
+                  "block"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement Type"
+          },
           "charges_without_cost": {
             "title": "Charges Without Cost",
             "type": "integer"
@@ -10578,7 +10626,7 @@
           "organization_id",
           "organization_name"
         ],
-        "title": "ProfitabilityRowOut",
+        "title": "ProfitabilityByRowOut",
         "type": "object"
       },
       "ProfitabilityTotalsOut": {
@@ -19655,8 +19703,103 @@
         "title": "UserPatch",
         "type": "object"
       },
-      "UtilisationReportOut": {
+      "UtilisationAgreementRowOut": {
         "properties": {
+          "agreement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement Id"
+          },
+          "agreement_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement Name"
+          },
+          "agreement_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "per_user",
+                  "per_device",
+                  "flat",
+                  "block"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement Type"
+          },
+          "automation_minutes": {
+            "title": "Automation Minutes",
+            "type": "integer"
+          },
+          "billable_minutes": {
+            "title": "Billable Minutes",
+            "type": "integer"
+          },
+          "logged_minutes": {
+            "title": "Logged Minutes",
+            "type": "integer"
+          },
+          "organization_id": {
+            "title": "Organization Id",
+            "type": "integer"
+          },
+          "organization_name": {
+            "title": "Organization Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id",
+          "organization_name",
+          "logged_minutes",
+          "billable_minutes",
+          "automation_minutes"
+        ],
+        "title": "UtilisationAgreementRowOut",
+        "type": "object"
+      },
+      "UtilisationByReportOut": {
+        "properties": {
+          "agreements": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/UtilisationAgreementRowOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreements"
+          },
+          "group": {
+            "default": "client",
+            "enum": [
+              "client",
+              "agreement"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
           "range": {
             "$ref": "#/components/schemas/RangeOut"
           },
@@ -19676,7 +19819,7 @@
           "rows",
           "totals"
         ],
-        "title": "UtilisationReportOut",
+        "title": "UtilisationByReportOut",
         "type": "object"
       },
       "UtilisationRowOut": {
@@ -38390,6 +38533,22 @@
               "description": "End date (default: today, business time zone)",
               "title": "To"
             }
+          },
+          {
+            "description": "One row per client, or per client agreement plus 'No agreement'",
+            "in": "query",
+            "name": "group",
+            "required": false,
+            "schema": {
+              "default": "client",
+              "description": "One row per client, or per client agreement plus 'No agreement'",
+              "enum": [
+                "client",
+                "agreement"
+              ],
+              "title": "Group",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -38397,7 +38556,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProfitabilityReportOut"
+                  "$ref": "#/components/schemas/ProfitabilityByReportOut"
                 }
               }
             },
@@ -38424,7 +38583,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Client profitability: revenue against labour, goods and expense cost",
+        "summary": "Profitability by client or agreement: revenue against labour, goods and expense cost",
         "tags": [
           "reports"
         ]
@@ -38470,6 +38629,22 @@
               ],
               "description": "End date (default: today, business time zone)",
               "title": "To"
+            }
+          },
+          {
+            "description": "One row per client, or per client agreement plus 'No agreement'",
+            "in": "query",
+            "name": "group",
+            "required": false,
+            "schema": {
+              "default": "client",
+              "description": "One row per client, or per client agreement plus 'No agreement'",
+              "enum": [
+                "client",
+                "agreement"
+              ],
+              "title": "Group",
+              "type": "string"
             }
           }
         ],
@@ -39318,6 +39493,22 @@
               "description": "End date (default: today, business time zone)",
               "title": "To"
             }
+          },
+          {
+            "description": "One row per client, or per client agreement plus 'No agreement'",
+            "in": "query",
+            "name": "group",
+            "required": false,
+            "schema": {
+              "default": "client",
+              "description": "One row per client, or per client agreement plus 'No agreement'",
+              "enum": [
+                "client",
+                "agreement"
+              ],
+              "title": "Group",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -39325,7 +39516,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UtilisationReportOut"
+                  "$ref": "#/components/schemas/UtilisationByReportOut"
                 }
               }
             },
@@ -39399,6 +39590,22 @@
               "description": "End date (default: today, business time zone)",
               "title": "To"
             }
+          },
+          {
+            "description": "One row per client, or per client agreement plus 'No agreement'",
+            "in": "query",
+            "name": "group",
+            "required": false,
+            "schema": {
+              "default": "client",
+              "description": "One row per client, or per client agreement plus 'No agreement'",
+              "enum": [
+                "client",
+                "agreement"
+              ],
+              "title": "Group",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -39431,7 +39638,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Technician utilisation as CSV",
+        "summary": "Technician utilisation as CSV (group=agreement: ticket minutes per agreement)",
         "tags": [
           "reports"
         ]

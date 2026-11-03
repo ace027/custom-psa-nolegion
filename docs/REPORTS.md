@@ -51,6 +51,18 @@ Every rule here is an **assumption** until the owner confirms it in Phase 15 (se
 - **Reconciliation proved**: profitability revenue equals the revenue report for the same range.
 - **Worked example**: 50 minutes at $90.00/h = round(50 x 9000 / 60) = 7500 cents = **$75.00 labour**. With $200.00 revenue and no other cost, margin is $125.00 and margin % is 62.50%.
 
+## Profitability and utilisation by agreement (Phase 17)
+- **How to ask**: `group=agreement` on `/reports/profitability`, `/reports/profitability.csv`, `/reports/utilisation` and `/reports/utilisation.csv` (default `group=client`, today's view; any other value is 422). Same permission as the client view (`report:read`).
+- **Grain**: one row per client agreement with activity in the range, plus one **No agreement** row per client for everything not attached to an agreement, so nothing is hidden. Rows sort by client, then agreement name, No agreement last. Agreement fields: `agreement_id` (null for No agreement), `agreement_name`, `agreement_type`.
+- **Revenue** (same invoices and lines as the client view): a line that carries an agreement (agreement fee, block line, proration credit) is that agreement's. Any other line with time entries on it (T&M time, block overage) belongs to the agreement of those entries; if the entries on one line have different agreements the amount is split by billed minutes (billable minus block-covered), rounded down, with the leftover cents going to the largest share. Manual, product and project lines without time are No agreement.
+- **Labour cost**: the same per-entry rule as the client view, for labour entries attached to the agreement (`time_entries.agreement_id`); unattached entries are No agreement. Minutes without cost rate are counted per row.
+- **Goods and expenses**: always in the client's No agreement row (billing never puts them on an agreement line).
+- **All-inclusive flat clients**: the flat fee is the revenue and all attached labour is the cost, so the margin shows whether the fee covers the work; it can be negative.
+- **Utilisation by agreement**: the per-technician rows and totals are unchanged; the JSON adds `agreements` (null in the client view), and the CSV has one row per client agreement: labour logged minutes, billable minutes, and automation minutes on their own. Internal time belongs to no client and is not in these rows.
+- **CSV columns**: `client, agreement, agreement_type` and then the client view's columns; the file is named `profitability-by-agreement-<from>-<to>.csv` (or `utilisation-by-agreement-...`).
+- **Reconciliation proved**: per client, the agreement rows add up to the client view to the cent, and the totals are identical.
+- **Worked example**: an all-inclusive flat agreement at $100.00 with 120 minutes at $90.00/h: revenue $100.00, labour $180.00, margin -$80.00, margin % (80.00%).
+
 ## Dashboards
 - **My week** (all staff, own data only): open tickets, SLA at risk and breached, appointments today, logged / billable / capacity this week and utilisation.
 - **Business** (`report:read`): month-to-date revenue and margin, AR total with buckets, unbilled, SLA met over the last 30 days (today minus 29 days through today) with n, and team utilisation for last week (previous Monday to Sunday). Month to date runs from the 1st through today. Each tile links to its report.

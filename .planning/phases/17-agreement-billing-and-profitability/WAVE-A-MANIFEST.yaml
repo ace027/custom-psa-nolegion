@@ -1,17 +1,29 @@
 wave: A
 phase: 17
-status: failed
-timestamp: "2026-11-03T02:10:39Z"
+status: complete
+timestamp: "2026-11-03T02:40:17Z"
 service_groups:
   backend:
     status: complete
     plans: [17-01]
-    files: [backend/alembic/versions/0041_agreement_attachment_and_rollover.py, backend/app/billing.py, backend/app/models.py, backend/app/routers/billing.py, backend/app/routers/tickets.py, backend/app/schemas.py, backend/app/ticket_services.py, backend/tests/test_agreement_attachment.py, backend/tests/test_seed_and_migrations.py, docs/api/openapi.json]
-  mixed:
-    status: partial
-    plans: [17-02, 17-03]
-    files: [backend/app/billing.py, backend/app/billing_repo.py, backend/tests/test_agreement_billing.py, docs/BILLING.md, backend/app/report_metrics.py, backend/app/routers/reports.py, backend/tests/test_agreement_profitability.py, docs/REPORTS.md, docs/api/openapi.json]
-  frontend:
-    status: failed
-    plans: [17-04]
     files: []
+  mixed:
+    status: complete
+    plans: [17-02, 17-03]
+    files: [backend/app/schemas.py]
+  frontend:
+    status: complete
+    plans: [17-04]
+    files: [frontend/src/AgreementAttachment.test.tsx, frontend/src/api.ts, frontend/src/pages/TicketDetail.tsx, frontend/src/pages/billing/Agreements.tsx, frontend/src/pages/reports/ProfitabilityReport.tsx]
+analysis_findings:
+  count: 5
+  by_agent:
+    engineering-backend-architect: {blockers: 0, warnings: 5}
+    engineering-security-engineer: {blockers: 0, warnings: 0}
+outputs:
+  total_files: 6
+  total_plans: 4
+  passed: 4
+  failed: 0
+gate: architecture
+gate_status: passed

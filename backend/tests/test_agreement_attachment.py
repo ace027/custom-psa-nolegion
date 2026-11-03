@@ -36,6 +36,23 @@ def test_single_all_inclusive_flat_is_the_default(biller, org_ctx, make_ticket):
     assert make_ticket()["agreement_id"] == a["id"]
 
 
+def test_matching_an_unmatched_ticket_defaults_its_agreement(
+    admin, biller, org_ctx, make_ticket, owner
+):
+    a = agreement(biller, org_ctx["org"])
+    t = make_ticket()
+    owner.execute(
+        text(
+            "UPDATE tickets SET organization_id = NULL, contact_id = NULL, agreement_id = NULL,"
+            " source = 'email' WHERE id = :i"
+        ),
+        {"i": t["id"]},
+    )
+    r = admin.patch(f"/api/v1/tickets/{t['id']}", json={"organization_id": org_ctx["org"]})
+    assert r.status_code == 200, r.text
+    assert r.json()["agreement_id"] == a["id"]
+
+
 def test_no_candidate_means_no_agreement(biller, org_ctx, make_ticket):
     assert make_ticket()["agreement_id"] is None
     agreement(biller, org_ctx["org"], "flat")  # not all-inclusive

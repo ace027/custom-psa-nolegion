@@ -20,6 +20,7 @@ from app import repositories as repo
 from app.billing_repo import (
     agreements_overlapping,
     billable_projects,
+    block_billed_months,
     block_candidates,
     block_minutes_used,
     get_agreement,
@@ -685,15 +686,20 @@ def carried_in(ctx: Ctx, a: Agreement, start: date, increment: int) -> int:
     """Unused block minutes rolled into the run month starting `start`. Computed, never stored:
     0 when the agreement expires unused minutes; when it rolls, walk the months from the
     agreement's start: carried(M+1) = min(cap, max(carried(M) + included(M) - used(M), 0)).
-    used(M) counts only finalized runs (block_minutes_used), so voiding an invoice and re-running
-    flows through automatically; a month without a finalized run used 0."""
+    Only months a finalized run billed this block on a live invoice count (block_billed_months):
+    a month the client was not billed for (before the PSA, draft or cancelled run, voided
+    invoice) neither accrues nor uses anything, so voiding and re-running flows through."""
     if a.rollover != "roll":
         return 0
+    billed = block_billed_months(ctx.db, ctx.scope, a, start)
     used = block_minutes_used(ctx.db, ctx.scope, a, start)
     carried = 0
     month = a.start_date.replace(day=1)
     while month < start:
         first, last = _month_bounds(month)
+        if first not in billed:
+            month = last + timedelta(days=1)
+            continue
         included = block_included_minutes(a, first, last, increment)  # 0 after end_date
         carried = max(carried + included - used.get(first, 0), 0)
         if a.rollover_cap_minutes is not None:

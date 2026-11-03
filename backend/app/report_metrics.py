@@ -52,6 +52,12 @@ Profitability (per client)
   cost = labour + goods + expenses; margin = revenue - cost; margin_bp = margin / revenue, null
   when revenue <= 0. Internal time is not attributed to clients.
 
+By agreement (group='agreement', Phase 17; docs/REPORTS.md)
+  rows per (client, agreement) plus a 'No agreement' row per client. Revenue: lines carrying an
+  agreement_id, plus lines holding time entries attached to it (split by billed minutes when the
+  entries differ). Labour cost: time attached to it. Goods and expenses: 'No agreement'. The rows
+  add up to the client view to the cent. Utilisation adds ticket minutes per agreement.
+
 Lineage: tickets, time_entries, internal_time_entries, user_work_hours, user_time_off, holidays,
 settings, invoices/invoice_lines (through reports.revenue), payments/payment_applications/
 write_offs/credit_memo_applications (through payments.receivables), inventory_items,
@@ -72,10 +78,13 @@ from app import repositories as repo
 from app.deps import Ctx
 from app.errors import Conflict
 from app.models import (
+    Agreement,
     Expense,
     Holiday,
     InternalTimeEntry,
     InventoryItem,
+    Invoice,
+    InvoiceLine,
     Organization,
     Priority,
     Product,
@@ -93,6 +102,9 @@ from app.sla import business_minutes_between
 from app.ticket_services import calendar, now
 
 SlaGroup = Literal["priority", "organization", "assignee"]
+ProfitGroup = Literal["client", "agreement"]
+NO_AGREEMENT = "No agreement"
+RowKey = tuple[int, int | None]  # (organization_id, agreement_id); None = 'No agreement'
 REPORTS = ("sla", "utilisation", "aging", "profitability")
 
 
@@ -127,6 +139,46 @@ def _names(ctx: Ctx, ids: set[int]) -> dict[int, str]:
         Organization.id,
     )
     return {i: n for i, n in ctx.db.execute(stmt)}
+
+
+def _check_group(group: str) -> None:
+    if group not in ("client", "agreement"):
+        raise Conflict("Group by client or agreement")
+
+
+def _agreement_fields(ctx: Ctx, keys) -> dict[RowKey, dict]:
+    """(organization_id, agreement_id or None) -> the row's client and agreement identity."""
+    orgs = _names(ctx, {o for o, _ in keys})
+    aids = {a for _, a in keys if a is not None}
+    agreements = {}
+    if aids:
+        stmt = ctx.scope.apply(
+            select(Agreement.id, Agreement.name, Agreement.type).where(Agreement.id.in_(aids)),
+            Agreement.organization_id,
+        )
+        agreements = {i: (n, t) for i, n, t in ctx.db.execute(stmt)}
+    out = {}
+    for o, a in keys:
+        name, kind = agreements.get(a, (f"#{a}", None)) if a is not None else (NO_AGREEMENT, None)
+        out[(o, a)] = dict(
+            organization_id=o,
+            organization_name=orgs.get(o, f"#{o}"),
+            agreement_id=a,
+            agreement_name=name,
+            agreement_type=kind,
+        )
+    return out
+
+
+def _agreement_order(r: dict) -> tuple:
+    """Client by name, then its agreements by name, 'No agreement' last."""
+    return (
+        r["organization_name"].lower(),
+        r["organization_id"],
+        r["agreement_id"] is None,
+        r["agreement_name"].lower(),
+        r["agreement_id"] or 0,
+    )
 
 
 # ---- SLA --------------------------------------------------------------------------------
@@ -257,7 +309,44 @@ def _zone(user_tz: str | None, settings_tz: str) -> ZoneInfo:
     return ZoneInfo("UTC")
 
 
-def utilisation(ctx: Ctx, start: date | None, end: date | None) -> dict:
+def _minutes_by_agreement(ctx: Ctx, start: date, end: date) -> list[dict]:
+    """Ticket time per (client, agreement): labour logged and billable minutes, automation minutes
+    on their own. Internal time belongs to no client, so it is not in these rows."""
+    labour = TimeEntry.entry_type == "labour"
+    stmt = ctx.scope.apply(
+        select(
+            TimeEntry.organization_id,
+            TimeEntry.agreement_id,
+            func.coalesce(func.sum(TimeEntry.minutes_actual).filter(labour), 0),
+            func.coalesce(
+                func.sum(TimeEntry.minutes_actual).filter(labour, TimeEntry.billable.is_(True)), 0
+            ),
+            func.coalesce(
+                func.sum(TimeEntry.minutes_actual).filter(TimeEntry.entry_type == "automation"), 0
+            ),
+        )
+        .where(
+            TimeEntry.entry_type.in_(("labour", "automation")),
+            TimeEntry.voided_at.is_(None),
+            TimeEntry.work_date >= start,
+            TimeEntry.work_date <= end,
+        )
+        .group_by(TimeEntry.organization_id, TimeEntry.agreement_id),
+        TimeEntry.organization_id,
+    )
+    sums = {(o, a): (int(lg), int(bl), int(au)) for o, a, lg, bl, au in ctx.db.execute(stmt)}
+    fields = _agreement_fields(ctx, sums)
+    rows = [
+        dict(**fields[k], logged_minutes=lg, billable_minutes=bl, automation_minutes=au)
+        for k, (lg, bl, au) in sums.items()
+    ]
+    return sorted(rows, key=_agreement_order)
+
+
+def utilisation(
+    ctx: Ctx, start: date | None, end: date | None, group: ProfitGroup = "client"
+) -> dict:
+    _check_group(group)
     start, end = reports.default_range(ctx, start, end)
     db = ctx.db
     settings = repo.get_settings_row(db)
@@ -384,7 +473,14 @@ def utilisation(ctx: Ctx, start: date | None, end: date | None) -> dict:
         utilisation_bp=bp(log_, cap),
         billable_bp=bp(bil, cap),
     )
-    return dict(range=dict(start=start, end=end), rows=rows, totals=totals)
+    agreements = _minutes_by_agreement(ctx, start, end) if group == "agreement" else None
+    return dict(
+        range=dict(start=start, end=end),
+        group=group,
+        rows=rows,
+        totals=totals,
+        agreements=agreements,
+    )
 
 
 # ---- aging ------------------------------------------------------------------------------
@@ -394,23 +490,98 @@ def aging(ctx: Ctx) -> dict:
 
 
 # ---- profitability ----------------------------------------------------------------------
-def profitability(ctx: Ctx, start: date | None, end: date | None) -> dict:
+def _split(amount: int, weights: dict) -> dict:
+    """Split amount cents in proportion to weights; the rounding remainder goes to the largest
+    weight, so the shares always add up to amount exactly."""
+    total = sum(weights.values())
+    shares = {k: amount * w // total for k, w in weights.items()}
+    shares[max(weights, key=weights.__getitem__)] += amount - sum(shares.values())
+    return shares
+
+
+def _revenue_by_agreement(ctx: Ctx, start: date, end: date) -> dict[RowKey, int]:
+    """The same lines as reports.revenue (finalized, non-void invoices in range, non-voided
+    lines, excluding tax) keyed by (client, agreement). A line with an agreement_id is that
+    agreement's (agreement fees, block lines, prorations); any other line with time entries on it
+    goes to the agreement of those entries, split by billed minutes when they differ; everything
+    else (manual, product, project lines) is the client's 'No agreement' revenue."""
+    in_range = (
+        Invoice.status == "final",
+        InvoiceLine.voided.is_(False),
+        Invoice.invoice_date >= start,
+        Invoice.invoice_date <= end,
+    )
+    lines = ctx.scope.apply(
+        select(
+            InvoiceLine.id,
+            Invoice.organization_id,
+            InvoiceLine.agreement_id,
+            InvoiceLine.amount_cents,
+        )
+        .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
+        .where(*in_range),
+        Invoice.organization_id,
+    )
+    billed = TimeEntry.minutes_billable - TimeEntry.block_minutes_covered
+    time_on_lines = ctx.scope.apply(
+        select(
+            TimeEntry.invoice_line_id,
+            TimeEntry.agreement_id,
+            func.sum(billed),
+            func.count(),
+        )
+        .join(InvoiceLine, InvoiceLine.id == TimeEntry.invoice_line_id)
+        .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
+        .where(*in_range, InvoiceLine.agreement_id.is_(None))
+        .group_by(TimeEntry.invoice_line_id, TimeEntry.agreement_id)
+        .order_by(TimeEntry.invoice_line_id, TimeEntry.agreement_id.nulls_last()),
+        Invoice.organization_id,
+    )
+    minutes: dict[int, dict[int | None, int]] = defaultdict(dict)
+    counts: dict[int, dict[int | None, int]] = defaultdict(dict)
+    for line_id, aid, m, n in ctx.db.execute(time_on_lines):
+        minutes[line_id][aid] = int(m or 0)
+        counts[line_id][aid] = n
+    revenue: dict[RowKey, int] = defaultdict(int)
+    for line_id, org_id, aid, amount in ctx.db.execute(lines):
+        if aid is not None or line_id not in minutes:
+            revenue[(org_id, aid)] += amount
+            continue
+        weights = minutes[line_id] if sum(minutes[line_id].values()) > 0 else counts[line_id]
+        for entry_aid, share in _split(amount, weights).items():
+            revenue[(org_id, entry_aid)] += share
+    return revenue
+
+
+def profitability(
+    ctx: Ctx, start: date | None, end: date | None, group: ProfitGroup = "client"
+) -> dict:
+    """group 'client': one row per client. group 'agreement': one row per (client, agreement)
+    plus a 'No agreement' row per client; the rows add up to the client view to the cent."""
+    _check_group(group)
+    by_agreement = group == "agreement"
     start, end = reports.default_range(ctx, start, end)
     db = ctx.db
-    revenue: dict[int, int] = {
-        c["organization_id"]: c["subtotal_cents"]
-        for c in reports.revenue(ctx, start, end)["clients"]
-    }
-    labour: dict[int, int] = defaultdict(int)
-    no_rate: dict[int, int] = defaultdict(int)
-    goods: dict[int, int] = defaultdict(int)
-    expenses: dict[int, int] = defaultdict(int)
-    no_cost: dict[int, int] = defaultdict(int)
+    if by_agreement:
+        revenue: dict[RowKey, int] = _revenue_by_agreement(ctx, start, end)
+    else:
+        revenue = {
+            (c["organization_id"], None): c["subtotal_cents"]
+            for c in reports.revenue(ctx, start, end)["clients"]
+        }
+    labour: dict[RowKey, int] = defaultdict(int)
+    no_rate: dict[RowKey, int] = defaultdict(int)
+    # shortcut: goods and expenses are never on an agreement's invoice line today, so they stay
+    # in the client's 'No agreement' row; attribute them if billing ever ties them to one.
+    goods: dict[RowKey, int] = defaultdict(int)
+    expenses: dict[RowKey, int] = defaultdict(int)
+    no_cost: dict[RowKey, int] = defaultdict(int)
 
     # one row per distinct (minutes, rate): the rounding is still applied per entry
     time_rows = ctx.scope.apply(
         select(
             TimeEntry.organization_id,
+            TimeEntry.agreement_id,
             TimeEntry.minutes_actual,
             User.cost_rate_cents,
             func.count(),
@@ -423,14 +594,20 @@ def profitability(ctx: Ctx, start: date | None, end: date | None) -> dict:
             TimeEntry.work_date >= start,
             TimeEntry.work_date <= end,
         )
-        .group_by(TimeEntry.organization_id, TimeEntry.minutes_actual, User.cost_rate_cents),
+        .group_by(
+            TimeEntry.organization_id,
+            TimeEntry.agreement_id,
+            TimeEntry.minutes_actual,
+            User.cost_rate_cents,
+        ),
         TimeEntry.organization_id,
     )
-    for org_id, minutes, rate, n in db.execute(time_rows):
+    for org_id, aid, minutes, rate, n in db.execute(time_rows):
+        key = (org_id, aid if by_agreement else None)
         if rate is None:
-            no_rate[org_id] += minutes * n
+            no_rate[key] += minutes * n
         else:
-            labour[org_id] += round_cents(Decimal(minutes) * rate / 60) * n
+            labour[key] += round_cents(Decimal(minutes) * rate / 60) * n
 
     item_rows = ctx.scope.apply(
         select(
@@ -446,7 +623,7 @@ def profitability(ctx: Ctx, start: date | None, end: date | None) -> dict:
         InventoryItem.organization_id,
     )
     for org_id, cost in db.execute(item_rows):
-        goods[org_id] += int(cost)
+        goods[(org_id, None)] += int(cost)
 
     charge_rows = ctx.scope.apply(
         select(
@@ -473,9 +650,9 @@ def profitability(ctx: Ctx, start: date | None, end: date | None) -> dict:
     )
     for org_id, qty, unit_cost, n in db.execute(charge_rows):
         if unit_cost is None:
-            no_cost[org_id] += n
+            no_cost[(org_id, None)] += n
         else:
-            goods[org_id] += round_cents(Decimal(qty) * unit_cost) * n
+            goods[(org_id, None)] += round_cents(Decimal(qty) * unit_cost) * n
 
     expense_rows = ctx.scope.apply(
         select(Expense.organization_id, func.sum(Expense.amount_cents))
@@ -489,18 +666,30 @@ def profitability(ctx: Ctx, start: date | None, end: date | None) -> dict:
         Expense.organization_id,
     )
     for org_id, amount in db.execute(expense_rows):
-        expenses[org_id] += int(amount)
+        expenses[(org_id, None)] += int(amount)
 
-    ids = set(revenue) | set(labour) | set(no_rate) | set(goods) | set(expenses) | set(no_cost)
-    names = _names(ctx, ids)
+    keys = set(revenue) | set(labour) | set(no_rate) | set(goods) | set(expenses) | set(no_cost)
+    if by_agreement:
+        fields = _agreement_fields(ctx, keys)
+    else:
+        names = _names(ctx, {o for o, _ in keys})
+        fields = {
+            (o, a): dict(
+                organization_id=o,
+                organization_name=names.get(o, f"#{o}"),
+                agreement_id=None,
+                agreement_name=None,
+                agreement_type=None,
+            )
+            for o, a in keys
+        }
     rows = []
-    for i in ids:
+    for i in keys:
         cost = labour[i] + goods[i] + expenses[i]
         rev = revenue.get(i, 0)
         rows.append(
             dict(
-                organization_id=i,
-                organization_name=names.get(i, f"#{i}"),
+                **fields[i],
                 revenue_cents=rev,
                 labour_cost_cents=labour[i],
                 goods_cost_cents=goods[i],
@@ -512,7 +701,10 @@ def profitability(ctx: Ctx, start: date | None, end: date | None) -> dict:
                 charges_without_cost=no_cost[i],
             )
         )
-    rows.sort(key=lambda r: (-r["revenue_cents"], r["organization_name"].lower()))
+    if by_agreement:
+        rows.sort(key=_agreement_order)
+    else:
+        rows.sort(key=lambda r: (-r["revenue_cents"], r["organization_name"].lower()))
     sums = {
         k: sum(r[k] for r in rows)
         for k in (
@@ -529,7 +721,7 @@ def profitability(ctx: Ctx, start: date | None, end: date | None) -> dict:
     sums["margin_bp"] = (
         bp(sums["margin_cents"], sums["revenue_cents"]) if sums["revenue_cents"] > 0 else None
     )
-    return dict(range=dict(start=start, end=end), rows=rows, totals=sums)
+    return dict(range=dict(start=start, end=end), group=group, rows=rows, totals=sums)
 
 
 # ---- CSV --------------------------------------------------------------------------------
@@ -576,6 +768,15 @@ def _sla_csv(d: dict) -> tuple[list[str], list[list], set[int]]:
 
 
 def _utilisation_csv(d: dict) -> tuple[list[str], list[list], set[int]]:
+    if d["agreements"] is not None:
+        keys = ["logged_minutes", "billable_minutes", "automation_minutes"]
+        rows = [
+            [r["organization_name"], r["agreement_name"], r["agreement_type"]]
+            + [r[k] for k in keys]
+            for r in d["agreements"]
+        ]
+        rows.append(["Total", "", ""] + [sum(r[k] for r in d["agreements"]) for k in keys])
+        return ["client", "agreement", "agreement_type", *keys], rows, set()
     header = [
         "user",
         "capacity_minutes",
@@ -636,7 +837,6 @@ def _aging_csv(d: dict) -> tuple[list[str], list[list], set[int]]:
 
 def _profitability_csv(d: dict) -> tuple[list[str], list[list], set[int]]:
     header = [
-        "client",
         "revenue",
         "labour_cost",
         "goods_cost",
@@ -648,9 +848,8 @@ def _profitability_csv(d: dict) -> tuple[list[str], list[list], set[int]]:
         "charges_without_cost",
     ]
 
-    def line(name: str, r: dict) -> list:
+    def line(r: dict) -> list:
         return [
-            name,
             r["revenue_cents"],
             r["labour_cost_cents"],
             r["goods_cost_cents"],
@@ -662,8 +861,16 @@ def _profitability_csv(d: dict) -> tuple[list[str], list[list], set[int]]:
             r["charges_without_cost"],
         ]
 
-    rows = [line(r["organization_name"], r) for r in d["rows"]] + [line("Total", d["totals"])]
-    return header, rows, set(range(1, 7))
+    if d["group"] == "agreement":
+        rows = [
+            [r["organization_name"], r["agreement_name"], r["agreement_type"]] + line(r)
+            for r in d["rows"]
+        ]
+        rows.append(["Total", "", ""] + line(d["totals"]))
+        return ["client", "agreement", "agreement_type", *header], rows, set(range(3, 9))
+    rows = [[r["organization_name"]] + line(r) for r in d["rows"]]
+    rows.append(["Total"] + line(d["totals"]))
+    return ["client", *header], rows, set(range(1, 7))
 
 
 def csv_for(
@@ -672,8 +879,10 @@ def csv_for(
     start: date | None,
     end: date | None,
     group: SlaGroup = "priority",
+    by: ProfitGroup = "client",
 ) -> tuple[str, str]:
-    """(filename, CSV text) for one report; used by the routes and the scheduled emails."""
+    """(filename, CSV text) for one report; used by the routes and the scheduled emails.
+    group applies to sla; by (client or agreement) to utilisation and profitability."""
     if report == "aging":
         d = aging(ctx)
         name = f"aging-{d['as_of']}.csv"
@@ -684,13 +893,13 @@ def csv_for(
             header, rows, money = _sla_csv(d)
             tag = f"sla-by-{group}"
         elif report == "utilisation":
-            d = utilisation(ctx, start, end)
+            d = utilisation(ctx, start, end, by)
             header, rows, money = _utilisation_csv(d)
-            tag = report
+            tag = report if by == "client" else f"{report}-by-agreement"
         else:
-            d = profitability(ctx, start, end)
+            d = profitability(ctx, start, end, by)
             header, rows, money = _profitability_csv(d)
-            tag = report
+            tag = report if by == "client" else f"{report}-by-agreement"
         name = f"{tag}-{d['range']['start']}-{d['range']['end']}.csv"
     else:
         raise Conflict(f"Unknown report: {report}")

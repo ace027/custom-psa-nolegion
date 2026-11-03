@@ -164,10 +164,20 @@ def test_roll_with_cap(biller, acme, wt, log):
     assert lines(sep) == [("agreement", "1.0000", 100000), ("time", "1.0000", 15000)]
 
 
-def test_month_without_a_finalized_run_used_nothing(biller, acme, wt, log):
+def test_month_without_a_finalized_run_carries_nothing(biller, acme, wt, log):
     agreement(biller, acme["org"], rollover="roll")
     log(acme["ticket"], wt["Remote"], 600, work_date="2026-07-02")
-    run(biller, "2026-07", acme["org"])  # left as a draft: its draw-down does not count
+    run(biller, "2026-07", acme["org"])  # left as a draft: July was never billed
+    _, aug = run(biller, "2026-08", acme["org"])
+    assert block_text(aug) == "Retainer: 10 h included, 0 h used"
+
+
+def test_months_before_the_first_billed_run_carry_nothing(biller, acme):
+    # the agreement predates the PSA: a year of unbilled months must not roll into the first run
+    agreement(biller, acme["org"], rollover="roll", start_date="2025-07-01")
+    run_id, jul = run(biller, "2026-07", acme["org"])
+    assert block_text(jul) == "Retainer: 10 h included, 0 h used"
+    finalize(biller, run_id)
     _, aug = run(biller, "2026-08", acme["org"])
     assert block_text(aug) == "Retainer: 20 h included (incl. 10 h carried over), 0 h used"
 
@@ -192,7 +202,8 @@ def test_voiding_month_one_changes_month_two_carry_in(biller, acme, wt, log, own
     r = biller.post(f"/api/v1/invoices/{jul['id']}/void", json={"reason": "Wrong client"})
     assert r.status_code == 200, r.text
     _, aug = run(biller, "2026-08", acme["org"])
-    assert block_text(aug) == "Retainer: 20 h included (incl. 10 h carried over), 0 h used"
+    # July's invoice is void, so July was not billed for the block: nothing carries over
+    assert block_text(aug) == "Retainer: 10 h included, 0 h used"
     # July's released hours are prior-month time: billed at the normal rate, as today
     assert lines(aug) == [("agreement", "1.0000", 100000), ("time", "10.0000", 150000)]
     assert entry(owner, e["id"]) == (0, aug["lines"][1]["id"])

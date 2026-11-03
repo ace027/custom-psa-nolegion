@@ -252,15 +252,9 @@ def block_candidates(
     return list(db.execute(stmt.order_by(TimeEntry.work_date, TimeEntry.id)).scalars())
 
 
-def block_minutes_used(db: Session, scope: Scope, agreement: Agreement, before: date) -> dict:
-    """-> {run period_start: block minutes used} for the months before `before` whose run is
-    FINALIZED and whose live invoice for the client bills this block. Used = block_minutes_covered
-    of the client's entries in that month attached to this block or to no agreement. A voided
-    invoice already reset its entries to 0, so it counts nothing.
-    shortcut: two blocks of one client in the same month (one ending, one starting) would both
-    count that month's unattached minutes; only the first block draws down today. Attribute
-    per entry if overlapping-month blocks are ever billed side by side."""
-    bills_block = (
+def _run_bills_block(agreement: Agreement):
+    """EXISTS: the outer BillingRun has a live (not void) invoice line billing this block."""
+    return (
         select(InvoiceLine.id)
         .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
         .where(
@@ -273,6 +267,36 @@ def block_minutes_used(db: Session, scope: Scope, agreement: Agreement, before: 
         )
         .exists()
     )
+
+
+def block_billed_months(db: Session, scope: Scope, agreement: Agreement, before: date) -> set:
+    """-> period_start of every FINALIZED run before `before` that billed this block on a live
+    invoice. Only these months accrue rollover: a month the client was not billed for (before the
+    PSA was used, a draft or cancelled run, a voided invoice) carries nothing."""
+    stmt = scope.apply(
+        select(BillingRun.period_start)
+        .join(Invoice, Invoice.billing_run_id == BillingRun.id)
+        .where(
+            Invoice.organization_id == agreement.organization_id,
+            BillingRun.status == "finalized",
+            BillingRun.period_start < before,
+            _run_bills_block(agreement),
+        )
+        .distinct(),
+        Invoice.organization_id,
+    )
+    return set(db.execute(stmt).scalars())
+
+
+def block_minutes_used(db: Session, scope: Scope, agreement: Agreement, before: date) -> dict:
+    """-> {run period_start: block minutes used} for the months before `before` whose run is
+    FINALIZED and whose live invoice for the client bills this block. Used = block_minutes_covered
+    of the client's entries in that month attached to this block or to no agreement. A voided
+    invoice already reset its entries to 0, so it counts nothing.
+    shortcut: two blocks of one client in the same month (one ending, one starting) would both
+    count that month's unattached minutes; only the first block draws down today. Attribute
+    per entry if overlapping-month blocks are ever billed side by side."""
+    bills_block = _run_bills_block(agreement)
     stmt = scope.apply(
         select(BillingRun.period_start, func.sum(TimeEntry.block_minutes_covered))
         .join(
