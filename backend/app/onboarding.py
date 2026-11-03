@@ -336,9 +336,6 @@ def connect_existing(ctx: Ctx, kind: str, app_id: str, mailbox: str | None = Non
     return out
 
 
-# ---- verify ----
-
-
 def _step(step: str, status: str, message: str) -> dict:
     return {"step": step, "status": status, "message": message}
 
@@ -469,9 +466,6 @@ def verify(ctx: Ctx) -> list[dict]:
     )
     vault = KeyVault.from_settings()  # one instance: it caches the managed identity token
     return [staff, _check_portal(ctx, vault), *_check_mail_and_calendar(ctx, vault)]
-
-
-# ---- finish ----
 
 
 def finish(ctx: Ctx) -> list[str]:
