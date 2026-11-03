@@ -18,7 +18,7 @@
 - [x] Phase 14: Portal polish (3 plans)
 - [x] Phase 15: Verify (owner manual testing) (1 plan)
 - [x] Phase 16: Front-end redesign (navigation and layout)
-- [ ] Phase 17: Agreement billing and profitability
+- [x] Phase 17: Agreement billing and profitability
 - [ ] Phase 18: Accounting mail and readable audit log
 - [ ] Phase 19: Azure deployment and onboarding wizard
 
@@ -248,6 +248,6 @@
 | 14 | 3 | 3 | Complete |
 | 15 | 1 | 1 | Shipped |
 | 16 | 4 | 4 | Complete |
-| 17 | 4 | 4 | Executed |
+| 17 | 4 | 4 | Complete |
 | 18 | 0 | 0 | Pending |
 | 19 | 0 | 0 | Pending |

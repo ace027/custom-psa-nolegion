@@ -248,3 +248,7 @@ verification: 4/4 passed
 | O-155 | 2026-11-03 | dev | 17 | 17-03 | engineering-backend-architect | implementation | failed | 5 | agreement-billing-and-profitability, engineering | Profitability and utilisation by agreement: Partial |
 | O-156 | 2026-11-03 | dev | 17 | 17-03 | engineering-backend-architect | implementation | partial | 3 | agreement-billing-and-profitability, engineering | Profitability and utilisation by agreement: Complete with Warnings |
 | O-157 | 2026-11-03 | dev | 17 | 17-04 | engineering-frontend-developer | implementation | success | 2 | agreement-billing-and-profitability, engineering | Agreement controls and reports in the UI: Complete |
+| O-158 | 2026-11-03 | dev | 17 | 17-00 | testing-qa-verification-specialist | quality-review | success | 3 | review, testing | Phase 17 review PASSED in 2 cycle(s), 4 finding(s) |
+| O-159 | 2026-11-03 | dev | 17 | 17-00 | engineering-senior-developer | quality-review | success | 4 | review, engineering | Phase 17 review PASSED in 2 cycle(s), 4 finding(s) |
+| O-160 | 2026-11-03 | dev | 17 | 17-00 | design-ui-designer | quality-review | success | 4 | review, design | Phase 17 review PASSED in 2 cycle(s), 4 finding(s) |
+| O-161 | 2026-11-03 | dev | 17 | 17-00 | engineering-frontend-developer | quality-review | success | 4 | review, engineering | Phase 17 review PASSED in 2 cycle(s), 4 finding(s) |

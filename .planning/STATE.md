@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 17 of 13 (executed, pending review)
-- **Status**: Phase 17 under review — cycle 1/3, 0 blocker(s) remaining
-- **Last Activity**: Phase 17 review cycle 1 (2026-11-03)
+- **Phase**: 17 of 13 (complete)
+- **Status**: Phase 17 complete — review passed (2 cycle(s))
+- **Last Activity**: Phase 17 review (2026-11-03)
 
 ## Progress
 ```
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:review` to verify Phase 17: Agreement billing and profitability
+Run `/triad:plan 18` to plan Phase 18: Accounting mail and readable audit log
 
 ## Phase 1 Results
 (build started 2026-10-09)
