@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 17 of 13 (planned)
-- **Status**: Phase 17 planned -- 4 plans across 3 waves
-- **Last Activity**: Phase 17 planning (2026-11-03)
+- **Phase**: 17 of 13 (executing)
+- **Status**: Phase 17 executing — Plan 17-01 complete
+- **Last Activity**: Plan 17-01 execution (2026-11-03)
 
 ## Progress
 ```
-[####################] 100% — 52/52 plans complete
+[##################..] 94% — 53/56 plans complete
 ```
 
 ## Recent Decisions
@@ -178,3 +178,7 @@ Run `/triad:build` to execute Phase 17: Agreement billing and profitability
 - Plan 16-02 (Wave 2): Icon rail, All pages and reorderable per-user bookmarks — PARTIAL: All three tasks are built and their own checks pass. The full `npx vitest run` still fails 5 tests in 4 older test files that I'm not allowed to edit. Those tests look for links and a single status re
 - Plan 16-03 (Wave 3): Settings split into Admin sub-pages — PARTIAL: Settings is split into 7 sub-pages with routes, a Settings sub-nav and permission gating. Typecheck, build and SettingsSplit.test.tsx (11 tests) pass. Full vitest has 1 failure: Phase1A.test.tsx, "lis
 - Plan 16-04 (Wave 4): Command palette — Complete
+
+## Phase 17 Results
+(build started 2026-11-03)
+- Plan 17-01 (Wave 1): Agreement on tickets and time entries — Complete with Warnings
