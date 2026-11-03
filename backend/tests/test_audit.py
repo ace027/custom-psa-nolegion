@@ -105,3 +105,68 @@ def test_audit_filters(admin, make_org):
     r = admin.get("/api/v1/audit", params={"actor_id": admin.user["id"], "action": "organization."})
     assert r.json()["total"] == 2
     assert b
+
+
+def test_audit_entries_are_readable(admin, make_org):
+    org = make_org("Readable Co")
+    admin.patch(f"/api/v1/organizations/{org['id']}", json={"notes": "hello"})
+    items = admin.get("/api/v1/audit", params={"organization_id": org["id"]}).json()["items"]
+    upd = next(i for i in items if i["action"] == "organization.update")
+    assert upd["actor_name"] == "admin user"
+    assert upd["organization_name"] == "Readable Co"
+    assert upd["summary"] == f"admin user updated client #{org['id']} for Readable Co"
+    ch = {c["field"]: c for c in upd["changes"]}
+    assert ch["notes"]["label"] == "notes" and ch["notes"]["after"] == "hello"
+    assert all(i["summary"] for i in items)
+
+
+def test_audit_masks_secret_like_keys(admin, owner):
+    owner.execute(
+        text(
+            "INSERT INTO audit_log (actor_type, actor_id, action, entity_type, entity_id, before, after) "
+            "VALUES ('user', 999999, 'thing.update', 'things', 1, "
+            '\'{"api_token": "old"}\', \'{"api_token": "new"}\')'
+        )
+    )
+    row = admin.get("/api/v1/audit", params={"entity_type": "things"}).json()["items"][0]
+    assert row["actor_name"] is None and row["summary"].startswith("User #999999 updated thing #1")
+    assert row["changes"] == [
+        {"field": "api_token", "label": "api token", "before": "(changed)", "after": "(changed)"}
+    ]
+
+
+def test_audit_date_filter(admin, owner):
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    tz = ZoneInfo(admin.get("/api/v1/settings").json()["timezone"])
+    old = datetime.now(tz) - timedelta(days=3)
+    owner.execute(
+        text(
+            "INSERT INTO audit_log (actor_type, action, occurred_at) "
+            "VALUES ('system', 'old.create', :t)"
+        ),
+        {"t": old},
+    )
+    day = old.date()
+
+    def total(**p):
+        return admin.get("/api/v1/audit", params={"action": "old.", **p}).json()["total"]
+
+    assert total() == 1
+    assert total(date_from=day.isoformat(), date_to=day.isoformat()) == 1
+    assert total(date_from=(day + timedelta(days=1)).isoformat()) == 0
+    assert total(date_to=(day - timedelta(days=1)).isoformat()) == 0
+    r = admin.get("/api/v1/audit", params={"date_from": "2026-02-02", "date_to": "2026-02-01"})
+    assert r.status_code == 422 and "date_to is before date_from" in r.text
+
+
+def test_audit_entity_types_and_permissions(admin, make_org, login):
+    make_org()
+    types = admin.get("/api/v1/audit/entity-types").json()
+    assert {"value": "organizations", "label": "client"} in types
+    assert [t["label"] for t in types] == sorted(t["label"] for t in types)
+    for role in ("tech", "read_only"):
+        c = login(role)
+        assert c.get("/api/v1/audit").status_code == 403
+        assert c.get("/api/v1/audit/entity-types").status_code == 403

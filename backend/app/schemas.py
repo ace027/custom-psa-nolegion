@@ -226,6 +226,18 @@ class DevLoginIn(BaseModel):
 
 
 # ---- audit ----
+class AuditChangeOut(BaseModel):
+    field: str
+    label: str
+    before: str
+    after: str
+
+
+class AuditEntityTypeOut(BaseModel):
+    value: str
+    label: str
+
+
 class AuditOut(ORM):
     id: int
     occurred_at: datetime
@@ -240,6 +252,10 @@ class AuditOut(ORM):
     detail: dict | None
     request_id: str | None
     ip: str | None
+    actor_name: str | None = None
+    organization_name: str | None = None
+    summary: str = ""
+    changes: list[AuditChangeOut] = []
 
 
 # ---------------------------------------------------------------------------------------

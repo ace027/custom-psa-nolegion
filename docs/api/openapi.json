@@ -1602,6 +1602,52 @@
         "title": "AttachmentOut",
         "type": "object"
       },
+      "AuditChangeOut": {
+        "properties": {
+          "after": {
+            "title": "After",
+            "type": "string"
+          },
+          "before": {
+            "title": "Before",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "label",
+          "before",
+          "after"
+        ],
+        "title": "AuditChangeOut",
+        "type": "object"
+      },
+      "AuditEntityTypeOut": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "AuditEntityTypeOut",
+        "type": "object"
+      },
       "AuditOut": {
         "properties": {
           "action": {
@@ -1618,6 +1664,17 @@
               }
             ],
             "title": "Actor Id"
+          },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Name"
           },
           "actor_type": {
             "title": "Actor Type",
@@ -1646,6 +1703,14 @@
               }
             ],
             "title": "Before"
+          },
+          "changes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AuditChangeOut"
+            },
+            "title": "Changes",
+            "type": "array"
           },
           "detail": {
             "anyOf": [
@@ -1712,6 +1777,17 @@
             ],
             "title": "Organization Id"
           },
+          "organization_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Name"
+          },
           "request_id": {
             "anyOf": [
               {
@@ -1722,6 +1798,11 @@
               }
             ],
             "title": "Request Id"
+          },
+          "summary": {
+            "default": "",
+            "title": "Summary",
+            "type": "string"
           }
         },
         "required": [
@@ -22662,6 +22743,44 @@
             }
           },
           {
+            "description": "First local date, inclusive",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First local date, inclusive",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "Last local date, inclusive",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last local date, inclusive",
+              "title": "Date To"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
@@ -22708,6 +22827,31 @@
           }
         },
         "summary": "Query the audit log (admin only)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/audit/entity-types": {
+      "get": {
+        "operationId": "audit_entity_types_api_v1_audit_entity_types_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEntityTypeOut"
+                  },
+                  "title": "Response Audit Entity Types Api V1 Audit Entity Types Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Record types that appear in the audit log (admin only)",
         "tags": [
           "users"
         ]

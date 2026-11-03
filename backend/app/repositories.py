@@ -89,9 +89,23 @@ def get_user_by_oid(db: Session, oid: str) -> User | None:
 
 # ---- audit ----
 def list_audit(
-    db: Session, *, entity_type, entity_id, organization_id, actor_id, action, limit, offset
+    db: Session,
+    *,
+    entity_type,
+    entity_id,
+    organization_id,
+    actor_id,
+    action,
+    limit,
+    offset,
+    occurred_from=None,
+    occurred_before=None,
 ):
     stmt = select(AuditLog)
+    if occurred_from is not None:
+        stmt = stmt.where(AuditLog.occurred_at >= occurred_from)
+    if occurred_before is not None:
+        stmt = stmt.where(AuditLog.occurred_at < occurred_before)
     if entity_type:
         stmt = stmt.where(AuditLog.entity_type == entity_type)
     if entity_id is not None:
