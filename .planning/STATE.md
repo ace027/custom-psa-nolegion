@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Phase**: 19 of 13 (executing)
-- **Status**: Phase 19 executing — Plan 19-04 complete
+- **Phase**: 19 of 13 (executed, pending review)
+- **Status**: Phase 19 complete — all plans executed successfully
 - **Last Activity**: Plan 19-04 execution (2026-11-03)
 
 ## Progress
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:build` to execute Phase 19: Azure deployment and onboarding wizard
+Run `/triad:review` to verify Phase 19: Azure deployment and onboarding wizard
 
 ## Phase 1 Results
 (build started 2026-10-09)
