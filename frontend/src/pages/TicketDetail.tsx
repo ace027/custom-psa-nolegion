@@ -478,8 +478,9 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
   const total = entries.reduce((s, e) => s + e.minutes_billable, 0);
   return (
     <Card title="Time">
+      <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead className="text-slate-500"><tr><th>Date</th><th>Type</th><th>Actual</th><th>Billable</th><th>Agreement</th><th>Note</th><th /></tr></thead>
+        <thead className="text-slate-500"><tr><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Actual</th><th scope="col">Billable</th><th scope="col">Agreement</th><th scope="col">Note</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
         <tbody>
           {entries.map((e) => (
             <tr key={e.id} className="border-t border-slate-100">
@@ -489,7 +490,7 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
               <td>{e.billable ? `${e.minutes_billable} min` : "non-billable"}</td>
               <td>
                 {canWrite && !e.voided_at && e.invoice_line_id == null && ag.all.length > 0 ? (
-                  <select aria-label={`Agreement for time entry ${e.id}`} className={inputCls} value={e.agreement_id ?? ""} onChange={(ev) => setAgreement.mutate({ id: e.id, agreement_id: ev.target.value === "" ? null : Number(ev.target.value) })}>
+                  <select aria-label={`Agreement for time entry ${e.id}`} className={inputCls + " w-40"} value={e.agreement_id ?? ""} onChange={(ev) => setAgreement.mutate({ id: e.id, agreement_id: ev.target.value === "" ? null : Number(ev.target.value) })}>
                     <option value="">No agreement</option>
                     {ag.all.filter((a) => a.id === e.agreement_id || !a.end_date || a.end_date >= e.work_date).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </select>
@@ -502,6 +503,7 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
           {entries.length === 0 && <tr><td colSpan={7} className="text-slate-500">No time logged.</td></tr>}
         </tbody>
       </table>
+      </div>
       <p className="mt-1 text-sm text-slate-600">Total billable: <b>{total} min</b> ({(total / 60).toFixed(2)} h). Billable time rounds up to {lk.settings?.billing_increment_minutes ?? 15}-minute increments.</p>
       <ErrorMsg error={add.error ?? voidIt.error ?? start.error ?? setAgreement.error} />
       {canWrite && !t.needs_triage && (

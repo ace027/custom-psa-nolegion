@@ -5,7 +5,7 @@ import { can, useMe } from "../../auth";
 import { money, parseMoney } from "../../money";
 import { Button, ErrorMsg, Field, fmt, inputCls } from "../../ui";
 
-const TYPE_LABEL = { per_user: "Per user", per_device: "Per device", flat: "Flat fee", block: "Block hours" };
+export const TYPE_LABEL ={ per_user: "Per user", per_device: "Per device", flat: "Flat fee", block: "Block hours" };
 
 export default function Agreements() {
   const { data: me } = useMe();
@@ -107,8 +107,9 @@ function Row({ a, canWrite }: { a: Agreement; canWrite: boolean }) {
             : a.all_inclusive && <span className="text-slate-500"> (all-inclusive)</span>)}
           {a.type === "block" && (canWrite ? (
             <span className="ml-2 inline-flex items-center gap-1 text-xs">
+              <span>Unused hours:</span>
               <select aria-label={`${a.name} unused hours`} className={inputCls} value={a.rollover ?? "expire"} onChange={(e) => saveTerms.mutate({ rollover: e.target.value })}><option value="expire">Expire</option><option value="roll">Roll over</option></select>
-              {a.rollover === "roll" && <><input aria-label={`${a.name} rollover cap hours`} placeholder="cap h" className={inputCls + " w-20"} type="number" min={0} step={0.25} value={capText} onChange={(e) => setCap(e.target.value)} />
+              {a.rollover === "roll" && <><span>Cap (h):</span><input aria-label={`${a.name} rollover cap hours`} placeholder="no cap" className={inputCls + " w-20"} type="number" min={0} step={0.25} value={capText} onChange={(e) => setCap(e.target.value)} />
                 {Math.round(Number(capText) * 60) !== (a.rollover_cap_minutes ?? 0) && <Button aria-label={`Save ${a.name} rollover cap`} onClick={() => saveTerms.mutate({ rollover_cap_minutes: capText ? Math.round(Number(capText) * 60) : null })}>Save</Button>}</>}
             </span>
           ) : a.rollover === "roll" && <span className="text-slate-500"> (rolls over{a.rollover_cap_minutes != null ? `, cap ${a.rollover_cap_minutes / 60} h` : ""})</span>)}
@@ -118,7 +119,7 @@ function Row({ a, canWrite }: { a: Agreement; canWrite: boolean }) {
           <span className="flex items-center gap-1"><input aria-label={`${a.name} quantity`} className={inputCls + " w-20"} type="number" min={0} value={qtyText} onChange={(e) => setQty(e.target.value)} />
             {Number(qtyText) !== a.quantity && <><input aria-label={`${a.name} reason`} placeholder="why?" className={inputCls + " w-32"} value={reason} onChange={(e) => setReason(e.target.value)} /><Button aria-label={`Save ${a.name} quantity`} onClick={() => save.mutate()}>Save</Button></>}</span>
         ) : a.type === "block" && canWrite ? (
-          <span className="flex items-center gap-1"><input aria-label={`${a.name} included hours`} className={inputCls + " w-20"} type="number" min={0} step={0.25} value={hoursText} onChange={(e) => setHours(e.target.value)} />h
+          <span className="flex items-center gap-1"><input aria-label={`${a.name} included hours`} className={inputCls + " w-20"} type="number" min={0} step={0.25} value={hoursText} onChange={(e) => setHours(e.target.value)} /><span>h included</span>
             {Math.round(Number(hoursText) * 60) !== a.block_minutes && <Button aria-label={`Save ${a.name} included hours`} onClick={() => saveHours.mutate()}>Save</Button>}</span>
         ) : a.quantity}</td>
         <td className="text-right">{money(a.monthly_amount_cents)}</td>

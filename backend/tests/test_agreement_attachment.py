@@ -142,6 +142,28 @@ def test_time_inherits_ticket_agreement_and_can_be_overridden(
     assert r.json()["minutes_actual"] == 30  # nothing else changed
 
 
+def test_time_outside_the_ticket_agreement_term_does_not_inherit_it(
+    admin, biller, org_ctx, make_ticket, wt, log
+):
+    today = biz_today()
+    a = agreement(
+        biller,
+        org_ctx["org"],
+        "flat",
+        all_inclusive=True,
+        end_date=(today - timedelta(days=1)).isoformat(),
+    )
+    t = make_ticket(agreement_id=a["id"])
+    inside = log(t["id"], wt["Remote"], 30, work_date=(today - timedelta(days=5)).isoformat())
+    after = log(t["id"], wt["Remote"], 30, work_date=today.isoformat())
+    assert inside["agreement_id"] == a["id"]
+    assert after["agreement_id"] is None
+    moved = admin.patch(
+        f"/api/v1/time-entries/{inside['id']}", json={"work_date": today.isoformat()}
+    )
+    assert moved.status_code == 200 and moved.json()["agreement_id"] is None
+
+
 def test_billed_entry_agreement_change_is_409(owner, admin, biller, org_ctx, make_ticket, wt, log):
     flat = agreement(biller, org_ctx["org"], "flat")
     t = make_ticket()

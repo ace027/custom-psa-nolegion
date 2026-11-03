@@ -141,15 +141,11 @@ def _names(ctx: Ctx, ids: set[int]) -> dict[int, str]:
     return {i: n for i, n in ctx.db.execute(stmt)}
 
 
-def _check_group(group: str) -> None:
-    if group not in ("client", "agreement"):
-        raise Conflict("Group by client or agreement")
-
-
-def _agreement_fields(ctx: Ctx, keys) -> dict[RowKey, dict]:
-    """(organization_id, agreement_id or None) -> the row's client and agreement identity."""
+def _agreement_fields(ctx: Ctx, keys, with_agreement: bool = True) -> dict[RowKey, dict]:
+    """(organization_id, agreement_id or None) -> the row's client and agreement identity.
+    Without the agreement, its three fields are None (client rows)."""
     orgs = _names(ctx, {o for o, _ in keys})
-    aids = {a for _, a in keys if a is not None}
+    aids = {a for _, a in keys if a is not None and with_agreement}
     agreements = {}
     if aids:
         stmt = ctx.scope.apply(
@@ -163,8 +159,8 @@ def _agreement_fields(ctx: Ctx, keys) -> dict[RowKey, dict]:
         out[(o, a)] = dict(
             organization_id=o,
             organization_name=orgs.get(o, f"#{o}"),
-            agreement_id=a,
-            agreement_name=name,
+            agreement_id=a if with_agreement else None,
+            agreement_name=name if with_agreement else None,
             agreement_type=kind,
         )
     return out
@@ -346,7 +342,6 @@ def _minutes_by_agreement(ctx: Ctx, start: date, end: date) -> list[dict]:
 def utilisation(
     ctx: Ctx, start: date | None, end: date | None, group: ProfitGroup = "client"
 ) -> dict:
-    _check_group(group)
     start, end = reports.default_range(ctx, start, end)
     db = ctx.db
     settings = repo.get_settings_row(db)
@@ -558,7 +553,6 @@ def profitability(
 ) -> dict:
     """group 'client': one row per client. group 'agreement': one row per (client, agreement)
     plus a 'No agreement' row per client; the rows add up to the client view to the cent."""
-    _check_group(group)
     by_agreement = group == "agreement"
     start, end = reports.default_range(ctx, start, end)
     db = ctx.db
@@ -669,20 +663,7 @@ def profitability(
         expenses[(org_id, None)] += int(amount)
 
     keys = set(revenue) | set(labour) | set(no_rate) | set(goods) | set(expenses) | set(no_cost)
-    if by_agreement:
-        fields = _agreement_fields(ctx, keys)
-    else:
-        names = _names(ctx, {o for o, _ in keys})
-        fields = {
-            (o, a): dict(
-                organization_id=o,
-                organization_name=names.get(o, f"#{o}"),
-                agreement_id=None,
-                agreement_name=None,
-                agreement_type=None,
-            )
-            for o, a in keys
-        }
+    fields = _agreement_fields(ctx, keys, by_agreement)
     rows = []
     for i in keys:
         cost = labour[i] + goods[i] + expenses[i]

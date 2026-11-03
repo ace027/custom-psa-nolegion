@@ -99,6 +99,14 @@ def default_agreement_id(ctx: Ctx, org_id: int | None, on: date) -> int | None:
     return candidates[0].id if len(candidates) == 1 else None
 
 
+def _agreement_on(ctx: Ctx, org_id: int | None, agreement_id: int | None, on: date) -> int | None:
+    """Keep an inherited agreement only while it is in force on `on`; else the client's default."""
+    a = get_agreement(ctx.db, ctx.scope, agreement_id) if agreement_id else None
+    if a is not None and a.start_date <= on and (a.end_date is None or a.end_date >= on):
+        return a.id
+    return default_agreement_id(ctx, org_id, on)
+
+
 # ---- SLA -----------------------------------------------------------------------------------
 def recompute_sla(ctx: Ctx, ticket: Ticket) -> None:
     ticket.sla_first_response_due, ticket.sla_resolution_due = compute_due_dates(
@@ -512,7 +520,7 @@ def add_time(ctx: Ctx, ticket_id: int, data: dict) -> TimeEntry:
         agreement_id = data["agreement_id"]
         _check_agreement(ctx, ticket.organization_id, agreement_id)
     else:
-        agreement_id = ticket.agreement_id
+        agreement_id = _agreement_on(ctx, ticket.organization_id, ticket.agreement_id, work_date)
     entry = TimeEntry(
         ticket_id=ticket.id,
         organization_id=ticket.organization_id,
@@ -567,6 +575,10 @@ def update_time(ctx: Ctx, entry_id: int, data: dict) -> TimeEntry:
     before = audit.snapshot(entry)
     if "agreement_id" in data:
         entry.agreement_id = data["agreement_id"]
+    elif data.get("work_date") and entry.agreement_id is not None:
+        entry.agreement_id = _agreement_on(
+            ctx, entry.organization_id, entry.agreement_id, data["work_date"]
+        )
     if data.get("work_type_id"):
         _active(ctx, WorkType, data["work_type_id"], "work type")
         entry.work_type_id = data["work_type_id"]

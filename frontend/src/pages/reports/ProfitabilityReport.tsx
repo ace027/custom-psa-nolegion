@@ -5,6 +5,7 @@ import { ProfitabilityTotals, hm, pctN, reportsApi } from "../../api";
 import { can, useMe } from "../../auth";
 import { money } from "../../money";
 import { Card } from "../../ui";
+import { TYPE_LABEL } from "../billing/Agreements";
 import { QueryStatus, ReportTable, dl, num, useRange } from "./SlaReport";
 
 function Cells({ r }: { r: ProfitabilityTotals }) {
@@ -45,7 +46,7 @@ export default function ProfitabilityReport() {
           <ReportTable caption="Client profitability" busy={q.isFetching} minW="min-w-[60rem]">
             <thead className="border-b border-slate-200 text-slate-500"><tr><th scope="col" className="p-1">Client</th>{group === "agreement" && <><th scope="col">Agreement</th><th scope="col">Type</th></>}<th scope="col" className={num}>Revenue</th><th scope="col" className={num}>Labour</th><th scope="col" className={num}>Goods</th><th scope="col" className={num}>Expenses</th><th scope="col" className={num}>Cost</th><th scope="col" className={num}>Margin</th><th scope="col" className={num}>Margin %</th><th scope="col" className={num}>No cost rate</th><th scope="col" className={num}>Charges w/o cost</th></tr></thead>
             <tbody>
-              {d.rows.map((r) => <tr key={`${r.organization_id}-${r.agreement_id ?? "none"}`} className="border-b border-slate-100"><th scope="row" className="p-1 font-normal">{r.organization_name}</th>{group === "agreement" && <><td>{r.agreement_name ?? "No agreement"}</td><td>{r.agreement_type ?? ""}</td></>}<Cells r={r} /></tr>)}
+              {d.rows.map((r) => <tr key={`${r.organization_id}-${r.agreement_id ?? "none"}`} className="border-b border-slate-100"><th scope="row" className="p-1 font-normal">{r.organization_name}</th>{group === "agreement" && <><td>{r.agreement_name ?? "No agreement"}</td><td>{r.agreement_type ? (TYPE_LABEL[r.agreement_type as keyof typeof TYPE_LABEL] ?? r.agreement_type) : ""}</td></>}<Cells r={r} /></tr>)}
               {d.rows.length === 0 && <tr><td colSpan={12} className="p-2 text-slate-500">No revenue or cost in this range.</td></tr>}
             </tbody>
             {d.rows.length > 0 && <tfoot className="font-semibold"><tr><th scope="row" className="p-1">Total</th>{group === "agreement" && <td colSpan={2} />}<Cells r={d.totals} /></tr></tfoot>}

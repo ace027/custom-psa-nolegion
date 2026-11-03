@@ -16,19 +16,19 @@ from app.deps import Ctx, require
 from app.report_schemas import (
     AgingReportOut,
     ManagerDashboardOut,
+    ProfitabilityByReportOut,
     ScheduleIn,
     ScheduleOut,
     ScheduleRunOut,
     ScheduleUpdate,
     SlaReportOut,
+    UtilisationByReportOut,
 )
 from app.schemas import (
     ErrorOut,
-    ProfitabilityByReportOut,
     RecurringOut,
     RevenueOut,
     UnbilledOut,
-    UtilisationByReportOut,
 )
 
 router = APIRouter(prefix="/reports", tags=["reports"])

@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas import AgreementType
+
 
 class RangeOut(BaseModel):
     start: date
@@ -214,3 +216,39 @@ class ScheduleRunOut(BaseModel):
     email_message_id: int | None
     detail: str | None
     created_at: datetime
+
+
+# ---- profitability and utilisation by agreement (group=agreement) ----
+ReportGroup = Literal["client", "agreement"]
+
+
+class AgreementRowFields(BaseModel):
+    """Null on client rows; on 'No agreement' rows only agreement_name is set."""
+
+    agreement_id: int | None = None
+    agreement_name: str | None = None
+    agreement_type: AgreementType | None = None
+
+
+class ProfitabilityByRowOut(ProfitabilityRowOut, AgreementRowFields):
+    pass
+
+
+class ProfitabilityByReportOut(BaseModel):
+    range: RangeOut
+    group: ReportGroup = "client"
+    rows: list[ProfitabilityByRowOut]
+    totals: ProfitabilityTotalsOut
+
+
+class UtilisationAgreementRowOut(AgreementRowFields):
+    organization_id: int
+    organization_name: str
+    logged_minutes: int
+    billable_minutes: int
+    automation_minutes: int
+
+
+class UtilisationByReportOut(UtilisationReportOut):
+    group: ReportGroup = "client"
+    agreements: list[UtilisationAgreementRowOut] | None = None
