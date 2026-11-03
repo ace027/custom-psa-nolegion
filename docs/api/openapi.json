@@ -24255,7 +24255,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create a canned response (admin)",
+        "summary": "Create a canned response (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -24327,7 +24327,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update a canned response (admin)",
+        "summary": "Update a canned response (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -24389,7 +24389,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Archive a canned response (admin)",
+        "summary": "Archive a canned response (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -24451,7 +24451,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Restore an archived canned response (admin)",
+        "summary": "Restore an archived canned response (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -24557,7 +24557,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create a category (admin)",
+        "summary": "Create a category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -24629,7 +24629,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update a category (admin)",
+        "summary": "Update a category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -24691,7 +24691,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Archive a category (admin)",
+        "summary": "Archive a category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -24753,7 +24753,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Restore an archived category (admin)",
+        "summary": "Restore an archived category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -26846,7 +26846,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create a expense category (admin)",
+        "summary": "Create a expense category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -26918,7 +26918,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update a expense category (admin)",
+        "summary": "Update a expense category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -26980,7 +26980,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Archive a expense category (admin)",
+        "summary": "Archive a expense category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -27042,7 +27042,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Restore an archived expense category (admin)",
+        "summary": "Restore an archived expense category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -33365,7 +33365,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create a priority (admin)",
+        "summary": "Create a priority (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -33437,7 +33437,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update a priority (admin)",
+        "summary": "Update a priority (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -33499,7 +33499,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Archive a priority (admin)",
+        "summary": "Archive a priority (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -33561,7 +33561,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Restore an archived priority (admin)",
+        "summary": "Restore an archived priority (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -36875,7 +36875,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create a queue (admin)",
+        "summary": "Create a queue (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -36947,7 +36947,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update a queue (admin)",
+        "summary": "Update a queue (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -37009,7 +37009,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Archive a queue (admin)",
+        "summary": "Archive a queue (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -37071,7 +37071,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Restore an archived queue (admin)",
+        "summary": "Restore an archived queue (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -40721,7 +40721,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create a ticket type (admin)",
+        "summary": "Create a ticket type (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -40793,7 +40793,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update a ticket type (admin)",
+        "summary": "Update a ticket type (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -40855,7 +40855,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Archive a ticket type (admin)",
+        "summary": "Archive a ticket type (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -40917,7 +40917,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Restore an archived ticket type (admin)",
+        "summary": "Restore an archived ticket type (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -42486,7 +42486,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create a time category (admin)",
+        "summary": "Create a time category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -42558,7 +42558,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update a time category (admin)",
+        "summary": "Update a time category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -42620,7 +42620,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Archive a time category (admin)",
+        "summary": "Archive a time category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -42682,7 +42682,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Restore an archived time category (admin)",
+        "summary": "Restore an archived time category (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -44902,7 +44902,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create a work type (admin)",
+        "summary": "Create a work type (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -44974,7 +44974,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update a work type (admin)",
+        "summary": "Update a work type (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -45036,7 +45036,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Archive a work type (admin)",
+        "summary": "Archive a work type (service or general settings)",
         "tags": [
           "configuration"
         ]
@@ -45098,7 +45098,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Restore an archived work type (admin)",
+        "summary": "Restore an archived work type (service or general settings)",
         "tags": [
           "configuration"
         ]

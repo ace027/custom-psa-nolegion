@@ -101,9 +101,10 @@ describe("cost rate", () => {
     { id: 2, email: "t@example.com", display_name: "Tom", role: "tech", is_active: true, last_login_at: null },
   ];
 
-  it("is absent without user:manage", async () => {
+  it("is absent without user:manage (the Users page is admin-only)", async () => {
     go("/users", "billing", BILLING, { "/api/v1/users": json(users) });
-    expect(await screen.findByText("Tom")).toBeInTheDocument();
+    expect((await screen.findAllByRole("link")).length).toBeGreaterThan(0); // the app has loaded
+    await waitFor(() => expect(screen.queryByText("Tom")).not.toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Cost rate for Tom" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Cost rate (per hour)")).not.toBeInTheDocument();
     expect(calls.some((c) => c.includes("cost-rate"))).toBe(false);

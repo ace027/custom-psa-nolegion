@@ -25,7 +25,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("reports", () => {
   it("shows revenue, unbilled work (flagging unpriced hours) and CSV links", async () => {
-    go("/billing/reports", handlers([...READ, "report:read"]));
+    go("/billing/reports", handlers([...READ, "invoice:read", "report:read"]));  // reports are finance data
     expect(await screen.findByText("Revenue")).toBeInTheDocument();
     expect((await screen.findAllByText("$300.00")).length).toBeGreaterThan(0);
     expect(await screen.findByRole("columnheader", { name: "Projects" })).toBeInTheDocument();

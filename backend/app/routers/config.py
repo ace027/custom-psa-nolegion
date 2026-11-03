@@ -54,7 +54,8 @@ LOOKUPS = [
 ]
 
 
-# service settings (service:configure); time/expense categories, ticket types and canned responses stay general settings (config:manage)
+# service settings (service:configure); time/expense categories, ticket types and canned
+# responses stay general settings (config:manage)
 SERVICE_LOOKUPS = {"queues", "categories", "priorities", "work-types"}
 
 
