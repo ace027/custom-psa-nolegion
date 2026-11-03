@@ -249,5 +249,5 @@
 | 15 | 1 | 1 | Shipped |
 | 16 | 4 | 4 | Complete |
 | 17 | 4 | 4 | Complete |
-| 18 | 4 | 3 | In Progress |
+| 18 | 4 | 4 | Executed |
 | 19 | 0 | 0 | Pending |
