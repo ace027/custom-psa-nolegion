@@ -1,0 +1,17 @@
+wave: A
+phase: 19
+status: failed
+timestamp: "2026-11-03T06:11:47Z"
+service_groups:
+  default:
+    status: complete
+    plans: [19-01]
+    files: [deploy/azure/deploy.sh, deploy/azure/main.bicep, deploy/azure/main.parameters.example.json, docs/AZURE_DEPLOY.md, docs/ENTRA_SETUP.md]
+  backend:
+    status: complete
+    plans: [19-02, 19-03]
+    files: [backend/alembic/versions/0043_onboarding_tokens.py, backend/app/bootstrap_admin.py, backend/app/config.py, backend/app/keyvault.py, backend/app/main.py, backend/app/models.py, backend/app/onboarding_auth.py, backend/app/routers/onboarding.py, backend/tests/test_bootstrap_admin.py, backend/tests/test_keyvault.py, backend/tests/test_onboarding_auth.py, backend/tests/test_seed_and_migrations.py, docs/api/openapi.json, backend/app/onboarding.py, backend/app/schemas.py, backend/tests/test_onboarding.py]
+  frontend:
+    status: failed
+    plans: [19-04]
+    files: [frontend/src/App.tsx, frontend/src/api.ts, frontend/src/pages/admin/Setup.test.tsx, frontend/src/pages/admin/Setup.tsx]
