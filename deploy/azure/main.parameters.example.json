@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "namePrefix": { "value": "<name-prefix, e.g. psa>" },
+    "suffix": { "value": "<6 hex chars; deploy.sh derives it from subscription + resource group>" },
+    "location": { "value": "<azure-region, e.g. westeurope>" },
+    "publicHost": { "value": "<psa.example.com>" },
+    "imageTag": { "value": "<image-tag>" },
+    "entraTenantId": { "value": "<directory-tenant-id>" },
+    "entraClientId": { "value": "<staff-sso-application-client-id>" },
+    "bootstrapAdminEmail": { "value": "<first-admin@example.com>" },
+    "customDomainCertificateId": { "value": "" },
+    "postgresAdminPassword": {
+      "reference": {
+        "keyVault": {
+          "id": "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.KeyVault/vaults/<vault-name>"
+        },
+        "secretName": "pg-admin-password"
+      }
+    }
+  }
+}

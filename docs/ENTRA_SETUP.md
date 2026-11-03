@@ -1,5 +1,8 @@
 # Microsoft Entra ID (SSO) setup
 
+> **On Azure** the staff sign-in app and the first admin are created by `deploy/azure/deploy.sh`;
+> see [AZURE_DEPLOY.md](AZURE_DEPLOY.md). The manual steps below remain for self-hosting.
+
 Staff sign in with Entra ID using OpenID Connect (authorization code + PKCE). The app is
 **single-tenant**: tokens from any other tenant are rejected.
 
