@@ -177,7 +177,6 @@ class GraphClient:
         self._token: str | None = None
         self._token_expires = 0.0
 
-    # -- auth --
     def _auth(self) -> dict[str, str]:
         if not self._token or time.time() > self._token_expires - 60:
             r = self.http.post(
@@ -226,7 +225,6 @@ class GraphClient:
     def _request(self, method: str, path: str, **kw) -> httpx.Response:
         return self._request_user(self.mailbox, method, path, **kw)
 
-    # -- calendar --
     def create_event(self, user: str, event: dict, transaction_id: str) -> str:
         r = self._request_user(
             user, "POST", "/events", json={**event, "transactionId": transaction_id}
@@ -286,7 +284,6 @@ class GraphClient:
             out[key] = items
         return out
 
-    # -- MailClient --
     def list_unread(self, top: int = 25) -> list[InboundMessage]:
         r = self._request(
             "GET",
