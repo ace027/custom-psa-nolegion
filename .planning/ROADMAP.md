@@ -19,7 +19,7 @@
 - [x] Phase 15: Verify (owner manual testing) (1 plan)
 - [x] Phase 16: Front-end redesign (navigation and layout)
 - [x] Phase 17: Agreement billing and profitability
-- [ ] Phase 18: Accounting mail and readable audit log
+- [x] Phase 18: Accounting mail and readable audit log
 - [ ] Phase 19: Azure deployment and onboarding wizard
 
 ## Phase Details
@@ -249,5 +249,5 @@
 | 15 | 1 | 1 | Shipped |
 | 16 | 4 | 4 | Complete |
 | 17 | 4 | 4 | Complete |
-| 18 | 4 | 4 | Executed |
+| 18 | 4 | 4 | Complete |
 | 19 | 0 | 0 | Pending |

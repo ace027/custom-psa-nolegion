@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 18 of 13 (executed, pending review)
-- **Status**: Phase 18 under review — cycle 1/3, 1 blocker(s) remaining
-- **Last Activity**: Phase 18 review cycle 1 (2026-11-03)
+- **Phase**: 18 of 13 (complete)
+- **Status**: Phase 18 complete — review passed (2 cycle(s))
+- **Last Activity**: Phase 18 review (2026-11-03)
 
 ## Progress
 ```
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:review` to verify Phase 18: Accounting mail and readable audit log
+Run `/triad:plan 19` to plan Phase 19: Azure deployment and onboarding wizard
 
 ## Phase 1 Results
 (build started 2026-10-09)
