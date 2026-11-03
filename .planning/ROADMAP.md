@@ -250,4 +250,4 @@
 | 16 | 4 | 4 | Complete |
 | 17 | 4 | 4 | Complete |
 | 18 | 4 | 4 | Complete |
-| 19 | 4 | 2 | In Progress |
+| 19 | 4 | 3 | In Progress |
