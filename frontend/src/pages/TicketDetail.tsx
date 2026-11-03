@@ -123,9 +123,7 @@ function Fields({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boo
     onSuccess: onDone,
   });
   // active statuses, plus the ticket's own if it has since been archived
-  const statusOptions = [
-    ...lk.statuses.filter((x) => !x.archived_at || x.id === t.status_id).map((x) => ({ id: x.id, name: x.name })),
-  ];
+  const statusOptions = lk.statuses.filter((x) => !x.archived_at || x.id === t.status_id).map((x) => ({ id: x.id, name: x.name }));
   if (statusOptions.length === 0 && t.status_id) statusOptions.push({ id: t.status_id, name: t.status_name ?? t.status });
   const ag = useAgreementOptions(t.organization_id, t.agreement_id);
   const sel = (label: string, value: string | number | null, opts: { id: number | string; name: string }[], key: string, blank?: string) => (
@@ -383,7 +381,7 @@ export function NotesCard({ ticket: t, notes, canWrite, onDone }: { ticket: Tick
     setBody(body ? `${body}\n${text}` : text);
   };
   const add = useMutation({
-    mutationFn: () => api("/tickets/" + t.id + "/notes", { method: "POST", json: { body, visibility, send_email: email && visibility === "customer" } }),
+    mutationFn: () => api(`/tickets/${t.id}/notes`, { method: "POST", json: { body, visibility, send_email: email && visibility === "customer" } }),
     onSuccess: () => {
       setBody("");
       setEmail(false);
