@@ -105,7 +105,8 @@ describe("Settings split", () => {
     }
     cleanup();
     go("/admin/settings/tickets", "manager");
-    expect(await screen.findByRole("heading", { name: "Canned responses" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Queues" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Canned responses" })).toBeNull(); // written under config:manage
   });
 
   it("gives a role with neither permission no Settings pages", async () => {

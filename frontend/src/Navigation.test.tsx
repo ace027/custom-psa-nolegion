@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { isAssignable } from "./api";
 import { NAV_ITEMS, allRoutes, canOpen } from "./nav/navConfig";
 
 // Role permissions as in backend/app/permissions.py MATRIX (phase 16 split).
@@ -114,6 +115,36 @@ describe("routes", () => {
     go(from, "admin");
     await settled();
     expect(screen.getByTestId("where")).toHaveTextContent(new RegExp(`^${to}$`));
+  });
+
+  it.each([
+    ...["tech", "read_only"].flatMap((role) =>
+      ["/admin/users", "/users", "/procurement", "/reports/sla", "/admin/settings/mail", "/audit", "/api-keys"].map((p) => [role, p, "/dashboard"]),
+    ),
+    ...["tech", "read_only"].flatMap((role) => ["/billing/invoices", "/billing/payments", "/billing"].map((p) => [role, p, "/billing/agreements"])),
+    ["manager", "/admin/users", "/admin/settings"],
+    ["manager", "/procurement", "/dashboard"],
+    ["manager", "/admin/settings/mail", "/admin/settings"],
+    ["manager", "/api-keys", "/dashboard"],
+  ])("sends %s from %s to %s", async (role, from, to) => {
+    go(from, role);
+    await settled();
+    expect(screen.getByTestId("where")).toHaveTextContent(new RegExp(`^${to}$`));
+  });
+
+  it("offers a manager only the Tickets settings cards their permissions can write", async () => {
+    go("/admin/settings/tickets", "manager");
+    expect(await screen.findByRole("heading", { name: "Tickets" })).toBeInTheDocument();
+    expect(screen.getByText("Queues")).toBeInTheDocument();
+    expect(screen.queryByText("Canned responses")).toBeNull();
+    expect(screen.queryByText("Ticket types and custom fields")).toBeNull();
+  });
+
+  it("lists managers as assignable staff", () => {
+    const u = { is_active: true };
+    expect(isAssignable({ ...u, role: "manager" })).toBe(true);
+    expect(isAssignable({ ...u, role: "billing" })).toBe(false);
+    expect(isAssignable({ is_active: false, role: "tech" })).toBe(false);
   });
 
   it("gives Admin pages a sub-nav of the admin pages the role can open", async () => {

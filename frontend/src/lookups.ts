@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { AppSettings, Lookup, Priority, Queue, TicketStatusRow, User, api } from "./api";
+import { AppSettings, isAssignable, Lookup, Priority, Queue, TicketStatusRow, User, api } from "./api";
 
 /** Reference data used by ticket forms. Small tables, so fetch once and cache. */
 export function useLookups() {
@@ -19,7 +19,7 @@ export function useLookups() {
     categories: categories.data ?? [],
     priorities: priorities.data ?? [],
     workTypes: workTypes.data ?? [],
-    techs: (users.data ?? []).filter((u) => u.is_active && (u.role === "admin" || u.role === "tech")),
+    techs: (users.data ?? []).filter(isAssignable),
     statuses: Array.isArray(statuses.data) ? statuses.data : [],
     settings: settings.data,
   };

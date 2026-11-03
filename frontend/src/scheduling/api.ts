@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, type AppSettings, type User } from "../api";
+import { api, isAssignable, ApiError, type AppSettings, type User } from "../api";
 
 // Mirrors backend/app/scheduling_schemas.py. Times are ISO 8601 UTC strings.
 export type ConflictKind = "outside_hours" | "time_off" | "time_off_pending" | "overlap";
@@ -165,11 +165,11 @@ export const retryAppointmentSync = (id: number): Promise<Appointment> =>
   api<Appointment>(`/appointments/${id}/sync/retry`, { method: "POST" });
 export const getSchedule = (userId: number): Promise<Schedule> => api<Schedule>(`/users/${userId}/schedule`);
 
-/** Active admins and techs, by display name: the people who can be booked. */
+/** Active admins, managers and techs, by display name: the people who can be booked. */
 export async function listStaff(): Promise<StaffUser[]> {
   const users = await api<User[]>("/users");
   return users
-    .filter((u) => u.is_active && (u.role === "admin" || u.role === "tech"))
+    .filter(isAssignable)
     .map(({ id, display_name, role }) => ({ id, display_name, role }))
     .sort((a, b) => a.display_name.localeCompare(b.display_name));
 }

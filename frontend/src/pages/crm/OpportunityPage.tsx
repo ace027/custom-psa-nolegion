@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Opportunity, Quote, User, api, crmApi } from "../../api";
+import { Opportunity, Quote, User, api, isAssignable, crmApi } from "../../api";
 import { can, useMe } from "../../auth";
 import { money, parseMoney, percent } from "../../money";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../../ui";
@@ -114,7 +114,7 @@ function EditCard({ o, write, closed, onSaved }: { o: Opportunity; write: boolea
         <Field label="Owner">
           <select className={inputCls} value={f.owner} onChange={set("owner")} disabled={readOnly}>
             <option value="">{o.owner_name && !f.owner ? o.owner_name : "Unowned"}</option>
-            {(users.data ?? []).filter((u) => u.is_active && (u.role === "admin" || u.role === "tech")).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
+            {(users.data ?? []).filter(isAssignable).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
           </select>
         </Field>
         <Field label="Monthly ($)"><input className={inputCls} value={f.monthly} onChange={set("monthly")} disabled={readOnly} inputMode="decimal" /></Field>

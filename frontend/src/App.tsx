@@ -212,20 +212,25 @@ function StaffApp() {
         <Route path="/organizations/:id" element={<OrganizationDetail />} />
         {can(me, "billing:read") && (
           <Route path="/billing" element={<BillingLayout />}>
-            <Route index element={<Navigate to="runs" replace />} />
-            <Route path="runs" element={<RunList />} />
-            <Route path="runs/:id" element={<RunPage />} />
-            <Route path="invoices" element={<InvoiceList />} />
-            <Route path="invoices/:id" element={<InvoicePage />} />
-            <Route path="receivables" element={<Receivables />} />
-            <Route path="reminders" element={<Reminders />} />
-            <Route path="payments" element={<Payments />} />
-            <Route path="credit-memos" element={<CreditMemos />} />
-            <Route path="late-fees" element={<LateFees />} />
+            <Route index element={<Navigate to={visibleItems(me).find((i) => i.route.startsWith("/billing/"))?.route ?? "/billing/agreements"} replace />} />
+            {can(me, "invoice:read") && (
+              <>
+                <Route path="runs" element={<RunList />} />
+                <Route path="runs/:id" element={<RunPage />} />
+                <Route path="invoices" element={<InvoiceList />} />
+                <Route path="invoices/:id" element={<InvoicePage />} />
+                <Route path="receivables" element={<Receivables />} />
+                <Route path="reminders" element={<Reminders />} />
+                <Route path="payments" element={<Payments />} />
+                <Route path="credit-memos" element={<CreditMemos />} />
+                <Route path="late-fees" element={<LateFees />} />
+              </>
+            )}
             <Route path="agreements" element={<Agreements />} />
             <Route path="products" element={<Products />} />
             <Route path="rates" element={<Rates />} />
-            <Route path="reports" element={can(me, "report:read") ? <Reports /> : <Navigate to="/billing" replace />} />
+            <Route path="reports" element={can(me, "report:read") && can(me, "invoice:read") ? <Reports /> : <Navigate to="/billing" replace />} />
+            <Route path="*" element={<Navigate to="/billing" replace />} />
           </Route>
         )}
         {can(me, "crm:read") && (
@@ -273,8 +278,7 @@ function StaffApp() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to={visibleItems(me).find((i) => i.section === "admin")?.route ?? "/"} replace />} />
-          {/* Users stays readable by every role (user:read); only the nav lists it for user:manage. */}
-          <Route path="users" element={<Users />} />
+          <Route path="users" element={can(me, "user:manage") ? <Users /> : <Navigate to="/admin" replace />} />
           <Route
             path="settings"
             element={can(me, "config:manage") || can(me, "service:configure") ? <SettingsLayout /> : <Navigate to="/" replace />}

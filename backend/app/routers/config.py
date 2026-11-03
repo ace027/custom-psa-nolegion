@@ -54,7 +54,7 @@ LOOKUPS = [
 ]
 
 
-# service settings (service:configure); the other lookups stay general settings (config:manage)
+# service settings (service:configure); time/expense categories, ticket types and canned responses stay general settings (config:manage)
 SERVICE_LOOKUPS = {"queues", "categories", "priorities", "work-types"}
 
 
@@ -103,7 +103,7 @@ def _register(path, model, label, schema_in, schema_patch, schema_out):
         response_model=schema_out,
         status_code=201,
         responses=ERR,
-        summary=f"Create a {pretty} (admin)",
+        summary=f"Create a {pretty} (service or general settings)",
     )
     router.add_api_route(
         f"/{path}/{{item_id}}",
@@ -111,7 +111,7 @@ def _register(path, model, label, schema_in, schema_patch, schema_out):
         methods=["PATCH"],
         response_model=schema_out,
         responses=ERR,
-        summary=f"Update a {pretty} (admin)",
+        summary=f"Update a {pretty} (service or general settings)",
     )
     router.add_api_route(
         f"/{path}/{{item_id}}/archive",
@@ -119,7 +119,7 @@ def _register(path, model, label, schema_in, schema_patch, schema_out):
         methods=["POST"],
         response_model=schema_out,
         responses=ERR,
-        summary=f"Archive a {pretty} (admin)",
+        summary=f"Archive a {pretty} (service or general settings)",
     )
     router.add_api_route(
         f"/{path}/{{item_id}}/unarchive",
@@ -127,7 +127,7 @@ def _register(path, model, label, schema_in, schema_patch, schema_out):
         methods=["POST"],
         response_model=schema_out,
         responses=ERR,
-        summary=f"Restore an archived {pretty} (admin)",
+        summary=f"Restore an archived {pretty} (service or general settings)",
     )
 
 

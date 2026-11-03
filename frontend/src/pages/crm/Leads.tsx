@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Lead, LeadStatus, User, api, crmApi } from "../../api";
+import { Lead, LeadStatus, User, api, isAssignable, crmApi } from "../../api";
 import { can, useMe } from "../../auth";
 import { money, parseMoney } from "../../money";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../../ui";
@@ -113,7 +113,7 @@ function LeadForm({ users, onDone }: { users: User[]; onDone: () => void }) {
         <Field label="Owner">
           <select className={inputCls} value={f.owner_id} onChange={set("owner_id")}>
             <option value="">Unowned</option>
-            {users.filter((u) => u.is_active && (u.role === "admin" || u.role === "tech")).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
+            {users.filter(isAssignable).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
           </select>
         </Field>
         <div className="sm:col-span-3"><Field label="Notes"><textarea className={inputCls} rows={2} value={f.notes} onChange={set("notes")} /></Field></div>

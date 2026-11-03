@@ -36,6 +36,8 @@ export async function api<T>(path: string, init: RequestInit & { json?: unknown 
 
 export type Role = "admin" | "manager" | "tech" | "billing" | "read_only";
 export const ROLES: Role[] = ["admin", "manager", "tech", "billing", "read_only"];
+/** Roles that can be assigned tickets and booked (backend ASSIGNABLE_ROLES / BOOKABLE_ROLES). */
+export const isAssignable = (u: { is_active: boolean; role: Role }) => u.is_active && (u.role === "admin" || u.role === "manager" || u.role === "tech");
 export const ROLE_HELP: Record<Role, string> = {
   admin: "Everything, including users, integrations, API keys and settings.",
   manager: "Tech work plus approvals, reports, the audit log, read-only invoices and service settings.",

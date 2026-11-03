@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { CannedResponse, CustomFieldDef, FieldType, Lookup, Priority, Queue, TicketStatusRow, api } from "../../../api";
+import { can, useMe } from "../../../auth";
 import { Button, Card, ErrorMsg, Field, inputCls } from "../../../ui";
 
 export default function TicketSettings() {
+  const { data: me } = useMe();
+  // Ticket types, custom fields and canned responses are written under config:manage, not service:configure.
+  const general = can(me, "config:manage");
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold tracking-tight">Tickets</h1>
@@ -12,8 +16,8 @@ export default function TicketSettings() {
       <SimpleList title="Work types" path="work-types" />
       <PrioritiesCard />
       <StatusesCard />
-      <TicketTypesCard />
-      <CannedCard />
+      {general && <TicketTypesCard />}
+      {general && <CannedCard />}
     </div>
   );
 }

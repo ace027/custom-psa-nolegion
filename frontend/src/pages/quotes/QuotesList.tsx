@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Organization, Page, Quote, Survey, User, api } from "../../api";
+import { Organization, Page, Quote, Survey, User, api, isAssignable } from "../../api";
 import { can, useMe } from "../../auth";
 import { money } from "../../money";
 import { Button, Card, ErrorMsg, Field, fmt, inputCls } from "../../ui";
@@ -114,7 +114,7 @@ function NewSurvey() {
         <Field label="Tech">
           <select className={inputCls} value={techId} onChange={(e) => setTechId(e.target.value)}>
             <option value="">Unassigned</option>
-            {users.data?.filter((u) => u.is_active && (u.role === "tech" || u.role === "admin")).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
+            {users.data?.filter(isAssignable).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
           </select>
         </Field>
         <div className="col-span-full space-y-2"><ErrorMsg error={create.error} /><Button type="submit" disabled={create.isPending}>Schedule survey</Button></div>
