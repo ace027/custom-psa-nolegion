@@ -250,4 +250,4 @@
 | 16 | 4 | 4 | Complete |
 | 17 | 4 | 4 | Complete |
 | 18 | 4 | 4 | Complete |
-| 19 | 0 | 0 | Pending |
+| 19 | 4 | 0 | Planned |
