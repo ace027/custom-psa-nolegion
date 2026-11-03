@@ -59,7 +59,7 @@ function AccountingSender() {
   const q = useQuery({ queryKey: ["lookup", "settings"], queryFn: () => api<AppSettings>("/settings") });
   const [value, setValue] = useState<string | null>(null);
   const save = useMutation({
-    mutationFn: () => api("/settings", { method: "PATCH", json: { accounting_mailbox: (value ?? "").trim() || null } }),
+    mutationFn: () => api("/settings", { method: "PATCH", json: { accounting_mailbox: (value ?? "").trim() } }),
     onSuccess: () => { setValue(null); qc.invalidateQueries({ queryKey: ["lookup"] }); qc.invalidateQueries({ queryKey: ["mail-status"] }); },
   });
   if (!q.data || !can(me, "config:manage")) return null;

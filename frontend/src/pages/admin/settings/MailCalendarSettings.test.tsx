@@ -34,6 +34,6 @@ describe("Mail and calendar settings", () => {
     await waitFor(() => expect(patches).toContain(JSON.stringify({ accounting_mailbox: "acct@x.com" })));
     fireEvent.change(await screen.findByLabelText("Accounting sender address"), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(patches).toContain(JSON.stringify({ accounting_mailbox: null })));
+    await waitFor(() => expect(patches).toContain(JSON.stringify({ accounting_mailbox: "" })));
   });
 });

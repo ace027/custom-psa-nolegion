@@ -285,6 +285,15 @@ def poll_once(client: MailClient, mailbox: str, max_batches: int = 4) -> dict[st
     return stats
 
 
+def _public_error(exc: Exception) -> str:
+    """The error text safe to store and show to staff."""
+    if isinstance(exc, GraphError):
+        return exc.public[:1000]
+    if isinstance(exc, ValueError):  # our own messages, e.g. "no recipients"
+        return str(exc)[:1000]
+    return f"Unexpected error ({type(exc).__name__}); see the worker log"
+
+
 def send_pending(client: MailClient, mailbox: str, batch: int = 20) -> dict[str, int]:
     """Send queued outbound mail. Failed sends retry on later cycles, then are marked failed."""
     stats = {"sent": 0, "failed": 0, "retry": 0}
@@ -342,7 +351,9 @@ def send_pending(client: MailClient, mailbox: str, batch: int = 20) -> dict[str,
                         f"app's mailbox scope (docs/MAIL_SETUP.md, '{section}')."
                     )
                 else:
-                    e.send_error = str(exc)[:1000]
+                    # store only text safe to show (no tenant ids, no response bodies); log the rest
+                    log.warning("send of email %s failed: %s", e.id, exc)
+                    e.send_error = _public_error(exc)
                 if denied or e.send_attempts >= MAX_SEND_ATTEMPTS:
                     e.send_status = "failed"
                     if status is not None:
@@ -372,7 +383,7 @@ def run_cycle(client: MailClient, mailbox: str) -> None:
         send_pending(client, mailbox)
     except Exception as exc:  # network/auth problems: log, record, keep the worker alive
         log.exception("mail cycle failed")
-        error, ingest = str(exc)[:1000], {}
+        error, ingest = _public_error(exc), {}
     with dbmod.new_session() as db:
         st = db.get(MailboxStatus, 1)
         st.mailbox, st.worker_seen_at = mailbox, now

@@ -346,7 +346,9 @@ def test_failed_sends_retry_then_give_up_and_are_audited(mail, admin, known, mak
     assert admin.get(f"/api/v1/tickets/{t['id']}/notes").json()[0]["email_status"] == "failed"
     assert admin.get("/api/v1/mail/status").json()["outbound_failed"] == 1
     ev = admin.get("/api/v1/audit", params={"action": "email.send_failed"}).json()["items"]
-    assert ev and "send failed" in ev[0]["detail"]["error"]
+    assert (
+        ev and "Unexpected error (RuntimeError)" in ev[0]["detail"]["error"]
+    )  # raw text stays in the log
     mail.fail_send = False
     assert ingest.send_pending(mail, MAILBOX) == {"sent": 0, "failed": 0, "retry": 0}
 
@@ -394,7 +396,11 @@ def test_run_cycle_records_errors_without_crashing(mail, admin):
     mail.fail_list = True
     ingest.run_cycle(mail, MAILBOX)
     s = admin.get("/api/v1/mail/status").json()
-    assert "graph down" in s["last_error"] and s["last_error_at"] and s["last_success_at"] is None
+    assert (
+        "Unexpected error (RuntimeError)" in s["last_error"]
+        and s["last_error_at"]
+        and s["last_success_at"] is None
+    )
     mail.fail_list = False
     ingest.run_cycle(mail, MAILBOX)
     assert admin.get("/api/v1/mail/status").json()["last_error"] is None

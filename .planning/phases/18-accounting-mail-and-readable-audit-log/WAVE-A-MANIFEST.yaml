@@ -1,0 +1,29 @@
+wave: A
+phase: 18
+status: complete
+timestamp: "2026-11-03T04:51:08Z"
+service_groups:
+  backend:
+    status: complete
+    plans: [18-01, 18-03]
+    files: [backend/alembic/versions/0042_accounting_mailbox.py, backend/app/mail/graph.py, backend/app/mail/ingest.py, backend/app/models.py, backend/app/notices.py, backend/app/routers/config.py, backend/app/schemas.py, backend/tests/mailfakes.py, backend/tests/test_graph_client.py, backend/tests/test_mail_ingest.py, backend/tests/test_notices.py, backend/tests/test_seed_and_migrations.py, docs/api/openapi.json, backend/app/audit_text.py, backend/app/repositories.py, backend/app/routers/users.py, backend/tests/test_audit.py, backend/tests/test_audit_text.py]
+  default:
+    status: complete
+    plans: [18-02]
+    files: [docs/MAIL_SETUP.md]
+  frontend:
+    status: complete
+    plans: [18-04]
+    files: [frontend/src/api.ts, frontend/src/pages/Audit.test.tsx, frontend/src/pages/Audit.tsx, frontend/src/pages/admin/settings/MailCalendarSettings.test.tsx, frontend/src/pages/admin/settings/MailCalendarSettings.tsx]
+analysis_findings:
+  count: 11
+  by_agent:
+    engineering-backend-architect: {blockers: 0, warnings: 7}
+    engineering-security-engineer: {blockers: 0, warnings: 4}
+outputs:
+  total_files: 24
+  total_plans: 4
+  passed: 4
+  failed: 0
+gate: architecture
+gate_status: passed

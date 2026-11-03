@@ -13,6 +13,10 @@ NoteAuthorType = Literal["human", "system", "ai"]
 TimeEntryType = Literal["labour", "automation"]
 
 
+# one address, no whitespace/control characters or URL/header metacharacters
+_EMAIL_RE = re.compile(r"[^@\s<>/?#%\\,;\"]+@[^@\s<>/?#%\\,;\"]+\.[^@\s<>/?#%\\,;\".]+")
+
+
 class ORM(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -863,7 +867,7 @@ class SettingsPatch(BaseModel):
         if v is None or v == "":
             return v
         v = v.strip()
-        if " " in v or v.count("@") != 1 or "." not in v.split("@")[1] or v.startswith("@"):
+        if not _EMAIL_RE.fullmatch(v):
             raise ValueError("Enter a valid email address")
         return v
 
