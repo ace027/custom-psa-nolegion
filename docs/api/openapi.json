@@ -7811,6 +7811,247 @@
         "title": "OnCallNowOut",
         "type": "object"
       },
+      "OnboardingAppExistsOut": {
+        "properties": {
+          "app_id": {
+            "title": "App Id",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail",
+          "app_id"
+        ],
+        "title": "OnboardingAppExistsOut",
+        "type": "object"
+      },
+      "OnboardingConnectIn": {
+        "properties": {
+          "app_id": {
+            "title": "App Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "portal",
+              "mail"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "mailbox": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mailbox"
+          }
+        },
+        "required": [
+          "kind",
+          "app_id"
+        ],
+        "title": "OnboardingConnectIn",
+        "type": "object"
+      },
+      "OnboardingConnectOut": {
+        "properties": {
+          "app_id": {
+            "title": "App Id",
+            "type": "string"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "differences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Differences",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "portal",
+              "mail"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "powershell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Powershell"
+          },
+          "secret_created": {
+            "title": "Secret Created",
+            "type": "boolean"
+          },
+          "service_principal_object_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Principal Object Id"
+          }
+        },
+        "required": [
+          "kind",
+          "app_id",
+          "connected",
+          "secret_created",
+          "differences",
+          "service_principal_object_id",
+          "powershell"
+        ],
+        "title": "OnboardingConnectOut",
+        "type": "object"
+      },
+      "OnboardingFinishOut": {
+        "properties": {
+          "removed_scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Removed Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "removed_scopes"
+        ],
+        "title": "OnboardingFinishOut",
+        "type": "object"
+      },
+      "OnboardingMailAppIn": {
+        "properties": {
+          "mailbox": {
+            "title": "Mailbox",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mailbox"
+        ],
+        "title": "OnboardingMailAppIn",
+        "type": "object"
+      },
+      "OnboardingMailAppOut": {
+        "properties": {
+          "app_id": {
+            "title": "App Id",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "powershell": {
+            "title": "Powershell",
+            "type": "string"
+          },
+          "service_principal_object_id": {
+            "title": "Service Principal Object Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id",
+          "service_principal_object_id",
+          "created",
+          "powershell"
+        ],
+        "title": "OnboardingMailAppOut",
+        "type": "object"
+      },
+      "OnboardingPortalAppOut": {
+        "properties": {
+          "app_id": {
+            "title": "App Id",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "app_id",
+          "created"
+        ],
+        "title": "OnboardingPortalAppOut",
+        "type": "object"
+      },
+      "OnboardingStatusOut": {
+        "properties": {
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/OnboardingStepOut"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "steps"
+        ],
+        "title": "OnboardingStatusOut",
+        "type": "object"
+      },
+      "OnboardingStepOut": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "missing",
+              "error",
+              "restart_needed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "step": {
+            "enum": [
+              "staff_sso",
+              "portal_sso",
+              "mail",
+              "calendar"
+            ],
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step",
+          "status",
+          "message"
+        ],
+        "title": "OnboardingStepOut",
+        "type": "object"
+      },
       "OpportunityIn": {
         "properties": {
           "expected_close_date": {
@@ -30396,6 +30637,97 @@
         ]
       }
     },
+    "/api/v1/onboarding/connect": {
+      "post": {
+        "operationId": "connect_api_v1_onboarding_connect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingConnectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingConnectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Connect an existing app registration after checking it is least privilege",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
     "/api/v1/onboarding/consent/callback": {
       "get": {
         "operationId": "consent_callback_api_v1_onboarding_consent_callback_get",
@@ -30551,6 +30883,280 @@
           }
         },
         "summary": "Start the one-time Microsoft admin consent for the setup wizard",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
+    "/api/v1/onboarding/finish": {
+      "post": {
+        "operationId": "finish_api_v1_onboarding_finish_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingFinishOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Revoke the setup wizard's admin consent and discard its token",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
+    "/api/v1/onboarding/mail-app": {
+      "post": {
+        "operationId": "create_mail_app_api_v1_onboarding_mail_app_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingMailAppIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingMailAppOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingAppExistsOut"
+                }
+              }
+            },
+            "description": "Not configured, or the app exists"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Create the Mail & Calendar app registration; its secret goes to Key Vault",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
+    "/api/v1/onboarding/portal-app": {
+      "post": {
+        "operationId": "create_portal_app_api_v1_onboarding_portal_app_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingPortalAppOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingAppExistsOut"
+                }
+              }
+            },
+            "description": "Not configured, or the app exists"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Create the client portal SSO app registration; its secret goes to Key Vault",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
+    "/api/v1/onboarding/status": {
+      "get": {
+        "operationId": "status_api_v1_onboarding_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Verify the staff SSO, portal SSO, mail and calendar registrations",
         "tags": [
           "onboarding"
         ]

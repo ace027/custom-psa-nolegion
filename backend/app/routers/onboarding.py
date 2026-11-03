@@ -1,20 +1,42 @@
-"""Setup wizard: Microsoft admin consent (plan 19-02). Admin role only, every step audited.
+"""Setup wizard: Microsoft admin consent (plan 19-02), then create, connect and verify the app
+registrations and revoke the consent (plan 19-03). Admin role only, every step audited.
 
 Always mounted; every route answers 404 unless ONBOARDING_ENABLED is set."""
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
-from app import audit, onboarding_auth
+from app import audit, onboarding, onboarding_auth
 from app import permissions as P
 from app.config import get_settings
 from app.deps import Ctx, require
-from app.schemas import ErrorOut
+from app.schemas import (
+    ErrorOut,
+    OnboardingAppExistsOut,
+    OnboardingConnectIn,
+    OnboardingConnectOut,
+    OnboardingFinishOut,
+    OnboardingMailAppIn,
+    OnboardingMailAppOut,
+    OnboardingPortalAppOut,
+    OnboardingStatusOut,
+)
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 GUARD_RESPONSES = {403: {"model": ErrorOut}, 404: {"model": ErrorOut}}
+# Graph failures: 409 sign in again / no Key Vault, 502 Graph or Key Vault failed, 503 throttled
+GRAPH_RESPONSES = {
+    **GUARD_RESPONSES,
+    409: {"model": ErrorOut},
+    502: {"model": ErrorOut},
+    503: {"model": ErrorOut},
+}
+CREATE_RESPONSES = {
+    **GRAPH_RESPONSES,
+    409: {"model": OnboardingAppExistsOut, "description": "Not configured, or the app exists"},
+}
 
 
 class ConsentStartOut(BaseModel):
@@ -76,3 +98,68 @@ def consent_callback(
         return RedirectResponse(f"{base}?consent=error", status_code=303)
     audit.record(ctx.db, ctx.user, "onboarding.consent_granted")
     return RedirectResponse(f"{base}?consent=ok", status_code=303)
+
+
+def _exists(exc: onboarding.AppExists) -> JSONResponse:
+    return JSONResponse({"detail": exc.detail, "app_id": exc.app_id}, status_code=409)
+
+
+@router.get(
+    "/status",
+    response_model=OnboardingStatusOut,
+    summary="Verify the staff SSO, portal SSO, mail and calendar registrations",
+    responses=GUARD_RESPONSES,
+)
+def status(ctx: Ctx = require(P.CONFIG_MANAGE)):
+    _admin_only(ctx)
+    return OnboardingStatusOut(steps=onboarding.verify(ctx))
+
+
+@router.post(
+    "/portal-app",
+    response_model=OnboardingPortalAppOut,
+    summary="Create the client portal SSO app registration; its secret goes to Key Vault",
+    responses=CREATE_RESPONSES,
+)
+def create_portal_app(ctx: Ctx = require(P.CONFIG_MANAGE)):
+    _admin_only(ctx)
+    try:
+        return onboarding.create_portal_app(ctx)
+    except onboarding.AppExists as exc:
+        return _exists(exc)
+
+
+@router.post(
+    "/mail-app",
+    response_model=OnboardingMailAppOut,
+    summary="Create the Mail & Calendar app registration; its secret goes to Key Vault",
+    responses=CREATE_RESPONSES,
+)
+def create_mail_app(body: OnboardingMailAppIn, ctx: Ctx = require(P.CONFIG_MANAGE)):
+    _admin_only(ctx)
+    try:
+        return onboarding.create_mail_app(ctx, body.mailbox)
+    except onboarding.AppExists as exc:
+        return _exists(exc)
+
+
+@router.post(
+    "/connect",
+    response_model=OnboardingConnectOut,
+    summary="Connect an existing app registration after checking it is least privilege",
+    responses=GRAPH_RESPONSES,
+)
+def connect(body: OnboardingConnectIn, ctx: Ctx = require(P.CONFIG_MANAGE)):
+    _admin_only(ctx)
+    return onboarding.connect_existing(ctx, body.kind, body.app_id, body.mailbox)
+
+
+@router.post(
+    "/finish",
+    response_model=OnboardingFinishOut,
+    summary="Revoke the setup wizard's admin consent and discard its token",
+    responses=GRAPH_RESPONSES,
+)
+def finish(ctx: Ctx = require(P.CONFIG_MANAGE)):
+    _admin_only(ctx)
+    return OnboardingFinishOut(removed_scopes=onboarding.finish(ctx))

@@ -3,7 +3,15 @@ import uuid
 from datetime import date, datetime
 from typing import Annotated, Any, Generic, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 Role = Literal["admin", "manager", "tech", "billing", "read_only"]
 OrgStatus = Literal["active", "inactive", "prospect"]
@@ -2006,3 +2014,78 @@ class HuduArticlesOut(BaseModel):
     configured: bool
     articles: list[HuduArticleOut]
     error: str | None = None
+
+
+# ---- setup wizard (onboarding) ----
+# No response here ever carries a client secret or token.
+_APP_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+def _wizard_mailbox(v: str) -> str:
+    v = v.strip().lower()
+    # The address is pasted into PowerShell inside '...': refuse quote, backtick and $ too.
+    if not _EMAIL_RE.fullmatch(v) or any(c in v for c in "'`$"):
+        raise ValueError("Enter a valid email address")
+    return v
+
+
+WizardMailbox = Annotated[str, AfterValidator(_wizard_mailbox)]
+
+
+class OnboardingMailAppIn(BaseModel):
+    mailbox: WizardMailbox
+
+
+class OnboardingConnectIn(BaseModel):
+    kind: Literal["portal", "mail"]
+    app_id: str
+    mailbox: WizardMailbox | None = None  # mail only: fills the PowerShell and mail-mailbox
+
+    @field_validator("app_id")
+    @classmethod
+    def _app_id(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _APP_ID.fullmatch(v):
+            raise ValueError("Enter the Application (client) ID, a GUID")
+        return v
+
+
+class OnboardingAppExistsOut(BaseModel):
+    detail: str
+    app_id: str
+
+
+class OnboardingPortalAppOut(BaseModel):
+    app_id: str
+    created: bool
+
+
+class OnboardingMailAppOut(BaseModel):
+    app_id: str
+    service_principal_object_id: str
+    created: bool
+    powershell: str
+
+
+class OnboardingConnectOut(BaseModel):
+    kind: Literal["portal", "mail"]
+    app_id: str
+    connected: bool
+    secret_created: bool
+    differences: list[str]
+    service_principal_object_id: str | None
+    powershell: str | None
+
+
+class OnboardingStepOut(BaseModel):
+    step: Literal["staff_sso", "portal_sso", "mail", "calendar"]
+    status: Literal["ok", "missing", "error", "restart_needed"]
+    message: str
+
+
+class OnboardingStatusOut(BaseModel):
+    steps: list[OnboardingStepOut]
+
+
+class OnboardingFinishOut(BaseModel):
+    removed_scopes: list[str]
