@@ -11,6 +11,7 @@ from sqlalchemy import func, or_, select
 from app import audit
 from app import payment_repo as prepo
 from app.billing import today
+from app.billing_repo import _not_all_inclusive
 from app.deps import Ctx
 from app.errors import Conflict
 from app.models import (
@@ -170,6 +171,7 @@ def unbilled(ctx: Ctx, through: date | None) -> dict:
                 TimeEntry.invoice_line_id.is_(None),
                 TimeEntry.minutes_billable > 0,
                 TimeEntry.work_date <= through,
+                _not_all_inclusive(),
             )
             .group_by(TimeEntry.organization_id, TimeEntry.work_type_id),
             TimeEntry.organization_id,

@@ -82,6 +82,14 @@ def test_all_inclusive_flat_bills_only_the_fee(biller, acme, wt, log, owner):
     assert entry(owner, loose["id"])[1] == adhoc["lines"][0]["id"]
 
 
+def test_all_inclusive_time_is_not_in_the_unbilled_report(biller, acme, wt, log):
+    flat = agreement(biller, acme["org"], "flat", all_inclusive=True)
+    log(acme["ticket"], wt["Remote"], 600, work_date="2026-07-03", agreement_id=flat["id"])
+    log(acme["ticket"], wt["Remote"], 60, work_date="2026-07-04", agreement_id=None)
+    t = biller.get("/api/v1/reports/unbilled?through=2026-07-31").json()["totals"]
+    assert (t["billable_minutes"], t["time_value_cents"]) == (60, 15000)
+
+
 def test_non_inclusive_flat_bills_time_as_today(biller, acme, wt, log, owner):
     flat = agreement(biller, acme["org"], "flat")
     e = log(acme["ticket"], wt["Remote"], 120, work_date="2026-07-03", agreement_id=flat["id"])
