@@ -244,3 +244,4 @@ verification: 4/4 passed
 | O-151 | 2026-11-03 | dev | 16 | 16-00 | engineering-senior-developer | quality-review | success | 4 | review, engineering | Phase 16 review PASSED in 2 cycle(s), 6 finding(s) |
 | O-152 | 2026-11-03 | dev | 16 | 16-00 | design-ui-designer | quality-review | success | 4 | review, design | Phase 16 review PASSED in 2 cycle(s), 6 finding(s) |
 | O-153 | 2026-11-03 | dev | 17 | 17-01 | engineering-backend-architect | implementation | partial | 3 | agreement-billing-and-profitability, engineering | Agreement on tickets and time entries: Complete with Warnings |
+| O-154 | 2026-11-03 | dev | 17 | 17-02 | engineering-backend-architect | implementation | partial | 3 | agreement-billing-and-profitability, engineering | Billing by agreement: all-inclusive and block rollover: Complete with Warnings |

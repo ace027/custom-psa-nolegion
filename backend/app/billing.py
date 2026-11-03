@@ -21,6 +21,7 @@ from app.billing_repo import (
     agreements_overlapping,
     billable_projects,
     block_candidates,
+    block_minutes_used,
     get_agreement,
     get_charge,
     get_invoice,
@@ -680,6 +681,27 @@ def block_included_minutes(a: Agreement, start: date, end: date, increment: int)
     return (a.block_minutes * covered_days // days) // increment * increment
 
 
+def carried_in(ctx: Ctx, a: Agreement, start: date, increment: int) -> int:
+    """Unused block minutes rolled into the run month starting `start`. Computed, never stored:
+    0 when the agreement expires unused minutes; when it rolls, walk the months from the
+    agreement's start: carried(M+1) = min(cap, max(carried(M) + included(M) - used(M), 0)).
+    used(M) counts only finalized runs (block_minutes_used), so voiding an invoice and re-running
+    flows through automatically; a month without a finalized run used 0."""
+    if a.rollover != "roll":
+        return 0
+    used = block_minutes_used(ctx.db, ctx.scope, a, start)
+    carried = 0
+    month = a.start_date.replace(day=1)
+    while month < start:
+        first, last = _month_bounds(month)
+        included = block_included_minutes(a, first, last, increment)  # 0 after end_date
+        carried = max(carried + included - used.get(first, 0), 0)
+        if a.rollover_cap_minutes is not None:
+            carried = min(carried, a.rollover_cap_minutes)
+        month = last + timedelta(days=1)
+    return carried
+
+
 def allocate_block(entries: list[tuple[int, int]], included: int) -> dict[int, int]:
     """entries: (entry_id, minutes_billable) already in consumption order (work_date, id).
     -> entry_id: minutes covered by the block (0 once it is used up). An entry crossing the end
@@ -704,6 +726,7 @@ def _pull_block(
         raise Conflict("The block agreement on this invoice has changed; cancel and redo the run")
     increment = repo.get_settings_row(ctx.db).billing_increment_minutes
     included = block_included_minutes(a, start, end, increment)
+    carried = carried_in(ctx, a, start, increment)  # consumed first; the total is what matters
     # minutes this invoice's lines already drew from the block (non-zero when re-run on a draft)
     line_ids = [ln.id for ln in invoice_lines(ctx.db, ctx.scope, invoice.id)]
     already = 0
@@ -713,18 +736,19 @@ def _pull_block(
                 TimeEntry.invoice_line_id.in_(line_ids)
             )
         ).scalar_one()
-    candidates = block_candidates(ctx.db, ctx.scope, org.id, start, end)
+    candidates = block_candidates(ctx.db, ctx.scope, a, start, end)
     covered = allocate_block(
-        [(e.id, e.minutes_billable) for e in candidates], max(included - already, 0)
+        [(e.id, e.minutes_billable) for e in candidates], max(carried + included - already, 0)
     )
     for e in candidates:
         e.block_minutes_covered = covered[e.id]
         if covered[e.id] == e.minutes_billable:
             e.invoice_line_id = block_line.id
     used = already + sum(covered.values())
+    carry_note = f" (incl. {_hours_text(carried)} h carried over)" if carried else ""
     block_line.description = (
-        f"{a.name}: {format(hours(included).normalize(), 'f')} h included, "
-        f"{format(hours(used).normalize(), 'f')} h used"
+        f"{a.name}: {_hours_text(carried + included)} h included{carry_note}, "
+        f"{_hours_text(used)} h used"
     )
     ctx.db.flush()
 

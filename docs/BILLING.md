@@ -12,13 +12,19 @@
 9. **Time and product charges are locked onto an invoice line** the moment they are invoiced (time entries can no longer be edited or voided). Removing the line, or voiding the invoice, releases them to be billed again.
 10. **Snapshots**: at finalize, the client name/address, your company details and payment terms are copied onto the invoice, so editing them later never rewrites history.
 11. **Block hours** (agreement type `block`): a fixed monthly price (quantity always 1) that includes a number of hours, stored as minutes and a positive multiple of the billing increment. The price bills every month whatever the use.
-    - **What it covers**: the client's billable time with a work date inside the run month, except work types marked **Not covered by blocks** (Billing > Rates), which always bill normally. Unbilled time from earlier months bills normally.
+    - **What it covers**: the client's billable time with a work date inside the run month that is attached to this block or to **no agreement**, except work types marked **Not covered by blocks** (Billing > Rates), which always bill normally. Time attached to any other agreement never draws the block down. Unbilled time from earlier months bills normally.
     - **Order**: time is drawn in work-date order, then by time entry number. An entry that crosses the end of the block is **split by minutes**: the covered part goes on the block, the rest bills as overage.
     - **Overage** bills as ordinary time lines (ticket + work type, the client's rate override or the work type rate, work type taxability).
-    - **Unused hours expire** at month end. Nothing rolls over.
+    - **Unused hours expire** at month end by default (rollover `expire`). See rule 13 for rolling them over.
     - **Mid-month start or end**: the price gets the usual proration credit line, and the included minutes are prorated by the same calendar days, `block_minutes x covered_days / days_in_month`, **rounded down** to the billing increment.
     - **One block per client at a time**: a block agreement whose dates overlap another block of the same client is refused.
     - **Only the monthly run uses blocks**: a one-off invoice leaves covered time from a block month for the run. Voiding the run's invoice releases the time and what it drew from the block.
+12. **All-inclusive flat agreements** (type `flat` with *all-inclusive* on; phase 17): time attached to the agreement is recorded and costed but **never billed**: no time lines on the run, a one-off invoice or *Add unbilled*, and it never draws a block down. The client pays the flat fee only. Unattached time, and time attached to a flat agreement that is not all-inclusive, bills as T&M exactly as before.
+13. **Block rollover** (block agreements; `rollover` = `expire` (default) or `roll`, optional `rollover_cap_minutes`). Carried-in minutes are **computed, never stored**:
+    - `expire`: carried in = 0 (unused minutes are lost at month end).
+    - `roll`: walking the months from the agreement's start, `carried_in(M) = min(cap, max(carried_in(M-1) + included(M-1) - used(M-1), 0))`; no cap means no `min`. `included` is the month's (prorated) included minutes from rule 11.
+    - **used(M)** counts only the block minutes drawn in the month's **finalized** run (on the client's live invoice that bills this block). A month with no finalized run (none, still draft/reviewed, or cancelled) used 0, so its included minutes carry in full. **Voiding** an invoice gives its minutes back (rule 11), so the next run carries them automatically; a run already drafted must be cancelled and run again to see it.
+    - The run month can draw `carried_in + included` minutes; carried minutes are used first. Overage bills exactly as before. The block line shows it: "Retainer: 14 h included (incl. 4 h carried over), 6 h used".
 
 ## What goes on a monthly run
 For each client, one **draft** invoice containing:
@@ -85,6 +91,19 @@ Client tax rate 8.25%; agreement "Managed Services" 12 users x $12.00 (taxable);
 - **Straddling entry**: 9.0 h of the block is already used when a 1.5 h entry comes next (by work date). It is split: **1.0 h covered** by the block, **0.5 h overage** = 0.5 x 15,000 = 7,500 c. The entry records 60 covered minutes.
 - **Not covered by blocks**: an entry of a work type with that flag never draws on the block; it bills at its normal rate even when block hours are left.
 - **Mid-month start**: the block starts 15 Oct (17 of 31 days covered). Included minutes = 600 x 17/31 = 329.03 -> rounded **down** to the 15-minute increment = **315 min = 5.25 h**. The price follows the usual proration: 100,000 c - round_half_up(100,000 x 14/31 = 45,161.29) = 100,000 - 45,161 = **54,839 c**.
+
+### Worked example: block rollover
+"Retainer" as above (10 h a month from 1 Jul), rollover `roll`, $150.00/h overage, every run finalized:
+
+| Month | Carried in | Available | Used | Overage | Invoice |
+|---|---|---|---|---|---|
+| Jul | 0 | 10 h | 6 h | - | 100,000 c |
+| Aug | 4 h | 14 h | 0 h | - | 100,000 c |
+| Sep | 14 h | 24 h | 25 h | 1 h x 15,000 = 15,000 c | 115,000 c |
+
+- **With a 2 h cap** (`rollover_cap_minutes` = 120) and nothing used in July: August carries min(120, 600) = 120 min (12 h available). August uses 11 h, so September carries min(120, 120 + 600 - 660 = 60) = **60 min** (11 h available).
+- **Voiding July** (when July used all 10 h): July's used drops to 0, so August (cancelled and run again) carries **10 h**, 20 h available. July's released time is prior-month time and bills as ordinary overage on August: 10 h x 15,000 = 150,000 c.
+- **Mid-month start** (15 Jul): July includes 5.25 h (rule 11); unused, it carries into August: 15.25 h available.
 
 ## Project billing
 A project is billed in one of two modes, `fixed_fee` or `tm` (time and materials). Mode, fee and the taxable flag cannot change after the project is approved.

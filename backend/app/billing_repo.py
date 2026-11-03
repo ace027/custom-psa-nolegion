@@ -173,6 +173,17 @@ def _project_ticket_ids(project_id: int | None = None):
     return stmt
 
 
+def _not_all_inclusive():
+    """Time attached to an all-inclusive flat agreement is covered by the fee: never invoiced.
+    Unattached time (agreement_id NULL) keeps today's behaviour."""
+    return or_(
+        TimeEntry.agreement_id.is_(None),
+        TimeEntry.agreement_id.not_in(
+            select(Agreement.id).where(Agreement.type == "flat", Agreement.all_inclusive.is_(True))
+        ),
+    )
+
+
 def unbilled_time(
     db: Session,
     scope: Scope,
@@ -196,6 +207,7 @@ def unbilled_time(
             TimeEntry.invoice_line_id.is_(None),
             TimeEntry.minutes_billable > 0,
             TimeEntry.work_date <= through,
+            _not_all_inclusive(),
         ),
         TimeEntry.organization_id,
     ).with_for_update()
@@ -211,17 +223,18 @@ def unbilled_time(
 
 
 def block_candidates(
-    db: Session, scope: Scope, org_id: int, start: date, end: date
+    db: Session, scope: Scope, agreement: Agreement, start: date, end: date
 ) -> list[TimeEntry]:
-    """Unbilled time a block can draw on: billable, not voided, not invoiced, work date inside
-    [start, end], work type covered by blocks, ticket in no project (project time never draws
-    down a block). In consumption order (work date, then id).
+    """Unbilled time the block `agreement` can draw on: billable, not voided, not invoiced, work
+    date inside [start, end], work type covered by blocks, ticket in no project (project time
+    never draws down a block), attached to this block or to no agreement (time attached to any
+    other agreement never draws it down). In consumption order (work date, then id).
     FOR UPDATE (time entries only), like unbilled_time."""
     stmt = scope.apply(
         select(TimeEntry)
         .join(WorkType, WorkType.id == TimeEntry.work_type_id)
         .where(
-            TimeEntry.organization_id == org_id,
+            TimeEntry.organization_id == agreement.organization_id,
             # owner decision 2026-10-30: automation time never draws down a block
             TimeEntry.entry_type == "labour",
             TimeEntry.billable.is_(True),
@@ -232,10 +245,53 @@ def block_candidates(
             TimeEntry.work_date <= end,
             WorkType.block_covered.is_(True),
             TimeEntry.ticket_id.not_in(_project_ticket_ids()),
+            or_(TimeEntry.agreement_id.is_(None), TimeEntry.agreement_id == agreement.id),
         ),
         TimeEntry.organization_id,
     ).with_for_update(of=TimeEntry)
     return list(db.execute(stmt.order_by(TimeEntry.work_date, TimeEntry.id)).scalars())
+
+
+def block_minutes_used(db: Session, scope: Scope, agreement: Agreement, before: date) -> dict:
+    """-> {run period_start: block minutes used} for the months before `before` whose run is
+    FINALIZED and whose live invoice for the client bills this block. Used = block_minutes_covered
+    of the client's entries in that month attached to this block or to no agreement. A voided
+    invoice already reset its entries to 0, so it counts nothing.
+    shortcut: two blocks of one client in the same month (one ending, one starting) would both
+    count that month's unattached minutes; only the first block draws down today. Attribute
+    per entry if overlapping-month blocks are ever billed side by side."""
+    bills_block = (
+        select(InvoiceLine.id)
+        .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
+        .where(
+            Invoice.billing_run_id == BillingRun.id,
+            Invoice.organization_id == agreement.organization_id,
+            Invoice.status != "void",
+            InvoiceLine.kind == "agreement",
+            InvoiceLine.agreement_id == agreement.id,
+            InvoiceLine.voided.is_(False),
+        )
+        .exists()
+    )
+    stmt = scope.apply(
+        select(BillingRun.period_start, func.sum(TimeEntry.block_minutes_covered))
+        .join(
+            BillingRun,
+            (TimeEntry.work_date >= BillingRun.period_start)
+            & (TimeEntry.work_date <= BillingRun.period_end),
+        )
+        .where(
+            TimeEntry.organization_id == agreement.organization_id,
+            TimeEntry.block_minutes_covered > 0,
+            or_(TimeEntry.agreement_id.is_(None), TimeEntry.agreement_id == agreement.id),
+            BillingRun.status == "finalized",
+            BillingRun.period_start < before,
+            bills_block,
+        )
+        .group_by(BillingRun.period_start),
+        TimeEntry.organization_id,
+    )
+    return {row[0]: int(row[1]) for row in db.execute(stmt)}
 
 
 def tickets_by_id(db: Session, scope: Scope, ids: set[int]) -> dict[int, Ticket]:
@@ -263,6 +319,7 @@ def orgs_with_billables(db: Session, scope: Scope, start: date, end: date) -> li
             TimeEntry.invoice_line_id.is_(None),
             TimeEntry.minutes_billable > 0,
             TimeEntry.work_date <= end,
+            _not_all_inclusive(),
             # time on a project that was never approved is never billed
             TimeEntry.ticket_id.not_in(
                 select(Ticket.id)
