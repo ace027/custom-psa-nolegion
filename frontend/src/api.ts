@@ -212,6 +212,7 @@ export interface Ticket {
   sla_first_response_due: string | null;
   sla_resolution_due: string | null;
   first_responded_at: string | null;
+  agreement_id?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -237,6 +238,8 @@ export interface TimeEntry {
   entry_type: "labour" | "automation";
   note: string | null;
   voided_at: string | null;
+  agreement_id?: number | null;
+  invoice_line_id?: number | null;
 }
 export interface Timer {
   ticket_id: number | null;
@@ -496,6 +499,9 @@ export interface Agreement {
   end_date: string | null;
   notes: string | null;
   monthly_amount_cents: number;
+  all_inclusive?: boolean;
+  rollover?: "expire" | "roll";
+  rollover_cap_minutes?: number | null;
 }
 export interface Product {
   id: number;
@@ -1592,7 +1598,8 @@ export interface ProfitabilityTotals {
 }
 export interface ProfitabilityReport {
   range: RangeOut;
-  rows: (ProfitabilityTotals & { organization_id: number; organization_name: string })[];
+  group?: "client" | "agreement";
+  rows: (ProfitabilityTotals & { organization_id: number; organization_name: string; agreement_id?: number | null; agreement_name?: string | null; agreement_type?: string | null })[];
   totals: ProfitabilityTotals;
 }
 export interface MyDashboard {
@@ -1651,7 +1658,7 @@ export const reportsApi = {
   sla: (q: { from?: string; to?: string; group?: SlaGroup }) => api<SlaReport>(`/reports/sla${enc(q)}`),
   utilisation: (q: { from?: string; to?: string }) => api<UtilisationReport>(`/reports/utilisation${enc(q)}`),
   aging: () => api<AgingReport>("/reports/aging"),
-  profitability: (q: { from?: string; to?: string }) => api<ProfitabilityReport>(`/reports/profitability${enc(q)}`),
+  profitability: (q: { from?: string; to?: string; group?: "client" | "agreement" }) => api<ProfitabilityReport>(`/reports/profitability${enc(q)}`),
   /** href of the CSV that matches a report page's query */
   csv: (report: ReportName, q: Record<string, string | undefined> = {}) => `/api/v1/reports/${report}.csv${enc(q)}`,
   myDashboard: () => api<MyDashboard>("/dashboard/me"),

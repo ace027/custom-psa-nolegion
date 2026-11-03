@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
-  Attachment, CannedResponse, Charge, CustomFieldDef, Csat, LinkRelation, TicketLink, Contact, Note, Organization, Page, Product, Ticket, TimeEntry, api,
+  Agreement, Attachment, CannedResponse, Charge, CustomFieldDef, Csat, LinkRelation, TicketLink, Contact, Note, Organization, Page, Product, Ticket, TimeEntry, api,
 } from "../api";
 import { can, useMe } from "../auth";
 import { useLookups } from "../lookups";
@@ -107,6 +107,15 @@ export default function TicketDetail() {
   );
 }
 
+// The client's agreements still in force, plus `current` if it has since ended. Needs billing:read.
+function useAgreementOptions(orgId: number | null, current: number | null | undefined) {
+  const { data: me } = useMe();
+  const q = useQuery({ queryKey: ["agreements"], enabled: can(me, "billing:read"), queryFn: () => api<Agreement[]>("/agreements") });
+  const today = new Date().toISOString().slice(0, 10);
+  const all = (q.data ?? []).filter((a) => a.organization_id === orgId);
+  return { all, options: all.filter((a) => a.id === current || !a.end_date || a.end_date >= today) };
+}
+
 function Fields({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boolean; onDone: () => void }) {
   const lk = useLookups();
   const patch = useMutation({
@@ -118,6 +127,7 @@ function Fields({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boo
     ...lk.statuses.filter((x) => !x.archived_at || x.id === t.status_id).map((x) => ({ id: x.id, name: x.name })),
   ];
   if (statusOptions.length === 0 && t.status_id) statusOptions.push({ id: t.status_id, name: t.status_name ?? t.status });
+  const ag = useAgreementOptions(t.organization_id, t.agreement_id);
   const sel = (label: string, value: string | number | null, opts: { id: number | string; name: string }[], key: string, blank?: string) => (
     <Field label={label}>
       <select
@@ -139,6 +149,9 @@ function Fields({ ticket: t, canWrite, onDone }: { ticket: Ticket; canWrite: boo
         {sel("Priority", t.priority_id, lk.priorities.map((p) => ({ id: p.id, name: p.name })), "priority_id")}
         {sel("Queue", t.queue_id, lk.queues.map((q) => ({ id: q.id, name: q.name })), "queue_id")}
         {sel("Category", t.category_id, lk.categories.map((c) => ({ id: c.id, name: c.name })), "category_id", "None")}
+        {t.organization_id != null && (canWrite && ag.all.length > 0
+          ? sel("Agreement", t.agreement_id ?? null, ag.options.map((a) => ({ id: a.id, name: a.name })), "agreement_id", "No agreement")
+          : <div className="text-sm"><div className="font-medium text-slate-700">Agreement</div><div className="text-slate-600">{ag.all.find((a) => a.id === t.agreement_id)?.name ?? (t.agreement_id ? `Agreement #${t.agreement_id}` : "No agreement")}</div></div>)}
         <div className="text-sm">
           <div className="font-medium text-slate-700">SLA</div>
           <div className="text-slate-600">First response due: {fmt(t.sla_first_response_due)}{t.first_responded_at ? " (met)" : ""}</div>
@@ -453,6 +466,11 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
   });
   const voidIt = useMutation({ mutationFn: (id: number) => api(`/time-entries/${id}/void`, { method: "POST" }), onSuccess: onDone });
   const qc = useQueryClient();
+  const ag = useAgreementOptions(t.organization_id, undefined);
+  const setAgreement = useMutation({
+    mutationFn: (v: { id: number; agreement_id: number | null }) => api(`/time-entries/${v.id}`, { method: "PATCH", json: { agreement_id: v.agreement_id } }),
+    onSuccess: onDone,
+  });
   const start = useMutation({
     mutationFn: () => api("/timer/start", { method: "POST", json: { ticket_id: t.id, work_type_id: Number(f.work_type_id), billable: f.billable, note: f.note || null } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["timer"] }),
@@ -461,7 +479,7 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
   return (
     <Card title="Time">
       <table className="w-full text-left text-sm">
-        <thead className="text-slate-500"><tr><th>Date</th><th>Type</th><th>Actual</th><th>Billable</th><th>Note</th><th /></tr></thead>
+        <thead className="text-slate-500"><tr><th>Date</th><th>Type</th><th>Actual</th><th>Billable</th><th>Agreement</th><th>Note</th><th /></tr></thead>
         <tbody>
           {entries.map((e) => (
             <tr key={e.id} className="border-t border-slate-100">
@@ -469,15 +487,23 @@ function TimeCard({ ticket: t, entries, canWrite, meId, isAdmin, onDone }: { tic
               <td>{lk.workTypes.find((w) => w.id === e.work_type_id)?.name}{e.entry_type === "automation" && <span className={`ml-1 text-xs ${AI_BADGE}`}>Automation</span>}</td>
               <td>{e.minutes_actual} min</td>
               <td>{e.billable ? `${e.minutes_billable} min` : "non-billable"}</td>
+              <td>
+                {canWrite && !e.voided_at && e.invoice_line_id == null && ag.all.length > 0 ? (
+                  <select aria-label={`Agreement for time entry ${e.id}`} className={inputCls} value={e.agreement_id ?? ""} onChange={(ev) => setAgreement.mutate({ id: e.id, agreement_id: ev.target.value === "" ? null : Number(ev.target.value) })}>
+                    <option value="">No agreement</option>
+                    {ag.all.filter((a) => a.id === e.agreement_id || !a.end_date || a.end_date >= e.work_date).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                ) : (ag.all.find((a) => a.id === e.agreement_id)?.name ?? (e.agreement_id ? `Agreement #${e.agreement_id}` : "No agreement"))}
+              </td>
               <td>{e.note}</td>
               <td>{canWrite && (isAdmin || e.user_id === meId) && <button className="text-red-700 hover:underline" onClick={() => voidIt.mutate(e.id)}>Void</button>}</td>
             </tr>
           ))}
-          {entries.length === 0 && <tr><td colSpan={6} className="text-slate-500">No time logged.</td></tr>}
+          {entries.length === 0 && <tr><td colSpan={7} className="text-slate-500">No time logged.</td></tr>}
         </tbody>
       </table>
       <p className="mt-1 text-sm text-slate-600">Total billable: <b>{total} min</b> ({(total / 60).toFixed(2)} h). Billable time rounds up to {lk.settings?.billing_increment_minutes ?? 15}-minute increments.</p>
-      <ErrorMsg error={add.error ?? voidIt.error ?? start.error} />
+      <ErrorMsg error={add.error ?? voidIt.error ?? start.error ?? setAgreement.error} />
       {canWrite && !t.needs_triage && (
         <form className="mt-3 flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
           <Field label="Work type">

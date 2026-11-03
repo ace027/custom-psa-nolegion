@@ -247,3 +247,4 @@ verification: 4/4 passed
 | O-154 | 2026-11-03 | dev | 17 | 17-02 | engineering-backend-architect | implementation | partial | 3 | agreement-billing-and-profitability, engineering | Billing by agreement: all-inclusive and block rollover: Complete with Warnings |
 | O-155 | 2026-11-03 | dev | 17 | 17-03 | engineering-backend-architect | implementation | failed | 5 | agreement-billing-and-profitability, engineering | Profitability and utilisation by agreement: Partial |
 | O-156 | 2026-11-03 | dev | 17 | 17-03 | engineering-backend-architect | implementation | partial | 3 | agreement-billing-and-profitability, engineering | Profitability and utilisation by agreement: Complete with Warnings |
+| O-157 | 2026-11-03 | dev | 17 | 17-04 | engineering-frontend-developer | implementation | success | 2 | agreement-billing-and-profitability, engineering | Agreement controls and reports in the UI: Complete |

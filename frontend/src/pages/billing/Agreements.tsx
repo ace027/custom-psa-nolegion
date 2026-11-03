@@ -13,7 +13,7 @@ export default function Agreements() {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ["agreements"], queryFn: () => api<Agreement[]>("/agreements") });
   const orgs = useQuery({ queryKey: ["orgs", "", false], queryFn: () => api<Page<Organization>>("/organizations?limit=200&include_archived=false&q=") });
-  const blank = { organization_id: "", name: "", type: "per_user", price: "", quantity: "1", hours: "", taxable: false, start_date: new Date().toISOString().slice(0, 10) };
+  const blank = { organization_id: "", name: "", type: "per_user", price: "", quantity: "1", hours: "", allIncl: false, rollover: "expire", cap: "", taxable: false, start_date: new Date().toISOString().slice(0, 10) };
   const [f, setF] = useState(blank);
   const create = useMutation({
     mutationFn: () => {
@@ -22,7 +22,7 @@ export default function Agreements() {
       const isBlock = f.type === "block";
       const hours = Number(f.hours);
       if (isBlock && !(hours > 0)) throw new Error("Enter the included hours, e.g. 10 or 7.5");
-      return api("/agreements", { method: "POST", json: { organization_id: Number(f.organization_id), name: f.name, type: f.type, unit_price_cents: cents, quantity: f.type === "flat" || isBlock ? 1 : Number(f.quantity), block_minutes: isBlock ? Math.round(hours * 60) : null, taxable: f.taxable, start_date: f.start_date } });
+      return api("/agreements", { method: "POST", json: { organization_id: Number(f.organization_id), name: f.name, type: f.type, unit_price_cents: cents, quantity: f.type === "flat" || isBlock ? 1 : Number(f.quantity), block_minutes: isBlock ? Math.round(hours * 60) : null, all_inclusive: f.type === "flat" && f.allIncl, rollover: isBlock ? f.rollover : "expire", rollover_cap_minutes: isBlock && f.rollover === "roll" && f.cap ? Math.round(Number(f.cap) * 60) : null, taxable: f.taxable, start_date: f.start_date } });
     },
     onSuccess: () => { setF(blank); qc.invalidateQueries({ queryKey: ["agreements"] }); },
   });
@@ -44,9 +44,12 @@ export default function Agreements() {
           <h2 className="col-span-full font-semibold">New agreement</h2>
           <Field label="Client"><select className={inputCls} required value={f.organization_id} onChange={(e) => setF({ ...f, organization_id: e.target.value })}><option value="">Select…</option>{orgs.data?.items.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></Field>
           <Field label="Name"><input className={inputCls} required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-          <Field label="Type"><select className={inputCls} value={f.type} onChange={(e) => setF({ ...f, type: e.target.value, hours: e.target.value === "block" ? f.hours : "" })}>{Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+          <Field label="Type"><select className={inputCls} value={f.type} onChange={(e) => setF({ ...f, type: e.target.value, hours: e.target.value === "block" ? f.hours : "", allIncl: e.target.value === "flat" && f.allIncl })}>{Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
           <Field label={f.type === "flat" || f.type === "block" ? "Monthly fee ($)" : "Price per unit ($)"}><input className={inputCls} required value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></Field>
           {f.type === "block" && <Field label="Included hours"><input className={inputCls} type="number" min={0} step={0.25} required value={f.hours} onChange={(e) => setF({ ...f, hours: e.target.value })} /></Field>}
+          {f.type === "block" && <Field label="Unused hours"><select className={inputCls} value={f.rollover} onChange={(e) => setF({ ...f, rollover: e.target.value })}><option value="expire">Expire</option><option value="roll">Roll over</option></select></Field>}
+          {f.type === "block" && f.rollover === "roll" && <Field label="Rollover cap (hours, optional)"><input className={inputCls} type="number" min={0} step={0.25} value={f.cap} onChange={(e) => setF({ ...f, cap: e.target.value })} /></Field>}
+          {f.type === "flat" && <label className="flex items-end gap-1 pb-2 text-sm"><input type="checkbox" checked={f.allIncl} onChange={(e) => setF({ ...f, allIncl: e.target.checked })} />All-inclusive (time is never billed extra)</label>}
           {f.type !== "flat" && f.type !== "block" && <Field label={f.type === "per_user" ? "Users" : "Devices"}><input className={inputCls} type="number" min={0} value={f.quantity} onChange={(e) => setF({ ...f, quantity: e.target.value })} /></Field>}
           <Field label="Starts"><input className={inputCls} type="date" required value={f.start_date} onChange={(e) => setF({ ...f, start_date: e.target.value })} /></Field>
           <label className="flex items-end gap-1 pb-2 text-sm"><input type="checkbox" checked={f.taxable} onChange={(e) => setF({ ...f, taxable: e.target.checked })} />Taxable</label>
@@ -75,6 +78,11 @@ function Row({ a, canWrite }: { a: Agreement; canWrite: boolean }) {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["agreements"] }),
   });
+  const [capText, setCap] = useState(a.rollover_cap_minutes == null ? "" : String(a.rollover_cap_minutes / 60));
+  const saveTerms = useMutation({
+    mutationFn: (json: Record<string, unknown>) => api(`/agreements/${a.id}`, { method: "PATCH", json }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["agreements"] }),
+  });
   const end = useMutation({
     mutationFn: (end_date: string | null) => api(`/agreements/${a.id}`, { method: "PATCH", json: { end_date } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["agreements"] }),
@@ -92,7 +100,19 @@ function Row({ a, canWrite }: { a: Agreement; canWrite: boolean }) {
   return (
     <>
       <tr className={`border-b border-slate-100 ${a.end_date ? "text-slate-600" : ""}`}>
-        <td className="p-2">{a.organization_name}</td><td>{a.name}</td><td>{TYPE_LABEL[a.type]}{a.type === "block" && a.block_minutes != null && <span className="text-slate-500"> ({a.block_minutes / 60} h included)</span>}</td>
+        <td className="p-2">{a.organization_name}</td><td>{a.name}</td>
+        <td>{TYPE_LABEL[a.type]}{a.type === "block" && a.block_minutes != null && <span className="text-slate-500"> ({a.block_minutes / 60} h included)</span>}
+          {a.type === "flat" && (canWrite
+            ? <label className="ml-2 text-xs"><input type="checkbox" checked={!!a.all_inclusive} onChange={(e) => saveTerms.mutate({ all_inclusive: e.target.checked })} /> All-inclusive</label>
+            : a.all_inclusive && <span className="text-slate-500"> (all-inclusive)</span>)}
+          {a.type === "block" && (canWrite ? (
+            <span className="ml-2 inline-flex items-center gap-1 text-xs">
+              <select aria-label={`${a.name} unused hours`} className={inputCls} value={a.rollover ?? "expire"} onChange={(e) => saveTerms.mutate({ rollover: e.target.value })}><option value="expire">Expire</option><option value="roll">Roll over</option></select>
+              {a.rollover === "roll" && <><input aria-label={`${a.name} rollover cap hours`} placeholder="cap h" className={inputCls + " w-20"} type="number" min={0} step={0.25} value={capText} onChange={(e) => setCap(e.target.value)} />
+                {Math.round(Number(capText) * 60) !== (a.rollover_cap_minutes ?? 0) && <Button aria-label={`Save ${a.name} rollover cap`} onClick={() => saveTerms.mutate({ rollover_cap_minutes: capText ? Math.round(Number(capText) * 60) : null })}>Save</Button>}</>}
+            </span>
+          ) : a.rollover === "roll" && <span className="text-slate-500"> (rolls over{a.rollover_cap_minutes != null ? `, cap ${a.rollover_cap_minutes / 60} h` : ""})</span>)}
+        </td>
         <td className="text-right">{money(a.unit_price_cents)}</td>
         <td>{canWrite && a.type !== "flat" && a.type !== "block" ? (
           <span className="flex items-center gap-1"><input aria-label={`${a.name} quantity`} className={inputCls + " w-20"} type="number" min={0} value={qtyText} onChange={(e) => setQty(e.target.value)} />
@@ -115,7 +135,7 @@ function Row({ a, canWrite }: { a: Agreement; canWrite: boolean }) {
           <span className="text-slate-600"> (nothing changes unless you click)</span>
         </td></tr>
       )}
-      {(save.error || end.error || adopt.error || saveHours.error) && <tr><td colSpan={8}><ErrorMsg error={save.error ?? end.error ?? adopt.error ?? saveHours.error} /></td></tr>}
+      {(save.error || end.error || adopt.error || saveHours.error || saveTerms.error) && <tr><td colSpan={8}><ErrorMsg error={save.error ?? end.error ?? adopt.error ?? saveHours.error ?? saveTerms.error} /></td></tr>}
       {showLog && <tr><td colSpan={8} className="bg-slate-50 p-2 text-xs">{log.data?.map((l) => <div key={l.id}>{fmt(l.changed_at)}: {l.old_quantity ?? "—"} → {l.new_quantity}{l.reason ? ` (${l.reason})` : ""}</div>)}</td></tr>}
     </>
   );
