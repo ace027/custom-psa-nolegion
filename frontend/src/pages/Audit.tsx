@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { AuditEntry, Page, User, api } from "../api";
-import { ErrorMsg, Field, fmt, inputCls } from "../ui";
+import { Button, ErrorMsg, Field, fmt, inputCls } from "../ui";
 
 const show = (v: unknown) => (v === null || v === undefined || v === "" ? "(empty)" : typeof v === "object" ? JSON.stringify(v) : String(v));
 
@@ -16,7 +16,7 @@ function Entry({ a }: { a: AuditEntry }) {
           {a.changes.map((c) => <li key={c.field} className="break-words">{c.label}: {show(c.before)} → {show(c.after)}</li>)}
         </ul>
       )}
-      <button type="button" aria-expanded={raw} onClick={() => setRaw(!raw)} className="text-xs text-blue-700 underline">Show raw</button>
+      <button type="button" aria-expanded={raw} onClick={() => setRaw(!raw)} aria-label={`Raw data for ${a.summary}`} className="min-h-[32px] rounded px-1 text-xs text-blue-700 underline focus-visible:outline focus-visible:outline-2">{raw ? "Hide raw" : "Show raw"}</button>
       {raw && <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded bg-slate-100 p-2 text-xs">{JSON.stringify({ before: a.before, after: a.after, detail: a.detail }, null, 2)}</pre>}
     </li>
   );
@@ -34,7 +34,7 @@ export default function Audit() {
   const types = useQuery({ queryKey: ["audit-entity-types"], queryFn: () => api<{ value: string; label: string }[]>("/audit/entity-types") });
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   for (const [k, v] of Object.entries({ action, actor_id: actorId, entity_type: entityType, date_from: from, date_to: to })) if (v) params.set(k, v);
-  const q = useQuery({ queryKey: ["audit", params.toString()], queryFn: () => api<Page<AuditEntry>>(`/audit?${params}`) });
+  const q = useQuery({ queryKey: ["audit", params.toString()], queryFn: () => api<Page<AuditEntry>>(`/audit?${params}`), placeholderData: keepPreviousData });
   const set = (f: (v: string) => void) => (e: { target: { value: string } }) => { f(e.target.value); setOffset(0); };
   return (
     <div className="space-y-4">
@@ -52,13 +52,15 @@ export default function Audit() {
             {types.data?.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </Field>
-        <Field label="From"><input type="date" className={inputCls} value={from} onChange={set(setFrom)} /></Field>
-        <Field label="To"><input type="date" className={inputCls} value={to} onChange={set(setTo)} /></Field>
+        <Field label="From"><input type="date" max={to || undefined} className={inputCls} value={from} onChange={set(setFrom)} /></Field>
+        <Field label="To"><input type="date" min={from || undefined} className={inputCls} value={to} onChange={set(setTo)} /></Field>
         <Field label="Action starts with"><input className={inputCls} value={action} onChange={set(setAction)} /></Field>
       </div>
+      <Button variant="secondary" onClick={() => { setAction(""); setActorId(""); setEntityType(""); setFrom(""); setTo(""); setOffset(0); }}>Reset filters</Button>
       <ErrorMsg error={q.error} />
       <ErrorMsg error={types.error} />
       <div className="rounded-xl border border-slate-200 bg-surface shadow-card">
+        {q.isLoading && <p className="p-3 text-sm text-slate-500">Loading…</p>}
         {q.data && q.data.items.length === 0 ? (
           <p className="p-3 text-sm text-slate-500">No audit entries match these filters.</p>
         ) : (
@@ -66,9 +68,9 @@ export default function Audit() {
         )}
       </div>
       <nav aria-label="Audit paging" className="flex items-center gap-3 text-sm">
-        <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - limit))} className="disabled:opacity-40">← Newer</button>
+        <Button variant="secondary" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - limit))}><span aria-hidden="true">← </span>Newer</Button>
         <span aria-live="polite">{q.data && q.data.total > 0 ? `${offset + 1}–${Math.min(offset + limit, q.data.total)} of ${q.data.total}` : ""}</span>
-        <button disabled={!q.data || offset + limit >= q.data.total} onClick={() => setOffset(offset + limit)} className="disabled:opacity-40">Older →</button>
+        <Button variant="secondary" disabled={!q.data || offset + limit >= q.data.total} onClick={() => setOffset(offset + limit)}>Older<span aria-hidden="true"> →</span></Button>
       </nav>
     </div>
   );

@@ -32,7 +32,7 @@ describe("Audit page", () => {
     expect(await screen.findByText("Ann changed contact Bob")).toBeTruthy();
     expect(screen.getByText("Phone: 1 → 2")).toBeTruthy();
     expect(screen.queryByText(/"before"/)).toBeNull();
-    fireEvent.click(screen.getAllByRole("button", { name: "Show raw" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /Raw data for/ })[0]);
     expect(screen.getByText(/"before"/)).toBeTruthy();
   });
 

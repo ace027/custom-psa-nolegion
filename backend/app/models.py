@@ -322,11 +322,6 @@ class Settings(Base):
     escalation_email: Mapped[str | None] = mapped_column(String(320))
     # Billing notices are sent from this address; NULL = the support mailbox.
     accounting_mailbox: Mapped[str | None] = mapped_column(String(320))
-
-    @validates("accounting_mailbox")
-    def _blank_accounting_mailbox(self, _key, value):
-        return value or None
-
     escalation_bump_priority: Mapped[bool] = mapped_column(Boolean, nullable=False)
     csat_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
     mileage_rate_cents: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
@@ -334,6 +329,10 @@ class Settings(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+    @validates("accounting_mailbox")
+    def _blank_accounting_mailbox(self, _key, value):
+        return value or None
 
 
 class Holiday(Base):

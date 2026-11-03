@@ -25,7 +25,7 @@ function MailCard() {
     <Card title="Mailbox connector">
       <ErrorMsg error={q.error} />
       {s && (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+        <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
           <dt className="text-slate-500">Status</dt>
           <dd className={s.configured ? (s.last_error ? "text-red-700" : "text-green-700") : "text-amber-700"}>
             {!s.configured ? "Not configured" : s.last_error ? "Error" : "Working"}
@@ -64,14 +64,15 @@ function AccountingSender() {
   });
   if (!q.data || !can(me, "config:manage")) return null;
   return (
-    <div className="mt-3 border-t border-slate-200 pt-3">
+    <form className="mt-3 border-t border-slate-200 pt-3" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
       <Field label="Accounting sender address">
         <input className={inputCls} type="email" placeholder="accounting@yourmsp.com" value={value ?? q.data.accounting_mailbox ?? ""} onChange={(e) => setValue(e.target.value)} />
       </Field>
       <p className="mt-2 text-xs text-slate-500">Statements, payment reminders and invoice emails are sent from this mailbox. Leave empty to send them from the support mailbox. It must be added to the mail app's scope, see docs/MAIL_SETUP.md, Accounting mailbox.</p>
       <ErrorMsg error={save.error} />
-      {value !== null && <div className="mt-2"><Button onClick={() => save.mutate()} disabled={save.isPending}>Save</Button></div>}
-    </div>
+      {value !== null && <div className="mt-2"><Button type="submit" disabled={save.isPending}>Save</Button></div>}
+      {save.isSuccess && value === null && <p role="status" className="mt-2 text-sm text-green-700">Saved</p>}
+    </form>
   );
 }
 
