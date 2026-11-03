@@ -248,6 +248,6 @@
 | 14 | 3 | 3 | Complete |
 | 15 | 1 | 1 | Shipped |
 | 16 | 4 | 4 | Complete |
-| 17 | 4 | 3 | In Progress |
+| 17 | 4 | 4 | Executed |
 | 18 | 0 | 0 | Pending |
 | 19 | 0 | 0 | Pending |

@@ -2,12 +2,12 @@
 
 ## Current Position
 - **Phase**: 17 of 13 (executing)
-- **Status**: Phase 17 executing — Plan 17-03 complete
-- **Last Activity**: Plan 17-03 execution (2026-11-03)
+- **Status**: Phase 17 executing — Plan 17-04 complete
+- **Last Activity**: Plan 17-04 execution (2026-11-03)
 
 ## Progress
 ```
-[###################.] 98% — 55/56 plans complete
+[####################] 100% — 56/56 plans complete
 ```
 
 ## Recent Decisions
@@ -185,3 +185,4 @@ Run `/triad:build` to execute Phase 17: Agreement billing and profitability
 - Plan 17-02 (Wave 2): Billing by agreement: all-inclusive and block rollover — Complete with Warnings
 - Plan 17-03 (Wave 2): Profitability and utilisation by agreement — PARTIAL: Profitability and utilisation can now be grouped by agreement (group=client|agreement, default client, anything else is 422), with a 'No agreement' row per client. The CSVs have the agreement columns.
 - Plan 17-03 (Wave 2): Profitability and utilisation by agreement — Complete with Warnings
+- Plan 17-04 (Wave 3): Agreement controls and reports in the UI — Complete
