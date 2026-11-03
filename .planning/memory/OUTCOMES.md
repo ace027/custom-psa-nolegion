@@ -255,3 +255,4 @@ verification: 4/4 passed
 | O-162 | 2026-11-03 | dev | 18 | 18-01 | engineering-backend-architect | implementation | success | 2 | accounting-mail-and-readable-audit-log, engineering | Accounting sender mailbox: setting, sending and clear errors: Complete |
 | O-163 | 2026-11-03 | dev | 18 | 18-02 | product-technical-writer | documentation | success | 3 | accounting-mail-and-readable-audit-log, product | MAIL_SETUP: accounting mailbox scope: Complete |
 | O-164 | 2026-11-03 | dev | 18 | 18-03 | engineering-backend-architect | implementation | success | 2 | accounting-mail-and-readable-audit-log, engineering | Readable audit entries and filters (backend): Complete |
+| O-165 | 2026-11-03 | dev | 18 | 18-04 | engineering-frontend-developer | implementation | success | 2 | accounting-mail-and-readable-audit-log, engineering | Readable audit page and accounting sender in settings (frontend): Complete |

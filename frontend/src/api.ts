@@ -123,6 +123,10 @@ export interface AuditEntry {
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
   detail: Record<string, unknown> | null;
+  actor_name: string | null;
+  organization_name: string | null;
+  summary: string;
+  changes: { field: string; label: string; before: unknown; after: unknown }[];
 }
 
 // ---- Phase 2 ----
@@ -367,6 +371,7 @@ export interface AppSettings {
   auto_ack_subject: string;
   auto_ack_body: string;
   escalation_email: string | null;
+  accounting_mailbox: string | null;
   escalation_bump_priority: boolean;
   csat_enabled: boolean;
   mileage_rate_cents: number;
@@ -410,6 +415,9 @@ export interface MailStatus {
   last_success_at: string | null;
   last_error: string | null;
   last_error_at: string | null;
+  accounting_mailbox: string | null;
+  last_send_error: string | null;
+  last_send_error_at: string | null;
   messages_ingested: number;
   outbound_pending: number;
   outbound_failed: number;

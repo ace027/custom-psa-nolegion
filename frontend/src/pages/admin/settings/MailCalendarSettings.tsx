@@ -31,6 +31,7 @@ function MailCard() {
             {!s.configured ? "Not configured" : s.last_error ? "Error" : "Working"}
           </dd>
           <dt className="text-slate-500">Mailbox</dt><dd>{s.mailbox ?? "—"}</dd>
+          <dt className="text-slate-500">Billing mail is sent from</dt><dd>{s.accounting_mailbox ?? s.mailbox ?? "—"}</dd>
           <dt className="text-slate-500">Worker last seen</dt>
           <dd className={!s.worker_seen_at || Date.now() - new Date(s.worker_seen_at).getTime() > 5 * 60_000 ? "text-red-700" : ""}>{s.worker_seen_at ? fmt(s.worker_seen_at) : "never (is the worker container running?)"}</dd>
           <dt className="text-slate-500">Last poll</dt><dd>{fmt(s.last_poll_at)}</dd>
@@ -41,8 +42,36 @@ function MailCard() {
         </dl>
       )}
       {s?.last_error && <p className="mt-2 rounded bg-red-50 p-2 text-sm text-red-700">{fmt(s.last_error_at)}: {s.last_error}</p>}
+      {s?.last_send_error && (
+        <div role="alert" className="mt-2 rounded border border-red-600 p-2 text-sm text-red-700">
+          <b>Last send failure</b> ({fmt(s.last_send_error_at)}): {s.last_send_error}
+        </div>
+      )}
+      <AccountingSender />
       {s && !s.configured && <p className="mt-2 text-sm text-slate-600">Email-to-ticket is off until the mailbox is configured. See docs/MAIL_SETUP.md.</p>}
     </Card>
+  );
+}
+
+function AccountingSender() {
+  const qc = useQueryClient();
+  const { data: me } = useMe();
+  const q = useQuery({ queryKey: ["lookup", "settings"], queryFn: () => api<AppSettings>("/settings") });
+  const [value, setValue] = useState<string | null>(null);
+  const save = useMutation({
+    mutationFn: () => api("/settings", { method: "PATCH", json: { accounting_mailbox: (value ?? "").trim() || null } }),
+    onSuccess: () => { setValue(null); qc.invalidateQueries({ queryKey: ["lookup"] }); qc.invalidateQueries({ queryKey: ["mail-status"] }); },
+  });
+  if (!q.data || !can(me, "config:manage")) return null;
+  return (
+    <div className="mt-3 border-t border-slate-200 pt-3">
+      <Field label="Accounting sender address">
+        <input className={inputCls} type="email" placeholder="accounting@yourmsp.com" value={value ?? q.data.accounting_mailbox ?? ""} onChange={(e) => setValue(e.target.value)} />
+      </Field>
+      <p className="mt-2 text-xs text-slate-500">Statements, payment reminders and invoice emails are sent from this mailbox. Leave empty to send them from the support mailbox. It must be added to the mail app's scope, see docs/MAIL_SETUP.md, Accounting mailbox.</p>
+      <ErrorMsg error={save.error} />
+      {value !== null && <div className="mt-2"><Button onClick={() => save.mutate()} disabled={save.isPending}>Save</Button></div>}
+    </div>
   );
 }
 
