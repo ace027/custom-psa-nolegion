@@ -20,7 +20,7 @@
 - [x] Phase 16: Front-end redesign (navigation and layout)
 - [x] Phase 17: Agreement billing and profitability
 - [x] Phase 18: Accounting mail and readable audit log
-- [ ] Phase 19: Azure deployment and onboarding wizard
+- [x] Phase 19: Azure deployment and onboarding wizard
 
 ## Phase Details
 
@@ -250,4 +250,4 @@
 | 16 | 4 | 4 | Complete |
 | 17 | 4 | 4 | Complete |
 | 18 | 4 | 4 | Complete |
-| 19 | 4 | 4 | Executed |
+| 19 | 4 | 4 | Complete |
