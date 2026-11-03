@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 17 of 13 (complete)
-- **Status**: Phase 17 complete — review passed (2 cycle(s))
-- **Last Activity**: Phase 17 review (2026-11-03)
+- **Phase**: 18 of 13 (planned)
+- **Status**: Phase 18 planned -- 4 plans across 3 waves
+- **Last Activity**: Phase 18 planning (2026-11-03)
 
 ## Progress
 ```
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:plan 18` to plan Phase 18: Accounting mail and readable audit log
+Run `/triad:build` to execute Phase 18: Accounting mail and readable audit log
 
 ## Phase 1 Results
 (build started 2026-10-09)
