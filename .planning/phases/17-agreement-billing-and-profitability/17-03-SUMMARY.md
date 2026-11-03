@@ -1,7 +1,7 @@
 # Plan 17-03 Summary: Profitability and utilisation by agreement
 
 ## Result
-**Status**: Partial
+**Status**: Complete with Warnings
 **Wave**: 2
 **Agent**: engineering-backend-architect
 **Completed**: 2026-11-03
@@ -10,7 +10,7 @@
 
 | Candidate | Semantic | Heuristic | Memory | Total | Source |
 |-----------|----------|-----------|--------|-------|--------|
-| engineering-backend-architect | — | 11 | 3.04 | 14.04 | mandatory |
+| engineering-backend-architect | — | 11 | 2.97 | 13.97 | mandatory |
 | engineering-senior-developer | — | 20 | 3.02 | 23.02 | heuristic |
 | testing-api-tester | — | 15 | 3.3 | 18.3 | heuristic |
 
@@ -21,15 +21,11 @@
 
 ## Completed Tasks
 - [x] Task 1: Metrics (done)
-- [ ] Task 2: API and CSV (partial)
+- [x] Task 2: API and CSV (done)
 - [x] Task 3: Tests and docs (done)
 
 ## Files Modified
-- `backend/app/report_metrics.py`
-- `backend/app/routers/reports.py`
-- `backend/tests/test_agreement_profitability.py`
-- `docs/REPORTS.md`
-- `docs/api/openapi.json`
+- `backend/app/schemas.py`
 
 ## Verification Results
 6/6 verification commands passed (run by Triad after the agent finished).
@@ -45,26 +41,26 @@
 | `cd backend && /tmp/claude-0/-home-user-custom-psa-nolegion/1935dcd7-aeca-58e8-849e-09f8a10c3370/scratchpad/venv312/bin/pytest -q -p no:warnings tests/test_agreement_profitability.py` | 0 | PASS |
 
 ## Key Decisions
-- the API param is named `group`; csv_for takes a separate `by` kwarg so scheduled emails, which pass the SLA group, keep the client view
+- The extended response models live in `schemas.py`, the file the plan allows, and subclass the `report_schemas` models; the default response shape only gains `group` and null agreement fields
 
 ## Issues Encountered
-- the routes require only report:read today, not invoice:read as the plan says; left unchanged as instructed
+- Calling `report_metrics` directly with a bad group raises Conflict (409); over HTTP the Literal param makes it 422, as the plan asks
 
 ## Escalations
 | # | Severity | Type | Decision | Status | Resolution |
 |---|----------|------|----------|--------|------------|
-| 1 | blocker | out-of-scope-file | Approve editing backend/app/report_schemas.py (not in files_modified; the plan assumed the report schemas were in schemas.py). Add nullable `agreement_id: int / None = None`, `agreement_name: str / None = None`, `agreement_type: str / None = None` to ProfitabilityRowOut. Add `group: Literal["client","agreement"]` to ProfitabilityReportOut and UtilisationReportOut. Add `agreements: list[UtilisationAgreementRowOut] / None = None` to UtilisationReportOut; the new model has organization_id, organization_name, agreement_id, agreement_name, agreement_type, logged_minutes, billable_minutes, automation_minutes. Then regenerate docs/api/openapi.json. | pending | INVALID: type "out-of-scope-file" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
+| 1 | info | out-of-scope-file | Move the Phase 17 report response models from backend/app/schemas.py into backend/app/report_schemas.py, where the other report models live, at a later cleanup. | pending | INVALID: type "out-of-scope-file" is not one of architecture, dependency, scope, schema, api, deletion, infrastructure, quality |
 
-- #1 context: The metrics already return these keys and the CSVs already show them, but the FastAPI response_model strips them from the JSON. The change is additive and nullable, so it is backwards-compatible. I can apply it as a follow-up if approved.
+- #1 context: The plan named schemas.py, but the report models are in report_schemas.py, which isn't in files_modified. Without new models the API would have dropped the agreement fields. Putting them in schemas.py works and keeps to the file list, but they sit apart from the other report models.
 
 ## Handoff Context
-- **Key outputs**: backend/app/report_metrics.py; backend/app/routers/reports.py; backend/tests/test_agreement_profitability.py; docs/REPORTS.md; docs/api/openapi.json
-- **Decisions made**: the API param is named `group`; csv_for takes a separate `by` kwarg so scheduled emails, which pass the SLA group, keep the client view
+- **Key outputs**: backend/app/schemas.py
+- **Decisions made**: The extended response models live in `schemas.py`, the file the plan allows, and subclass the `report_schemas` models; the default response shape only gains `group` and null agreement fields
 - **Open questions**: (none)
-- **Conventions established**: GET /reports/profitability?group=agreement and /utilisation?group=agreement; CSV files are profitability-by-agreement-<from>-<to>.csv and utilisation-by-agreement-...; CSV columns are client, agreement, agreement_type, then the client view's columns
+- **Conventions established**: Plan 17-04 UI: pass `group=agreement` and read `agreement_id` (null means 'No agreement'), `agreement_name` and `agreement_type` on profitability rows, and the `agreements` list on utilisation
 
 ## Requirements Covered
 - Profitability and utilisation by agreement
 
 ## Token Usage
-43 requests, 3390905 input tokens (3287742 cached), 35707 output tokens, $1.8874
+15 requests, 565460 input tokens (516953 cached), 8611 output tokens, $0.5181
