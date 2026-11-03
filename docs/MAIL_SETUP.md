@@ -58,6 +58,37 @@ Test-ServicePrincipalAuthorization -Identity <enterprise-app-object-id> -Resourc
 Keep that second result in your compliance evidence: it shows least privilege for the mail connector.
 New assignments can take **30 minutes to 2 hours** to take effect.
 
+## Accounting mailbox
+Optional. Statements, payment reminders and invoice emails can come from a second mailbox, such as
+`accounting@yourmsp.com`. It must be in the same Microsoft 365 tenant. Everything else is still sent from the
+support mailbox. Leave the setting empty to send everything from the support mailbox.
+
+The app only sends from the accounting mailbox. It never reads it. So this mailbox gets `Mail.Send` only, and
+**no** `Mail.ReadWrite`. Run this in the same Exchange Online PowerShell session as section 3:
+
+```powershell
+# The set of mailboxes for accounting mail: exactly one
+New-ManagementScope -Name "PSA Accounting Mailbox" `
+  -RecipientRestrictionFilter "PrimarySmtpAddress -eq 'accounting@yourmsp.com'"
+
+# Send mail only, limited to that scope
+New-ManagementRoleAssignment -App <enterprise-app-object-id> -Role "Application Mail.Send" `
+  -CustomResourceScope "PSA Accounting Mailbox"
+```
+
+**Verify the scope** (this test bypasses the cache):
+```powershell
+Test-ServicePrincipalAuthorization -Identity <enterprise-app-object-id> -Resource accounting@yourmsp.com   # Mail.Send: InScope True
+Test-ServicePrincipalAuthorization -Identity <enterprise-app-object-id> -Resource someone.else@yourmsp.com # InScope: False
+```
+Keep the `someone.else` result `False`. It shows the app still cannot reach other mailboxes.
+New assignments can take **30 minutes to 2 hours** to take effect.
+
+As in section 2, do **not** add any Mail permissions in Entra ID. They apply to the whole organization and
+cancel the scoping.
+
+Last, in the PSA open **Settings → Mail & calendar** and enter the address in **Accounting sender address**.
+
 ## 4. Configure the PSA
 In `.env` (never commit it):
 ```
@@ -105,6 +136,7 @@ Then `docker compose up -d worker`. Open **Settings → Mailbox connector** in t
 | `403 ErrorAccessDenied` / `Access to OData is disabled` | Scope not applied yet (wait up to 2 h), wrong Object ID used in `New-ServicePrincipal`, or the mailbox address in `.env` doesn't match the scope filter |
 | Mail arrives but nothing is ingested | Message already read (only *unread* mail is polled), or it is in a sub-folder (only the Inbox is polled) |
 | Sends fail with 403 | `Application Mail.Send` role assignment missing |
+| `The mail app is not allowed to send as accounting@…` | The accounting mailbox scope or its `Application Mail.Send` role assignment is missing or not in effect yet (see [Accounting mailbox](#accounting-mailbox)). The message is marked failed at once, with no retries. It shows on Settings → Mail & calendar and in the audit log. After fixing, re-send it from the notice |
 
 ## Calendar sync
 The same app can also push appointments to technicians' Outlook calendars and read their busy time for the
@@ -116,7 +148,7 @@ permission, so the mail scoping above stays intact.
 Payment reminders and statements are sent through the same outbox and mailbox, with PDFs attached
 (Graph `sendMail` file attachments). They are only sent after a person approves them in Billing > Reminders.
 A client who replies creates or updates a ticket like any other email. Sending needs the *Application
-Mail.Send* RBAC role above; the review screen refuses to send while the worker reports the mailbox as not configured.
+Mail.Send* RBAC role above. To send them from a separate accounting address, see [Accounting mailbox](#accounting-mailbox). The review screen refuses to send while the worker reports the mailbox as not configured.
 
 ## Staff notifications
 The worker also emails the person a ticket is assigned to, using the same mailbox and outbox:
