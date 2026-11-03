@@ -263,3 +263,5 @@ verification: 4/4 passed
 | O-170 | 2026-11-03 | dev | 19 | 19-01 | engineering-infrastructure-devops | implementation | partial | 4 | azure-deployment-and-onboarding-wizard, engineering | Azure deployment: Bicep, deploy script and guide: Complete with Warnings |
 | O-171 | 2026-11-03 | dev | 19 | 19-02 | engineering-security-engineer | implementation | partial | 3 | azure-deployment-and-onboarding-wizard, engineering | Key Vault writer, consent flow and bootstrap admin (backend): Complete with Warnings |
 | O-172 | 2026-11-03 | dev | 19 | 19-03 | engineering-backend-architect | implementation | partial | 3 | azure-deployment-and-onboarding-wizard, engineering | Wizard steps: create, connect and verify registrations (backend): Complete with Warnings |
+| O-173 | 2026-11-03 | dev | 19 | 19-04 | engineering-frontend-developer | implementation | failed | 5 | azure-deployment-and-onboarding-wizard, engineering | Setup wizard page (frontend): Partial |
+| O-174 | 2026-11-03 | dev | 19 | 19-04 | engineering-frontend-developer | implementation | success | 2 | azure-deployment-and-onboarding-wizard, engineering | Setup wizard page (frontend): Complete |

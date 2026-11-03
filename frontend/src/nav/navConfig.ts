@@ -116,6 +116,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "warranty", section: "reports", label: "Warranty", short: "Warranty", route: "/warranty", permission: REP, keywords: ["devices", "expiring"], icon: "shield" },
   // Admin
   { id: "users", section: "admin", label: "Users", short: "Users", route: "/admin/users", permission: "user:manage", keywords: ["staff", "team", "roles"], icon: "users" },
+  { id: "setup", section: "admin", label: "Setup", short: "Setup", route: "/setup", permission: "user:manage", keywords: ["azure", "onboarding", "microsoft", "wizard"], icon: "cog" },
   { id: "settings", section: "admin", label: "Settings", short: "Settings", route: "/admin/settings", permission: ["config:manage", "service:configure"], keywords: ["configuration", "queues", "sla", "mail"], icon: "cog" },
   { id: "integrations", section: "admin", label: "Integrations", short: "Integrations", route: "/integrations", permission: "integration:manage", keywords: ["connections", "rmm", "hudu"], icon: "plug" },
   { id: "automation", section: "admin", label: "Automation", short: "Automation", route: "/automation", permission: "automation:manage", keywords: ["rules", "workflows"], icon: "bolt" },
