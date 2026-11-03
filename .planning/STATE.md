@@ -1,13 +1,13 @@
 # Project State
 
 ## Current Position
-- **Phase**: 18 of 13 (planned)
-- **Status**: Phase 18 planned -- 4 plans across 3 waves
-- **Last Activity**: Phase 18 planning (2026-11-03)
+- **Phase**: 18 of 13 (executing)
+- **Status**: Phase 18 executing — Plan 18-02 complete
+- **Last Activity**: Plan 18-02 execution (2026-11-03)
 
 ## Progress
 ```
-[####################] 100% — 56/56 plans complete
+[###################.] 96% — 58/60 plans complete
 ```
 
 ## Recent Decisions
@@ -186,3 +186,8 @@ Run `/triad:build` to execute Phase 18: Accounting mail and readable audit log
 - Plan 17-03 (Wave 2): Profitability and utilisation by agreement — PARTIAL: Profitability and utilisation can now be grouped by agreement (group=client|agreement, default client, anything else is 422), with a 'No agreement' row per client. The CSVs have the agreement columns.
 - Plan 17-03 (Wave 2): Profitability and utilisation by agreement — Complete with Warnings
 - Plan 17-04 (Wave 3): Agreement controls and reports in the UI — Complete
+
+## Phase 18 Results
+(build started 2026-11-03)
+- Plan 18-01 (Wave 1): Accounting sender mailbox: setting, sending and clear errors — Complete
+- Plan 18-02 (Wave 1): MAIL_SETUP: accounting mailbox scope — Complete
