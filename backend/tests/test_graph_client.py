@@ -262,3 +262,59 @@ def test_sovereign_cloud_urls_are_used_for_token_and_api_calls():
     client.list_unread()
     assert seen[0].url.host == "login.microsoftonline.us"
     assert seen[1].url.host == "graph.microsoft.us"
+
+
+def test_send_mail_from_the_support_mailbox_name_uses_draft_path_case_insensitively():
+    seen = {}
+
+    def draft(request):
+        seen["send"] = json.loads(request.content)
+        return httpx.Response(201, json={"id": "D1"})
+
+    client, _ = make_client(
+        router(**{"POST /messages": draft, "POST /messages/D1/send": lambda r: httpx.Response(202)})
+    )
+    mid = client.send_mail(["a@b.com"], "S", "B", from_mailbox="Support@MSP.com")
+    assert seen["send"]["internetMessageId"] == mid
+
+
+def test_send_mail_from_another_mailbox_posts_send_mail_only():
+    seen = {}
+
+    def send(request):
+        seen["path"] = request.url.path
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(202)
+
+    def handler(request):
+        if request.url.host == "login.microsoftonline.com":
+            return token_ok(request)
+        return send(request)
+
+    client, calls = make_client(handler)
+    out = client.send_mail(["a@b.com"], "S", "B", from_mailbox="accounting@x.com")
+    assert out is None
+    assert seen["path"].endswith("/users/accounting@x.com/sendMail")
+    assert seen["body"]["saveToSentItems"] is True
+    assert "internetMessageId" not in seen["body"]["message"]
+    assert seen["body"]["message"]["subject"] == "S"
+    assert len([c for c in calls if c.url.host != "login.microsoftonline.com"]) == 1
+
+
+def test_access_denied_errors_are_flagged_and_not_transient():
+    body = {"error": {"code": "ErrorAccessDenied", "message": "denied"}}
+    client, _ = make_client(router(**{"POST /messages": lambda r: httpx.Response(403, json=body)}))
+    with pytest.raises(GraphError) as ei:
+        client.send_mail(["a@b.com"], "S", "B")
+    assert ei.value.access_denied and not ei.value.transient
+    notfound = {"error": {"code": "ErrorInvalidUser"}}
+    client, _ = make_client(
+        router(**{"POST /messages": lambda r: httpx.Response(404, json=notfound)})
+    )
+    with pytest.raises(GraphError) as ei:
+        client.send_mail(["a@b.com"], "S", "B")
+    assert ei.value.access_denied
+    client, _ = make_client(router(**{"POST /messages": lambda r: httpx.Response(500, text="x")}))
+    with pytest.raises(GraphError) as ei:
+        client.send_mail(["a@b.com"], "S", "B")
+    assert not ei.value.access_denied and ei.value.transient

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from app.mail.graph import InboundAttachment, InboundMessage
+from app.mail.graph import GraphError, InboundAttachment, InboundMessage
 
 MAILBOX = "support@msp.com"
 _counter = {"n": 0}
@@ -42,6 +42,7 @@ class FakeMail:
         self.sent: list[dict] = []
         self.files: dict[str, list[InboundAttachment]] = {}
         self.fail_send = False
+        self.deny_from: set[str] = set()  # from_mailbox values that raise access denied
         self.fail_attachments = False
         self.fail_mark_read = False
         self.fail_list = False
@@ -69,11 +70,16 @@ class FakeMail:
             raise RuntimeError("cannot mark read")
         self.read.add(message_id)
 
-    def send_mail(self, to, subject, body_text, attachments=None, headers=None):
+    def send_mail(
+        self, to, subject, body_text, attachments=None, headers=None, *, from_mailbox=None
+    ):
         if self.fail_send:
             raise RuntimeError("send failed")
+        if from_mailbox in self.deny_from:
+            raise GraphError("403 denied", 403, public="Graph error 403", access_denied=True)
         self.sent.append(
             {
+                "from_mailbox": from_mailbox,
                 "to": to,
                 "subject": subject,
                 "body": body_text,

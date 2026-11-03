@@ -17,7 +17,7 @@ from app import ticket_services as tsvc
 from app.autoreply import AUTO_HEADERS, maybe_acknowledge
 from app.config import get_settings
 from app.deps import Ctx
-from app.mail.graph import InboundMessage, MailClient
+from app.mail.graph import GraphError, InboundMessage, MailClient
 from app.models import Attachment, EmailMessage, MailboxStatus, OutboundAttachment
 from app.scope import Scope
 
@@ -301,8 +301,11 @@ def send_pending(client: MailClient, mailbox: str, batch: int = 20) -> dict[str,
             .scalars()
             .all()
         )
+        status = db.get(MailboxStatus, 1)
         for e in rows:
             e.send_attempts += 1
+            # a queued notice keeps the sender recorded when it was created
+            sender = e.from_email or mailbox
             try:
                 if not e.to_emails:
                     raise ValueError("no recipients")
@@ -316,15 +319,35 @@ def send_pending(client: MailClient, mailbox: str, batch: int = 20) -> dict[str,
                 ]
                 extra = {"headers": AUTO_HEADERS} if e.auto_generated else {}
                 e.internet_message_id = client.send_mail(
-                    e.to_emails, e.subject or "", e.body_text or "", attachments or None, **extra
+                    e.to_emails,
+                    e.subject or "",
+                    e.body_text or "",
+                    attachments or None,
+                    from_mailbox=sender if sender.lower() != mailbox.lower() else None,
+                    **extra,
                 )
                 e.send_status, e.sent_at, e.send_error = "sent", datetime.now(UTC), None
-                e.from_email = mailbox
+                e.from_email = sender
                 stats["sent"] += 1
             except Exception as exc:
-                e.send_error = str(exc)[:1000]
-                if e.send_attempts >= MAX_SEND_ATTEMPTS:
+                denied = isinstance(exc, GraphError) and exc.access_denied
+                if denied:
+                    section = (
+                        "Scope the app to the one mailbox"
+                        if sender.lower() == mailbox.lower()
+                        else "Accounting mailbox"
+                    )
+                    e.send_error = (
+                        f"The mail app is not allowed to send as {sender}. Add {sender} to the "
+                        f"app's mailbox scope (docs/MAIL_SETUP.md, '{section}')."
+                    )
+                else:
+                    e.send_error = str(exc)[:1000]
+                if denied or e.send_attempts >= MAX_SEND_ATTEMPTS:
                     e.send_status = "failed"
+                    if status is not None:
+                        status.last_send_error = e.send_error
+                        status.last_send_error_at = datetime.now(UTC)
                     audit.record(
                         db,
                         None,

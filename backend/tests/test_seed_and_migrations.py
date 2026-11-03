@@ -46,7 +46,7 @@ def test_migration_0032_reporting_tables_and_constraints(owner_engine, make_user
     from sqlalchemy.exc import IntegrityError
 
     with owner_engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0041"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0042"
     uid = make_user("admin")["id"]
 
     def schedule(**kw):
@@ -255,3 +255,23 @@ def test_migration_0040_user_nav_bookmarks(owner_engine, make_user):
     assert column() == "ARRAY"
     with owner_engine.connect() as c:
         assert c.execute(text("SELECT nav_bookmarks FROM users")).scalar_one() is None
+
+
+def test_migration_0042_accounting_mailbox_columns(owner_engine):
+    with owner_engine.connect() as c:
+        cols = {
+            (r[0], r[1])
+            for r in c.execute(
+                text(
+                    "SELECT table_name, column_name FROM information_schema.columns WHERE"
+                    " (table_name='settings' AND column_name='accounting_mailbox') OR"
+                    " (table_name='mailbox_status' AND column_name IN"
+                    " ('last_send_error','last_send_error_at'))"
+                )
+            )
+        }
+    assert cols == {
+        ("settings", "accounting_mailbox"),
+        ("mailbox_status", "last_send_error"),
+        ("mailbox_status", "last_send_error_at"),
+    }

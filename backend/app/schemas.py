@@ -752,6 +752,7 @@ class SettingsOut(ORM):
     auto_ack_subject: str
     auto_ack_body: str
     escalation_email: str | None
+    accounting_mailbox: str | None
     escalation_bump_priority: bool
     renewal_reminder_days: list[int]
     renewal_email: str | None
@@ -791,6 +792,8 @@ class SettingsPatch(BaseModel):
     auto_ack_body: str | None = Field(default=None, min_length=1, max_length=10_000)
     # An empty string clears the address (None means "leave unchanged", like every other field).
     escalation_email: str | None = Field(default=None, max_length=320)
+    # Billing notices are sent from this mailbox. An empty string clears it (back to support).
+    accounting_mailbox: str | None = Field(default=None, max_length=320)
     escalation_bump_priority: bool | None = None
     # Days before an agreement ends to remind (1..365 each, 1..5 unique values).
     renewal_reminder_days: list[int] | None = None
@@ -848,6 +851,12 @@ class SettingsPatch(BaseModel):
             raise ValueError("Enter a valid email address")
         return v
 
+    @field_validator("accounting_mailbox")
+    @classmethod
+    def _accounting_mailbox(cls, v: str | None) -> str | None:
+        # "" is kept so the settings service sees an explicit clear; Settings stores it as NULL.
+        return cls._email(v.strip().lower() if v else v)
+
 
 class DashboardOut(BaseModel):
     my_open: list[TicketOut]
@@ -864,6 +873,9 @@ class MailStatusOut(BaseModel):
     last_success_at: datetime | None
     last_error: str | None
     last_error_at: datetime | None
+    accounting_mailbox: str | None
+    last_send_error: str | None
+    last_send_error_at: datetime | None
     messages_ingested: int
     outbound_pending: int
     outbound_failed: int

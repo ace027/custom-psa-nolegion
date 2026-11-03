@@ -324,6 +324,7 @@ def test_pending_outbound_mail_is_sent_and_marked(mail, admin, known, make_ticke
     assert ingest.send_pending(mail, MAILBOX) == {"sent": 1, "failed": 0, "retry": 0}
     assert mail.sent == [
         {
+            "from_mailbox": None,
             "to": ["pat@acme.com"],
             "subject": f"[#{t['number']}] Printer down",
             "body": "All fixed",

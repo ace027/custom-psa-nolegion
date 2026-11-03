@@ -29,13 +29,24 @@ class GraphError(Exception):
         status: int | None = None,
         transient: bool = False,
         public: str | None = None,
+        access_denied: bool = False,
     ):
         super().__init__(message)
         self.status = status
         self.transient = transient
+        # The app may not use this mailbox (missing permission or mailbox scope): never retried.
+        self.access_denied = access_denied
         if public is None:
             public = f"Graph error {status}" if status is not None else message
         self.public = public
+
+
+ACCESS_DENIED_CODES = {
+    "ErrorAccessDenied",
+    "ErrorSendAsDenied",
+    "ErrorInvalidUser",
+    "MailboxNotEnabledForRESTAPI",
+}
 
 
 def _error_code(r: httpx.Response) -> str:
@@ -116,6 +127,8 @@ class MailClient(Protocol):
         body_text: str,
         attachments: list[tuple[str, str, bytes]] | None = None,
         headers: dict[str, str] | None = None,
+        *,
+        from_mailbox: str | None = None,
     ) -> str | None: ...  # the RFC 5322 Message-ID we gave the mail, when known
 
 
@@ -206,6 +219,7 @@ class GraphClient:
                 r.status_code,
                 r.status_code == 429 or r.status_code >= 500,
                 public=f"Graph error {r.status_code}" + (f" ({code})" if code else ""),
+                access_denied=r.status_code == 403 or code in ACCESS_DENIED_CODES,
             )
         return r
 
@@ -326,8 +340,13 @@ class GraphClient:
         body_text: str,
         attachments: list[tuple[str, str, bytes]] | None = None,
         headers: dict[str, str] | None = None,
-    ) -> str:
-        """Returns the Message-ID the mail went out with.
+        *,
+        from_mailbox: str | None = None,
+    ) -> str | None:
+        """Returns the Message-ID the mail went out with (None when sent from another mailbox).
+
+        from_mailbox: send as that mailbox with /sendMail (needs only Mail.Send). Graph then gives
+        no Message-ID, so replies to such mail are not matched to a thread (billing notices only).
 
         Why draft + send instead of /sendMail: /sendMail answers 202 with no id, and a customer's
         reply carries our Message-ID in In-Reply-To/References. Graph lets us set
@@ -336,8 +355,11 @@ class GraphClient:
         attachments: (filename, content_type, bytes). Graph inline limit is ~3 MB per file.
         headers: Graph only accepts custom headers whose names start with "x-"."""
         message_id = f"<{uuid.uuid4().hex}@{self.mailbox.rsplit('@', 1)[-1]}>"
+        other = (
+            from_mailbox if from_mailbox and from_mailbox.lower() != self.mailbox.lower() else None
+        )
         message: dict = {
-            "internetMessageId": message_id,
+            **({} if other else {"internetMessageId": message_id}),
             "subject": subject,
             "body": {"contentType": "Text", "content": body_text},
             "toRecipients": [{"emailAddress": {"address": a}} for a in to],
@@ -359,6 +381,11 @@ class GraphClient:
                 }
                 for name, content_type, data in attachments
             ]
+        if other:
+            self._request_user(
+                other, "POST", "/sendMail", json={"message": message, "saveToSentItems": True}
+            )
+            return None
         draft = self._request("POST", "/messages", json=message).json()
         self._request("POST", f"/messages/{quote(draft['id'], safe='')}/send")
         return message_id

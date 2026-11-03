@@ -517,3 +517,80 @@ def test_notice_lookup_and_listing_filters(biller, client_org, clock):
     assert len(notices(biller, organization_id=client_org)) == 1
     assert notices(biller, status="sent") == []
     assert biller.get("/api/v1/billing-notices", params={"status": "bogus"}).status_code == 422
+
+
+# ---- accounting sender mailbox ----
+ACCOUNTING = "accounting@msp.com"
+
+
+def set_accounting(admin, value=ACCOUNTING):
+    r = admin.patch("/api/v1/settings", json={"accounting_mailbox": value})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def queue_reminder(biller, client_org, clock):
+    overdue(biller, client_org)
+    clock(2)
+    prepare(biller)
+    n = notices(biller)[0]
+    assert biller.post(f"/api/v1/billing-notices/{n['id']}/send").status_code == 200
+
+
+def test_accounting_mailbox_setting_is_normalised_validated_and_clearable(admin):
+    assert set_accounting(admin, "  Accounting@MSP.com ")["accounting_mailbox"] == ACCOUNTING
+    assert admin.patch("/api/v1/settings", json={"accounting_mailbox": "nope"}).status_code == 422
+    assert set_accounting(admin, "")["accounting_mailbox"] is None
+
+
+def test_notices_go_out_from_the_accounting_mailbox_when_set(
+    admin, biller, client_org, clock, mail_ready
+):
+    set_accounting(admin)
+    queue_reminder(biller, client_org, clock)
+    mail = worker_sends()
+    assert [m["from_mailbox"] for m in mail.sent] == [ACCOUNTING]
+    assert admin.get("/api/v1/mail/status").json()["accounting_mailbox"] == ACCOUNTING
+
+
+def test_statement_notice_goes_out_from_accounting(admin, biller, client_org, clock, mail_ready):
+    set_accounting(admin)
+    overdue(biller, client_org)
+    clock(2)
+    sid = biller.post(f"/api/v1/organizations/{client_org}/statements").json()["id"]
+    r = biller.post(f"/api/v1/statements/{sid}/email", json={"send": True})
+    assert r.status_code in (200, 201), r.text
+    assert [m["from_mailbox"] for m in worker_sends().sent] == [ACCOUNTING]
+
+
+def test_notices_use_support_when_no_accounting_mailbox(biller, client_org, clock, mail_ready):
+    queue_reminder(biller, client_org, clock)
+    assert [m["from_mailbox"] for m in worker_sends().sent] == [None]
+
+
+def test_clearing_accounting_after_queueing_keeps_the_recorded_sender(
+    admin, biller, client_org, clock, mail_ready
+):
+    set_accounting(admin)
+    queue_reminder(biller, client_org, clock)
+    set_accounting(admin, "")
+    assert [m["from_mailbox"] for m in worker_sends().sent] == [ACCOUNTING]
+
+
+def test_access_denied_fails_at_once_with_a_clear_message(
+    admin, biller, client_org, clock, mail_ready
+):
+    set_accounting(admin)
+    queue_reminder(biller, client_org, clock)
+    mail = FakeMail()
+    mail.deny_from = {ACCOUNTING}
+    assert ingest.send_pending(mail, MAILBOX) == {"sent": 0, "failed": 1, "retry": 0}
+    status = admin.get("/api/v1/mail/status").json()
+    assert status["outbound_failed"] == 1 and status["last_send_error_at"]
+    assert status["last_send_error"] == (
+        f"The mail app is not allowed to send as {ACCOUNTING}. Add {ACCOUNTING} to the app's "
+        "mailbox scope (docs/MAIL_SETUP.md, 'Accounting mailbox')."
+    )
+    ev = admin.get("/api/v1/audit", params={"action": "email.send_failed"}).json()["items"]
+    assert ev and "not allowed to send as" in ev[0]["detail"]["error"]
+    assert ingest.send_pending(mail, MAILBOX)["failed"] == 0  # no retry

@@ -24,7 +24,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
 
 
 class Base(DeclarativeBase):
@@ -320,6 +320,13 @@ class Settings(Base):
     auto_ack_subject: Mapped[str] = mapped_column(Text, nullable=False)
     auto_ack_body: Mapped[str] = mapped_column(Text, nullable=False)
     escalation_email: Mapped[str | None] = mapped_column(String(320))
+    # Billing notices are sent from this address; NULL = the support mailbox.
+    accounting_mailbox: Mapped[str | None] = mapped_column(String(320))
+
+    @validates("accounting_mailbox")
+    def _blank_accounting_mailbox(self, _key, value):
+        return value or None
+
     escalation_bump_priority: Mapped[bool] = mapped_column(Boolean, nullable=False)
     csat_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
     mileage_rate_cents: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
@@ -602,6 +609,8 @@ class MailboxStatus(Base):
     last_error: Mapped[str | None] = mapped_column(Text)
     last_error_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     messages_ingested: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+    last_send_error: Mapped[str | None] = mapped_column(Text)
+    last_send_error_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Ticket(TimestampMixin, Base):

@@ -175,6 +175,9 @@ def mail_status(ctx: Ctx = require(P.CONFIG_MANAGE)):
         last_success_at=st.last_success_at,
         last_error=st.last_error,
         last_error_at=st.last_error_at,
+        accounting_mailbox=repo.get_settings_row(ctx.db).accounting_mailbox,
+        last_send_error=st.last_send_error,
+        last_send_error_at=st.last_send_error_at,
         messages_ingested=st.messages_ingested,
         outbound_pending=count(
             select(func.count()).where(out.direction == "out", out.send_status == "pending")

@@ -809,6 +809,7 @@ def send_notice(ctx: Ctx, notice_id: int) -> BillingNotice:
         to_emails=emails,
         subject=notice.subject[:998],
         body_text=notice.body_text,
+        from_email=repo.get_settings_row(ctx.db).accounting_mailbox,
         send_status="pending",
     )
     ctx.db.add(email)
