@@ -1,9 +1,9 @@
 # Project State
 
 ## Current Position
-- **Phase**: 16 of 13 (complete)
-- **Status**: Phase 16 complete — review passed (2 cycle(s))
-- **Last Activity**: Phase 16 review (2026-11-02)
+- **Phase**: 17 of 13 (planned)
+- **Status**: Phase 17 planned -- 4 plans across 3 waves
+- **Last Activity**: Phase 17 planning (2026-11-03)
 
 ## Progress
 ```
@@ -26,7 +26,7 @@
 - Automation time is reported as its own column, outside utilisation % and labour cost
 
 ## Next Action
-Run `/triad:plan 17` to plan Phase 17: Agreement billing and profitability
+Run `/triad:build` to execute Phase 17: Agreement billing and profitability
 
 ## Phase 1 Results
 (build started 2026-10-09)
