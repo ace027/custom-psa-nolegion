@@ -175,6 +175,22 @@ class Session(Base):
     user_agent: Mapped[str | None] = mapped_column(String(300))
 
 
+class OnboardingToken(Base):
+    """The admin's one-time Microsoft consent token for the setup wizard: Fernet ciphertext only,
+    at most 60 minutes, one row per admin. Not organization-scoped (like `sessions`)."""
+
+    __tablename__ = "onboarding_tokens"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, unique=True)
+    token_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
+    scopes: Mapped[str | None] = mapped_column(Text)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class AuditLog(Base):
     """Append-only. The app DB role has INSERT and SELECT only."""
 

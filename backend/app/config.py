@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -55,6 +56,21 @@ class Settings(BaseSettings):
     # Outbound webhooks refuse private, loopback and link-local destinations (SSRF guard). Set
     # WEBHOOK_ALLOW_PRIVATE_HOSTS=true only to reach a LAN service such as a self-hosted n8n.
     webhook_allow_private_hosts: bool = False
+
+    # Azure: the vault the onboarding wizard writes secrets to (via the managed identity whose
+    # client id is AZURE_CLIENT_ID), and the switch that exposes the wizard routes at all.
+    key_vault_url: str = ""
+    azure_client_id: str = ""
+    onboarding_enabled: bool = False
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _unset_is_empty(cls, value, info: ValidationInfo):
+        # deploy.sh pre-creates every wizard-managed Key Vault secret as the literal 'unset'
+        # (Container Apps cannot reference a missing secret); it means "not configured".
+        if value == "unset" and cls.model_fields[info.field_name].annotation is str:
+            return ""
+        return value
 
     @property
     def is_production(self) -> bool:

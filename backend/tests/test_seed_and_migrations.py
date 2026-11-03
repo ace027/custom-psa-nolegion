@@ -46,7 +46,7 @@ def test_migration_0032_reporting_tables_and_constraints(owner_engine, make_user
     from sqlalchemy.exc import IntegrityError
 
     with owner_engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0042"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0043"
     uid = make_user("admin")["id"]
 
     def schedule(**kw):
@@ -275,3 +275,35 @@ def test_migration_0042_accounting_mailbox_columns(owner_engine):
         ("mailbox_status", "last_send_error"),
         ("mailbox_status", "last_send_error_at"),
     }
+
+
+def test_migration_0043_onboarding_tokens(owner_engine, make_user):
+    def state():
+        with owner_engine.connect() as c:
+            exists = c.execute(text("SELECT to_regclass('onboarding_tokens')")).scalar_one()
+            if exists is None:
+                return None
+            return {
+                p
+                for p in ("SELECT", "INSERT", "UPDATE", "DELETE")
+                if c.execute(
+                    text("SELECT has_table_privilege('psa_app', 'onboarding_tokens', :p)"),
+                    {"p": p},
+                ).scalar_one()
+            }
+
+    cfg = Config("alembic.ini")
+    assert state() == {"SELECT", "INSERT", "DELETE"}  # never edited in place
+    command.downgrade(cfg, "0042")
+    assert state() is None
+    command.upgrade(cfg, "head")
+    uid = make_user("admin")["id"]
+    insert = text(
+        "INSERT INTO onboarding_tokens (user_id, token_ciphertext, expires_at)"
+        " VALUES (:u, 'ct', now() + interval '1 hour')"
+    )
+    with owner_engine.begin() as c:
+        c.execute(insert, {"u": uid})
+    with pytest.raises(Exception, match="uq_onboarding_tokens_user"):
+        with owner_engine.begin() as c:
+            c.execute(insert, {"u": uid})

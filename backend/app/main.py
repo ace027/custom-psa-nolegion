@@ -26,6 +26,7 @@ from app.routers import (
     invoices,
     late_fees,
     notices,
+    onboarding,
     oncall,
     organizations,
     payments,
@@ -137,6 +138,7 @@ def create_app() -> FastAPI:
         projects.router,
         crm.router,
         procurement.router,
+        onboarding.router,  # always mounted; 404 unless ONBOARDING_ENABLED
     ):
         app.include_router(r, prefix="/api/v1")
     return app

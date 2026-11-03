@@ -261,3 +261,4 @@ verification: 4/4 passed
 | O-168 | 2026-11-03 | dev | 18 | 18-00 | design-ux-researcher | quality-review | success | 4 | review, design | Phase 18 review PASSED in 2 cycle(s), 2 finding(s) |
 | O-169 | 2026-11-03 | dev | 18 | 18-00 | engineering-frontend-developer | quality-review | success | 4 | review, engineering | Phase 18 review PASSED in 2 cycle(s), 2 finding(s) |
 | O-170 | 2026-11-03 | dev | 19 | 19-01 | engineering-infrastructure-devops | implementation | partial | 4 | azure-deployment-and-onboarding-wizard, engineering | Azure deployment: Bicep, deploy script and guide: Complete with Warnings |
+| O-171 | 2026-11-03 | dev | 19 | 19-02 | engineering-security-engineer | implementation | partial | 3 | azure-deployment-and-onboarding-wizard, engineering | Key Vault writer, consent flow and bootstrap admin (backend): Complete with Warnings |
