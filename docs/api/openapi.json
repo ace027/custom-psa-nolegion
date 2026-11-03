@@ -198,6 +198,12 @@
       },
       "AgreementIn": {
         "properties": {
+          "all_inclusive": {
+            "default": false,
+            "description": "Flat only: attached time is covered by the fee",
+            "title": "All Inclusive",
+            "type": "boolean"
+          },
           "block_minutes": {
             "anyOf": [
               {
@@ -251,6 +257,30 @@
             "title": "Quantity",
             "type": "integer"
           },
+          "rollover": {
+            "default": "expire",
+            "description": "Block only: unused minutes",
+            "enum": [
+              "expire",
+              "roll"
+            ],
+            "title": "Rollover",
+            "type": "string"
+          },
+          "rollover_cap_minutes": {
+            "anyOf": [
+              {
+                "maximum": 535680.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Block only: most minutes carried",
+            "title": "Rollover Cap Minutes"
+          },
           "start_date": {
             "format": "date",
             "title": "Start Date",
@@ -290,6 +320,10 @@
       },
       "AgreementOut": {
         "properties": {
+          "all_inclusive": {
+            "title": "All Inclusive",
+            "type": "boolean"
+          },
           "block_minutes": {
             "anyOf": [
               {
@@ -348,6 +382,25 @@
             "title": "Quantity",
             "type": "integer"
           },
+          "rollover": {
+            "enum": [
+              "expire",
+              "roll"
+            ],
+            "title": "Rollover",
+            "type": "string"
+          },
+          "rollover_cap_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rollover Cap Minutes"
+          },
           "start_date": {
             "format": "date",
             "title": "Start Date",
@@ -385,6 +438,9 @@
           "end_date",
           "notes",
           "block_minutes",
+          "all_inclusive",
+          "rollover",
+          "rollover_cap_minutes",
           "monthly_amount_cents"
         ],
         "title": "AgreementOut",
@@ -392,6 +448,18 @@
       },
       "AgreementPatch": {
         "properties": {
+          "all_inclusive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Flat only; reset when the type changes",
+            "title": "All Inclusive"
+          },
           "block_minutes": {
             "anyOf": [
               {
@@ -466,6 +534,36 @@
             ],
             "description": "Why the quantity changed",
             "title": "Reason"
+          },
+          "rollover": {
+            "anyOf": [
+              {
+                "enum": [
+                  "expire",
+                  "roll"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Block only; reset when the type changes",
+            "title": "Rollover"
+          },
+          "rollover_cap_minutes": {
+            "anyOf": [
+              {
+                "maximum": 535680.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Block only; null clears the cap",
+            "title": "Rollover Cap Minutes"
           },
           "start_date": {
             "anyOf": [
@@ -17285,6 +17383,18 @@
       },
       "TicketIn": {
         "properties": {
+          "agreement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omit to use the client's single active block or all-inclusive agreement; null for none",
+            "title": "Agreement Id"
+          },
           "assignee_id": {
             "anyOf": [
               {
@@ -17499,6 +17609,17 @@
       },
       "TicketOut": {
         "properties": {
+          "agreement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement Id"
+          },
           "asset_id": {
             "anyOf": [
               {
@@ -17897,6 +18018,18 @@
       },
       "TicketPatch": {
         "properties": {
+          "agreement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Agreement for time logged from now on; null for none",
+            "title": "Agreement Id"
+          },
           "assignee_id": {
             "anyOf": [
               {
@@ -18176,6 +18309,18 @@
       },
       "TimeIn": {
         "properties": {
+          "agreement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omit to use the ticket's agreement; null for none",
+            "title": "Agreement Id"
+          },
           "billable": {
             "default": true,
             "title": "Billable",
@@ -18411,6 +18556,17 @@
       },
       "TimeOut": {
         "properties": {
+          "agreement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement Id"
+          },
           "billable": {
             "title": "Billable",
             "type": "boolean"
@@ -18510,6 +18666,17 @@
       },
       "TimePatch": {
         "properties": {
+          "agreement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement Id"
+          },
           "billable": {
             "anyOf": [
               {

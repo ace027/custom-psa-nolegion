@@ -263,6 +263,11 @@ class TicketIn(BaseModel):
     type_id: int | None = None
     custom_values: dict[str, Any] = Field(default_factory=dict)  # keys are custom field ids
     external_ref: str | None = Field(default=None, max_length=200)  # id in an outside system
+    agreement_id: int | None = Field(
+        default=None,
+        description="Omit to use the client's single active block or all-inclusive agreement;"
+        " null for none",
+    )
 
     @field_validator("external_ref")
     @classmethod
@@ -284,6 +289,9 @@ class TicketPatch(BaseModel):
     status_id: int | None = None  # a specific named status (wins over `status`)
     type_id: int | None = None  # null clears the type (stored values are kept, just hidden)
     custom_values: dict[str, Any] | None = None  # merged by field id; null/blank clears one
+    agreement_id: int | None = Field(
+        default=None, description="Agreement for time logged from now on; null for none"
+    )
 
 
 class BulkChanges(BaseModel):
@@ -355,6 +363,7 @@ class TicketOut(BaseModel):
     external_ref: str | None = None
     project_id: int | None = None
     project_name: str | None = None
+    agreement_id: int | None = None
     requester_email: str | None
     needs_triage: bool
     sla_state: SlaState
@@ -395,6 +404,9 @@ class TimeIn(BaseModel):
     entry_type: TimeEntryType = "labour"  # 'automation' is never billable
     note: str | None = None
     user_id: int | None = None  # admin only; defaults to the caller
+    agreement_id: int | None = Field(
+        default=None, description="Omit to use the ticket's agreement; null for none"
+    )
 
     @model_validator(mode="after")
     def _automation_unbilled(self):
@@ -411,6 +423,7 @@ class TimePatch(BaseModel):
     work_date: date | None = None
     billable: bool | None = None
     note: str | None = None
+    agreement_id: int | None = None  # null detaches; locked once the entry is billed
 
 
 class TimeOut(ORM):
@@ -427,6 +440,7 @@ class TimeOut(ORM):
     entry_type: TimeEntryType = "labour"
     note: str | None
     voided_at: datetime | None
+    agreement_id: int | None = None
 
 
 class InternalTimeIn(BaseModel):
@@ -868,6 +882,8 @@ from decimal import Decimal  # noqa: E402
 AgreementType = Literal["per_user", "per_device", "flat", "block"]
 # Included minutes on a block agreement: at most a month of round-the-clock hours (31 x 24 h)
 BLOCK_MINUTES_MAX = 44_640
+ROLLOVER_CAP_MAX = 12 * BLOCK_MINUTES_MAX  # a year of round-the-clock months
+Rollover = Literal["expire", "roll"]
 InvoiceStatus = Literal["draft", "final", "void"]
 RunStatus = Literal["draft", "reviewed", "finalized", "cancelled"]
 LineKind = Literal["time", "product", "agreement", "manual", "proration", "project"]
@@ -1006,6 +1022,13 @@ class AgreementIn(BaseModel):
         le=BLOCK_MINUTES_MAX,
         description="Included minutes per month; required for (and only for) type block",
     )
+    all_inclusive: bool = Field(
+        default=False, description="Flat only: attached time is covered by the fee"
+    )
+    rollover: Rollover = Field(default="expire", description="Block only: unused minutes")
+    rollover_cap_minutes: int | None = Field(
+        default=None, ge=1, le=ROLLOVER_CAP_MAX, description="Block only: most minutes carried"
+    )
 
 
 class AgreementPatch(BaseModel):
@@ -1021,6 +1044,15 @@ class AgreementPatch(BaseModel):
         default=None,
         le=BLOCK_MINUTES_MAX,
         description="Included minutes per month (block only); cleared when the type changes",
+    )
+    all_inclusive: bool | None = Field(
+        default=None, description="Flat only; reset when the type changes"
+    )
+    rollover: Rollover | None = Field(
+        default=None, description="Block only; reset when the type changes"
+    )
+    rollover_cap_minutes: int | None = Field(
+        default=None, ge=1, le=ROLLOVER_CAP_MAX, description="Block only; null clears the cap"
     )
     reason: str | None = Field(default=None, max_length=500, description="Why the quantity changed")
 
@@ -1038,6 +1070,9 @@ class AgreementOut(ORM):
     end_date: date | None
     notes: str | None
     block_minutes: int | None
+    all_inclusive: bool
+    rollover: Rollover
+    rollover_cap_minutes: int | None
     monthly_amount_cents: int  # unit price x quantity (block: the price), before tax
 
 

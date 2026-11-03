@@ -232,9 +232,18 @@ class InvalidAgreement(ValueError):
 
 
 def _validate_agreement(ctx: Ctx, data: dict) -> None:
-    """`data` is the agreement's full resulting state (type, block_minutes, dates)."""
+    """`data` is the agreement's full resulting state (type, block_minutes, dates, settings)."""
     if data.get("end_date") and data["end_date"] < data["start_date"]:
         raise Conflict("End date cannot be before the start date")
+    if data.get("all_inclusive") and data["type"] != "flat":
+        raise InvalidAgreement("All-inclusive applies only to flat-fee agreements")
+    if data["type"] != "block" and (
+        data.get("rollover", "expire") != "expire" or data.get("rollover_cap_minutes") is not None
+    ):
+        raise InvalidAgreement("Rollover of unused minutes applies only to block agreements")
+    cap = data.get("rollover_cap_minutes")
+    if cap is not None and cap <= 0:
+        raise InvalidAgreement("The rollover cap must be a positive number of minutes")
     block_minutes = data.get("block_minutes")
     if data["type"] != "block":
         if block_minutes is not None:
@@ -313,24 +322,32 @@ def update_agreement(ctx: Ctx, agreement_id: int, data: dict) -> Agreement:
         raise NotFound("Agreement not found")
     before = audit.snapshot(agreement)
     reason = data.pop("reason", None)
-    if data.get("type") not in (None, "block") and "block_minutes" not in data:
-        data["block_minutes"] = None  # leaving the block type drops its included hours
+    # Leaving a type drops the settings that only apply to it, unless the request sets them.
+    if data.get("type") not in (None, "block"):
+        data.setdefault("block_minutes", None)
+        data.setdefault("rollover", "expire")
+        data.setdefault("rollover_cap_minutes", None)
+    if data.get("type") not in (None, "flat"):
+        data.setdefault("all_inclusive", False)
     state = {
         "organization_id": agreement.organization_id,
         "type": agreement.type,
         "block_minutes": agreement.block_minutes,
         "start_date": agreement.start_date,
         "end_date": agreement.end_date,
+        "all_inclusive": agreement.all_inclusive,
+        "rollover": agreement.rollover,
+        "rollover_cap_minutes": agreement.rollover_cap_minutes,
     }
+    clearable = ("end_date", "block_minutes", "rollover_cap_minutes")
     for key, value in data.items():
-        # end_date and block_minutes may be cleared explicitly
-        if value is not None or key in ("end_date", "block_minutes"):
+        if value is not None or key in clearable:  # these may be cleared explicitly
             state[key] = value
     # Validate before touching the row: a query below would autoflush it into a DB constraint.
     _validate_agreement(ctx, state)
     _check_block_overlap(ctx, state, agreement.id)
     for key, value in data.items():
-        if value is not None or key in ("end_date", "block_minutes"):
+        if value is not None or key in clearable:
             setattr(agreement, key, value)
     if agreement.type in ("flat", "block"):
         agreement.quantity = 1

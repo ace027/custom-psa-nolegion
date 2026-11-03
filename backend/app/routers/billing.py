@@ -186,6 +186,9 @@ def _agreement_out(a) -> AgreementOut:
         end_date=a.end_date,
         notes=a.notes,
         block_minutes=a.block_minutes,
+        all_inclusive=a.all_inclusive,
+        rollover=a.rollover,
+        rollover_cap_minutes=a.rollover_cap_minutes,
         monthly_amount_cents=svc.monthly_amount_cents(a),
     )
 

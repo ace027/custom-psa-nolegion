@@ -646,6 +646,8 @@ class Ticket(TimestampMixin, Base):
     asset_id: Mapped[int | None] = mapped_column(BigInteger)
     # composite FK (project_id, organization_id) lives in migration 0029
     project_id: Mapped[int | None] = mapped_column(BigInteger)
+    # Agreement new time on this ticket is billed to by default (NULL = none); migration 0041
+    agreement_id: Mapped[int | None] = mapped_column(ForeignKey("agreements.id"), index=True)
 
     organization: Mapped[Organization | None] = relationship(lazy="joined")
     contact: Mapped[Contact | None] = relationship(lazy="joined")
@@ -738,6 +740,8 @@ class TimeEntry(TimestampMixin, Base):
     invoice_line_id: Mapped[int | None] = mapped_column(ForeignKey("invoice_lines.id"))
     # Part of minutes_billable drawn from a block agreement by a billing run (0 = none)
     block_minutes_covered: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # Agreement this time is billed to (NULL = none); defaults to the ticket's agreement
+    agreement_id: Mapped[int | None] = mapped_column(ForeignKey("agreements.id"), index=True)
 
 
 class TimeCategory(_Lookup, Base):
@@ -898,6 +902,13 @@ class Agreement(TimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text)
     # Included minutes per month; set only (and always) for type 'block'
     block_minutes: Mapped[int | None] = mapped_column(Integer)
+    # Flat only: time attached to the agreement is covered by the fee (never billed extra)
+    all_inclusive: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    # Block only: unused minutes 'expire' at month end or 'roll' over, up to the optional cap
+    rollover: Mapped[str] = mapped_column(String(10), nullable=False, server_default="expire")
+    rollover_cap_minutes: Mapped[int | None] = mapped_column(Integer)
     organization: Mapped[Organization] = relationship(lazy="joined")
 
 

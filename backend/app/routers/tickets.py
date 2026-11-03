@@ -39,7 +39,11 @@ ERR = {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
 def _view(ctx: Ctx):
     s = repo.get_settings_row(ctx.db)
     cal, now = Calendar.from_settings(s, repo.holiday_exceptions(ctx.db)), svc.now()
-    return lambda t: ticket_out(t, cal, s.sla_at_risk_percent, now)
+    # shortcut: agreement_id is set here, not in app/ticket_views.ticket_out (outside this change),
+    # so project ticket views (routers/projects.py) report null until it moves there
+    return lambda t: ticket_out(t, cal, s.sla_at_risk_percent, now).model_copy(
+        update={"agreement_id": t.agreement_id}
+    )
 
 
 def _ticket_or_404(ctx: Ctx, ticket_id: int):
@@ -103,6 +107,8 @@ def _check_external_ref_free(ctx: Ctx, source: str, external_ref: str) -> None:
 )
 def create_ticket(body: TicketIn, ctx: Ctx = require(P.TICKET_WRITE)):
     data = body.model_dump()
+    if "agreement_id" not in body.model_fields_set:
+        del data["agreement_id"]  # omitted: the service picks the client's default agreement
     external_ref = data.pop("external_ref")
     source = "api" if ctx.api_key_id is not None else "manual"
     if external_ref is not None:
@@ -228,7 +234,10 @@ def list_time(ticket_id: int, include_voided: bool = False, ctx: Ctx = require(P
     summary="Log time on a ticket",
 )
 def add_time(ticket_id: int, body: TimeIn, ctx: Ctx = require(P.TIME_WRITE)):
-    return svc.add_time(ctx, ticket_id, body.model_dump())
+    data = body.model_dump()
+    if "agreement_id" not in body.model_fields_set:
+        del data["agreement_id"]  # omitted: the entry takes the ticket's agreement
+    return svc.add_time(ctx, ticket_id, data)
 
 
 @router.patch(

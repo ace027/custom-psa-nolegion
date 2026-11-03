@@ -10,6 +10,7 @@ from sqlalchemy import update
 
 from app import audit, custom_fields, timesheets
 from app import repositories as repo
+from app.billing_repo import agreements_overlapping, get_agreement
 from app.deps import Ctx
 from app.errors import Conflict, Forbidden, NotFound
 from app.models import (
@@ -74,6 +75,30 @@ def _check_org_refs(ctx: Ctx, org_id: int | None, contact_id: int | None, site_i
             raise Conflict("Site does not belong to this organization")
 
 
+def _check_agreement(ctx: Ctx, org_id: int | None, agreement_id: int | None) -> None:
+    """A ticket or time entry may only be attached to an agreement of its own client."""
+    if agreement_id is None:
+        return
+    agreement = get_agreement(ctx.db, ctx.scope, agreement_id)
+    if agreement is None or org_id is None or agreement.organization_id != org_id:
+        raise HTTPException(
+            status_code=422, detail="The agreement does not belong to this ticket's organization"
+        )
+
+
+def default_agreement_id(ctx: Ctx, org_id: int | None, on: date) -> int | None:
+    """The client's one agreement in force on `on` that time is billed to: a block agreement or
+    an all-inclusive flat fee. None when there is no such agreement, or more than one."""
+    if org_id is None:
+        return None
+    candidates = [
+        a
+        for a in agreements_overlapping(ctx.db, ctx.scope, org_id, on, on)
+        if a.type == "block" or (a.type == "flat" and a.all_inclusive)
+    ]
+    return candidates[0].id if len(candidates) == 1 else None
+
+
 # ---- SLA -----------------------------------------------------------------------------------
 def recompute_sla(ctx: Ctx, ticket: Ticket) -> None:
     ticket.sla_first_response_due, ticket.sla_resolution_due = compute_due_dates(
@@ -133,6 +158,11 @@ def create_ticket(
         raise NotFound("Organization not found")
     _check_org_refs(ctx, org_id, data.get("contact_id"), data.get("site_id"))
     _check_assignee(ctx, data.get("assignee_id"))
+    if "agreement_id" in data:  # an explicit choice, null included
+        agreement_id = data["agreement_id"]
+        _check_agreement(ctx, org_id, agreement_id)
+    else:
+        agreement_id = default_agreement_id(ctx, org_id, _entry_date(ctx, None))
     queue = _active(ctx, Queue, data.get("queue_id"), "queue") or repo.get_default(ctx.db, Queue)
     priority = _active(ctx, Priority, data.get("priority_id"), "priority") or repo.get_default(
         ctx.db, Priority
@@ -166,6 +196,7 @@ def create_ticket(
         priority_id=priority.id,
         type_id=type_id,
         custom_values=custom_values,
+        agreement_id=agreement_id,
         source=source,
         external_ref=external_ref,
         requester_email=requester_email,
@@ -257,6 +288,8 @@ def update_ticket(ctx: Ctx, ticket_id: int, data: dict) -> Ticket:
             raise Conflict(f"{required} cannot be cleared")
     if data.get("priority_id") is not None:
         _active(ctx, Priority, data["priority_id"], "priority")
+    if "agreement_id" in data:  # applies to time logged from now on; existing time keeps its own
+        _check_agreement(ctx, org_id, data["agreement_id"])
 
     for key in (
         "subject",
@@ -267,6 +300,7 @@ def update_ticket(ctx: Ctx, ticket_id: int, data: dict) -> Ticket:
         "category_id",
         "assignee_id",
         "priority_id",
+        "agreement_id",
     ):
         if key in data:
             setattr(ticket, key, data[key])
@@ -468,6 +502,11 @@ def add_time(ctx: Ctx, ticket_id: int, data: dict) -> TimeEntry:
     entry_type = data.get("entry_type") or "labour"
     if entry_type == "automation":
         data = {**data, "billable": False}
+    if "agreement_id" in data:  # an explicit choice, null included
+        agreement_id = data["agreement_id"]
+        _check_agreement(ctx, ticket.organization_id, agreement_id)
+    else:
+        agreement_id = ticket.agreement_id
     entry = TimeEntry(
         ticket_id=ticket.id,
         organization_id=ticket.organization_id,
@@ -479,6 +518,7 @@ def add_time(ctx: Ctx, ticket_id: int, data: dict) -> TimeEntry:
         entry_type=entry_type,
         note=data.get("note"),
         minutes_billable=billable_minutes(data["minutes"], data["billable"], inc),
+        agreement_id=agreement_id,
     )
     ctx.db.add(entry)
     ticket.updated_at = now()
@@ -516,7 +556,11 @@ def update_time(ctx: Ctx, entry_id: int, data: dict) -> TimeEntry:
     timesheets.assert_open(ctx, entry.user_id, entry.work_date)
     if data.get("work_date"):
         timesheets.assert_open(ctx, entry.user_id, data["work_date"])
+    if "agreement_id" in data:
+        _check_agreement(ctx, entry.organization_id, data["agreement_id"])
     before = audit.snapshot(entry)
+    if "agreement_id" in data:
+        entry.agreement_id = data["agreement_id"]
     if data.get("work_type_id"):
         _active(ctx, WorkType, data["work_type_id"], "work type")
         entry.work_type_id = data["work_type_id"]
