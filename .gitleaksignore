@@ -1,0 +1,4 @@
+# Azure built-in role definition ids (public GUIDs documented by Microsoft), not secrets:
+# Key Vault Secrets User and Key Vault Secrets Officer in deploy/azure/main.bicep
+4b214e09d98d2b294f16c7c7b03a7c0700e8751e:deploy/azure/main.bicep:generic-api-key:57
+4b214e09d98d2b294f16c7c7b03a7c0700e8751e:deploy/azure/main.bicep:generic-api-key:58
