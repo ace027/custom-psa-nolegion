@@ -62,6 +62,8 @@ entra_denied() {
 }
 app_name="${NAME_PREFIX} PSA staff sign-in"
 redirect="https://${PUBLIC_HOST}/api/v1/auth/callback"
+# The wizard's admin-consent flow returns here (backend/app/onboarding_auth.py); both must be registered.
+consent_redirect="https://${PUBLIC_HOST}/api/v1/onboarding/consent/callback"
 # Microsoft Graph delegated openid, profile, email, User.Read; nothing else.
 cat > "$work/graph-access.json" <<'JSON'
 [{"resourceAppId": "00000003-0000-0000-c000-000000000000", "resourceAccess": [
@@ -74,10 +76,10 @@ step "staff sign-in app '$app_name'"
 app_id=$(az ad app list --filter "displayName eq '$app_name'" --query '[0].appId' -o tsv 2>"$work/err") || entra_denied
 if [ -z "$app_id" ]; then
   app_id=$(az ad app create --display-name "$app_name" --sign-in-audience AzureADMyOrg \
-    --web-redirect-uris "$redirect" --required-resource-accesses @"$work/graph-access.json" \
+    --web-redirect-uris "$redirect" "$consent_redirect" --required-resource-accesses @"$work/graph-access.json" \
     --query appId -o tsv 2>"$work/err") || entra_denied
 else
-  az ad app update --id "$app_id" --sign-in-audience AzureADMyOrg --web-redirect-uris "$redirect" \
+  az ad app update --id "$app_id" --sign-in-audience AzureADMyOrg --web-redirect-uris "$redirect" "$consent_redirect" \
     --required-resource-accesses @"$work/graph-access.json" -o none 2>"$work/err" || entra_denied
 fi
 az ad sp show --id "$app_id" -o none 2>/dev/null \

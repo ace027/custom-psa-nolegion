@@ -9,7 +9,7 @@ is unchanged (see [DEVELOPMENT.md](DEVELOPMENT.md) and [ENTRA_SETUP.md](ENTRA_SE
 | Resource | Name | Notes |
 |---|---|---|
 | Resource group | `$RESOURCE_GROUP` | Everything below lives in it |
-| Entra app registration | `<prefix> PSA staff sign-in` | Single tenant, redirect `https://$PUBLIC_HOST/api/v1/auth/callback`, delegated `openid profile email User.Read` only |
+| Entra app registration | `<prefix> PSA staff sign-in` | Single tenant, redirects `https://$PUBLIC_HOST/api/v1/auth/callback` and `https://$PUBLIC_HOST/api/v1/onboarding/consent/callback`, delegated `openid profile email User.Read` only |
 | Key Vault | `<prefix>-kv-<suffix>` | RBAC mode, purge protection, 90-day soft delete |
 | Managed identity | `<prefix>-id` | Key Vault Secrets User + Secrets Officer on the vault, AcrPull on the registry |
 | Container registry | `<prefix>acr<suffix>` | Basic, admin user disabled; images `psa-api`, `psa-web`, `psa-proxy` |

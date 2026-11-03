@@ -141,18 +141,33 @@ resource kvSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-// Accepted risk (security review): the onboarding wizard writes the secrets it creates.
-resource kvSecretsOfficer 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: keyVault
-  name: guid(keyVault.id, identity.id, roleKeyVaultSecretsOfficer)
+// The onboarding wizard writes only these six secrets (deploy.sh seeds them before this template
+// runs). Write access is scoped to each secret, so the identity cannot touch the owner DB URL,
+// credentials key, session secret or any other secret.
+var wizardSecretNames = [
+  'portal-entra-client-id'
+  'portal-entra-client-secret'
+  'graph-tenant-id'
+  'graph-client-id'
+  'graph-client-secret'
+  'mail-mailbox'
+]
+resource wizardSecrets 'Microsoft.KeyVault/vaults/secrets@2023-07-01' existing = [for n in wizardSecretNames: {
+  parent: keyVault
+  name: n
+}]
+
+resource kvSecretsOfficer 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for (n, i) in wizardSecretNames: {
+  scope: wizardSecrets[i]
+  name: guid(wizardSecrets[i].id, identity.id, roleKeyVaultSecretsOfficer)
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleKeyVaultSecretsOfficer)
     principalId: identity.properties.principalId
     principalType: 'ServicePrincipal'
   }
-}
+}]
 
-resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+resource acr'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: acrName
   location: location
   sku: { name: 'Basic' }

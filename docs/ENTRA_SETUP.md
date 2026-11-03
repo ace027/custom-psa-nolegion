@@ -10,7 +10,7 @@ Staff sign in with Entra ID using OpenID Connect (authorization code + PKCE). Th
 Entra admin center → **App registrations → New registration**
 - Name: `PSA`
 - Supported account types: **Accounts in this organizational directory only** (single tenant)
-- Redirect URI (type *Web*): `https://<your PSA host>/api/v1/auth/callback`
+- Redirect URIs (type *Web*): `https://<your PSA host>/api/v1/auth/callback` and `https://<your PSA host>/api/v1/onboarding/consent/callback` (the setup wizard's admin consent)
 
 ## 2. Create a client secret
 **Certificates & secrets → New client secret.** Copy the *Value* immediately. Put a calendar reminder
